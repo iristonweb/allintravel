@@ -1,85 +1,102 @@
-import { useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import NavigationHeader from "@/components/navigation-header";
-import PlaceCard from "@/components/place-card";
+import { useState } from "react";
+import { NavigationHeader } from "@/components/navigation-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Calendar, Star, Heart } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { 
+  Settings, 
+  MapPin, 
+  Camera, 
+  Users, 
+  MessageCircle, 
+  Calendar,
+  Star,
+  Globe,
+  Edit
+} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-export default function Profile() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+export function Profile() {
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
-
-  const { data: favorites, isLoading: favoritesLoading, error: favoritesError } = useQuery({
-    queryKey: ["/api/favorites"],
-    enabled: isAuthenticated,
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState({
+    bio: "",
+    location: "",
+    favoriteDestinations: [] as string[],
+    travelStyle: "",
+    languages: [] as string[],
+    socialLinks: {
+      instagram: "",
+      facebook: "",
+      website: "",
+    },
+    isPublic: true,
   });
 
-  const { data: userTrips, isLoading: tripsLoading } = useQuery({
-    queryKey: ["/api/trips", { userId: user?.id }],
+  // Fetch user profile
+  const { data: profile } = useQuery({
+    queryKey: [`/api/profile/${user?.id}`],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  // Handle unauthorized errors
-  useEffect(() => {
-    if (favoritesError && isUnauthorizedError(favoritesError as Error)) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-    }
-  }, [favoritesError, toast]);
+  // Fetch user posts
+  const { data: userPosts = [] } = useQuery({
+    queryKey: ["/api/posts", { userId: user?.id }],
+    enabled: isAuthenticated && !!user?.id,
+  });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen">
-        <NavigationHeader />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-32 bg-gray-200 rounded-xl mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-40 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Fetch user stats
+  const { data: followers = [] } = useQuery({
+    queryKey: [`/api/followers/${user?.id}`],
+    enabled: isAuthenticated && !!user?.id,
+  });
 
-  if (!user) {
+  const { data: following = [] } = useQuery({
+    queryKey: [`/api/following/${user?.id}`],
+    enabled: isAuthenticated && !!user?.id,
+  });
+
+  const { data: friends = [] } = useQuery({
+    queryKey: ["/api/friends"],
+    enabled: isAuthenticated,
+  });
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: (data: any) =>
+      apiRequest("/api/profile", {
+        method: profile ? "PUT" : "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      toast({ title: "Профиль обновлен!" });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    },
+  });
+
+  const handleSaveProfile = () => {
+    updateProfileMutation.mutate(profileData);
+  };
+
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-background">
         <NavigationHeader />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Profile Not Found</h1>
-            <p className="text-gray-600">Unable to load your profile.</p>
+            <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
+            <p className="text-muted-foreground">Чтобы просмотреть профиль, необходимо войти в систему</p>
           </div>
         </div>
       </div>
@@ -87,227 +104,218 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <NavigationHeader />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Profile Header */}
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
-              <img
-                src={user.profileImageUrl || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=120&h=120"}
-                alt="Profile"
-                className="w-24 h-24 rounded-full object-cover"
-              />
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  {user.firstName || user.lastName 
-                    ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                    : user.email
-                  }
-                </h1>
-                {user.email && (
-                  <p className="text-gray-600 mb-4">{user.email}</p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">
-                    <MapPin className="h-3 w-3 mr-1" />
-                    Global Traveler
-                  </Badge>
-                  <Badge variant="secondary">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    Member since {new Date(user.createdAt || '').getFullYear()}
-                  </Badge>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Profile Header */}
+          <Card className="mb-8">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex flex-col items-center">
+                  <div className="relative">
+                    <Avatar className="h-32 w-32">
+                      <AvatarImage src={user?.profileImageUrl} />
+                      <AvatarFallback className="text-2xl">
+                        {user?.firstName?.[0] || user?.email?.[0] || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex space-x-4">
-                <Button variant="outline">Edit Profile</Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => window.location.href = '/api/logout'}
-                >
-                  Logout
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Profile Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="text-center pt-6">
-              <div className="text-2xl font-bold text-primary mb-1">
-                {favorites?.length || 0}
-              </div>
-              <div className="text-sm text-gray-600">Favorites</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="text-center pt-6">
-              <div className="text-2xl font-bold text-secondary mb-1">
-                {userTrips?.length || 0}
-              </div>
-              <div className="text-sm text-gray-600">Trips</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="text-center pt-6">
-              <div className="text-2xl font-bold text-accent mb-1">
-                0
-              </div>
-              <div className="text-sm text-gray-600">Reviews</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="text-center pt-6">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                4.8
-              </div>
-              <div className="text-sm text-gray-600">Rating</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Profile Content */}
-        <Tabs defaultValue="favorites" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="favorites">Favorites</TabsTrigger>
-            <TabsTrigger value="trips">My Trips</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="favorites">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Heart className="h-5 w-5 mr-2 text-primary" />
-                  Favorite Places
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {favoritesLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="bg-gray-200 rounded-xl h-64 animate-pulse"></div>
-                    ))}
-                  </div>
-                ) : favorites && favorites.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {favorites.map((favorite: any) => (
-                      <PlaceCard key={favorite.place?.id} place={favorite.place} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Heart className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">No favorite places yet.</p>
-                    <p className="text-gray-500 text-sm">Start exploring and save places you love!</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="trips">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-2 text-secondary" />
-                  My Trips
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {tripsLoading ? (
-                  <div className="space-y-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="bg-gray-200 rounded h-20 animate-pulse"></div>
-                    ))}
-                  </div>
-                ) : userTrips && userTrips.length > 0 ? (
-                  <div className="space-y-4">
-                    {userTrips.map((trip: any) => (
-                      <div key={trip.id} className="border rounded-lg p-4">
-                        <h3 className="font-semibold text-gray-900 mb-2">{trip.title}</h3>
-                        <p className="text-gray-600 text-sm mb-2">{trip.description}</p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>{trip.destination}</span>
-                          <span>{new Date(trip.startDate).toLocaleDateString()}</span>
-                          <span>{trip.currentParticipants}/{trip.maxParticipants} participants</span>
+                <div className="flex-1">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                    <div>
+                      <h1 className="text-2xl font-bold">
+                        {user?.firstName} {user?.lastName}
+                      </h1>
+                      <p className="text-muted-foreground">{user?.email}</p>
+                      {profile?.location && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{profile.location}</span>
                         </div>
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsEditing(!isEditing)}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Редактировать
+                    </Button>
                   </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600">No trips planned yet.</p>
-                    <p className="text-gray-500 text-sm">Create your first trip to find travel companions!</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="reviews">
-            <Card>
+                  {profile?.bio && (
+                    <p className="text-muted-foreground mb-4">{profile.bio}</p>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-coral-600">{userPosts.length}</div>
+                      <div className="text-sm text-muted-foreground">Постов</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-teal-600">{followers.length}</div>
+                      <div className="text-sm text-muted-foreground">Подписчиков</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-orange-600">{friends.length}</div>
+                      <div className="text-sm text-muted-foreground">Друзей</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Edit Profile Form */}
+          {isEditing && (
+            <Card className="mb-8">
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Star className="h-5 w-5 mr-2 text-accent" />
-                  My Reviews
-                </CardTitle>
+                <CardTitle>Редактировать профиль</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Star className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600">No reviews written yet.</p>
-                  <p className="text-gray-500 text-sm">Share your experiences to help other travelers!</p>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="bio">О себе</Label>
+                  <Textarea
+                    id="bio"
+                    placeholder="Расскажите о себе и своих увлечениях путешествиями..."
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="location">Местоположение</Label>
+                  <Input
+                    id="location"
+                    placeholder="Москва, Россия"
+                    value={profileData.location}
+                    onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="travelStyle">Стиль путешествий</Label>
+                  <Input
+                    id="travelStyle"
+                    placeholder="Бюджетные поездки, роскошный отдых, приключения..."
+                    value={profileData.travelStyle}
+                    onChange={(e) => setProfileData({ ...profileData, travelStyle: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={updateProfileMutation.isPending}
+                    className="bg-coral-500 hover:bg-coral-600"
+                  >
+                    Сохранить
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsEditing(false)}>
+                    Отмена
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Personal Information</h4>
-                    <p className="text-gray-600 text-sm">
-                      Update your personal details and preferences.
+          {/* Profile Tabs */}
+          <Tabs defaultValue="posts" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="posts">Посты</TabsTrigger>
+              <TabsTrigger value="trips">Поездки</TabsTrigger>
+              <TabsTrigger value="reviews">Отзывы</TabsTrigger>
+              <TabsTrigger value="favorites">Избранное</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="posts" className="mt-6">
+              {userPosts.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Globe className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Нет постов</h3>
+                    <p className="text-muted-foreground">
+                      Поделитесь своими путешествиями с сообществом
                     </p>
-                    <Button variant="outline" className="mt-2">
-                      Edit Information
-                    </Button>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Privacy Settings</h4>
-                    <p className="text-gray-600 text-sm">
-                      Control who can see your profile and activity.
-                    </p>
-                    <Button variant="outline" className="mt-2">
-                      Privacy Settings
-                    </Button>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Notifications</h4>
-                    <p className="text-gray-600 text-sm">
-                      Manage your notification preferences.
-                    </p>
-                    <Button variant="outline" className="mt-2">
-                      Notification Settings
-                    </Button>
-                  </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {userPosts.map((post: any) => (
+                    <Card key={post.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{post.title}</CardTitle>
+                        {post.location && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">{post.location}</span>
+                          </div>
+                        )}
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground mb-4 line-clamp-3">{post.content}</p>
+                        {post.tags && post.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {post.tags.slice(0, 3).map((tag: string, index: number) => (
+                              <Badge key={index} variant="secondary">
+                                #{tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              )}
+            </TabsContent>
+
+            <TabsContent value="trips" className="mt-6">
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Нет поездок</h3>
+                  <p className="text-muted-foreground">
+                    Запланируйте свою первую поездку
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="reviews" className="mt-6">
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Нет отзывов</h3>
+                  <p className="text-muted-foreground">
+                    Оставьте отзыв о посещенных местах
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="favorites" className="mt-6">
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <h3 className="text-lg font-semibold mb-2">Нет избранных мест</h3>
+                  <p className="text-muted-foreground">
+                    Добавляйте места в избранное для быстрого доступа
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );

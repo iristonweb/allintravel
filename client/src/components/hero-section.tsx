@@ -1,64 +1,55 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { MapPin } from "lucide-react";
+import { MapPin, Calendar, Users } from "lucide-react";
 
-export default function HeroSection() {
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      // TODO: Implement search functionality
-      console.log("Searching for:", searchQuery);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
+export function HeroSection() {
   return (
-    <section className="relative h-96 bg-gradient-to-r from-primary to-secondary">
-      {/* Background overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-      
-      {/* Background image */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=800')",
-          backgroundSize: "cover",
-          backgroundPosition: "center"
-        }}
-      />
-      
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-        <div className="text-white max-w-2xl">
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-            Discover Your Next Adventure
-          </h1>
-          <p className="text-xl mb-8 text-gray-100">
-            Connect with fellow travelers, find hidden gems, and create unforgettable memories with our interactive travel guide.
-          </p>
+    <section className="relative py-16 px-4 bg-gradient-to-br from-coral-50 to-teal-50 dark:from-coral-950 dark:to-teal-950">
+      <div className="container mx-auto text-center">
+        <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-coral-600 to-teal-600 bg-clip-text text-transparent mb-6">
+          Откройте мир вместе
+        </h1>
+        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          Исследуйте новые места, находите попутчиков и делитесь незабываемыми моментами
+          в нашем сообществе путешественников
+        </p>
+        <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-12">
+          <Button size="lg" className="bg-coral-500 hover:bg-coral-600">
+            <MapPin className="mr-2 h-5 w-5" />
+            Найти места
+          </Button>
+          <Button size="lg" variant="outline">
+            <Calendar className="mr-2 h-5 w-5" />
+            Планировать поездку
+          </Button>
+          <Button size="lg" variant="outline">
+            <Users className="mr-2 h-5 w-5" />
+            Найти попутчиков
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-coral-100 dark:bg-coral-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <MapPin className="h-8 w-8 text-coral-600" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Исследуйте места</h3>
+            <p className="text-muted-foreground">Откройте для себя лучшие рестораны, отели и достопримечательности</p>
+          </div>
           
-          {/* Search Bar */}
-          <div className="bg-white rounded-lg p-2 flex items-center shadow-lg">
-            <MapPin className="text-gray-400 ml-3 mr-2" size={20} />
-            <Input 
-              placeholder="Where do you want to go?" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="flex-1 border-0 outline-none text-gray-900 bg-transparent focus:ring-0"
-            />
-            <Button 
-              onClick={handleSearch}
-              className="bg-primary text-white hover:bg-primary/90 shrink-0"
-            >
-              Search
-            </Button>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="h-8 w-8 text-teal-600" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Найдите компанию</h3>
+            <p className="text-muted-foreground">Встречайте единомышленников и планируйте совместные путешествия</p>
+          </div>
+          
+          <div className="text-center">
+            <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-orange-600" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Планируйте поездки</h3>
+            <p className="text-muted-foreground">Создавайте детальные маршруты и не упустите важные события</p>
           </div>
         </div>
       </div>

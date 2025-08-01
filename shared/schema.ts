@@ -135,13 +135,101 @@ export const userFavorites = pgTable("user_favorites", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Friends/Connections table
+export const friendships = pgTable("friendships", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  addresseeId: varchar("addressee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, accepted, blocked
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User follows table
+export const userFollows = pgTable("user_follows", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  followerId: varchar("follower_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  followingId: varchar("following_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Private messages table
+export const privateMessages = pgTable("private_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  receiverId: varchar("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Travel posts/journal entries
+export const travelPosts = pgTable("travel_posts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  images: text("images").array(),
+  location: varchar("location", { length: 255 }),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),
+  tags: text("tags").array(),
+  isPublic: boolean("is_public").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Post likes table
+export const postLikes = pgTable("post_likes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  postId: uuid("post_id").notNull().references(() => travelPosts.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Post comments table
+export const postComments = pgTable("post_comments", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  postId: uuid("post_id").notNull().references(() => travelPosts.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User profile extensions
+export const userProfiles = pgTable("user_profiles", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  bio: text("bio"),
+  location: varchar("location", { length: 255 }),
+  website: varchar("website"),
+  travelStyle: varchar("travel_style", { length: 100 }), // adventurous, cultural, relaxation, etc.
+  favoriteDestinations: text("favorite_destinations").array(),
+  languages: text("languages").array(),
+  interests: text("interests").array(),
+  isPublic: boolean("is_public").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   reviews: many(reviews),
   trips: many(trips),
   tripParticipants: many(tripParticipants),
   chatMessages: many(chatMessages),
   favorites: many(userFavorites),
+  profile: one(userProfiles),
+  sentFriendRequests: many(friendships, { relationName: "requester" }),
+  receivedFriendRequests: many(friendships, { relationName: "addressee" }),
+  followers: many(userFollows, { relationName: "following" }),
+  following: many(userFollows, { relationName: "follower" }),
+  sentMessages: many(privateMessages, { relationName: "sender" }),
+  receivedMessages: many(privateMessages, { relationName: "receiver" }),
+  travelPosts: many(travelPosts),
+  postLikes: many(postLikes),
+  postComments: many(postComments),
 }));
 
 export const placesRelations = relations(places, ({ many }) => ({
@@ -177,6 +265,41 @@ export const userFavoritesRelations = relations(userFavorites, ({ one }) => ({
   place: one(places, { fields: [userFavorites.placeId], references: [places.id] }),
 }));
 
+export const friendshipsRelations = relations(friendships, ({ one }) => ({
+  requester: one(users, { fields: [friendships.requesterId], references: [users.id], relationName: "requester" }),
+  addressee: one(users, { fields: [friendships.addresseeId], references: [users.id], relationName: "addressee" }),
+}));
+
+export const userFollowsRelations = relations(userFollows, ({ one }) => ({
+  follower: one(users, { fields: [userFollows.followerId], references: [users.id], relationName: "follower" }),
+  following: one(users, { fields: [userFollows.followingId], references: [users.id], relationName: "following" }),
+}));
+
+export const privateMessagesRelations = relations(privateMessages, ({ one }) => ({
+  sender: one(users, { fields: [privateMessages.senderId], references: [users.id], relationName: "sender" }),
+  receiver: one(users, { fields: [privateMessages.receiverId], references: [users.id], relationName: "receiver" }),
+}));
+
+export const travelPostsRelations = relations(travelPosts, ({ one, many }) => ({
+  user: one(users, { fields: [travelPosts.userId], references: [users.id] }),
+  likes: many(postLikes),
+  comments: many(postComments),
+}));
+
+export const postLikesRelations = relations(postLikes, ({ one }) => ({
+  user: one(users, { fields: [postLikes.userId], references: [users.id] }),
+  post: one(travelPosts, { fields: [postLikes.postId], references: [travelPosts.id] }),
+}));
+
+export const postCommentsRelations = relations(postComments, ({ one }) => ({
+  user: one(users, { fields: [postComments.userId], references: [users.id] }),
+  post: one(travelPosts, { fields: [postComments.postId], references: [travelPosts.id] }),
+}));
+
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+  user: one(users, { fields: [userProfiles.userId], references: [users.id] }),
+}));
+
 // Insert schemas
 export const insertPlaceSchema = createInsertSchema(places).omit({
   id: true,
@@ -210,6 +333,45 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   createdAt: true,
 });
 
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFriendshipSchema = createInsertSchema(friendships).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserFollowSchema = createInsertSchema(userFollows).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPrivateMessageSchema = createInsertSchema(privateMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTravelPostSchema = createInsertSchema(travelPosts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPostLikeSchema = createInsertSchema(postLikes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPostCommentSchema = createInsertSchema(postComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -225,3 +387,17 @@ export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type UserFavorite = typeof userFavorites.$inferSelect;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+export type Friendship = typeof friendships.$inferSelect;
+export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
+export type UserFollow = typeof userFollows.$inferSelect;
+export type InsertUserFollow = z.infer<typeof insertUserFollowSchema>;
+export type PrivateMessage = typeof privateMessages.$inferSelect;
+export type InsertPrivateMessage = z.infer<typeof insertPrivateMessageSchema>;
+export type TravelPost = typeof travelPosts.$inferSelect;
+export type InsertTravelPost = z.infer<typeof insertTravelPostSchema>;
+export type PostLike = typeof postLikes.$inferSelect;
+export type InsertPostLike = z.infer<typeof insertPostLikeSchema>;
+export type PostComment = typeof postComments.$inferSelect;
+export type InsertPostComment = z.infer<typeof insertPostCommentSchema>;

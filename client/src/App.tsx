@@ -7,7 +7,10 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import PlaceDetails from "@/pages/place-details";
-import Profile from "@/pages/profile";
+import { Profile } from "@/pages/profile";
+import { Friends } from "@/pages/friends";
+import { Messages } from "@/pages/messages";
+import { SocialFeed } from "@/pages/social-feed";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -22,6 +25,9 @@ function Router() {
           <Route path="/" component={Home} />
           <Route path="/place/:id" component={PlaceDetails} />
           <Route path="/profile" component={Profile} />
+          <Route path="/friends" component={Friends} />
+          <Route path="/messages" component={Messages} />
+          <Route path="/social-feed" component={SocialFeed} />
         </>
       )}
       <Route component={NotFound} />

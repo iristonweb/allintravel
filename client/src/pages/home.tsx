@@ -1,267 +1,372 @@
-import { useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import NavigationHeader from "@/components/navigation-header";
-import HeroSection from "@/components/hero-section";
-import InteractiveMap from "@/components/interactive-map";
-import PlaceCard from "@/components/place-card";
-import TravelCompanionCard from "@/components/travel-companion-card";
-import ReviewCard from "@/components/review-card";
-import ChatComponent from "@/components/chat-component";
-import EventCard from "@/components/event-card";
-import { useQuery } from "@tanstack/react-query";
+import { NavigationHeader } from "@/components/navigation-header";
+import { HeroSection } from "@/components/hero-section";
+import { InteractiveMap } from "@/components/interactive-map";
+import { PlaceCard } from "@/components/place-card";
+import { TravelCompanionCard } from "@/components/travel-companion-card";
+import { EventCard } from "@/components/event-card";
+import { ChatComponent } from "@/components/chat-component";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Users, Calendar, MessageCircle, TrendingUp, Heart, UserPlus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 
 export default function Home() {
-  const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  
+  // Fetch data for different sections
+  const { data: places = [] } = useQuery({
+    queryKey: ["/api/places", { limit: 6 }],
+  });
 
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
+  const { data: trips = [] } = useQuery({
+    queryKey: ["/api/trips", { limit: 4 }],
+  });
 
-  const { data: places, isLoading: placesLoading, error: placesError } = useQuery({
-    queryKey: ["/api/places"],
+  const { data: events = [] } = useQuery({
+    queryKey: ["/api/events", { upcoming: true, limit: 4 }],
+  });
+
+  // Fetch social feed for authenticated users
+  const { data: socialPosts = [] } = useQuery({
+    queryKey: ["/api/posts", { following: user?.id, limit: 3 }],
     enabled: isAuthenticated,
   });
 
-  const { data: trips, isLoading: tripsLoading } = useQuery({
-    queryKey: ["/api/trips"],
+  const { data: friends = [] } = useQuery({
+    queryKey: ["/api/friends"],
     enabled: isAuthenticated,
   });
-
-  const { data: events, isLoading: eventsLoading } = useQuery({
-    queryKey: ["/api/events", { upcoming: true }],
-    enabled: isAuthenticated,
-  });
-
-  // Handle unauthorized errors
-  useEffect(() => {
-    if (placesError && isUnauthorizedError(placesError as Error)) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-    }
-  }, [placesError, toast]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <NavigationHeader />
       <HeroSection />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary">{places?.length || 0}</div>
-            <div className="text-gray-600">Places</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-secondary">15,234</div>
-            <div className="text-gray-600">Reviews</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-accent">8,956</div>
-            <div className="text-gray-600">Travelers</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gray-900">127</div>
-            <div className="text-gray-600">Countries</div>
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <Tabs defaultValue="all" className="mb-8">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="restaurant">Restaurants</TabsTrigger>
-            <TabsTrigger value="hotel">Hotels</TabsTrigger>
-            <TabsTrigger value="attraction">Attractions</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all">
-            {/* Interactive Map */}
-            <div className="mb-12">
-              <InteractiveMap places={places || []} />
-            </div>
-
-            {/* Featured Places */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Featured Places</h2>
-                <Button variant="outline">View all</Button>
-              </div>
-
-              {placesLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="bg-gray-200 rounded-xl h-64 animate-pulse"></div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {places?.slice(0, 8).map((place) => (
-                    <PlaceCard key={place.id} place={place} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="restaurant">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {places?.filter(p => p.type === 'restaurant').map((place) => (
-                <PlaceCard key={place.id} place={place} />
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="hotel">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {places?.filter(p => p.type === 'hotel').map((place) => (
-                <PlaceCard key={place.id} place={place} />
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="attraction">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {places?.filter(p => p.type === 'attraction').map((place) => (
-                <PlaceCard key={place.id} place={place} />
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="events">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {eventsLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-gray-200 rounded-xl h-48 animate-pulse"></div>
-                ))
-              ) : (
-                events?.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Travel Companions Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Find Travel Companions</h2>
-            <Button className="bg-primary text-white hover:bg-primary/90">
-              Post Trip
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tripsLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="bg-gray-200 rounded-xl h-40 animate-pulse"></div>
-              ))
-            ) : (
-              trips?.slice(0, 3).map((trip) => (
-                <TravelCompanionCard key={trip.id} trip={trip} />
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Recent Reviews Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Recent Reviews</h2>
-            <Button variant="outline">View all reviews</Button>
-          </div>
-
-          <div className="space-y-6">
-            <ReviewCard />
-            <ReviewCard />
-          </div>
-        </div>
-
-        {/* Community Chat */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Community Chat</h2>
-            <Button variant="outline">Join conversation</Button>
-          </div>
-          <ChatComponent />
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center mb-4">
-                <div className="text-primary text-2xl mr-2">🌍</div>
-                <span className="text-xl font-bold text-gray-900">All In Travel</span>
-              </div>
-              <p className="text-gray-600 mb-4">
-                Your ultimate companion for discovering amazing places, connecting with fellow travelers, and creating unforgettable memories around the world.
+      <div className="container mx-auto px-4 py-12">
+        {/* Social Dashboard for Authenticated Users */}
+        {isAuthenticated && (
+          <section className="mb-16">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Добро пожаловать, {user?.firstName}!</h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Посмотрите что нового у ваших друзей и в сообществе путешественников
               </p>
             </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Quick Stats */}
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Ваша статистика</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Друзья</span>
+                        <Badge variant="secondary">{friends.length}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Посты</span>
+                        <Badge variant="secondary">0</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Поездки</span>
+                        <Badge variant="secondary">0</Badge>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <Link href="/friends">
+                        <Button size="sm" className="w-full bg-coral-500 hover:bg-coral-600">
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Найти друзей
+                        </Button>
+                      </Link>
+                      <Link href="/social-feed">
+                        <Button size="sm" variant="outline" className="w-full">
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Создать пост
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Explore</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Popular Destinations</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Top Restaurants</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Best Hotels</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Travel Guides</a></li>
-              </ul>
+                {/* Recent Friends Activity */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Активность друзей</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {friends.length === 0 ? (
+                      <div className="text-center py-4">
+                        <Users className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Добавьте друзей, чтобы видеть их активность
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {friends.slice(0, 3).map((friend: any) => (
+                          <div key={friend.id} className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={friend.profileImageUrl} />
+                              <AvatarFallback>
+                                {friend.firstName?.[0] || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {friend.firstName} {friend.lastName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Недавно присоединился
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Social Feed Preview */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold">Лента друзей</h3>
+                  <Link href="/social-feed">
+                    <Button variant="outline" size="sm">Показать все</Button>
+                  </Link>
+                </div>
+                
+                {socialPosts.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <h4 className="text-lg font-semibold mb-2">Пока нет постов</h4>
+                      <p className="text-muted-foreground mb-4">
+                        Подпишитесь на других путешественников или создайте свой первый пост
+                      </p>
+                      <Link href="/social-feed">
+                        <Button className="bg-coral-500 hover:bg-coral-600">
+                          Создать пост
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {socialPosts.map((post: any) => (
+                      <Card key={post.id}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarFallback>U</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h4 className="font-semibold">Пользователь</h4>
+                              <p className="text-sm text-muted-foreground">2 часа назад</p>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <h5 className="font-semibold mb-2">{post.title}</h5>
+                          <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                            {post.content}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <button className="flex items-center gap-1 hover:text-red-500">
+                              <Heart className="h-4 w-4" />
+                              Нравится
+                            </button>
+                            <button className="flex items-center gap-1 hover:text-foreground">
+                              <MessageCircle className="h-4 w-4" />
+                              Комментарии
+                            </button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+          </section>
+        )}
 
+        {/* Interactive Map Section */}
+        <section className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-4">Исследуйте места</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Откройте для себя лучшие рестораны, отели и достопримечательности на интерактивной карте
+            </p>
+          </div>
+          <InteractiveMap places={places} />
+        </section>
+
+        {/* Popular Places */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Support</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Help Center</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Contact Us</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Terms of Service</a></li>
-              </ul>
+              <h2 className="text-3xl font-bold mb-2">Популярные места</h2>
+              <p className="text-muted-foreground">Места, которые рекомендуют путешественники</p>
             </div>
+            <Button variant="outline">
+              <MapPin className="mr-2 h-4 w-4" />
+              Все места
+            </Button>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {places.slice(0, 6).map((place: any) => (
+              <PlaceCard key={place.id} place={place} />
+            ))}
+          </div>
+        </section>
 
-          <div className="border-t border-gray-200 pt-8 mt-8">
-            <p className="text-gray-600 text-sm text-center">© 2024 All In Travel. All rights reserved.</p>
+        {/* Travel Companions */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Найти попутчиков</h2>
+              <p className="text-muted-foreground">Присоединяйтесь к запланированным поездкам</p>
+            </div>
+            <Button variant="outline">
+              <Users className="mr-2 h-4 w-4" />
+              Все поездки
+            </Button>
           </div>
-        </div>
-      </footer>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {trips.slice(0, 4).map((trip: any) => (
+              <TravelCompanionCard key={trip.id} trip={trip} />
+            ))}
+          </div>
+        </section>
+
+        {/* Events */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Предстоящие события</h2>
+              <p className="text-muted-foreground">Не пропустите интересные мероприятия</p>
+            </div>
+            <Button variant="outline">
+              <Calendar className="mr-2 h-4 w-4" />
+              Все события
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {events.slice(0, 4).map((event: any) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </section>
+
+        {/* Community Features */}
+        <section className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-4">Сообщество путешественников</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Общайтесь, делитесь опытом и планируйте путешествия вместе
+            </p>
+          </div>
+          
+          <Tabs defaultValue="chat" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="chat">
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Общий чат
+              </TabsTrigger>
+              <TabsTrigger value="trending">
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Популярное
+              </TabsTrigger>
+              <TabsTrigger value="community">
+                <Users className="mr-2 h-4 w-4" />
+                Сообщество
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="chat" className="mt-6">
+              <ChatComponent chatRoom="general" title="Общий чат путешественников" />
+            </TabsContent>
+            
+            <TabsContent value="trending" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Популярные обсуждения</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-semibold mb-2">Лучшие места для фотосессий в Петербурге</h4>
+                      <p className="text-sm text-muted-foreground">Обсуждение популярных локаций для фотографий</p>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <span>124 комментария</span>
+                        <span>89 лайков</span>
+                      </div>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-semibold mb-2">Бюджетное путешествие по Европе</h4>
+                      <p className="text-sm text-muted-foreground">Советы по экономии на путешествиях</p>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <span>78 комментариев</span>
+                        <span>156 лайков</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="community" className="mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-center">Активные пользователи</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-coral-600 mb-2">1,234</div>
+                      <p className="text-sm text-muted-foreground">путешественников</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-center">Поездки сегодня</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-teal-600 mb-2">47</div>
+                      <p className="text-sm text-muted-foreground">активных поездок</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-center">Новые отзывы</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-orange-600 mb-2">156</div>
+                      <p className="text-sm text-muted-foreground">за сегодня</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </section>
+      </div>
     </div>
   );
 }
