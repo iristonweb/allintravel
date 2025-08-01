@@ -41,7 +41,7 @@ export function Friends() {
 
   // Mutations
   const sendRequestMutation = useMutation({
-    mutationFn: (userId: string) => apiRequest(`/api/friends/request/${userId}`, { method: "POST" }),
+    mutationFn: (userId: string) => apiRequest("POST", `/api/friends/request/${userId}`),
     onSuccess: () => {
       toast({ title: "Запрос отправлен" });
       queryClient.invalidateQueries({ queryKey: ["/api/friends"] });

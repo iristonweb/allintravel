@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Globe, MapPin, Users, Calendar, Star, MessageSquare } from "lucide-react";
 
-export default function Landing() {
+export function Landing() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation Header */}
@@ -228,3 +228,5 @@ export default function Landing() {
     </div>
   );
 }
+
+export default Landing;

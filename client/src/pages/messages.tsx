@@ -34,10 +34,7 @@ export function Messages() {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: (messageData: any) =>
-      apiRequest("/api/messages", {
-        method: "POST",
-        body: JSON.stringify(messageData),
-      }),
+      apiRequest("POST", "/api/messages", messageData),
     onSuccess: () => {
       setNewMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });

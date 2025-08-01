@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 
-export default function Home() {
+export function Home() {
   const { user, isAuthenticated } = useAuth();
   
   // Fetch data for different sections
@@ -370,3 +370,5 @@ export default function Home() {
     </div>
   );
 }
+
+export default Home;
