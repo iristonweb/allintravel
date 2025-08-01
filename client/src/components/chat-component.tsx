@@ -31,7 +31,7 @@ export function ChatComponent({ chatRoom, title = "Чат", height = "h-96" }: C
 
   useEffect(() => {
     if (initialMessages) {
-      setMessages(initialMessages || []);
+      setMessages(initialMessages as ChatMessage[] || []);
     }
   }, [initialMessages]);
 
@@ -175,3 +175,5 @@ export function ChatComponent({ chatRoom, title = "Чат", height = "h-96" }: C
     </Card>
   );
 }
+
+export default ChatComponent;

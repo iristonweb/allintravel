@@ -393,6 +393,17 @@ export type Friendship = typeof friendships.$inferSelect;
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
 export type UserFollow = typeof userFollows.$inferSelect;
 export type InsertUserFollow = z.infer<typeof insertUserFollowSchema>;
+
+// API Response Types
+export interface PlaceWithDetails extends Place {
+  averageRating: string;
+  reviewCount: number;
+  isFavorite?: boolean;
+}
+
+export interface FavoriteStatus {
+  isFavorite: boolean;
+}
 export type PrivateMessage = typeof privateMessages.$inferSelect;
 export type InsertPrivateMessage = z.infer<typeof insertPrivateMessageSchema>;
 export type TravelPost = typeof travelPosts.$inferSelect;

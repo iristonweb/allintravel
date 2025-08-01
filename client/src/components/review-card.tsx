@@ -12,7 +12,7 @@ interface ReviewCardProps {
   showPlaceName?: boolean;
 }
 
-export function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProps) {
+function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProps) {
   const formatDate = (date: string | Date | null) => {
     if (!date) return "Недавно";
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -102,3 +102,6 @@ export function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewC
     </Card>
   );
 }
+
+export { ReviewCard };
+export default ReviewCard;

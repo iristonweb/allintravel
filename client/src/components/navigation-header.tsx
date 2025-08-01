@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 
-export function NavigationHeader() {
+function NavigationHeader() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -31,7 +31,7 @@ export function NavigationHeader() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-coral-500 to-teal-500" />
+          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary to-secondary" />
           <span className="text-xl font-bold text-foreground">All In Travel</span>
         </Link>
 
@@ -41,7 +41,7 @@ export function NavigationHeader() {
             <Link key={item.href} href={item.href}>
               <Button
                 variant={location === item.href ? "default" : "ghost"}
-                className={location === item.href ? "bg-coral-500 hover:bg-coral-600" : ""}
+                className={location === item.href ? "bg-primary hover:bg-primary/90" : ""}
               >
                 {item.label}
               </Button>
@@ -63,7 +63,7 @@ export function NavigationHeader() {
         <div className="hidden md:flex items-center space-x-4">
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-coral-500 text-xs text-white flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-xs text-white flex items-center justify-center">
               3
             </span>
           </Button>
@@ -106,7 +106,7 @@ export function NavigationHeader() {
                 <Button
                   variant={location === item.href ? "default" : "ghost"}
                   className={`w-full justify-start ${
-                    location === item.href ? "bg-coral-500 hover:bg-coral-600" : ""
+                    location === item.href ? "bg-primary hover:bg-primary/90" : ""
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -137,3 +137,6 @@ export function NavigationHeader() {
     </header>
   );
 }
+
+export { NavigationHeader };
+export default NavigationHeader;

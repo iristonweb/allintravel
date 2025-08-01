@@ -1,10 +1,10 @@
-import { NavigationHeader } from "@/components/navigation-header";
-import { HeroSection } from "@/components/hero-section";
-import { InteractiveMap } from "@/components/interactive-map";
-import { PlaceCard } from "@/components/place-card";
-import { TravelCompanionCard } from "@/components/travel-companion-card";
-import { EventCard } from "@/components/event-card";
-import { ChatComponent } from "@/components/chat-component";
+import NavigationHeader from "@/components/navigation-header";
+import HeroSection from "@/components/hero-section";
+import InteractiveMap from "@/components/interactive-map";
+import PlaceCard from "@/components/place-card";
+import TravelCompanionCard from "@/components/travel-companion-card";
+import EventCard from "@/components/event-card";
+import ChatComponent from "@/components/chat-component";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

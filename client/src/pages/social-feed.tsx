@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavigationHeader } from "@/components/navigation-header";
+import NavigationHeader from "@/components/navigation-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +37,7 @@ export function SocialFeed() {
   // Create post mutation
   const createPostMutation = useMutation({
     mutationFn: (postData: any) =>
-      apiRequest("/api/posts", {
-        method: "POST",
-        body: JSON.stringify(postData),
-      }),
+      apiRequest("POST", "/api/posts", postData),
     onSuccess: () => {
       toast({ title: "Пост опубликован!" });
       setIsCreating(false);

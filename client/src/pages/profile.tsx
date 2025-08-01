@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavigationHeader } from "@/components/navigation-header";
+import NavigationHeader from "@/components/navigation-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,10 +74,7 @@ export function Profile() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest("/api/profile", {
-        method: profile ? "PUT" : "POST",
-        body: JSON.stringify(data),
-      }),
+      apiRequest(profile ? "PUT" : "POST", "/api/profile", data),
     onSuccess: () => {
       toast({ title: "Профиль обновлен!" });
       setIsEditing(false);

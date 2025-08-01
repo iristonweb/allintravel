@@ -51,7 +51,7 @@ export function InteractiveMap({ places = [], onPlaceClick }: InteractiveMapProp
             size="sm"
             variant={filterType === type ? "default" : "secondary"}
             onClick={() => setFilterType(type)}
-            className={filterType === type ? "bg-coral-500 hover:bg-coral-600" : ""}
+            className={filterType === type ? "bg-primary hover:bg-primary/90" : ""}
           >
             {typeLabels[type]}
           </Button>
@@ -63,8 +63,8 @@ export function InteractiveMap({ places = [], onPlaceClick }: InteractiveMapProp
         <div className="relative w-full h-full bg-teal-100 dark:bg-teal-900 rounded-lg">
           {/* Simulated map markers */}
           {filteredPlaces.map((place, index) => {
-            const x = (Math.abs(parseFloat(place.longitude)) % 100) * 0.8 + 10;
-            const y = (Math.abs(parseFloat(place.latitude)) % 100) * 0.7 + 15;
+            const x = (Math.abs(parseFloat(place.longitude?.toString() || "0")) % 100) * 0.8 + 10;
+            const y = (Math.abs(parseFloat(place.latitude?.toString() || "0")) % 100) * 0.7 + 15;
             
             return (
               <div
@@ -136,3 +136,5 @@ export function InteractiveMap({ places = [], onPlaceClick }: InteractiveMapProp
     </div>
   );
 }
+
+export default InteractiveMap;

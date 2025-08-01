@@ -98,7 +98,7 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
         
         <div className="flex gap-2">
           <Link href={`/places/${place.id}`} className="flex-1">
-            <Button className="w-full bg-coral-500 hover:bg-coral-600">
+            <Button className="w-full bg-primary hover:bg-primary/90">
               Подробнее
             </Button>
           </Link>
@@ -107,3 +107,5 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
     </Card>
   );
 }
+
+export default PlaceCard;

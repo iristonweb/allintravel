@@ -100,7 +100,7 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
             
             <Button
               size="sm"
-              className="bg-orange-500 hover:bg-orange-600"
+              className="bg-accent hover:bg-accent/90"
               disabled={isPastEvent || isRegistered}
               onClick={() => onRegister?.(event.id)}
             >
@@ -117,3 +117,5 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
     </Card>
   );
 }
+
+export default EventCard;

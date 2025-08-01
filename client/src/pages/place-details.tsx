@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Star, MapPin, Phone, Globe, Heart, Share2 } from "lucide-react";
 import { useState } from "react";
+import type { PlaceWithDetails, FavoriteStatus, Review } from "@shared/schema";
 
 export default function PlaceDetails() {
   const { id } = useParams();
@@ -38,17 +39,17 @@ export default function PlaceDetails() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  const { data: place, isLoading: placeLoading, error: placeError } = useQuery({
+  const { data: place, isLoading: placeLoading, error: placeError } = useQuery<PlaceWithDetails>({
     queryKey: ["/api/places", id],
     enabled: !!id && isAuthenticated,
   });
 
-  const { data: reviews, isLoading: reviewsLoading } = useQuery({
+  const { data: reviews, isLoading: reviewsLoading } = useQuery<Review[]>({
     queryKey: ["/api/places", id, "reviews"],
     enabled: !!id && isAuthenticated,
   });
 
-  const { data: favoriteStatus } = useQuery({
+  const { data: favoriteStatus } = useQuery<FavoriteStatus>({
     queryKey: ["/api/favorites", id, "check"],
     enabled: !!id && isAuthenticated,
   });
@@ -185,7 +186,7 @@ export default function PlaceDetails() {
     );
   }
 
-  const averageRating = parseFloat(place.averageRating || "0");
+  const averageRating = parseFloat(place?.averageRating || "0");
 
   return (
     <div className="min-h-screen bg-white">
@@ -196,8 +197,8 @@ export default function PlaceDetails() {
         <div className="mb-8">
           <div className="relative h-64 md:h-96 rounded-xl overflow-hidden mb-6">
             <img
-              src={place.imageUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=600"}
-              alt={place.name}
+              src={place?.imageUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=600"}
+              alt={place?.name || "Place"}
               className="w-full h-full object-cover"
             />
             <div className="absolute top-4 right-4 flex space-x-2">
@@ -221,11 +222,11 @@ export default function PlaceDetails() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{place.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">{place?.name}</h1>
                 <Badge variant="outline" className="capitalize">
-                  {place.type}
+                  {place?.type}
                 </Badge>
-                {place.isVerified && (
+                {place?.isVerified && (
                   <Badge className="bg-green-100 text-green-800">
                     Verified
                   </Badge>
@@ -243,34 +244,34 @@ export default function PlaceDetails() {
                     ))}
                   </div>
                   <span className="text-sm text-gray-600">
-                    {averageRating.toFixed(1)} ({place.reviewCount} reviews)
+                    {averageRating.toFixed(1)} ({place?.reviewCount || 0} reviews)
                   </span>
                 </div>
-                {place.priceRange && (
+                {place?.priceRange && (
                   <div className="text-primary font-medium">
                     {place.priceRange}
                   </div>
                 )}
               </div>
 
-              {place.description && (
+              {place?.description && (
                 <p className="text-gray-700 mb-4">{place.description}</p>
               )}
 
               <div className="space-y-2">
-                {place.address && (
+                {place?.address && (
                   <div className="flex items-center text-gray-600">
                     <MapPin className="h-4 w-4 mr-2" />
                     <span>{place.address}</span>
                   </div>
                 )}
-                {place.phone && (
+                {place?.phone && (
                   <div className="flex items-center text-gray-600">
                     <Phone className="h-4 w-4 mr-2" />
                     <span>{place.phone}</span>
                   </div>
                 )}
-                {place.website && (
+                {place?.website && (
                   <div className="flex items-center text-gray-600">
                     <Globe className="h-4 w-4 mr-2" />
                     <a href={place.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary">
@@ -326,7 +327,7 @@ export default function PlaceDetails() {
         {/* Reviews Section */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Reviews ({place.reviewCount})
+            Reviews ({place?.reviewCount || 0})
           </h2>
           
           {reviewsLoading ? (
@@ -337,7 +338,7 @@ export default function PlaceDetails() {
             </div>
           ) : reviews && reviews.length > 0 ? (
             <div className="space-y-6">
-              {reviews.map((review: any) => (
+              {reviews.map((review) => (
                 <ReviewCard key={review.id} review={review} />
               ))}
             </div>

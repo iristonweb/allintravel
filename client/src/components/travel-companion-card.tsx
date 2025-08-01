@@ -124,3 +124,5 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
     </Card>
   );
 }
+
+export default TravelCompanionCard;
