@@ -112,7 +112,7 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
             
             <Button
               size="sm"
-              className="bg-teal-500 hover:bg-teal-600"
+              className="bg-primary hover:bg-primary/90"
               disabled={!trip.isActive || spotsLeft === 0 || isJoined}
               onClick={() => onJoin?.(trip.id)}
             >

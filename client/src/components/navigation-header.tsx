@@ -18,10 +18,10 @@ function NavigationHeader() {
 
   const navigationItems = [
     { href: "/", label: "Главная" },
-    { href: "/places", label: "Места" },
-    { href: "/trips", label: "Путешествия" },
+    { href: "/trips", label: "Поездки" },
     { href: "/events", label: "События" },
-    { href: "/community", label: "Сообщество" },
+    { href: "/social-feed", label: "Лента" },
+    { href: "/friends", label: "Друзья" },
   ];
 
   if (!isAuthenticated) return null;
@@ -68,9 +68,11 @@ function NavigationHeader() {
             </span>
           </Button>
 
-          <Button variant="ghost" size="icon">
-            <MessageCircle className="h-5 w-5" />
-          </Button>
+          <Link href="/messages">
+            <Button variant="ghost" size="icon">
+              <MessageCircle className="h-5 w-5" />
+            </Button>
+          </Link>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -84,10 +86,12 @@ function NavigationHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Профиль</span>
-              </DropdownMenuItem>
+              <Link href="/profile">
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Профиль</span>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuItem onClick={() => window.location.href = "/api/logout"}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Выйти</span>

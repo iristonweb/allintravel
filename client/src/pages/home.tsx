@@ -229,10 +229,12 @@ export function Home() {
               <h2 className="text-3xl font-bold mb-2">Найти попутчиков</h2>
               <p className="text-muted-foreground">Присоединяйтесь к запланированным поездкам</p>
             </div>
-            <Button variant="outline">
-              <Users className="mr-2 h-4 w-4" />
-              Все поездки
-            </Button>
+            <Link href="/trips">
+              <Button variant="outline">
+                <Users className="mr-2 h-4 w-4" />
+                Все поездки
+              </Button>
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {trips.slice(0, 4).map((trip) => (
@@ -247,10 +249,12 @@ export function Home() {
               <h2 className="text-3xl font-bold mb-2">Предстоящие события</h2>
               <p className="text-muted-foreground">Не пропустите интересные мероприятия</p>
             </div>
-            <Button variant="outline">
-              <Calendar className="mr-2 h-4 w-4" />
-              Все события
-            </Button>
+            <Link href="/events">
+              <Button variant="outline">
+                <Calendar className="mr-2 h-4 w-4" />
+                Все события
+              </Button>
+            </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {events.slice(0, 4).map((event) => (

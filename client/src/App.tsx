@@ -11,6 +11,8 @@ import { Profile } from "@/pages/profile";
 import { Friends } from "@/pages/friends";
 import { Messages } from "@/pages/messages";
 import { SocialFeed } from "@/pages/social-feed";
+import { Trips } from "@/pages/trips";
+import { Events } from "@/pages/events";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -40,6 +42,8 @@ function Router() {
           <Route path="/friends" component={Friends} />
           <Route path="/messages" component={Messages} />
           <Route path="/social-feed" component={SocialFeed} />
+          <Route path="/trips" component={Trips} />
+          <Route path="/events" component={Events} />
           <Route component={NotFound} />
         </>
       )}
