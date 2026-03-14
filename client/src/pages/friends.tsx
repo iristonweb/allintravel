@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { User, Friendship } from "@shared/schema";
 
 export function Friends() {
   const { user, isAuthenticated } = useAuth();
@@ -18,28 +19,26 @@ export function Friends() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch friends data
-  const { data: friends = [] } = useQuery({
+  const { data: friends = [] } = useQuery<User[]>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
   });
 
-  const { data: sentRequests = [] } = useQuery({
+  const { data: sentRequests = [] } = useQuery<Friendship[]>({
     queryKey: ["/api/friends/requests/sent"],
     enabled: isAuthenticated,
   });
 
-  const { data: receivedRequests = [] } = useQuery({
+  const { data: receivedRequests = [] } = useQuery<Friendship[]>({
     queryKey: ["/api/friends/requests/received"],
     enabled: isAuthenticated,
   });
 
-  const { data: searchResults = [] } = useQuery({
+  const { data: searchResults = [] } = useQuery<User[]>({
     queryKey: ["/api/search/users", searchQuery],
-    enabled: !!searchQuery,
+    enabled: !!searchQuery && searchQuery.length > 1,
   });
 
-  // Mutations
   const sendRequestMutation = useMutation({
     mutationFn: (userId: string) => apiRequest("POST", `/api/friends/request/${userId}`),
     onSuccess: () => {
@@ -50,18 +49,16 @@ export function Friends() {
 
   const respondToRequestMutation = useMutation({
     mutationFn: ({ friendshipId, status }: { friendshipId: string; status: string }) =>
-      apiRequest(`/api/friends/respond/${friendshipId}`, {
-        method: "PUT",
-        body: JSON.stringify({ status }),
-      }),
+      apiRequest("PUT", `/api/friends/respond/${friendshipId}`, { status }),
     onSuccess: () => {
       toast({ title: "Запрос обработан" });
       queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/received"] });
     },
   });
 
   const removeFriendMutation = useMutation({
-    mutationFn: (friendId: string) => apiRequest(`/api/friends/${friendId}`, { method: "DELETE" }),
+    mutationFn: (friendId: string) => apiRequest("DELETE", `/api/friends/${friendId}`),
     onSuccess: () => {
       toast({ title: "Друг удален" });
       queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
@@ -126,13 +123,13 @@ export function Friends() {
                 </Card>
               ) : (
                 <div className="grid gap-4">
-                  {friends.map((friend: any) => (
+                  {friends.map((friend) => (
                     <Card key={friend.id}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarImage src={friend.profileImageUrl} />
+                              <AvatarImage src={friend.profileImageUrl ?? undefined} />
                               <AvatarFallback>
                                 {friend.firstName?.[0] || friend.email?.[0] || "?"}
                               </AvatarFallback>
@@ -188,29 +185,29 @@ export function Friends() {
 
               {searchResults.length > 0 && (
                 <div className="space-y-4">
-                  {searchResults.map((user: any) => (
-                    <Card key={user.id}>
+                  {searchResults.map((result) => (
+                    <Card key={result.id}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarImage src={user.profileImageUrl} />
+                              <AvatarImage src={result.profileImageUrl ?? undefined} />
                               <AvatarFallback>
-                                {user.firstName?.[0] || user.email?.[0] || "?"}
+                                {result.firstName?.[0] || result.email?.[0] || "?"}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <h3 className="font-semibold">
-                                {user.firstName} {user.lastName}
+                                {result.firstName} {result.lastName}
                               </h3>
-                              <p className="text-sm text-muted-foreground">{user.email}</p>
+                              <p className="text-sm text-muted-foreground">{result.email}</p>
                             </div>
                           </div>
                           <Button
                             size="sm"
-                            onClick={() => sendRequestMutation.mutate(user.id)}
+                            onClick={() => sendRequestMutation.mutate(result.id)}
                             disabled={sendRequestMutation.isPending}
-                            className="bg-coral-500 hover:bg-coral-600"
+                            className="bg-primary hover:bg-primary/90"
                           >
                             <UserPlus className="mr-2 h-4 w-4" />
                             Добавить в друзья
@@ -236,7 +233,7 @@ export function Friends() {
                 </Card>
               ) : (
                 <div className="space-y-4">
-                  {receivedRequests.map((request: any) => (
+                  {receivedRequests.map((request) => (
                     <Card key={request.id}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
@@ -299,7 +296,7 @@ export function Friends() {
                 </Card>
               ) : (
                 <div className="space-y-4">
-                  {sentRequests.map((request: any) => (
+                  {sentRequests.map((request) => (
                     <Card key={request.id}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
@@ -325,3 +322,5 @@ export function Friends() {
     </div>
   );
 }
+
+export default Friends;

@@ -8,11 +8,11 @@ interface Place {
   id: string;
   name: string;
   type: string;
-  latitude: number;
-  longitude: number;
-  averageRating: number;
-  priceRange: string;
-  imageUrl?: string;
+  latitude: number | string | null;
+  longitude: number | string | null;
+  averageRating: number | string | null;
+  priceRange: string | null;
+  imageUrl?: string | null;
 }
 
 interface InteractiveMapProps {
@@ -88,7 +88,7 @@ export function InteractiveMap({ places = [], onPlaceClick }: InteractiveMapProp
                   />
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-md">
                     <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                      {Math.round(place.averageRating * 10) / 10}
+                      {Math.round(parseFloat(String(place.averageRating ?? 0)) * 10) / 10}
                     </span>
                   </div>
                 </div>

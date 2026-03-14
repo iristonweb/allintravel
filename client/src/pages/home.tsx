@@ -14,30 +14,29 @@ import { MapPin, Users, Calendar, MessageCircle, TrendingUp, Heart, UserPlus } f
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
+import type { Place, Trip, Event, TravelPost, User } from "@shared/schema";
 
 export function Home() {
   const { user, isAuthenticated } = useAuth();
   
-  // Fetch data for different sections
-  const { data: places = [] } = useQuery({
+  const { data: places = [] } = useQuery<Place[]>({
     queryKey: ["/api/places", { limit: 6 }],
   });
 
-  const { data: trips = [] } = useQuery({
+  const { data: trips = [] } = useQuery<Trip[]>({
     queryKey: ["/api/trips", { limit: 4 }],
   });
 
-  const { data: events = [] } = useQuery({
+  const { data: events = [] } = useQuery<Event[]>({
     queryKey: ["/api/events", { upcoming: true, limit: 4 }],
   });
 
-  // Fetch social feed for authenticated users
-  const { data: socialPosts = [] } = useQuery({
-    queryKey: ["/api/posts", { following: user?.id, limit: 3 }],
+  const { data: socialPosts = [] } = useQuery<TravelPost[]>({
+    queryKey: ["/api/posts", { limit: 3 }],
     enabled: isAuthenticated,
   });
 
-  const { data: friends = [] } = useQuery({
+  const { data: friends = [] } = useQuery<User[]>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
   });
@@ -48,7 +47,6 @@ export function Home() {
       <HeroSection />
       
       <div className="container mx-auto px-4 py-12">
-        {/* Social Dashboard for Authenticated Users */}
         {isAuthenticated && (
           <section className="mb-16">
             <div className="text-center mb-8">
@@ -59,7 +57,6 @@ export function Home() {
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Quick Stats */}
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -73,7 +70,7 @@ export function Home() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Посты</span>
-                        <Badge variant="secondary">0</Badge>
+                        <Badge variant="secondary">{socialPosts.length}</Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Поездки</span>
@@ -82,7 +79,7 @@ export function Home() {
                     </div>
                     <div className="mt-4 space-y-2">
                       <Link href="/friends">
-                        <Button size="sm" className="w-full bg-coral-500 hover:bg-coral-600">
+                        <Button size="sm" className="w-full bg-primary hover:bg-primary/90">
                           <UserPlus className="mr-2 h-4 w-4" />
                           Найти друзей
                         </Button>
@@ -97,7 +94,6 @@ export function Home() {
                   </CardContent>
                 </Card>
 
-                {/* Recent Friends Activity */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Активность друзей</CardTitle>
@@ -112,10 +108,10 @@ export function Home() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {friends.slice(0, 3).map((friend: any) => (
+                        {friends.slice(0, 3).map((friend) => (
                           <div key={friend.id} className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={friend.profileImageUrl} />
+                              <AvatarImage src={friend.profileImageUrl ?? undefined} />
                               <AvatarFallback>
                                 {friend.firstName?.[0] || "?"}
                               </AvatarFallback>
@@ -136,7 +132,6 @@ export function Home() {
                 </Card>
               </div>
 
-              {/* Social Feed Preview */}
               <div className="lg:col-span-2">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-semibold">Лента друзей</h3>
@@ -154,7 +149,7 @@ export function Home() {
                         Подпишитесь на других путешественников или создайте свой первый пост
                       </p>
                       <Link href="/social-feed">
-                        <Button className="bg-coral-500 hover:bg-coral-600">
+                        <Button className="bg-primary hover:bg-primary/90">
                           Создать пост
                         </Button>
                       </Link>
@@ -162,7 +157,7 @@ export function Home() {
                   </Card>
                 ) : (
                   <div className="space-y-4">
-                    {socialPosts.map((post: any) => (
+                    {socialPosts.map((post) => (
                       <Card key={post.id}>
                         <CardHeader className="pb-3">
                           <div className="flex items-center gap-3">
@@ -200,7 +195,6 @@ export function Home() {
           </section>
         )}
 
-        {/* Interactive Map Section */}
         <section className="mb-16">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold mb-4">Исследуйте места</h2>
@@ -208,10 +202,9 @@ export function Home() {
               Откройте для себя лучшие рестораны, отели и достопримечательности на интерактивной карте
             </p>
           </div>
-          <InteractiveMap places={places} />
+          <InteractiveMap places={places as any[]} />
         </section>
 
-        {/* Popular Places */}
         <section className="mb-16">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -224,13 +217,12 @@ export function Home() {
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {places.slice(0, 6).map((place: any) => (
+            {places.slice(0, 6).map((place) => (
               <PlaceCard key={place.id} place={place} />
             ))}
           </div>
         </section>
 
-        {/* Travel Companions */}
         <section className="mb-16">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -243,13 +235,12 @@ export function Home() {
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {trips.slice(0, 4).map((trip: any) => (
+            {trips.slice(0, 4).map((trip) => (
               <TravelCompanionCard key={trip.id} trip={trip} />
             ))}
           </div>
         </section>
 
-        {/* Events */}
         <section className="mb-16">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -262,13 +253,12 @@ export function Home() {
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {events.slice(0, 4).map((event: any) => (
+            {events.slice(0, 4).map((event) => (
               <EventCard key={event.id} event={event} />
             ))}
           </div>
         </section>
 
-        {/* Community Features */}
         <section className="mb-16">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold mb-4">Сообщество путешественников</h2>
@@ -333,7 +323,7 @@ export function Home() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-coral-600 mb-2">1,234</div>
+                      <div className="text-3xl font-bold text-primary mb-2">1,234</div>
                       <p className="text-sm text-muted-foreground">путешественников</p>
                     </div>
                   </CardContent>
@@ -345,7 +335,7 @@ export function Home() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-teal-600 mb-2">47</div>
+                      <div className="text-3xl font-bold text-secondary-foreground mb-2">47</div>
                       <p className="text-sm text-muted-foreground">активных поездок</p>
                     </div>
                   </CardContent>
@@ -357,7 +347,7 @@ export function Home() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-orange-600 mb-2">156</div>
+                      <div className="text-3xl font-bold text-accent-foreground mb-2">156</div>
                       <p className="text-sm text-muted-foreground">за сегодня</p>
                     </div>
                   </CardContent>

@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { UserProfile, TravelPost, UserFollow, User } from "@shared/schema";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
@@ -35,50 +36,41 @@ export function Profile() {
     favoriteDestinations: [] as string[],
     travelStyle: "",
     languages: [] as string[],
-    socialLinks: {
-      instagram: "",
-      facebook: "",
-      website: "",
-    },
     isPublic: true,
   });
 
-  // Fetch user profile
-  const { data: profile } = useQuery({
+  const { data: profile } = useQuery<UserProfile | null>({
     queryKey: [`/api/profile/${user?.id}`],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  // Fetch user posts
-  const { data: userPosts = [] } = useQuery({
+  const { data: userPosts = [] } = useQuery<TravelPost[]>({
     queryKey: ["/api/posts", { userId: user?.id }],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  // Fetch user stats
-  const { data: followers = [] } = useQuery({
+  const { data: followers = [] } = useQuery<UserFollow[]>({
     queryKey: [`/api/followers/${user?.id}`],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  const { data: following = [] } = useQuery({
+  const { data: following = [] } = useQuery<UserFollow[]>({
     queryKey: [`/api/following/${user?.id}`],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  const { data: friends = [] } = useQuery({
+  const { data: friends = [] } = useQuery<User[]>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
   });
 
-  // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data: typeof profileData) =>
       apiRequest(profile ? "PUT" : "POST", "/api/profile", data),
     onSuccess: () => {
       toast({ title: "Профиль обновлен!" });
       setIsEditing(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/profile/${user?.id}`] });
     },
   });
 
@@ -105,14 +97,13 @@ export function Profile() {
       <NavigationHeader />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* Profile Header */}
           <Card className="mb-8">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex flex-col items-center">
                   <div className="relative">
                     <Avatar className="h-32 w-32">
-                      <AvatarImage src={user?.profileImageUrl} />
+                      <AvatarImage src={user?.profileImageUrl ?? undefined} />
                       <AvatarFallback className="text-2xl">
                         {user?.firstName?.[0] || user?.email?.[0] || "?"}
                       </AvatarFallback>
@@ -156,15 +147,15 @@ export function Profile() {
 
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <div className="text-2xl font-bold text-coral-600">{userPosts.length}</div>
+                      <div className="text-2xl font-bold text-primary">{userPosts.length}</div>
                       <div className="text-sm text-muted-foreground">Постов</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-teal-600">{followers.length}</div>
+                      <div className="text-2xl font-bold text-primary">{followers.length}</div>
                       <div className="text-sm text-muted-foreground">Подписчиков</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-orange-600">{friends.length}</div>
+                      <div className="text-2xl font-bold text-primary">{friends.length}</div>
                       <div className="text-sm text-muted-foreground">Друзей</div>
                     </div>
                   </div>
@@ -173,7 +164,6 @@ export function Profile() {
             </CardContent>
           </Card>
 
-          {/* Edit Profile Form */}
           {isEditing && (
             <Card className="mb-8">
               <CardHeader>
@@ -214,7 +204,7 @@ export function Profile() {
                   <Button
                     onClick={handleSaveProfile}
                     disabled={updateProfileMutation.isPending}
-                    className="bg-coral-500 hover:bg-coral-600"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     Сохранить
                   </Button>
@@ -226,7 +216,6 @@ export function Profile() {
             </Card>
           )}
 
-          {/* Profile Tabs */}
           <Tabs defaultValue="posts" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="posts">Посты</TabsTrigger>
@@ -248,7 +237,7 @@ export function Profile() {
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {userPosts.map((post: any) => (
+                  {userPosts.map((post) => (
                     <Card key={post.id}>
                       <CardHeader>
                         <CardTitle className="text-lg">{post.title}</CardTitle>
@@ -263,7 +252,7 @@ export function Profile() {
                         <p className="text-muted-foreground mb-4 line-clamp-3">{post.content}</p>
                         {post.tags && post.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1">
-                            {post.tags.slice(0, 3).map((tag: string, index: number) => (
+                            {post.tags.slice(0, 3).map((tag, index) => (
                               <Badge key={index} variant="secondary">
                                 #{tag}
                               </Badge>

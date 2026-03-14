@@ -207,21 +207,13 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(places.priceRange, filters.priceRange));
     }
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    
-    query = query.orderBy(desc(places.averageRating));
-    
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-    
-    if (filters?.offset) {
-      query = query.offset(filters.offset);
-    }
-    
-    return await query;
+    return await db
+      .select()
+      .from(places)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(places.averageRating))
+      .limit(filters?.limit ?? 100)
+      .offset(filters?.offset ?? 0);
   }
 
   async getPlace(id: string): Promise<Place | undefined> {
@@ -294,8 +286,6 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Trip[]> {
-    let query = db.select().from(trips).where(eq(trips.isActive, true));
-    
     const conditions = [eq(trips.isActive, true)];
     
     if (filters?.destination) {
@@ -310,17 +300,13 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${trips.endDate} <= ${filters.endDate}`);
     }
     
-    query = query.where(and(...conditions)).orderBy(asc(trips.startDate));
-    
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-    
-    if (filters?.offset) {
-      query = query.offset(filters.offset);
-    }
-    
-    return await query;
+    return await db
+      .select()
+      .from(trips)
+      .where(and(...conditions))
+      .orderBy(asc(trips.startDate))
+      .limit(filters?.limit ?? 100)
+      .offset(filters?.offset ?? 0);
   }
 
   async getTrip(id: string): Promise<Trip | undefined> {
@@ -365,8 +351,6 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<Event[]> {
-    let query = db.select().from(events).where(eq(events.isActive, true));
-    
     const conditions = [eq(events.isActive, true)];
     
     if (filters?.type) {
@@ -377,17 +361,13 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${events.startDate} > NOW()`);
     }
     
-    query = query.where(and(...conditions)).orderBy(asc(events.startDate));
-    
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-    
-    if (filters?.offset) {
-      query = query.offset(filters.offset);
-    }
-    
-    return await query;
+    return await db
+      .select()
+      .from(events)
+      .where(and(...conditions))
+      .orderBy(asc(events.startDate))
+      .limit(filters?.limit ?? 100)
+      .offset(filters?.offset ?? 0);
   }
 
   async getEvent(id: string): Promise<Event | undefined> {
@@ -649,7 +629,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get user details and unread counts
     const result = [];
-    for (const [otherUserId, lastMessage] of conversationMap) {
+    for (const [otherUserId, lastMessage] of Array.from(conversationMap.entries())) {
       const [user] = await db.select().from(users).where(eq(users.id, otherUserId));
       const [unreadResult] = await db
         .select({ count: count() })
@@ -702,8 +682,6 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]> {
-    let query = db.select().from(travelPosts);
-    
     const conditions = [eq(travelPosts.isPublic, true)];
     
     if (filters?.userId) {
@@ -711,7 +689,6 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (filters?.following) {
-      // Get posts from users that the current user follows
       const followingUsers = await db
         .select({ userId: userFollows.followingId })
         .from(userFollows)
@@ -723,17 +700,13 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    query = query.where(and(...conditions)).orderBy(desc(travelPosts.createdAt));
-    
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-    
-    if (filters?.offset) {
-      query = query.offset(filters.offset);
-    }
-    
-    return await query;
+    return await db
+      .select()
+      .from(travelPosts)
+      .where(and(...conditions))
+      .orderBy(desc(travelPosts.createdAt))
+      .limit(filters?.limit ?? 100)
+      .offset(filters?.offset ?? 0);
   }
 
   async getTravelPost(id: string): Promise<TravelPost | undefined> {

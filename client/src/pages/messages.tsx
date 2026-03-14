@@ -12,28 +12,32 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import type { PrivateMessage, User } from "@shared/schema";
+
+interface Conversation {
+  user: User;
+  lastMessage: PrivateMessage;
+  unreadCount: number;
+}
 
 export function Messages() {
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedConversation, setSelectedConversation] = useState<any>(null);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
 
-  // Fetch conversations
-  const { data: conversations = [] } = useQuery({
+  const { data: conversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
     enabled: isAuthenticated,
   });
 
-  // Fetch messages for selected conversation
-  const { data: messages = [] } = useQuery({
+  const { data: messages = [] } = useQuery<PrivateMessage[]>({
     queryKey: ["/api/messages", selectedConversation?.user.id],
     enabled: !!selectedConversation,
   });
 
-  // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: (messageData: any) =>
+    mutationFn: (messageData: { receiverId: string; content: string }) =>
       apiRequest("POST", "/api/messages", messageData),
     onSuccess: () => {
       setNewMessage("");
@@ -42,10 +46,9 @@ export function Messages() {
     },
   });
 
-  // Mark messages as read
   const markAsReadMutation = useMutation({
     mutationFn: (senderId: string) =>
-      apiRequest(`/api/messages/read/${senderId}`, { method: "PUT" }),
+      apiRequest("PUT", `/api/messages/read/${senderId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
@@ -60,7 +63,7 @@ export function Messages() {
     });
   };
 
-  const handleSelectConversation = (conversation: any) => {
+  const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
     if (conversation.unreadCount > 0) {
       markAsReadMutation.mutate(conversation.user.id);
@@ -102,7 +105,6 @@ export function Messages() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-            {/* Conversations List */}
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -122,7 +124,7 @@ export function Messages() {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      {conversations.map((conversation: any) => (
+                      {conversations.map((conversation) => (
                         <div
                           key={conversation.user.id}
                           className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
@@ -134,7 +136,7 @@ export function Messages() {
                         >
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10">
-                              <AvatarImage src={conversation.user.profileImageUrl} />
+                              <AvatarImage src={conversation.user.profileImageUrl ?? undefined} />
                               <AvatarFallback>
                                 {conversation.user.firstName?.[0] ||
                                   conversation.user.email?.[0] ||
@@ -147,14 +149,14 @@ export function Messages() {
                                   {conversation.user.firstName} {conversation.user.lastName}
                                 </h4>
                                 <span className="text-xs text-muted-foreground">
-                                  {formatDate(conversation.lastMessage.createdAt)}
+                                  {formatDate(conversation.lastMessage.createdAt as unknown as string)}
                                 </span>
                               </div>
                               <p className="text-sm text-muted-foreground truncate">
                                 {conversation.lastMessage.content}
                               </p>
                               {conversation.unreadCount > 0 && (
-                                <Badge className="mt-1 bg-coral-500">
+                                <Badge className="mt-1 bg-primary">
                                   {conversation.unreadCount}
                                 </Badge>
                               )}
@@ -168,7 +170,6 @@ export function Messages() {
               </CardContent>
             </Card>
 
-            {/* Chat Area */}
             <Card className="lg:col-span-2">
               {selectedConversation ? (
                 <>
@@ -183,7 +184,7 @@ export function Messages() {
                         <ArrowLeft className="h-4 w-4" />
                       </Button>
                       <Avatar>
-                        <AvatarImage src={selectedConversation.user.profileImageUrl} />
+                        <AvatarImage src={selectedConversation.user.profileImageUrl ?? undefined} />
                         <AvatarFallback>
                           {selectedConversation.user.firstName?.[0] ||
                             selectedConversation.user.email?.[0] ||
@@ -203,10 +204,9 @@ export function Messages() {
                   </CardHeader>
 
                   <CardContent className="p-0 flex flex-col h-[calc(100vh-400px)]">
-                    {/* Messages */}
                     <ScrollArea className="flex-1 p-4">
                       <div className="space-y-4">
-                        {messages.map((message: any) => {
+                        {messages.map((message) => {
                           const isOwn = message.senderId === user?.id;
                           return (
                             <div
@@ -216,17 +216,17 @@ export function Messages() {
                               <div
                                 className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                                   isOwn
-                                    ? "bg-coral-500 text-white"
+                                    ? "bg-primary text-primary-foreground"
                                     : "bg-muted"
                                 }`}
                               >
                                 <p className="text-sm">{message.content}</p>
                                 <p
                                   className={`text-xs mt-1 ${
-                                    isOwn ? "text-coral-100" : "text-muted-foreground"
+                                    isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                                   }`}
                                 >
-                                  {formatTime(message.createdAt)}
+                                  {formatTime(message.createdAt as unknown as string)}
                                 </p>
                               </div>
                             </div>
@@ -235,14 +235,13 @@ export function Messages() {
                       </div>
                     </ScrollArea>
 
-                    {/* Message Input */}
                     <div className="border-t p-4">
                       <div className="flex gap-2">
                         <Input
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Введите сообщение..."
-                          onKeyPress={(e) => {
+                          onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault();
                               handleSendMessage();
@@ -252,7 +251,7 @@ export function Messages() {
                         <Button
                           onClick={handleSendMessage}
                           disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                          className="bg-coral-500 hover:bg-coral-600"
+                          className="bg-primary hover:bg-primary/90"
                         >
                           <Send className="h-4 w-4" />
                         </Button>
@@ -278,3 +277,5 @@ export function Messages() {
     </div>
   );
 }
+
+export default Messages;

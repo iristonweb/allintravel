@@ -7,13 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Heart, MessageCircle, Share, MapPin, Camera, Plus, Compass } from "lucide-react";
+import { Heart, MessageCircle, Share, MapPin, Plus, Compass } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import type { TravelPost } from "@shared/schema";
 
 export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
@@ -28,15 +29,13 @@ export function SocialFeed() {
     isPublic: true,
   });
 
-  // Fetch travel posts from following users
-  const { data: posts = [], isLoading } = useQuery({
-    queryKey: ["/api/posts", { following: user?.id }],
+  const { data: posts = [], isLoading } = useQuery<TravelPost[]>({
+    queryKey: ["/api/posts"],
     enabled: isAuthenticated,
   });
 
-  // Create post mutation
   const createPostMutation = useMutation({
-    mutationFn: (postData: any) =>
+    mutationFn: (postData: typeof newPost) =>
       apiRequest("POST", "/api/posts", postData),
     onSuccess: () => {
       toast({ title: "Пост опубликован!" });
@@ -46,10 +45,9 @@ export function SocialFeed() {
     },
   });
 
-  // Like post mutation
   const likePostMutation = useMutation({
     mutationFn: (postId: string) =>
-      apiRequest(`/api/posts/${postId}/like`, { method: "POST" }),
+      apiRequest("POST", `/api/posts/${postId}/like`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
@@ -64,7 +62,7 @@ export function SocialFeed() {
     createPostMutation.mutate(newPost);
   };
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | Date) => {
     return format(new Date(date), "d MMM yyyy, HH:mm", { locale: ru });
   };
 
@@ -94,12 +92,11 @@ export function SocialFeed() {
             </p>
           </div>
 
-          {/* Create Post Card */}
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <Avatar>
-                  <AvatarImage src={user?.profileImageUrl} />
+                  <AvatarImage src={user?.profileImageUrl ?? undefined} />
                   <AvatarFallback>
                     {user?.firstName?.[0] || user?.email?.[0] || "?"}
                   </AvatarFallback>
@@ -135,7 +132,7 @@ export function SocialFeed() {
                         <Button
                           onClick={handleCreatePost}
                           disabled={createPostMutation.isPending}
-                          className="bg-coral-500 hover:bg-coral-600"
+                          className="bg-primary hover:bg-primary/90"
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Опубликовать
@@ -151,11 +148,10 @@ export function SocialFeed() {
             </CardHeader>
           </Card>
 
-          {/* Posts Feed */}
           <div className="space-y-6">
             {isLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-coral-500 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                 <p className="text-muted-foreground mt-2">Загружаем посты...</p>
               </div>
             ) : posts.length === 0 ? (
@@ -168,14 +164,14 @@ export function SocialFeed() {
                   </p>
                   <Button
                     onClick={() => setIsCreating(true)}
-                    className="bg-coral-500 hover:bg-coral-600"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     Создать пост
                   </Button>
                 </CardContent>
               </Card>
             ) : (
-              posts.map((post: any) => (
+              posts.map((post) => (
                 <Card key={post.id}>
                   <CardHeader>
                     <div className="flex items-start gap-3">
@@ -187,7 +183,7 @@ export function SocialFeed() {
                         <div className="flex items-center gap-2">
                           <h4 className="font-semibold">Пользователь</h4>
                           <span className="text-sm text-muted-foreground">
-                            {formatDate(post.createdAt)}
+                            {formatDate(post.createdAt as unknown as string)}
                           </span>
                         </div>
                         {post.location && (
@@ -209,7 +205,7 @@ export function SocialFeed() {
 
                       {post.images && post.images.length > 0 && (
                         <div className="grid grid-cols-2 gap-2">
-                          {post.images.slice(0, 4).map((image: string, index: number) => (
+                          {post.images.slice(0, 4).map((image, index) => (
                             <img
                               key={index}
                               src={image}
@@ -222,7 +218,7 @@ export function SocialFeed() {
 
                       {post.tags && post.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2">
-                          {post.tags.map((tag: string, index: number) => (
+                          {post.tags.map((tag, index) => (
                             <Badge key={index} variant="secondary">
                               #{tag}
                             </Badge>
@@ -271,3 +267,5 @@ export function SocialFeed() {
     </div>
   );
 }
+
+export default SocialFeed;
