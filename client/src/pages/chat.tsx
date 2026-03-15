@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { NavigationHeader } from "@/components/navigation-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Send, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,55 +24,80 @@ export function Chat() {
   const { user, isAuthenticated } = useAuth();
   const [activeRoom, setActiveRoom] = useState("general");
   const [messageText, setMessageText] = useState("");
-  const [wsMessages, setWsMessages] = useState<ChatMessage[]>([]);
+  const [wsMessages, setWsMessages] = useState<Record<string, ChatMessage[]>>({});
   const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const activeRoomRef = useRef(activeRoom);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  activeRoomRef.current = activeRoom;
 
   const { data: history = [] } = useQuery<ChatMessage[]>({
     queryKey: [`/api/chat/${activeRoom}`],
     enabled: isAuthenticated,
   });
 
-  useEffect(() => {
-    setWsMessages([]);
-  }, [activeRoom]);
-
-  useEffect(() => {
+  const connect = useCallback(() => {
     if (!isAuthenticated || !user) return;
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
-
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => setWsConnected(false);
-    ws.onerror = () => setWsConnected(false);
+    ws.onopen = () => {
+      setWsConnected(true);
+    };
+
+    ws.onclose = () => {
+      setWsConnected(false);
+      wsRef.current = null;
+      setTimeout(connect, 3000);
+    };
+
+    ws.onerror = () => {
+      setWsConnected(false);
+    };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === "new_message" && data.message.chatRoom === activeRoom) {
-          setWsMessages((prev) => [...prev, data.message]);
+        if (data.type === "new_message" && data.message) {
+          const room: string = data.message.chatRoom;
+          setWsMessages((prev) => ({
+            ...prev,
+            [room]: [...(prev[room] || []), data.message],
+          }));
         }
       } catch {}
     };
+  }, [isAuthenticated, user]);
 
+  useEffect(() => {
+    connect();
     return () => {
-      ws.close();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
-  }, [isAuthenticated, user, activeRoom]);
+  }, [connect]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, wsMessages]);
+  }, [history, wsMessages, activeRoom]);
 
-  const allMessages = [...history, ...wsMessages];
+  const currentWsMessages = wsMessages[activeRoom] || [];
+  const allMessages = [...history, ...currentWsMessages];
 
   const handleSend = () => {
-    if (!messageText.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    if (!messageText.trim()) return;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      connect();
+      return;
+    }
 
     wsRef.current.send(
       JSON.stringify({
@@ -84,6 +108,10 @@ export function Chat() {
       })
     );
     setMessageText("");
+  };
+
+  const handleRoomChange = (room: string) => {
+    setActiveRoom(room);
   };
 
   if (!isAuthenticated) {
@@ -108,12 +136,15 @@ export function Chat() {
               <h1 className="text-3xl font-bold mb-1">Чат путешественников</h1>
               <p className="text-muted-foreground">Общайтесь с попутчиками в реальном времени</p>
             </div>
-            <Badge variant={wsConnected ? "default" : "secondary"} className="h-7">
-              {wsConnected ? "● Онлайн" : "● Оффлайн"}
+            <Badge
+              variant={wsConnected ? "default" : "secondary"}
+              className={`h-7 ${wsConnected ? "bg-green-500 hover:bg-green-500" : ""}`}
+            >
+              {wsConnected ? "● Онлайн" : "● Подключение..."}
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-240px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" style={{ height: "calc(100vh - 260px)", minHeight: "500px" }}>
             {/* Room list */}
             <Card className="lg:col-span-1">
               <CardHeader className="pb-3">
@@ -125,7 +156,7 @@ export function Chat() {
                     key={room.id}
                     variant={activeRoom === room.id ? "default" : "ghost"}
                     className={`w-full justify-start ${activeRoom === room.id ? "bg-primary hover:bg-primary/90" : ""}`}
-                    onClick={() => setActiveRoom(room.id)}
+                    onClick={() => handleRoomChange(room.id)}
                   >
                     <MessageCircle className="mr-2 h-4 w-4" />
                     {room.label}
@@ -135,9 +166,10 @@ export function Chat() {
             </Card>
 
             {/* Chat window */}
-            <Card className="lg:col-span-3 flex flex-col">
-              <CardHeader className="border-b pb-3">
-                <CardTitle className="text-base">
+            <Card className="lg:col-span-3 flex flex-col overflow-hidden">
+              <CardHeader className="border-b pb-3 flex-shrink-0">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4" />
                   #{CHAT_ROOMS.find((r) => r.id === activeRoom)?.label}
                 </CardTitle>
               </CardHeader>
@@ -145,29 +177,38 @@ export function Chat() {
               <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
                 <ScrollArea className="flex-1 p-4">
                   {allMessages.length === 0 ? (
-                    <div className="flex items-center justify-center h-40">
-                      <p className="text-muted-foreground text-sm">Нет сообщений. Начните разговор!</p>
+                    <div className="flex items-center justify-center h-32">
+                      <p className="text-muted-foreground text-sm">
+                        Нет сообщений. Начните разговор!
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {allMessages.map((msg, i) => {
                         const isOwn = msg.userId === user?.id;
                         return (
-                          <div key={msg.id || i} className={`flex gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
-                            <Avatar className="h-8 w-8 flex-shrink-0">
-                              <AvatarFallback className="text-xs">
-                                {isOwn ? (user?.firstName?.[0] || "Я") : "?"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className={`max-w-xs lg:max-w-md ${isOwn ? "items-end" : "items-start"} flex flex-col gap-0.5`}>
+                          <div
+                            key={msg.id || `ws-${i}`}
+                            className={`flex gap-2 ${isOwn ? "flex-row-reverse" : ""}`}
+                          >
+                            <div
+                              className={`h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-medium ${
+                                isOwn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {isOwn ? (user?.firstName?.[0] || "Я") : "?"}
+                            </div>
+                            <div
+                              className={`flex flex-col gap-0.5 max-w-xs lg:max-w-md ${isOwn ? "items-end" : "items-start"}`}
+                            >
                               {!isOwn && (
                                 <span className="text-xs text-muted-foreground px-1">Путешественник</span>
                               )}
                               <div
-                                className={`px-3 py-2 rounded-lg text-sm ${
+                                className={`px-3 py-2 rounded-2xl text-sm ${
                                   isOwn
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-foreground"
+                                    ? "bg-primary text-primary-foreground rounded-tr-sm"
+                                    : "bg-muted text-foreground rounded-tl-sm"
                                 }`}
                               >
                                 {msg.content}
@@ -186,12 +227,13 @@ export function Chat() {
                   )}
                 </ScrollArea>
 
-                <div className="border-t p-4">
+                <div className="border-t p-4 flex-shrink-0">
                   <div className="flex gap-2">
                     <Input
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
-                      placeholder="Написать сообщение..."
+                      placeholder={wsConnected ? "Написать сообщение..." : "Подключение к чату..."}
+                      disabled={!wsConnected}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -208,8 +250,9 @@ export function Chat() {
                     </Button>
                   </div>
                   {!wsConnected && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Нет соединения. Сообщения недоступны.
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                      Устанавливаем соединение...
                     </p>
                   )}
                 </div>
