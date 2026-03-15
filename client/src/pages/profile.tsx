@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import NavigationHeader from "@/components/navigation-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,22 +9,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { 
-  Settings, 
-  MapPin, 
-  Camera, 
-  Users, 
-  MessageCircle, 
-  Calendar,
-  Star,
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  MapPin,
+  Camera,
   Globe,
-  Edit
+  Edit,
+  Star,
+  Calendar,
+  Heart,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { UserProfile, TravelPost, UserFollow, User } from "@shared/schema";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import type { UserProfile, TravelPostWithAuthor, UserFavoriteWithPlace, ReviewWithPlace, Trip } from "@shared/schema";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
@@ -33,70 +36,99 @@ export function Profile() {
   const [profileData, setProfileData] = useState({
     bio: "",
     location: "",
-    favoriteDestinations: [] as string[],
     travelStyle: "",
-    languages: [] as string[],
     isPublic: true,
   });
 
-  const { data: profile } = useQuery<UserProfile | null>({
+  const { data: profile, isLoading: profileLoading } = useQuery<UserProfile | null>({
     queryKey: [`/api/profile/${user?.id}`],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  const { data: userPosts = [] } = useQuery<TravelPost[]>({
+  const { data: userPosts = [], isLoading: postsLoading } = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", { userId: user?.id }],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  const { data: followers = [] } = useQuery<UserFollow[]>({
-    queryKey: [`/api/followers/${user?.id}`],
+  const { data: userTrips = [], isLoading: tripsLoading } = useQuery<Trip[]>({
+    queryKey: ["/api/trips", { userId: user?.id }],
     enabled: isAuthenticated && !!user?.id,
   });
 
-  const { data: following = [] } = useQuery<UserFollow[]>({
-    queryKey: [`/api/following/${user?.id}`],
-    enabled: isAuthenticated && !!user?.id,
+  const { data: favorites = [], isLoading: favLoading } = useQuery<UserFavoriteWithPlace[]>({
+    queryKey: ["/api/favorites"],
+    enabled: isAuthenticated,
   });
 
-  const { data: friends = [] } = useQuery<User[]>({
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery<ReviewWithPlace[]>({
+    queryKey: ["/api/reviews/user"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: friends = [] } = useQuery({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
   });
+
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        bio: profile.bio || "",
+        location: profile.location || "",
+        travelStyle: profile.travelStyle || "",
+        isPublic: profile.isPublic ?? true,
+      });
+    }
+  }, [profile]);
 
   const updateProfileMutation = useMutation({
     mutationFn: (data: typeof profileData) =>
       apiRequest(profile ? "PUT" : "POST", "/api/profile", data),
     onSuccess: () => {
-      toast({ title: "Профиль обновлен!" });
+      toast({ title: "Профиль обновлён!" });
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: [`/api/profile/${user?.id}`] });
     },
+    onError: () => {
+      toast({ title: "Ошибка при обновлении профиля", variant: "destructive" });
+    },
   });
 
-  const handleSaveProfile = () => {
-    updateProfileMutation.mutate(profileData);
-  };
+  const removeFavoriteMutation = useMutation({
+    mutationFn: (placeId: string) => apiRequest("DELETE", `/api/favorites/${placeId}`),
+    onSuccess: () => {
+      toast({ title: "Удалено из избранного" });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+    },
+  });
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
         <NavigationHeader />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
-            <p className="text-muted-foreground">Чтобы просмотреть профиль, необходимо войти в систему</p>
-          </div>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
+          <p className="text-muted-foreground">Чтобы просмотреть профиль, необходимо войти</p>
         </div>
       </div>
     );
   }
+
+  const renderStars = (rating: number) =>
+    Array.from({ length: 5 }).map((_, i) => (
+      <Star
+        key={i}
+        className={`h-3.5 w-3.5 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
+      />
+    ));
 
   return (
     <div className="min-h-screen bg-background">
       <NavigationHeader />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+
+          {/* Profile header card */}
           <Card className="mb-8">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
@@ -104,7 +136,7 @@ export function Profile() {
                   <div className="relative">
                     <Avatar className="h-32 w-32">
                       <AvatarImage src={user?.profileImageUrl ?? undefined} />
-                      <AvatarFallback className="text-2xl">
+                      <AvatarFallback className="text-3xl">
                         {user?.firstName?.[0] || user?.email?.[0] || "?"}
                       </AvatarFallback>
                     </Avatar>
@@ -119,7 +151,7 @@ export function Profile() {
                 </div>
 
                 <div className="flex-1">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 gap-3">
                     <div>
                       <h1 className="text-2xl font-bold">
                         {user?.firstName} {user?.lastName}
@@ -131,31 +163,35 @@ export function Profile() {
                           <span className="text-sm text-muted-foreground">{profile.location}</span>
                         </div>
                       )}
+                      {profile?.travelStyle && (
+                        <Badge variant="secondary" className="mt-2">{profile.travelStyle}</Badge>
+                      )}
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsEditing(!isEditing)}
-                    >
+                    <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
                       <Edit className="mr-2 h-4 w-4" />
                       Редактировать
                     </Button>
                   </div>
 
                   {profile?.bio && (
-                    <p className="text-muted-foreground mb-4">{profile.bio}</p>
+                    <p className="text-muted-foreground mb-4 leading-relaxed">{profile.bio}</p>
                   )}
 
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-4 gap-4 text-center">
                     <div>
                       <div className="text-2xl font-bold text-primary">{userPosts.length}</div>
                       <div className="text-sm text-muted-foreground">Постов</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-primary">{followers.length}</div>
-                      <div className="text-sm text-muted-foreground">Подписчиков</div>
+                      <div className="text-2xl font-bold text-primary">{userTrips.length}</div>
+                      <div className="text-sm text-muted-foreground">Поездок</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-primary">{friends.length}</div>
+                      <div className="text-2xl font-bold text-primary">{favorites.length}</div>
+                      <div className="text-sm text-muted-foreground">Избранных</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-primary">{(friends as unknown[]).length}</div>
                       <div className="text-sm text-muted-foreground">Друзей</div>
                     </div>
                   </div>
@@ -164,6 +200,7 @@ export function Profile() {
             </CardContent>
           </Card>
 
+          {/* Edit profile form */}
           {isEditing && (
             <Card className="mb-8">
               <CardHeader>
@@ -174,12 +211,11 @@ export function Profile() {
                   <Label htmlFor="bio">О себе</Label>
                   <Textarea
                     id="bio"
-                    placeholder="Расскажите о себе и своих увлечениях путешествиями..."
+                    placeholder="Расскажите о себе и своих увлечениях..."
                     value={profileData.bio}
                     onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="location">Местоположение</Label>
                   <Input
@@ -189,7 +225,6 @@ export function Profile() {
                     onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
                   />
                 </div>
-
                 <div>
                   <Label htmlFor="travelStyle">Стиль путешествий</Label>
                   <Input
@@ -199,23 +234,21 @@ export function Profile() {
                     onChange={(e) => setProfileData({ ...profileData, travelStyle: e.target.value })}
                   />
                 </div>
-
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleSaveProfile}
+                    onClick={() => updateProfileMutation.mutate(profileData)}
                     disabled={updateProfileMutation.isPending}
                     className="bg-primary hover:bg-primary/90"
                   >
                     Сохранить
                   </Button>
-                  <Button variant="outline" onClick={() => setIsEditing(false)}>
-                    Отмена
-                  </Button>
+                  <Button variant="outline" onClick={() => setIsEditing(false)}>Отмена</Button>
                 </div>
               </CardContent>
             </Card>
           )}
 
+          {/* Tabs */}
           <Tabs defaultValue="posts" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="posts">Посты</TabsTrigger>
@@ -224,15 +257,21 @@ export function Profile() {
               <TabsTrigger value="favorites">Избранное</TabsTrigger>
             </TabsList>
 
+            {/* Posts tab */}
             <TabsContent value="posts" className="mt-6">
-              {userPosts.length === 0 ? (
+              {postsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
+                </div>
+              ) : userPosts.length === 0 ? (
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Globe className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-2">Нет постов</h3>
-                    <p className="text-muted-foreground">
-                      Поделитесь своими путешествиями с сообществом
-                    </p>
+                    <p className="text-muted-foreground mb-4">Поделитесь своими путешествиями</p>
+                    <Link href="/social-feed">
+                      <Button className="bg-primary hover:bg-primary/90">Написать пост</Button>
+                    </Link>
                   </CardContent>
                 </Card>
               ) : (
@@ -249,15 +288,118 @@ export function Profile() {
                         )}
                       </CardHeader>
                       <CardContent>
-                        <p className="text-muted-foreground mb-4 line-clamp-3">{post.content}</p>
-                        {post.tags && post.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {post.tags.slice(0, 3).map((tag, index) => (
-                              <Badge key={index} variant="secondary">
-                                #{tag}
-                              </Badge>
-                            ))}
+                        <p className="text-muted-foreground line-clamp-3 mb-3">{post.content}</p>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Heart className="h-3.5 w-3.5" /> {post.likesCount}
+                          </span>
+                          {post.tags && post.tags.length > 0 && (
+                            <div className="flex gap-1">
+                              {post.tags.slice(0, 2).map((tag, i) => (
+                                <Badge key={i} variant="secondary" className="text-xs">#{tag}</Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Trips tab */}
+            <TabsContent value="trips" className="mt-6">
+              {tripsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
+                </div>
+              ) : userTrips.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Нет поездок</h3>
+                    <p className="text-muted-foreground mb-4">Запланируйте первую поездку</p>
+                    <Link href="/trips">
+                      <Button className="bg-primary hover:bg-primary/90">Найти поездку</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {userTrips.map((trip) => (
+                    <Card key={trip.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold">{trip.title}</h3>
+                            <div className="flex items-center gap-1 mt-1">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">{trip.destination}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {format(new Date(trip.startDate as unknown as string), "d MMM yyyy", { locale: ru })}
+                              {" – "}
+                              {format(new Date(trip.endDate as unknown as string), "d MMM yyyy", { locale: ru })}
+                            </p>
                           </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Users className="h-4 w-4" />
+                              {trip.currentParticipants}/{trip.maxParticipants}
+                            </div>
+                            {trip.tags && trip.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2 justify-end">
+                                {trip.tags.slice(0, 2).map((tag, i) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Reviews tab */}
+            <TabsContent value="reviews" className="mt-6">
+              {reviewsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
+                </div>
+              ) : reviews.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Нет отзывов</h3>
+                    <p className="text-muted-foreground">Оставьте отзыв о посещённых местах</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {reviews.map((review) => (
+                    <Card key={review.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="font-semibold">{review.place?.name || "Место"}</h3>
+                            {review.place?.address && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">{review.place.address}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            {renderStars(review.rating)}
+                          </div>
+                        </div>
+                        {review.title && <p className="font-medium text-sm mb-1">{review.title}</p>}
+                        {review.content && (
+                          <p className="text-sm text-muted-foreground line-clamp-3">{review.content}</p>
                         )}
                       </CardContent>
                     </Card>
@@ -266,39 +408,63 @@ export function Profile() {
               )}
             </TabsContent>
 
-            <TabsContent value="trips" className="mt-6">
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Нет поездок</h3>
-                  <p className="text-muted-foreground">
-                    Запланируйте свою первую поездку
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="reviews" className="mt-6">
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Нет отзывов</h3>
-                  <p className="text-muted-foreground">
-                    Оставьте отзыв о посещенных местах
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
+            {/* Favorites tab */}
             <TabsContent value="favorites" className="mt-6">
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <h3 className="text-lg font-semibold mb-2">Нет избранных мест</h3>
-                  <p className="text-muted-foreground">
-                    Добавляйте места в избранное для быстрого доступа
-                  </p>
-                </CardContent>
-              </Card>
+              {favLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
+                </div>
+              ) : favorites.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Нет избранных мест</h3>
+                    <p className="text-muted-foreground">Добавляйте места в избранное для быстрого доступа</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {favorites.map((fav) => (
+                    <Card key={fav.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          {fav.place?.imageUrl && (
+                            <img
+                              src={fav.place.imageUrl}
+                              alt={fav.place.name}
+                              className="h-16 w-16 object-cover rounded-lg flex-shrink-0"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold truncate">{fav.place?.name || "Место"}</h3>
+                            {fav.place?.address && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <span className="text-sm text-muted-foreground truncate">{fav.place.address}</span>
+                              </div>
+                            )}
+                            {fav.place?.averageRating && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                                <span className="text-sm font-medium">{fav.place.averageRating}</span>
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeFavoriteMutation.mutate(fav.placeId)}
+                            disabled={removeFavoriteMutation.isPending}
+                            className="text-muted-foreground hover:text-red-500 flex-shrink-0"
+                          >
+                            <Heart className="h-4 w-4 fill-current text-red-500" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

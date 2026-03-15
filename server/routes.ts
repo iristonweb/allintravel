@@ -111,11 +111,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User reviews route
+  app.get('/api/reviews/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reviews = await storage.getReviewsByUser(userId);
+      const enriched = await Promise.all(reviews.map(async (review) => {
+        const place = await storage.getPlace(review.placeId);
+        return { ...review, place: place || null };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching user reviews:", error);
+      res.status(500).json({ message: "Failed to fetch user reviews" });
+    }
+  });
+
   // Trip routes
   app.get('/api/trips', async (req, res) => {
     try {
-      const { destination, startDate, endDate, limit = 20, offset = 0 } = req.query;
+      const { userId, destination, startDate, endDate, limit = 20, offset = 0 } = req.query;
       const trips = await storage.getTrips({
+        userId: userId as string,
         destination: destination as string,
         startDate: startDate ? new Date(startDate as string) : undefined,
         endDate: endDate ? new Date(endDate as string) : undefined,
@@ -224,7 +241,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const favorites = await storage.getUserFavorites(userId);
-      res.json(favorites);
+      const enriched = await Promise.all(favorites.map(async (fav) => {
+        const place = await storage.getPlace(fav.placeId);
+        return { ...fav, place: place || null };
+      }));
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching favorites:", error);
       res.status(500).json({ message: "Failed to fetch favorites" });
@@ -350,7 +371,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const type = req.params.type as 'sent' | 'received';
       const requests = await storage.getFriendRequests(userId, type);
-      res.json(requests);
+      const enriched = await Promise.all(requests.map(async (friendship) => {
+        const otherUserId = type === 'sent' ? friendship.addresseeId : friendship.requesterId;
+        const user = await storage.getUser(otherUserId);
+        return { ...friendship, user: user || null };
+      }));
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching friend requests:", error);
       res.status(500).json({ message: "Failed to fetch friend requests" });
@@ -481,16 +507,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts', async (req, res) => {
+  app.get('/api/posts', async (req: any, res) => {
     try {
       const { userId, following, limit = 20, offset = 0 } = req.query;
+      const currentUserId: string | null = req.user?.claims?.sub || null;
       const posts = await storage.getTravelPosts({
         userId: userId as string,
         following: following as string,
         limit: Number(limit),
         offset: Number(offset),
       });
-      res.json(posts);
+      const enriched = await Promise.all(posts.map(async (post) => {
+        const author = post.userId ? await storage.getUser(post.userId) : null;
+        const likesCount = await storage.getPostLikesCount(post.id);
+        const commentsCount = await storage.getPostCommentsCount(post.id);
+        const isLiked = currentUserId ? await storage.isPostLikedByUser(currentUserId, post.id) : false;
+        return {
+          ...post,
+          author: author ? { id: author.id, firstName: author.firstName, lastName: author.lastName, profileImageUrl: author.profileImageUrl } : null,
+          likesCount,
+          commentsCount,
+          isLiked,
+        };
+      }));
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching posts:", error);
       res.status(500).json({ message: "Failed to fetch posts" });

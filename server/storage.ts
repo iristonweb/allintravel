@@ -51,6 +51,7 @@ export interface IStorage {
   updatePlaceRating(placeId: string): Promise<void>;
 
   getTrips(filters?: {
+    userId?: string;
     destination?: string;
     startDate?: Date;
     endDate?: Date;
@@ -118,6 +119,11 @@ export interface IStorage {
   deletePostComment(id: string): Promise<void>;
 
   searchUsers(query: string, limit?: number): Promise<User[]>;
+
+  getPostLikesCount(postId: string): Promise<number>;
+  isPostLikedByUser(userId: string, postId: string): Promise<boolean>;
+  getPostCommentsCount(postId: string): Promise<number>;
+  getUserTrips(userId: string): Promise<Trip[]>;
 }
 
 function genId(): string {
@@ -518,6 +524,7 @@ export class MemStorage implements IStorage {
 
   // Trip operations
   async getTrips(filters?: {
+    userId?: string;
     destination?: string;
     startDate?: Date;
     endDate?: Date;
@@ -525,6 +532,9 @@ export class MemStorage implements IStorage {
     offset?: number;
   }): Promise<Trip[]> {
     let results = Array.from(this.trips.values());
+    if (filters?.userId) {
+      results = results.filter(t => t.userId === filters.userId);
+    }
     if (filters?.destination) {
       const q = filters.destination.toLowerCase();
       results = results.filter(t => t.destination?.toLowerCase().includes(q));
@@ -926,6 +936,22 @@ export class MemStorage implements IStorage {
         u.email?.toLowerCase().includes(q)
       )
       .slice(0, limit);
+  }
+
+  async getPostLikesCount(postId: string): Promise<number> {
+    return Array.from(this.postLikes.values()).filter(l => l.postId === postId).length;
+  }
+
+  async isPostLikedByUser(userId: string, postId: string): Promise<boolean> {
+    return Array.from(this.postLikes.values()).some(l => l.userId === userId && l.postId === postId);
+  }
+
+  async getPostCommentsCount(postId: string): Promise<number> {
+    return Array.from(this.postComments.values()).filter(c => c.postId === postId).length;
+  }
+
+  async getUserTrips(userId: string): Promise<Trip[]> {
+    return this.getTrips({ userId });
   }
 }
 

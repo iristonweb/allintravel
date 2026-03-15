@@ -1,56 +1,100 @@
-# Travel Guide Interactive
+# All In Travel — Социальная платформа для путешественников
 
 ## Overview
 
-This is a full-stack interactive travel application that allows users to discover places, connect with fellow travelers, and plan trips. The application provides a comprehensive platform for tourists and travelers to find restaurants, hotels, attractions, and events while offering social features like chat, reviews, and travel companion matching.
-
-The system is built as a modern web application using React for the frontend, Express.js for the backend, and PostgreSQL for data persistence. It features real-time communication through WebSockets, interactive maps, user authentication via Replit's OAuth system, and comprehensive travel-related functionality.
+Полнофункциональное travel-приложение "All In Travel" — социальная платформа для поиска попутчиков, обмена впечатлениями от путешествий, планирования поездок и общения в чате.
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+Preferred communication style: Simple, everyday language (Russian).
 
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React 18 with TypeScript for type safety and modern development practices
-- **Routing**: Wouter for lightweight client-side routing
-- **UI Components**: Radix UI components with shadcn/ui design system for consistent, accessible interface
-- **Styling**: Tailwind CSS with CSS variables for theming and responsive design
-- **State Management**: TanStack Query (React Query) for server state management and caching
-- **Build Tool**: Vite for fast development and optimized production builds
+- **Framework**: React 18 + TypeScript
+- **Routing**: Wouter (client-side)
+- **UI Components**: shadcn/ui + Radix UI + Tailwind CSS
+- **State Management**: TanStack Query v5 for server state
+- **Build Tool**: Vite
 
 ### Backend Architecture
-- **Runtime**: Node.js with Express.js framework for RESTful API endpoints
-- **Language**: TypeScript for type safety across the entire stack
-- **Session Management**: Express sessions with PostgreSQL storage for user authentication
-- **Real-time Communication**: WebSocket server for live chat functionality
-- **API Design**: RESTful endpoints with proper HTTP status codes and error handling
+- **Runtime**: Node.js + Express.js
+- **Language**: TypeScript
+- **Session**: express-session (in-memory for dev)
+- **Real-time**: WebSocket server (`/ws`) for group chat
+- **Auth**: Replit OAuth (OIDC) via `replitAuth.ts`
 
 ### Data Storage
-- **Primary Database**: PostgreSQL with Neon serverless hosting for scalability
-- **ORM**: Drizzle ORM for type-safe database operations and migrations
-- **Schema Design**: Relational database with tables for users, places, reviews, trips, events, and chat messages
-- **Validation**: Zod schemas for runtime type validation and data integrity
+- **Storage**: MemStorage (in-memory) — data resets on server restart
+- **ORM**: Drizzle ORM (schema defined, used for types)
+- **Validation**: Zod + drizzle-zod
 
-### Authentication System
-- **Provider**: Replit OAuth integration for seamless authentication
-- **Session Storage**: PostgreSQL-backed sessions using connect-pg-simple
-- **User Management**: Automatic user creation and profile management
-- **Security**: HTTP-only cookies with secure session handling
+## Pages & Routes
 
-### Key Features Implementation
-- **Interactive Map**: Custom map component with place markers and filtering capabilities
-- **Social Features**: Real-time chat system, user reviews, and travel companion matching
-- **Content Management**: Places database with categories (restaurants, hotels, attractions), events calendar, and user-generated content
-- **Search and Discovery**: Advanced filtering by type, rating, price range with pagination
+| Route | Component | Description |
+|---|---|---|
+| `/` | Home | Главная — места, поездки, события, лента |
+| `/trips` | Trips | Поездки — список, создание, поиск, join |
+| `/events` | Events | События — предстоящие и прошедшие |
+| `/social-feed` | SocialFeed | Лента постов с лайками и комментариями |
+| `/chat` | Chat | Групповой чат по комнатам (WebSocket) |
+| `/friends` | Friends | Друзья — поиск, запросы, управление |
+| `/messages` | Messages | Личные сообщения (диалоги) |
+| `/profile` | Profile | Профиль — посты, поездки, отзывы, избранное |
+| `/place/:id` | PlaceDetails | Детали места с отзывами |
 
-### External Dependencies
+## API Endpoints (Key)
 
-- **Database Hosting**: Neon serverless PostgreSQL for managed database infrastructure
-- **Authentication**: Replit OAuth system for user authentication and authorization
-- **UI Framework**: Radix UI primitives for accessible component foundation
-- **Real-time Communication**: Native WebSocket implementation for chat functionality
-- **Image Hosting**: Unsplash API integration for placeholder images and content
-- **Development Tools**: Vite with React plugins, ESBuild for production bundling
-- **Session Store**: PostgreSQL session storage via connect-pg-simple adapter
+### Posts
+- `GET /api/posts` — посты, обогащённые автором + likesCount + commentsCount + isLiked
+- `POST /api/posts` — создать пост
+- `POST /api/posts/:id/like` / `DELETE /api/posts/:id/like` — лайк/анлайк
+- `POST /api/posts/:id/comments` — добавить комментарий
+
+### Friends
+- `GET /api/friends` — список друзей (с данными User)
+- `GET /api/friends/requests/sent` — исходящие запросы (с User)
+- `GET /api/friends/requests/received` — входящие запросы (с User)
+- `POST /api/friends/request/:userId` — отправить запрос
+- `PUT /api/friends/respond/:id` — принять/отклонить
+
+### Favorites
+- `GET /api/favorites` — избранное, обогащённое Place
+- `POST /api/favorites/:placeId` / `DELETE /api/favorites/:placeId`
+
+### Reviews
+- `GET /api/reviews/user` — отзывы текущего пользователя с Place
+
+### Trips
+- `GET /api/trips?userId=...` — поддерживает фильтр по userId
+
+### Search
+- `GET /api/search/users?q=...` — поиск пользователей
+
+### Chat
+- `GET /api/chat/:room` — история сообщений
+- `WS /ws` — WebSocket для realtime сообщений
+
+## Key Implementation Details
+
+### queryClient URL generation
+- `["/api/endpoint", { key: value }]` → GET `/api/endpoint?key=value`
+- `["/api/endpoint/segment"]` → GET `/api/endpoint/segment`
+
+### Enriched response types (shared/schema.ts)
+- `TravelPostWithAuthor` — пост + author + likesCount + commentsCount + isLiked
+- `FriendshipWithUser` — дружба + User (другая сторона)
+- `UserFavoriteWithPlace` — избранное + Place
+- `ReviewWithPlace` — отзыв + Place
+
+### Seed data (MemStorage)
+- 6 мест (places): Santorini, Kyoto, Machu Picchu, Amalfi, Iceland, Louvre
+- 3 события (events): Tokyo festival, Santorini workshop, Bali yoga
+- 2+ поездки (trips)
+- 3 тревел-поста
+
+## Design Conventions
+- Primary color: `bg-primary hover:bg-primary/90` (не coral/teal классы)
+- API calls: `apiRequest("POST", "/api/endpoint", data)`
+- Toast notifications: `useToast()` из `@/hooks/use-toast`
+- All components have both named AND default exports

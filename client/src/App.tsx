@@ -13,6 +13,7 @@ import { Messages } from "@/pages/messages";
 import { SocialFeed } from "@/pages/social-feed";
 import { Trips } from "@/pages/trips";
 import { Events } from "@/pages/events";
+import { Chat } from "@/pages/chat";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -44,6 +45,7 @@ function Router() {
           <Route path="/social-feed" component={SocialFeed} />
           <Route path="/trips" component={Trips} />
           <Route path="/events" component={Events} />
+          <Route path="/chat" component={Chat} />
           <Route component={NotFound} />
         </>
       )}

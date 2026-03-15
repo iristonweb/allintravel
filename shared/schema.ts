@@ -404,6 +404,25 @@ export interface PlaceWithDetails extends Place {
 export interface FavoriteStatus {
   isFavorite: boolean;
 }
+
+export interface TravelPostWithAuthor extends TravelPost {
+  author: Pick<User, 'id' | 'firstName' | 'lastName' | 'profileImageUrl'> | null;
+  likesCount: number;
+  commentsCount: number;
+  isLiked: boolean;
+}
+
+export interface FriendshipWithUser extends Friendship {
+  user: User | null;
+}
+
+export interface UserFavoriteWithPlace extends UserFavorite {
+  place: Place | null;
+}
+
+export interface ReviewWithPlace extends Review {
+  place: Place | null;
+}
 export type PrivateMessage = typeof privateMessages.$inferSelect;
 export type InsertPrivateMessage = z.infer<typeof insertPrivateMessageSchema>;
 export type TravelPost = typeof travelPosts.$inferSelect;

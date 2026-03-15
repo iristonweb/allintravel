@@ -21,6 +21,7 @@ function NavigationHeader() {
     { href: "/trips", label: "Поездки" },
     { href: "/events", label: "События" },
     { href: "/social-feed", label: "Лента" },
+    { href: "/chat", label: "Чат" },
     { href: "/friends", label: "Друзья" },
   ];
 
@@ -63,9 +64,6 @@ function NavigationHeader() {
         <div className="hidden md:flex items-center space-x-4">
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-xs text-white flex items-center justify-center">
-              3
-            </span>
           </Button>
 
           <Link href="/messages">
