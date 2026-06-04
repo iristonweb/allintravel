@@ -44,6 +44,7 @@ import type {
 } from "@shared/schema";
 import {
   chatMessages,
+  cities,
   events,
   eventRegistrations,
   friendships,
@@ -244,10 +245,29 @@ export class PgStorage implements IStorage {
     const conditions = [];
     if (filters?.type) conditions.push(eq(places.type, filters.type));
     if (filters?.search) {
-      const q = `%${filters.search}%`;
-      conditions.push(
-        or(ilike(places.name, q), ilike(places.address, q), ilike(places.description, q))!,
-      );
+      const term = filters.search.trim();
+      const q = `%${term}%`;
+      const placeMatch = or(
+        ilike(places.name, q),
+        ilike(places.address, q),
+        ilike(places.description, q),
+      )!;
+
+      const cityRows = await this.db
+        .select({ name: cities.name })
+        .from(cities)
+        .where(or(ilike(cities.name, q), ilike(cities.asciiName, q))!)
+        .orderBy(desc(cities.population))
+        .limit(5);
+
+      if (cityRows.length > 0) {
+        const cityAddressMatch = or(
+          ...cityRows.map((c) => ilike(places.address, `%${c.name}%`)),
+        )!;
+        conditions.push(or(placeMatch, cityAddressMatch)!);
+      } else {
+        conditions.push(placeMatch);
+      }
     }
     if (filters?.minRating != null) {
       conditions.push(gte(places.averageRating, String(filters.minRating)));

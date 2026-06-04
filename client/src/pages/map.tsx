@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
 import AppLayout from "@/components/app-layout";
 import InteractiveMap from "@/components/interactive-map";
 import DestinationCard from "@/components/brand/destination-card";
-import { Search } from "lucide-react";
+import DestinationSearch from "@/components/search/DestinationSearch";
 import type { Place } from "@shared/schema";
 
 const showcaseDestinations = [
@@ -41,10 +41,27 @@ const showcaseDestinations = [
 
 export function MapPage() {
   const [, navigate] = useLocation();
-  const [search, setSearch] = useState("");
+  const searchString = useSearch();
+  const urlParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
+  const urlQuery = urlParams.get("q") ?? "";
+  const urlLat = urlParams.get("lat");
+  const urlLon = urlParams.get("lon");
+
+  const [search, setSearch] = useState(urlQuery);
+
+  const mapFocus = useMemo(() => {
+    const lat = urlLat != null ? Number(urlLat) : NaN;
+    const lon = urlLon != null ? Number(urlLon) : NaN;
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { lat, lon, zoom: 10 };
+    }
+    return null;
+  }, [urlLat, urlLon]);
+
+  const activeSearch = search.trim() || urlQuery.trim();
 
   const { data: places = [] } = useQuery<Place[]>({
-    queryKey: ["/api/places", { limit: 50, ...(search && { search }) }],
+    queryKey: ["/api/places", { limit: 50, ...(activeSearch && { search: activeSearch }) }],
   });
 
   const mapPlaces = places
@@ -72,13 +89,13 @@ export function MapPage() {
             <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg mb-3">
               Интерактивная карта
             </h1>
-            <div className="ait-glass-strong rounded-2xl flex items-center gap-3 px-4 py-3 max-w-md">
-              <Search className="h-5 w-5 text-ait-purple shrink-0" />
-              <input
-                placeholder="Куда вы хотите?"
+            <div className="ait-glass-strong rounded-2xl p-2 max-w-md">
+              <DestinationSearch
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 bg-transparent border-0 outline-none text-sm text-white placeholder:text-slate-500"
+                onChange={setSearch}
+                onNavigate={navigate}
+                placeholder="Город, страна или место"
+                inputClassName="ait-glass-strong border-0 bg-transparent text-white placeholder:text-slate-500"
               />
             </div>
           </motion.div>
@@ -87,7 +104,8 @@ export function MapPage() {
         <InteractiveMap
           places={mapPlaces}
           fullHeight
-          showDemoMarkers
+          showDemoMarkers={mapPlaces.length === 0 && !mapFocus}
+          mapFocus={mapFocus}
           onPlaceClick={(place) => navigate(`/place/${place.id}`)}
         />
 
@@ -98,7 +116,9 @@ export function MapPage() {
                 key={d.id}
                 destination={d}
                 className="snap-start"
-                onClick={() => navigate("/places")}
+                onClick={() =>
+                  navigate(`/places?search=${encodeURIComponent(d.name)}`)
+                }
               />
             ))}
           </div>
@@ -107,5 +127,3 @@ export function MapPage() {
     </AppLayout>
   );
 }
-
-export default MapPage;

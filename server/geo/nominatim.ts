@@ -1,9 +1,13 @@
 export type GeoAutocompleteItem = {
   label: string;
+  kind?: "city" | "country";
+  countryCode?: string;
+  geonameId?: number;
   city?: string | null;
   country?: string | null;
   lat?: number | null;
   lon?: number | null;
+  population?: number;
   osmId?: number | null;
   osmType?: string | null;
 };

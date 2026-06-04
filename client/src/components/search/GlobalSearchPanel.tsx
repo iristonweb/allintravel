@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Calendar, MapPin, Search, Sparkles, Users } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import DestinationSearch from "@/components/search/DestinationSearch";
+import { buildDestinationHref } from "@/lib/destination-search";
 
 export default function GlobalSearchPanel() {
   const [, navigate] = useLocation();
@@ -12,24 +14,38 @@ export default function GlobalSearchPanel() {
 
   const search = () => {
     const q = where.trim();
-    navigate(q ? `/places?search=${encodeURIComponent(q)}` : "/map");
+    if (!q) {
+      navigate("/map");
+      return;
+    }
+    const tripParams = new URLSearchParams();
+    if (when.trim()) tripParams.set("when", when.trim());
+    if (who.trim()) tripParams.set("who", who.trim());
+    if (interests.trim()) tripParams.set("interests", interests.trim());
+    const href = buildDestinationHref({ type: "text", query: q });
+    const sep = href.includes("?") ? "&" : "?";
+    const extra = tripParams.toString();
+    navigate(extra ? `${href}${sep}${extra}` : href);
   };
 
   return (
     <div className="ait-glass-strong rounded-[28px] p-2 md:p-3 ait-gradient-border shadow-2xl">
       <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 md:gap-0 md:divide-x divide-white/10">
-        <label className="flex items-center gap-3 px-4 py-3 md:py-4">
-          <MapPin className="h-5 w-5 text-ait-purple shrink-0" />
+        <div className="flex items-start gap-3 px-4 py-3 md:py-4 min-w-0">
+          <MapPin className="h-5 w-5 text-ait-purple shrink-0 mt-2" />
           <div className="flex-1 min-w-0">
-            <span className="text-xs text-muted-foreground block">Куда?</span>
-            <input
+            <span className="text-xs text-muted-foreground block mb-1">Куда?</span>
+            <DestinationSearch
               value={where}
-              onChange={(e) => setWhere(e.target.value)}
-              placeholder="Страна, город, регион"
-              className="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground"
+              onChange={setWhere}
+              onNavigate={navigate}
+              showSubmit={false}
+              showPopular={false}
+              placeholder="Страна, город, место"
+              inputClassName="border-0 bg-transparent h-9 px-0 focus-visible:ring-0"
             />
           </div>
-        </label>
+        </div>
         <label className="flex items-center gap-3 px-4 py-3 md:py-4">
           <Calendar className="h-5 w-5 text-ait-orange shrink-0" />
           <div className="flex-1 min-w-0">

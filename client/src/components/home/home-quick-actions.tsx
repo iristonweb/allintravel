@@ -1,18 +1,17 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Building2,
   Car,
-  Search,
   Shield,
   Utensils,
   Wallet,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import GlassCard from "@/components/brand/glass-card";
+import DestinationSearch from "@/components/search/DestinationSearch";
 
 const services = [
   { label: "Отели", icon: Building2, href: "/places?type=hotel" },
@@ -32,24 +31,16 @@ export default function HomeQuickActions({ defaultSearch = "" }: HomeQuickAction
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState(defaultSearch);
 
-  const searchHref = useMemo(() => {
-    const q = search.trim();
-    return q ? `/places?search=${encodeURIComponent(q)}` : "/map";
-  }, [search]);
-
   return (
     <div className="space-y-6">
       <div className="md:hidden">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Куда вы хотите?"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && navigate(searchHref)}
-            className="pl-9 ait-glass-strong"
-          />
-        </div>
+        <DestinationSearch
+          value={search}
+          onChange={setSearch}
+          onNavigate={navigate}
+          placeholder="Куда вы хотите?"
+          inputClassName="ait-glass-strong"
+        />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
@@ -79,21 +70,13 @@ export default function HomeQuickActions({ defaultSearch = "" }: HomeQuickAction
 
       <div className="hidden md:grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Куда вы хотите?"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && navigate(searchHref)}
-                className="pl-9 ait-glass-strong"
-              />
-            </div>
-            <Button variant="premium" onClick={() => navigate(searchHref)}>
-              Найти
-            </Button>
-          </div>
+          <DestinationSearch
+            value={search}
+            onChange={setSearch}
+            onNavigate={navigate}
+            placeholder="Страна, город или место в каталоге"
+            inputClassName="ait-glass-strong"
+          />
         </div>
         <GlassCard className="p-4 flex items-center justify-center">
           <Button variant="outline" className="w-full" onClick={() => navigate("/map")}>

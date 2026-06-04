@@ -1,4 +1,4 @@
-import MapboxMap, { type MapboxPlace } from "@/components/maps/MapboxMap";
+import MapboxMap, { type MapboxPlace, type MapFocus } from "@/components/maps/MapboxMap";
 import YandexMap from "@/components/maps/YandexMap";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,8 @@ type TravelMapProps = {
   showRoute?: boolean;
   showDemoMarkers?: boolean;
   onPlaceClick?: (place: TravelMapPlace) => void;
+  mapFocus?: MapFocus | null;
+  routeGeometry?: [number, number][];
 };
 
 function mapProvider(): "yandex" | "mapbox" | "leaflet" {

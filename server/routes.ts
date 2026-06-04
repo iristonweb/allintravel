@@ -4,8 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, getSession, type SessionUser } from "./auth";
 import { isGoogleAuthEnabled } from "./google-auth";
 import passport from "passport";
-import { allowGeoRequest, nominatimAutocomplete } from "./geo/nominatim";
-import { isYandexGeocoderConfigured, yandexAutocomplete } from "./geo/yandex";
+import { allowGeoRequest } from "./geo/nominatim";
 import { 
   insertPlaceSchema, 
   insertReviewSchema, 
@@ -57,35 +56,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(429).json({ message: "Too many requests" });
       }
 
-      // Prefer local DB-backed autocomplete when Postgres is configured.
-      if (process.env.DATABASE_URL) {
-        try {
-          const mod = await import("./geo/db-autocomplete");
-          const items = await mod.dbGeoAutocomplete({ q, limit, scope });
-          return res.json(items);
-        } catch (e) {
-          console.warn("DB geo autocomplete failed; falling back to Nominatim.", e);
-        }
+      const acceptLanguage =
+        (req.headers["accept-language"] as string | undefined) ??
+        (typeof req.query.lang === "string" ? req.query.lang : undefined);
+
+      const { resolveGeoAutocomplete } = await import("./geo/resolve-autocomplete");
+      const items = await resolveGeoAutocomplete({ q, limit, scope, acceptLanguage });
+      return res.json(items);
+    } catch (error) {
+      console.error("Error fetching geo autocomplete:", error);
+      res.status(500).json({ message: "Failed to fetch geo autocomplete" });
+    }
+  });
+
+  app.get("/api/search/destinations", async (req, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      const limitRaw = req.query.limit != null ? Number(req.query.limit) : 10;
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(15, Math.floor(limitRaw))) : 10;
+      const type = typeof req.query.type === "string" ? req.query.type : undefined;
+
+      if (q.length < 2) {
+        return res.json({ locations: [], places: [] });
+      }
+
+      const ip =
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.socket.remoteAddress ||
+        "unknown";
+
+      if (!allowGeoRequest(`search:${ip}`)) {
+        return res.status(429).json({ message: "Too many requests" });
       }
 
       const acceptLanguage =
         (req.headers["accept-language"] as string | undefined) ??
         (typeof req.query.lang === "string" ? req.query.lang : undefined);
 
-      if (isYandexGeocoderConfigured()) {
-        try {
-          const items = await yandexAutocomplete({ q, limit, acceptLanguage: acceptLanguage ?? null });
-          if (items.length > 0) return res.json(items);
-        } catch (e) {
-          console.warn("Yandex geocoder autocomplete failed; falling back.", e);
-        }
-      }
+      const { resolveGeoAutocomplete } = await import("./geo/resolve-autocomplete");
+      const geoLimit = Math.min(8, limit);
 
-      const items = await nominatimAutocomplete({ q, limit, acceptLanguage: acceptLanguage ?? null });
-      return res.json(items);
+      const [locations, places] = await Promise.all([
+        resolveGeoAutocomplete({ q, limit: geoLimit, scope: "all", acceptLanguage }),
+        storage.getPlaces({
+          search: q,
+          type: type && type !== "all" ? type : undefined,
+          limit: Math.min(10, limit),
+        }),
+      ]);
+
+      res.json({ locations, places });
     } catch (error) {
-      console.error("Error fetching geo autocomplete:", error);
-      res.status(500).json({ message: "Failed to fetch geo autocomplete" });
+      console.error("Error searching destinations:", error);
+      res.status(500).json({ message: "Failed to search destinations" });
+    }
+  });
+
+  app.get("/api/geo/status", async (_req, res) => {
+    try {
+      let countries = 0;
+      let cities = 0;
+      const { getDb } = await import("./db");
+      const db = getDb();
+      if (db) {
+        const { countries: countriesTable, cities: citiesTable } = await import("@shared/schema");
+        const { count } = await import("drizzle-orm");
+        const [c1] = await db.select({ value: count() }).from(countriesTable);
+        const [c2] = await db.select({ value: count() }).from(citiesTable);
+        countries = Number(c1?.value ?? 0);
+        cities = Number(c2?.value ?? 0);
+      }
+      const {
+        isAnyYandexGeoConfigured,
+        isYandexGeocoderConfigured,
+        isYandexGeosuggestConfigured,
+        isYandexRouterConfigured,
+      } = await import("./geo/yandex-config");
+      res.json({
+        database: Boolean(process.env.DATABASE_URL),
+        geoImported: countries > 0 && cities > 0,
+        countries,
+        cities,
+        yandexGeosuggest: isYandexGeosuggestConfigured(),
+        yandexGeocoder: isYandexGeocoderConfigured(),
+        yandexRouter: isYandexRouterConfigured(),
+        yandex: isAnyYandexGeoConfigured(),
+        nominatimFallback: true,
+      });
+    } catch (error) {
+      console.error("geo status error:", error);
+      res.status(500).json({ message: "Failed to read geo status" });
     }
   });
 
@@ -302,6 +362,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching trip waypoints:", error);
       res.status(500).json({ message: "Failed to fetch waypoints" });
+    }
+  });
+
+  app.get("/api/trips/:id/yandex-route", async (req, res) => {
+    try {
+      const { isYandexRouterConfigured } = await import("./geo/yandex-config");
+      if (!isYandexRouterConfigured()) {
+        return res.status(503).json({ message: "Yandex Router API key not configured" });
+      }
+      const waypoints = await storage.getTripWaypoints(req.params.id);
+      const points = waypoints
+        .filter((w) => w.place?.latitude != null && w.place?.longitude != null)
+        .map((w) => ({
+          lat: Number(w.place!.latitude),
+          lon: Number(w.place!.longitude),
+        }));
+      if (points.length < 2) {
+        return res.json({ configured: true, route: null, message: "Need at least 2 stops" });
+      }
+      const mode =
+        req.query.mode === "walking" || req.query.mode === "driving"
+          ? req.query.mode
+          : "driving";
+      const { yandexBuildRoute } = await import("./geo/yandex-router");
+      const route = await yandexBuildRoute(points, mode);
+      if (!route) {
+        return res.json({ configured: true, route: null });
+      }
+      res.json({
+        configured: true,
+        route: {
+          distanceKm: Math.round((route.distanceM / 1000) * 10) / 10,
+          durationMin: Math.round(route.durationS / 60),
+          geometry: route.geometry,
+        },
+      });
+    } catch (error) {
+      console.error("Error building Yandex route:", error);
+      res.status(500).json({ message: "Failed to build route" });
+    }
+  });
+
+  app.get("/api/geo/geocode", async (req, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      if (q.length < 2) return res.json(null);
+      const { yandexForwardGeocode } = await import("./geo/yandex");
+      const result = await yandexForwardGeocode(q);
+      res.json(result);
+    } catch (error) {
+      console.error("Error geocoding:", error);
+      res.status(500).json({ message: "Failed to geocode" });
     }
   });
 

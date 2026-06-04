@@ -1,4 +1,11 @@
 import type { GeoAutocompleteItem } from "./nominatim";
+import {
+  getYandexGeocoderKey,
+  getYandexGeosuggestKey,
+  isAnyYandexGeoConfigured,
+  isYandexGeocoderConfigured as hasGeocoderKey,
+  isYandexGeosuggestConfigured,
+} from "./yandex-config";
 
 type YandexGeocodeResponse = {
   response?: {
@@ -54,10 +61,6 @@ function cacheSet(key: string, data: GeoAutocompleteItem[], ttlMs = 1000 * 60 * 
   cache.set(key, { expiresAt: Date.now() + ttlMs, data });
 }
 
-function getApiKey(): string | undefined {
-  return process.env.YANDEX_GEOCODER_API_KEY?.trim() || undefined;
-}
-
 function parsePos(pos: string | undefined): { lat: number; lon: number } | null {
   if (!pos) return null;
   const [lonStr, latStr] = pos.trim().split(/\s+/);
@@ -100,6 +103,7 @@ function memberToItem(member: YandexFeatureMember): GeoAutocompleteItem | null {
 
   return {
     label,
+    kind: "city",
     city,
     country,
     lat: coords?.lat ?? null,
@@ -112,7 +116,7 @@ async function yandexGeocodeSuggest(params: {
   limit: number;
   lang?: string;
 }): Promise<GeoAutocompleteItem[]> {
-  const apikey = getApiKey();
+  const apikey = getYandexGeocoderKey();
   if (!apikey) return [];
 
   const { q, limit } = params;
@@ -147,7 +151,7 @@ async function yandexSuggest(params: {
   limit: number;
   lang?: string;
 }): Promise<GeoAutocompleteItem[]> {
-  const apikey = getApiKey();
+  const apikey = getYandexGeosuggestKey();
   if (!apikey) return [];
 
   const { q, limit } = params;
@@ -176,6 +180,7 @@ async function yandexSuggest(params: {
     const subtitle = r.subtitle?.text?.trim();
     items.push({
       label: subtitle ? `${title}, ${subtitle}` : title,
+      kind: "city",
       city: title,
       country: subtitle ?? null,
     });
@@ -183,6 +188,21 @@ async function yandexSuggest(params: {
 
   if (items.length === 0) {
     return yandexGeocodeSuggest(params);
+  }
+
+  if (hasGeocoderKey()) {
+    const enrich = items.slice(0, Math.min(5, items.length));
+    await Promise.all(
+      enrich.map(async (item) => {
+        if (item.lat != null && item.lon != null) return;
+        const geo = await yandexGeocodeSuggest({ q: item.label, limit: 1, lang });
+        const first = geo[0];
+        if (first?.lat != null && first.lon != null) {
+          item.lat = first.lat;
+          item.lon = first.lon;
+        }
+      }),
+    );
   }
 
   cacheSet(cacheKey, items);
@@ -194,18 +214,31 @@ export async function yandexAutocomplete(params: {
   limit: number;
   acceptLanguage?: string | null;
 }): Promise<GeoAutocompleteItem[]> {
+  if (!isAnyYandexGeoConfigured()) return [];
+
   const lang = params.acceptLanguage?.toLowerCase().startsWith("en") ? "en_US" : "ru_RU";
-  try {
-    return await yandexSuggest({ q: params.q, limit: params.limit, lang });
-  } catch (e) {
-    console.warn("Yandex suggest failed, trying geocoder:", e);
+
+  if (isYandexGeosuggestConfigured()) {
+    try {
+      const items = await yandexSuggest({ q: params.q, limit: params.limit, lang });
+      if (items.length > 0) return items;
+    } catch (e) {
+      console.warn("Yandex geosuggest failed, trying geocoder:", e);
+    }
+  }
+
+  if (hasGeocoderKey()) {
     return yandexGeocodeSuggest({ q: params.q, limit: params.limit, lang });
   }
+
+  return [];
 }
 
-export function isYandexGeocoderConfigured(): boolean {
-  return !!getApiKey();
-}
+export {
+  isYandexGeocoderConfigured,
+  isYandexGeosuggestConfigured,
+  isAnyYandexGeoConfigured,
+} from "./yandex-config";
 
 /** Forward geocode: address string → coordinates */
 export async function yandexForwardGeocode(

@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 
 export type MapboxPlace = MapPlace;
 
+export type MapFocus = { lat: number; lon: number; zoom?: number };
+
 type MapboxMapProps = {
   places?: MapboxPlace[];
   className?: string;
@@ -13,6 +15,9 @@ type MapboxMapProps = {
   showRoute?: boolean;
   showDemoMarkers?: boolean;
   onPlaceClick?: (place: MapboxPlace) => void;
+  mapFocus?: MapFocus | null;
+  /** Road geometry from Yandex Router [lng, lat] */
+  routeGeometry?: [number, number][];
 };
 
 const DEMO_ROUTES: [number, number][][] = [
@@ -53,6 +58,8 @@ export default function MapboxMap({
   showRoute,
   showDemoMarkers,
   onPlaceClick,
+  mapFocus,
+  routeGeometry,
 }: MapboxMapProps) {
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -165,15 +172,21 @@ export default function MapboxMap({
       );
     });
 
-    if (validPlaces.length > 1 && showRoute) {
-      const coords = validPlaces.map(
-        (p) => [Number(p.longitude), Number(p.latitude)] as [number, number],
-      );
+    const routeCoords =
+      routeGeometry && routeGeometry.length > 1
+        ? routeGeometry
+        : showRoute && validPlaces.length > 1
+          ? validPlaces.map(
+              (p) => [Number(p.longitude), Number(p.latitude)] as [number, number],
+            )
+          : null;
+
+    if (routeCoords && routeCoords.length > 1) {
       const routeId = "trip-route";
       const data = {
         type: "Feature" as const,
         properties: {},
-        geometry: { type: "LineString" as const, coordinates: coords },
+        geometry: { type: "LineString" as const, coordinates: routeCoords },
       };
       if (map.getSource(routeId)) {
         (map.getSource(routeId) as mapboxgl.GeoJSONSource).setData(data);
@@ -192,15 +205,23 @@ export default function MapboxMap({
           paint: { "line-color": "#22d3ee", "line-width": 4, "line-opacity": 0.95 },
         });
       }
-      const bounds = coords.reduce(
+      const bounds = routeCoords.reduce(
         (b, c) => b.extend(c),
-        new mapboxgl.LngLatBounds(coords[0], coords[0]),
+        new mapboxgl.LngLatBounds(routeCoords[0], routeCoords[0]),
       );
       map.fitBounds(bounds, { padding: 80, maxZoom: 10 });
     }
 
     return () => markers.forEach((m) => m.remove());
-  }, [validPlaces, ready, onPlaceClick, showRoute, showDemoMarkers, token]);
+  }, [validPlaces, ready, onPlaceClick, showRoute, showDemoMarkers, token, routeGeometry]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !mapFocus) return;
+    const { lat, lon, zoom = 9 } = mapFocus;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    map.flyTo({ center: [lon, lat], zoom, essential: true });
+  }, [mapFocus, ready]);
 
   if (!token) {
     return (

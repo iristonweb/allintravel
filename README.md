@@ -56,10 +56,13 @@ npm run geo:import
 | Переменная | Где | Назначение |
 |------------|-----|------------|
 | `VITE_YANDEX_MAPS_API_KEY` | клиент (Vite) | JavaScript API карт — `/map`, планировщик |
-| `YANDEX_GEOCODER_API_KEY` | сервер | Suggest + Geocoder для поля «Куда?» |
+| `YANDEX_GEOSUGGEST_API_KEY` | сервер | [Геосаджест](https://yandex.com/maps-api/docs/suggest-api/index.html) — подсказки при вводе |
+| `YANDEX_GEOCODER_API_KEY` | сервер | [HTTP Геокодер](https://yandex.com/maps-api/docs/geocoder-api/index.html) — координаты города |
+| `YANDEX_ROUTER_API_KEY` | сервер | [Маршрутизация](https://yandex.com/maps-api/docs/router-api/index.html) — км и линия маршрута в поездках |
 
 Приоритет карты: **Яндекс** → Mapbox → Leaflet.  
-Приоритет подсказок: локальная БД → **Яндекс** → Nominatim.
+Приоритет подсказок: локальная БД → **Геосаджест + Геокодер** → Nominatim.  
+Ключи активируются в кабинете до ~15 минут.
 
 Ключи берутся в [Кабинете разработчика Яндекс](https://developer.tech.yandex.ru/). Не коммитьте ключи в git.
 
@@ -84,7 +87,9 @@ npm run geo:import
 | `VAPID_PRIVATE_KEY` | нет | то же |
 | `VAPID_SUBJECT` | нет | `mailto:you@example.com` |
 | `VITE_YANDEX_MAPS_API_KEY` | нет | JavaScript API Яндекс.Карт |
-| `YANDEX_GEOCODER_API_KEY` | нет | Геокодер / Suggest (сервер) |
+| `YANDEX_GEOSUGGEST_API_KEY` | нет | Геосаджест (подсказки) |
+| `YANDEX_GEOCODER_API_KEY` | нет | HTTP Геокодер |
+| `YANDEX_ROUTER_API_KEY` | нет | Маршрутизация (поездки) |
 
 `NODE_ENV` и `VERCEL` Vercel выставляет сам. **Не коммитьте** `.env` в репозиторий.
 
@@ -136,7 +141,8 @@ npm run geo:import
 |---------|------------------|
 | Главная, места, поездки, события, лента, друзья, ЛС | ✅ Postgres |
 | Карта | ✅ при `VITE_YANDEX_MAPS_API_KEY` (или Mapbox / Leaflet) |
-| Подсказки городов | ✅ при `YANDEX_GEOCODER_API_KEY` или БД после `geo:import` |
+| Подсказки городов | ✅ при `YANDEX_GEOSUGGEST_API_KEY` / `YANDEX_GEOCODER_API_KEY` или БД после `geo:import` |
+| Маршрут по дорогам | ✅ при `YANDEX_ROUTER_API_KEY` (вкладка маршрута поездки) |
 | Чат комнат | ✅ HTTP-режим |
 | Google OAuth | ✅ при `GOOGLE_*` + `APP_URL` |
 | Аватар `/api/users/avatar` | ⚠️ файл на диске функции — **сбрасывается** при redeploy; для продакшена нужен S3/Vercel Blob |

@@ -17,6 +17,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Search, MapPin, Filter, AlertCircle, Plus } from "lucide-react";
+import { useLocation } from "wouter";
+import DestinationSearch from "@/components/search/DestinationSearch";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePlaceFavorites } from "@/hooks/usePlaceFavorites";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -38,6 +40,7 @@ const PRICE_RANGES = [
 ];
 
 export function Places() {
+  const [, navigate] = useLocation();
   const searchString = useSearch();
   const { toast } = useToast();
   const { isFavorite, toggleFavorite } = usePlaceFavorites();
@@ -85,8 +88,15 @@ export function Places() {
     ],
   });
 
-  const handleSearch = () => {
-    setActiveSearch(search.trim());
+  const applySearch = (q: string) => {
+    const trimmed = q.trim();
+    setSearch(trimmed);
+    setActiveSearch(trimmed);
+    const params = new URLSearchParams();
+    if (trimmed) params.set("search", trimmed);
+    if (typeFilter) params.set("type", typeFilter);
+    const qs = params.toString();
+    navigate(qs ? `/places?${qs}` : "/places");
   };
 
   const createPlaceMutation = useMutation({
@@ -156,21 +166,29 @@ export function Places() {
         }
       />
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-6 mt-8">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по названию или описанию..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
-        </div>
-        <Button onClick={handleSearch} className="bg-primary hover:bg-primary/90">
-          <Search className="mr-2 h-4 w-4" />
-          Найти
-        </Button>
+      <div className="mb-6 mt-8 max-w-2xl">
+        <DestinationSearch
+          value={search}
+          onChange={setSearch}
+          onNavigate={(href) => {
+            if (href.startsWith("/place/")) {
+              navigate(href);
+              return;
+            }
+            if (href.startsWith("/map")) {
+              navigate(href);
+              return;
+            }
+            const params = new URLSearchParams(href.split("?")[1] ?? "");
+            applySearch(params.get("search") ?? search);
+          }}
+          placeType={typeFilter || undefined}
+          placeholder="Город, страна или название места…"
+        />
+        <p className="text-xs text-muted-foreground mt-2">
+          Подсказки: база GeoNames (страны и города) + каталог мест. Для полной базы выполните{" "}
+          <code className="text-ait-purple">npm run geo:import</code>
+        </p>
       </div>
 
         <div className="flex flex-wrap gap-2 mb-6">

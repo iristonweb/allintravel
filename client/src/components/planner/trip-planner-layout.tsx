@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import TravelMap from "@/components/maps/TravelMap";
 import GlassCard from "@/components/brand/glass-card";
 import GradientButton from "@/components/brand/gradient-button";
@@ -82,7 +82,18 @@ export default function TripPlannerLayout({
         )
       : 12;
 
-  const km = totalRouteKm(coords);
+  const kmStraight = totalRouteKm(coords);
+
+  const { data: yandexRouteData } = useQuery<{
+    configured: boolean;
+    route: { distanceKm: number; durationMin: number; geometry: [number, number][] } | null;
+  }>({
+    queryKey: ["/api/trips", tripId, "yandex-route"],
+    enabled: routePlaces.length >= 2,
+  });
+
+  const yandexRoute = yandexRouteData?.route ?? null;
+  const km = yandexRoute?.distanceKm ?? kmStraight;
 
   const addWaypointMutation = useMutation({
     mutationFn: async (placeId: string) => {
@@ -263,6 +274,7 @@ export default function TripPlannerLayout({
                 <TravelMap
                   places={routePlaces}
                   showRoute
+                  routeGeometry={yandexRoute?.geometry}
                   height="100%"
                   className="h-full min-h-[420px] rounded-[24px]"
                 />
@@ -321,7 +333,13 @@ export default function TripPlannerLayout({
           </span>
           <span>
             <strong>{km || "—"}</strong> км
+            {yandexRoute ? " (Яндекс)" : ""}
           </span>
+          {yandexRoute?.durationMin != null && (
+            <span>
+              <strong>{yandexRoute.durationMin}</strong> мин в пути
+            </span>
+          )}
           <span>
             <strong>${budget}</strong> бюджет
           </span>

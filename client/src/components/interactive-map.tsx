@@ -3,11 +3,14 @@ import { Button } from "@/components/ui/button";
 import TravelMap, { type TravelMapPlace } from "@/components/maps/TravelMap";
 import { cn } from "@/lib/utils";
 
+import type { MapFocus } from "@/components/maps/MapboxMap";
+
 interface InteractiveMapProps {
   places: TravelMapPlace[];
   onPlaceClick?: (place: TravelMapPlace) => void;
   fullHeight?: boolean;
   showDemoMarkers?: boolean;
+  mapFocus?: MapFocus | null;
 }
 
 const placeTypes = ["all", "hotel", "restaurant", "attraction", "tour"];
@@ -24,6 +27,7 @@ export function InteractiveMap({
   onPlaceClick,
   fullHeight,
   showDemoMarkers,
+  mapFocus,
 }: InteractiveMapProps) {
   const [filterType, setFilterType] = useState<string>("all");
 
@@ -56,6 +60,7 @@ export function InteractiveMap({
         showDemoMarkers={showDemoMarkers ?? filteredPlaces.length === 0}
         height={fullHeight ? "100%" : "28rem"}
         onPlaceClick={onPlaceClick}
+        mapFocus={mapFocus}
         className={cn(fullHeight && "h-full min-h-[calc(100vh-5rem)] rounded-none")}
       />
     </div>
