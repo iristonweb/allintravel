@@ -23,7 +23,13 @@ async function getGoogleConfig(): Promise<client.Configuration | null> {
 }
 
 export async function setupGoogleAuth(app: Express): Promise<void> {
-  const config = await getGoogleConfig();
+  let config: client.Configuration | null = null;
+  try {
+    config = await getGoogleConfig();
+  } catch (err) {
+    console.error("[auth] Google discovery failed:", err);
+    return;
+  }
   if (!config) {
     console.log("[auth] Google OAuth not configured (missing GOOGLE_CLIENT_ID/SECRET)");
     return;

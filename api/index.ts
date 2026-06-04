@@ -56,10 +56,13 @@ export default async function handler(req: Request, res: Response) {
     const app = await getApp();
     await runExpress(app, req, res);
   } catch (error) {
-    console.error("[api] unhandled error:", error);
+    const detail = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("[api] unhandled error:", detail, stack);
     if (!res.headersSent) {
       res.status(500).json({
         message: "Internal Server Error",
+        detail,
         hint: "Check Vercel logs, DATABASE_URL, SESSION_SECRET, and npm run db:push.",
       });
     }

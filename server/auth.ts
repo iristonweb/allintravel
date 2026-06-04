@@ -87,7 +87,16 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  await setupGoogleAuth(app);
+  try {
+    await Promise.race([
+      setupGoogleAuth(app),
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("Google OAuth setup timeout")), 10_000),
+      ),
+    ]);
+  } catch (err) {
+    console.error("[auth] Google OAuth setup skipped:", err);
+  }
 
   passport.use(
     new LocalStrategy(

@@ -6,6 +6,10 @@
   "outputDirectory": "dist/public",
   "rewrites": [
     {
+      "source": "/api/health",
+      "destination": "/api/health"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api"
     },
@@ -22,6 +26,10 @@
     "api/index.ts": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/health.ts": {
+      "maxDuration": 30,
+      "memory": 512
     }
   }
 }

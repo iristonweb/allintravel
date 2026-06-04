@@ -1,5 +1,5 @@
 import "dotenv/config";
-import type { Server } from "http";
+import { createServer, type Server } from "http";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { initAppStorage } from "./storage";
@@ -86,7 +86,14 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
 
   setupUploadRoutes(app);
   setupPushRoutes(app);
-  const server = await registerRoutes(app);
+
+  let server: Server;
+  try {
+    server = await registerRoutes(app);
+  } catch (error) {
+    console.error("[createApp] registerRoutes failed:", error);
+    server = createServer(app);
+  }
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     const e = err as { status?: number; statusCode?: number; message?: string };
