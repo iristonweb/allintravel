@@ -131,10 +131,11 @@ function SectionDivider() {
 export default function AppIconSidebar() {
   const [location] = useLocation();
 
-  const isActive = (href: string) =>
-    href === "/"
-      ? location === "/"
-      : location === href || location.startsWith(`${href}/`);
+  const isActive = (href: string) => {
+    if (href === "/") return location === "/";
+    if (href === "/profile") return location === "/profile";
+    return location === href || location.startsWith(`${href}/`);
+  };
 
   const extraItems: NavItemWithMeta[] = sidebarExtraNav.map((item) =>
     item.href === "/wallet" ? { ...item, badge: "Demo" } : item,

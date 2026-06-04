@@ -31,6 +31,7 @@ const pageTitles: Record<string, string> = {
   "/messages": "Сообщения",
   "/profile": "Профиль",
   "/profile/music": "Моя музыка",
+  "/music": "Моя музыка",
   "/places": "Места",
   "/events": "События",
   "/blog": "Блог",
@@ -85,8 +86,11 @@ export default function AppTopNav() {
     window.location.href = "/";
   };
 
-  const isActive = (href: string) =>
-    href === "/" ? location === "/" : location === href || location.startsWith(`${href}/`);
+  const isActive = (href: string) => {
+    if (href === "/") return location === "/";
+    if (href === "/profile") return location === "/profile";
+    return location === href || location.startsWith(`${href}/`);
+  };
 
   const pageTitle = resolvePageTitle(location);
 
@@ -197,20 +201,19 @@ export default function AppTopNav() {
                 {section.title}
               </p>
               {section.items.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-start",
-                      isActive(item.href) && "ait-nav-active text-white",
-                    )}
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {item.label}
-                    {item.href === "/wallet" && (
-                      <span className="ml-auto text-[10px] font-bold text-ait-orange">Demo</span>
-                    )}
-                  </Button>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={cn(
+                    "w-full inline-flex items-center justify-start rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-white/8 hover:text-white",
+                    isActive(item.href) && "ait-nav-active text-white bg-white/10",
+                  )}
+                >
+                  {item.label}
+                  {item.href === "/wallet" && (
+                    <span className="ml-auto text-[10px] font-bold text-ait-orange">Demo</span>
+                  )}
                 </Link>
               ))}
             </div>

@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation, Redirect } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { consumeSearchIntent } from "./lib/searchIntent";
@@ -89,11 +89,7 @@ function Router() {
           {isAuthenticated && <Route path="/profile/settings" component={ProfileSettings} />}
           {isAuthenticated && <Route path="/profile/friends" component={Friends} />}
           {isAuthenticated && <Route path="/profile/music" component={ProfileMusic} />}
-          {isAuthenticated && (
-            <Route path="/music">
-              <Redirect to="/profile/music" />
-            </Route>
-          )}
+          {isAuthenticated && <Route path="/music" component={ProfileMusic} />}
           {isAuthenticated && <Route path="/profile" component={Profile} />}
           {isAuthenticated && <Route path="/u/:username" component={UserPublicProfile} />}
           {isAuthenticated && <Route path="/friends" component={Friends} />}

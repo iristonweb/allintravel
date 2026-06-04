@@ -745,7 +745,7 @@ export function Chat() {
               <RoomAvatar
                 title={activeRoomMeta?.title ?? activeRoom}
                 avatarUrl={activeRoomMeta?.avatarUrl}
-                className="h-10 w-10"
+                className="h-12 w-12"
               />
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>

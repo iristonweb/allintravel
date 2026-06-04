@@ -46,10 +46,11 @@ const walletBadge = "Demo";
 export default function MobileBottomNav() {
   const [location] = useLocation();
 
-  const isActive = (href: string) =>
-    href === "/"
-      ? location === "/"
-      : location === href || location.startsWith(`${href}/`);
+  const isActive = (href: string) => {
+    if (href === "/") return location === "/";
+    if (href === "/profile") return location === "/profile";
+    return location === href || location.startsWith(`${href}/`);
+  };
 
   const ecosystemActive = mobileEcosystemNav.some((item) => isActive(item.href));
 
@@ -111,15 +112,15 @@ export default function MobileBottomNav() {
               const Icon = iconByHref[item.href] ?? MapPin;
               const badge = item.href === "/wallet" ? walletBadge : undefined;
               return (
-                <Link key={item.href} href={item.href}>
-                  <DropdownMenuItem className="cursor-pointer gap-2">
+                <DropdownMenuItem key={item.href} asChild>
+                  <Link href={item.href} className="cursor-pointer gap-2 flex items-center">
                     <Icon className="h-4 w-4 text-ait-purple" />
                     <span className="flex-1">{item.label}</span>
                     {badge && (
                       <span className="text-[10px] font-bold text-ait-orange">{badge}</span>
                     )}
-                  </DropdownMenuItem>
-                </Link>
+                  </Link>
+                </DropdownMenuItem>
               );
             })}
           </DropdownMenuContent>

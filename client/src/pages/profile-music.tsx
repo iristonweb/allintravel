@@ -69,7 +69,7 @@ export function ProfileMusic() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const { data: tracks = [], isLoading } = useQuery<UserTrack[]>({
+  const { data: tracks = [], isLoading, isError, error, refetch } = useQuery<UserTrack[]>({
     queryKey: ["/api/music/tracks"],
     enabled: isAuthenticated,
   });
@@ -336,6 +336,18 @@ export function ProfileMusic() {
         <div className="space-y-2">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Загрузка…</p>
+          ) : isError ? (
+            <Card className="border-destructive/40">
+              <CardContent className="p-6 text-center space-y-3">
+                <p className="text-sm text-destructive">Не удалось загрузить библиотеку</p>
+                <p className="text-xs text-muted-foreground">
+                  {error instanceof Error ? error.message : "Ошибка сервера"}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+                  Повторить
+                </Button>
+              </CardContent>
+            </Card>
           ) : tracks.length === 0 ? (
             <Card className="border-border/60">
               <CardContent className="p-8 text-center text-muted-foreground text-sm">

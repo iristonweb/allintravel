@@ -12,7 +12,7 @@ type RoomAvatarProps = {
 export default function RoomAvatar({
   title,
   avatarUrl,
-  className = "h-8 w-8",
+  className = "h-11 w-11",
   fallbackClassName,
 }: RoomAvatarProps) {
   const resolved = avatarUrl ? resolveMediaUrl(avatarUrl) : undefined;
@@ -37,10 +37,17 @@ export default function RoomAvatar({
           fallbackClassName,
         )}
       >
-        <span className={cn(className.includes("h-10") ? "text-sm" : "text-xs")}>{initial}</span>
+        <span
+          className={cn(
+            "leading-none",
+            className.includes("h-12") ? "text-base" : className.includes("h-11") ? "text-sm" : "text-xs",
+          )}
+        >
+          {initial}
+        </span>
       </div>
     );
   }
 
-  return <Hash className={cn("shrink-0 text-ait-purple opacity-70", className.includes("h-10") ? "h-5 w-5" : "h-4 w-4")} />;
+  return <Hash className={cn("shrink-0 text-ait-purple opacity-70", className.includes("h-12") ? "h-6 w-6" : className.includes("h-11") ? "h-5 w-5" : "h-4 w-4")} />;
 }

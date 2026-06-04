@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 type PresenceDotProps = {
   isOnline?: boolean;
@@ -32,15 +33,16 @@ export function AvatarWithPresence({
   src,
   fallback,
   isOnline,
-  className,
+  className = "h-12 w-12",
 }: AvatarWithPresenceProps) {
+  const resolvedSrc = resolveMediaUrl(src);
   return (
     <div className={cn("relative shrink-0", className)}>
-      <Avatar className={className}>
-        <AvatarImage src={src ?? undefined} />
+      <Avatar className={cn("h-full w-full", className)}>
+        <AvatarImage src={resolvedSrc} />
         <AvatarFallback>{fallback}</AvatarFallback>
       </Avatar>
-      <PresenceDot isOnline={isOnline} />
+      <PresenceDot isOnline={isOnline} className="h-3 w-3" />
     </div>
   );
 }

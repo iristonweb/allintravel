@@ -80,22 +80,22 @@ export default function HeaderQuickActions({
             ))
           )}
           <DropdownMenuSeparator className="bg-white/10" />
-          <Link href="/profile/friends">
-            <DropdownMenuItem className="cursor-pointer">
+          <DropdownMenuItem asChild>
+            <Link href="/profile/friends" className="cursor-pointer flex items-center">
               Заявки в друзья
               {friendRequestCount > 0 && (
                 <span className="ml-auto text-xs font-bold text-ait-orange">{friendRequestCount}</span>
               )}
-            </DropdownMenuItem>
-          </Link>
-          <Link href="/messages">
-            <DropdownMenuItem className="cursor-pointer">
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/messages" className="cursor-pointer flex items-center">
               Сообщения
               {unreadMessageCount > 0 && (
                 <span className="ml-auto text-xs font-bold text-ait-orange">{unreadMessageCount}</span>
               )}
-            </DropdownMenuItem>
-          </Link>
+            </Link>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
