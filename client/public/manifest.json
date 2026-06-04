@@ -4,7 +4,7 @@
   "description": "Интерактивный туристический справочник и социальная платформа для путешественников",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0e14",
+  "background_color": "#050816",
   "theme_color": "#8b5cf6",
   "lang": "ru",
   "icons": [

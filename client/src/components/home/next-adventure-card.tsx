@@ -1,53 +1,88 @@
-import GlassCard from "@/components/brand/glass-card";
+import { motion } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { MapPin, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import type { Trip } from "@shared/schema";
 
 type NextAdventureCardProps = {
   trip?: Trip | null;
+  premium?: boolean;
 };
 
 const DEMO = {
   title: "Исландия",
   days: 12,
+  locations: 8,
   progress: 60,
-  imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=600&q=80",
+  imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=800&q=85",
 };
 
-export default function NextAdventureCard({ trip }: NextAdventureCardProps) {
+export default function NextAdventureCard({ trip, premium }: NextAdventureCardProps) {
   const title = trip?.title ?? DEMO.title;
   const progress = trip ? 45 : DEMO.progress;
   const href = trip ? `/trips/${trip.id}` : "/trips";
 
-  return (
-    <Link href={href}>
-      <GlassCard strong className="overflow-hidden hover:scale-[1.01] transition-transform cursor-pointer">
-        <div
-          className="h-36 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('${DEMO.imageUrl}')`,
-          }}
-        />
-        <div className="p-5 space-y-3">
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Следующее приключение</div>
-          <h3 className="text-xl font-bold text-foreground">{title}</h3>
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>{DEMO.days} дней</span>
-            <span>{progress}% запланировано</span>
+  const Card = (
+    <div
+      className={
+        premium
+          ? "ait-glass-strong rounded-[28px] overflow-hidden ait-gradient-border shadow-2xl"
+          : "ait-glass rounded-2xl overflow-hidden"
+      }
+    >
+      <div
+        className={premium ? "h-44 bg-cover bg-center relative" : "h-36 bg-cover bg-center"}
+        style={{ backgroundImage: `url('${DEMO.imageUrl}')` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050816] to-transparent" />
+      </div>
+      <div className="p-6 space-y-4">
+        <div className="text-xs font-medium uppercase tracking-widest text-ait-purple">
+          Следующее приключение
+        </div>
+        <h3 className="text-2xl font-bold text-white">{title}</h3>
+        <div className="flex gap-4 text-sm text-slate-400">
+          <span className="flex items-center gap-1">
+            <Calendar className="h-4 w-4 text-ait-orange" />
+            {DEMO.days} дней
+          </span>
+          <span className="flex items-center gap-1">
+            <MapPin className="h-4 w-4 text-ait-cyan" />
+            {DEMO.locations} локаций
+          </span>
+        </div>
+        <div>
+          <div className="flex justify-between text-xs text-slate-400 mb-2">
+            <span>Планирование</span>
+            <span className="text-white font-medium">{progress}%</span>
           </div>
-          <Progress value={progress} className="h-2 bg-white/10 [&>div]:bg-ait-gradient-cta" />
-          <div className="flex -space-x-2 pt-1">
-            {[1, 2, 3].map((i) => (
-              <Avatar key={i} className="h-8 w-8 border-2 border-background">
-                <AvatarImage src={`https://i.pravatar.cc/80?img=${i + 10}`} />
-                <AvatarFallback>U{i}</AvatarFallback>
+          <Progress value={progress} className="h-2 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-[#8b5cf6] [&>div]:to-[#ff7a18]" />
+        </div>
+        <div className="flex items-center gap-3 pt-1">
+          <div className="flex -space-x-2">
+            {[11, 12, 13].map((i) => (
+              <Avatar key={i} className="h-9 w-9 border-2 border-[#081224]">
+                <AvatarImage src={`https://i.pravatar.cc/80?img=${i}`} />
+                <AvatarFallback>U</AvatarFallback>
               </Avatar>
             ))}
-            <span className="ml-2 text-xs text-muted-foreground self-center">+3 путешественника</span>
           </div>
+          <span className="text-xs text-slate-400">+3 в поездке</span>
         </div>
-      </GlassCard>
+      </div>
+    </div>
+  );
+
+  return (
+    <Link href={href}>
+      {premium ? (
+        <motion.div whileHover={{ y: -6, scale: 1.01 }} transition={{ type: "spring", stiffness: 300 }}>
+          {Card}
+        </motion.div>
+      ) : (
+        Card
+      )}
     </Link>
   );
 }

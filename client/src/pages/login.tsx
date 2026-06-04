@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import PremiumBackground from "@/components/premium/PremiumBackground";
+import AmbientBackground from "@/components/premium/AmbientBackground";
 import { Globe } from "lucide-react";
 import { useMemo } from "react";
 
@@ -20,8 +20,8 @@ export function Login() {
   }, [redirect]);
 
   return (
-    <PremiumBackground contentClassName="min-h-screen flex items-center justify-center px-4">
-      <Card className="w-full max-w-md ait-surface">
+    <AmbientBackground className="min-h-screen flex items-center justify-center px-4">
+      <Card className="w-full max-w-md ait-glass-strong ait-gradient-border">
         <CardHeader className="space-y-1 flex flex-row items-center gap-2">
           <Globe className="text-primary h-8 w-8" />
           <div>
@@ -79,7 +79,7 @@ export function Login() {
           </Button>
         </CardContent>
       </Card>
-    </PremiumBackground>
+    </AmbientBackground>
   );
 }
 

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Heart, MessageCircle, Share2, MapPin, Plus, Compass, Send, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, Plus, Compass, Send, Bookmark, Film, BookMarked, Sparkles } from "lucide-react";
 import GlassCard from "@/components/brand/glass-card";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ export function SocialFeed() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [feedMode, setFeedMode] = useState<"all" | "following" | "popular">("all");
+  const [contentFormat, setContentFormat] = useState<"feed" | "stories" | "reels" | "journals">("feed");
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -144,7 +145,33 @@ export function SocialFeed() {
           description="Лента путешественников — делитесь впечатлениями и вдохновляйтесь"
         />
 
-        <div className="flex gap-2 mt-6 mb-2 ait-glass rounded-full p-1 w-fit">
+        <div className="flex flex-wrap gap-2 mt-6 mb-4">
+          {(
+            [
+              { id: "feed", label: "Лента", icon: Sparkles },
+              { id: "stories", label: "Stories", icon: BookMarked },
+              { id: "reels", label: "Reels", icon: Film },
+              { id: "journals", label: "Journals", icon: Compass },
+            ] as const
+          ).map(({ id, label, icon: Icon }) => (
+            <Button
+              key={id}
+              size="sm"
+              variant={contentFormat === id ? "default" : "ghost"}
+              className={
+                contentFormat === id
+                  ? "rounded-full ait-btn-glow border-0 text-white"
+                  : "rounded-full ait-glass text-slate-400"
+              }
+              onClick={() => setContentFormat(id)}
+            >
+              <Icon className="h-4 w-4 mr-1" />
+              {label}
+            </Button>
+          ))}
+        </div>
+
+        <div className="flex gap-2 mb-2 ait-glass rounded-full p-1 w-fit">
           <Button
             variant={feedMode === "all" ? "default" : "ghost"}
             size="sm"

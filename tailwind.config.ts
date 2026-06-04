@@ -7,6 +7,7 @@ export default {
     extend: {
       fontFamily: {
         sans: [
+          "Plus Jakarta Sans",
           "Inter",
           "ui-sans-serif",
           "system-ui",
@@ -76,8 +77,14 @@ export default {
           ring: "var(--sidebar-ring)",
         },
         ait: {
+          void: "var(--ait-void)",
+          deep: "var(--ait-deep)",
           navy: "var(--ait-navy)",
           purple: "var(--ait-purple)",
+          violet: "var(--ait-violet)",
+          magenta: "var(--ait-magenta)",
+          orange: "var(--ait-orange)",
+          gold: "var(--ait-gold)",
           pink: "var(--ait-pink)",
           cyan: "var(--ait-cyan)",
           ocean: "var(--ait-ocean)",
@@ -91,6 +98,7 @@ export default {
       backgroundImage: {
         "ait-overlay": "var(--ait-overlay-gradient)",
         "ait-gradient-cta": "var(--ait-gradient-cta)",
+        "ait-gradient-brand": "var(--ait-gradient-brand)",
       },
       boxShadow: {
         "ait-glow": "var(--ait-glow-cyan)",

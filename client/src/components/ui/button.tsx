@@ -5,30 +5,30 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 will-change-transform [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-white/15 bg-transparent hover:bg-white/8 text-foreground rounded-xl",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-xl",
+        ghost: "hover:bg-white/8 hover:text-foreground rounded-xl",
         link: "text-primary underline-offset-4 hover:underline",
         premium:
-          "relative isolate rounded-[var(--ait-radius-button)] bg-ait-gradient-cta text-white shadow-ait-glow-purple transition-transform hover:shadow-ait-glow-strong hover:scale-[1.02] active:scale-[1.0]",
+          "ait-btn-glow rounded-2xl text-white border-0",
         glass:
-          "rounded-[var(--ait-radius-button)] border border-border bg-card/30 text-foreground backdrop-blur-[var(--ait-blur)] hover:bg-card/40 hover:border-border/80",
+          "ait-glass rounded-2xl text-foreground hover:bg-white/10",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-        cta: "h-11 px-5 py-3 text-[15px] font-medium",
+        default: "h-11 px-5 py-2",
+        sm: "h-9 rounded-xl px-4 text-xs",
+        lg: "h-12 rounded-2xl px-8",
+        icon: "h-11 w-11 rounded-xl",
+        cta: "h-12 px-8 py-3 text-[15px]",
       },
     },
     defaultVariants: {

@@ -25,14 +25,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 function BrandLogo() {
   return (
-    <Link href="/" className="flex items-center gap-2 shrink-0">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-ait-gradient-cta text-sm font-bold text-white shadow-ait-glow-purple">
-        X
+    <Link href="/" className="flex items-center gap-3 shrink-0 group">
+      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl ait-btn-glow text-sm font-bold text-white">
+        <span className="relative z-10">Ai</span>
       </div>
-      <span className="text-lg font-bold text-foreground hidden sm:inline">All In Travel</span>
+      <div className="hidden sm:block">
+        <span className="text-lg font-bold text-white tracking-tight block leading-tight">
+          All In Travel
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          Travel OS
+        </span>
+      </div>
     </Link>
   );
 }
@@ -54,18 +63,19 @@ export default function AppTopNav() {
   const notifCount = (notifications?.friendRequests ?? 0) + (notifications?.unreadMessages ?? 0);
 
   const centerNav = [
-    { href: "/", label: "Главная", icon: Home },
-    { href: "/map", label: "Карта", icon: Map },
-    { href: "/social-feed", label: "Сообщество", icon: Users },
-    { href: "/trips", label: "Планирование", icon: Calendar },
-    { href: "/blog", label: "Блог", icon: BookOpen },
+    { href: "/", label: "Главная" },
+    { href: "/map", label: "Карта" },
+    { href: "/social-feed", label: "Сообщество" },
+    { href: "/trips", label: "Планирование" },
+    { href: "/trips", label: "Маршруты", match: "/trips" },
+    { href: "/blog", label: "Блог" },
   ];
 
   const moreItems = [
     { href: "/places", label: "Места" },
     { href: "/events", label: "События" },
-    { href: "/chat", label: "Чат" },
     { href: "/friends", label: "Друзья" },
+    { href: "/chat", label: "Чаты" },
   ];
 
   const logout = async () => {
@@ -73,13 +83,16 @@ export default function AppTopNav() {
     window.location.href = "/";
   };
 
+  const isActive = (href: string) =>
+    href === "/" ? location === "/" : location === href || location.startsWith(`${href}/`);
+
   if (!isAuthenticated) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/60 backdrop-blur-xl">
-        <div className="container flex h-16 items-center justify-between px-4">
+      <header className="fixed top-0 z-50 w-full ait-glass-nav h-20">
+        <div className="max-w-7xl mx-auto flex h-20 items-center justify-between px-4 lg:px-8">
           <BrandLogo />
           <Link href="/login">
-            <Button variant="premium" size="sm">
+            <Button className="ait-btn-glow rounded-2xl border-0 text-white font-semibold px-6">
               Войти
             </Button>
           </Link>
@@ -89,83 +102,77 @@ export default function AppTopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/50 backdrop-blur-xl">
-      <div className="flex h-16 items-center justify-between gap-4 px-4 md:pl-[88px] md:pr-6">
+    <header className="fixed top-0 z-50 w-full ait-glass-nav h-20">
+      <div className="max-w-[1600px] mx-auto flex h-20 items-center gap-4 px-4 lg:px-8">
         <BrandLogo />
 
-        <nav className="hidden lg:flex items-center gap-1">
-          {centerNav.map((item) => {
-            const active =
-              item.href === "/"
-                ? location === "/"
-                : location === item.href || location.startsWith(`${item.href}/`);
-            return (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={
-                    active
-                      ? "text-foreground bg-white/8"
-                      : "text-muted-foreground hover:text-foreground"
-                  }
-                >
-                  {item.label}
-                </Button>
-              </Link>
-            );
-          })}
+        <nav className="hidden xl:flex items-center justify-center flex-1 gap-1">
+          {centerNav.map((item) => (
+            <Link key={`${item.href}-${item.label}`} href={item.href}>
+              <span
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all",
+                  isActive(item.href)
+                    ? "text-white ait-nav-active"
+                    : "text-slate-400 hover:text-white hover:bg-white/5",
+                )}
+              >
+                {item.label}
+              </span>
+            </Link>
+          ))}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
-                <MoreHorizontal className="h-4 w-4" />
-                Ещё
-              </Button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-1"
+              >
+                Ещё <MoreHorizontal className="h-4 w-4" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="ait-glass-strong">
+            <DropdownMenuContent align="center" className="ait-glass-strong border-white/10 min-w-[180px]">
               {moreItems.map((item) => (
                 <Link key={item.href} href={item.href}>
-                  <DropdownMenuItem>{item.label}</DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer">{item.label}</DropdownMenuItem>
                 </Link>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
 
-        <div className="flex items-center gap-2 ml-auto">
-          <Link href="/places">
-            <Button variant="ghost" size="icon" className="text-muted-foreground">
+        <div className="flex items-center gap-1 sm:gap-2 ml-auto">
+          <Link href="/map">
+            <Button variant="ghost" size="icon" className="rounded-xl text-slate-300 hover:text-white hover:bg-white/8 h-11 w-11">
               <Search className="h-5 w-5" />
             </Button>
           </Link>
           <Link href="/messages">
-            <Button variant="ghost" size="icon" className="relative text-muted-foreground">
+            <Button variant="ghost" size="icon" className="relative rounded-xl text-slate-300 hover:text-white hover:bg-white/8 h-11 w-11">
               <Bell className="h-5 w-5" />
               {notifCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
+                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-[#ff7a18] ring-2 ring-[#050816]" />
               )}
+            </Button>
+          </Link>
+          <Link href="/messages">
+            <Button variant="ghost" size="icon" className="rounded-xl text-slate-300 hover:text-white hover:bg-white/8 h-11 w-11 hidden sm:flex">
+              <MessageCircle className="h-5 w-5" />
             </Button>
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar className="h-8 w-8 border border-white/20">
+              <Button variant="ghost" className="rounded-2xl p-1 h-11 w-11 hover:bg-white/8">
+                <Avatar className="h-9 w-9 border-2 border-white/20 ait-neon-purple">
                   <AvatarImage src={user?.profileImageUrl ?? undefined} />
-                  <AvatarFallback className="bg-ait-purple/30 text-xs">
+                  <AvatarFallback className="bg-gradient-to-br from-[#8b5cf6] to-[#ff7a18] text-xs text-white">
                     {user?.firstName?.[0] ?? "U"}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="ait-glass-strong">
+            <DropdownMenuContent align="end" className="ait-glass-strong border-white/10">
               <Link href="/profile">
                 <DropdownMenuItem>Профиль</DropdownMenuItem>
-              </Link>
-              <Link href="/messages">
-                <DropdownMenuItem>
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  Сообщения
-                </DropdownMenuItem>
               </Link>
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -176,7 +183,7 @@ export default function AppTopNav() {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="xl:hidden rounded-xl h-11 w-11"
             onClick={() => setMenuOpen(!menuOpen)}
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -185,19 +192,19 @@ export default function AppTopNav() {
       </div>
 
       {menuOpen && (
-        <nav className="lg:hidden border-t border-border/60 px-4 py-3 flex flex-col gap-1 bg-background/95">
-          {[...centerNav, ...moreItems.map((i) => ({ ...i, icon: MoreHorizontal }))].map((item) => (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => setMenuOpen(false)}
-              >
+        <motion.nav
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="xl:hidden border-t border-white/10 px-4 py-4 flex flex-col gap-1 bg-[#050816]/95 backdrop-blur-xl"
+        >
+          {centerNav.map((item) => (
+            <Link key={`${item.href}-${item.label}`} href={item.href}>
+              <Button variant="ghost" className="w-full justify-start" onClick={() => setMenuOpen(false)}>
                 {item.label}
               </Button>
             </Link>
           ))}
-        </nav>
+        </motion.nav>
       )}
     </header>
   );

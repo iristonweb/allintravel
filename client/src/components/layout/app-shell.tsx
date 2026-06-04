@@ -1,7 +1,6 @@
 import AppTopNav from "@/components/layout/app-top-nav";
-import AppIconSidebar from "@/components/layout/app-icon-sidebar";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
-import PremiumBackground from "@/components/premium/PremiumBackground";
+import AmbientBackground from "@/components/premium/AmbientBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -9,7 +8,7 @@ import type { ReactNode } from "react";
 type AppShellProps = {
   children: ReactNode;
   fullWidth?: boolean;
-  hideSidebar?: boolean;
+  immersive?: boolean;
   className?: string;
   contentClassName?: string;
 };
@@ -17,29 +16,27 @@ type AppShellProps = {
 export default function AppShell({
   children,
   fullWidth,
-  hideSidebar,
+  immersive,
   className,
   contentClassName,
 }: AppShellProps) {
   const { isAuthenticated } = useAuth();
 
   return (
-    <PremiumBackground enableVideo={false} enableInteractive={!fullWidth}>
+    <AmbientBackground showOrbs={!immersive}>
       <div className="min-h-screen flex flex-col">
         <AppTopNav />
-        {isAuthenticated && !hideSidebar && <AppIconSidebar />}
         <div
           className={cn(
-            "flex-1",
-            isAuthenticated && !hideSidebar && "md:pl-[72px]",
-            isAuthenticated && "pb-20 md:pb-0",
+            "flex-1 pt-20",
+            isAuthenticated && !immersive && "pb-24 md:pb-8",
             className,
           )}
         >
           <main
             className={cn(
-              !fullWidth && "container mx-auto px-4 py-6",
-              fullWidth && "w-full px-0 py-0",
+              !fullWidth && !immersive && "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
+              (fullWidth || immersive) && "w-full",
               contentClassName,
             )}
           >
@@ -48,6 +45,6 @@ export default function AppShell({
         </div>
         {isAuthenticated && <MobileBottomNav />}
       </div>
-    </PremiumBackground>
+    </AmbientBackground>
   );
 }

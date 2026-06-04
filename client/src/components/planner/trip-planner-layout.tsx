@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import PlaceMap from "@/components/PlaceMap";
+import MapboxMap from "@/components/maps/MapboxMap";
 import GlassCard from "@/components/brand/glass-card";
 import GradientButton from "@/components/brand/gradient-button";
 import { Button } from "@/components/ui/button";
@@ -258,16 +258,13 @@ export default function TripPlannerLayout({
               )}
             </GlassCard>
 
-            <GlassCard className="p-0 overflow-hidden min-h-[400px]">
+            <GlassCard strong className="p-0 overflow-hidden min-h-[420px] ait-gradient-border">
               {routePlaces.length > 0 ? (
-                <PlaceMap
+                <MapboxMap
                   places={routePlaces}
                   showRoute
-                  numberedMarkers
-                  routeGlow
                   height="100%"
-                  className="h-full min-h-[400px] border-0 rounded-2xl"
-                  zoom={6}
+                  className="h-full min-h-[420px] rounded-[24px]"
                 />
               ) : (
                 <div className="flex items-center justify-center h-full min-h-[400px] text-muted-foreground">
@@ -329,8 +326,8 @@ export default function TripPlannerLayout({
             <strong>${budget}</strong> бюджет
           </span>
         </div>
-        <GradientButton onClick={handleOptimize} disabled={routePlaces.length < 2}>
-          Оптимизировать маршрут
+        <GradientButton onClick={handleOptimize} disabled={routePlaces.length < 2 || reorderMutation.isPending}>
+          {reorderMutation.isPending ? "Оптимизация…" : "Оптимизировать маршрут (AI)"}
         </GradientButton>
       </div>
     </div>

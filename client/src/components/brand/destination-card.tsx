@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 export type DestinationCardData = {
   id: string;
@@ -17,30 +18,33 @@ type DestinationCardProps = {
 
 export default function DestinationCard({ destination, className, onClick }: DestinationCardProps) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
+      whileHover={{ scale: 1.04, y: -4 }}
       className={cn(
-        "flex-shrink-0 w-[200px] rounded-2xl overflow-hidden ait-glass text-left transition-transform hover:scale-[1.02]",
+        "flex-shrink-0 w-[220px] rounded-[24px] overflow-hidden text-left ait-glass-strong ait-gradient-border",
         className,
       )}
     >
       <div
-        className="h-28 bg-cover bg-center"
+        className="h-32 bg-cover bg-center relative"
         style={{ backgroundImage: `url('${destination.imageUrl}')` }}
-      />
-      <div className="p-3">
-        <div className="font-semibold text-foreground">{destination.name}</div>
-        <div className="flex items-center justify-between mt-1 text-xs text-muted-foreground">
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050816] to-transparent" />
+      </div>
+      <div className="p-4">
+        <div className="font-semibold text-white text-lg">{destination.name}</div>
+        <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
           {destination.placesCount != null && <span>{destination.placesCount} мест</span>}
           {destination.rating != null && (
-            <span className="flex items-center gap-0.5 text-amber-400">
+            <span className="flex items-center gap-0.5 text-ait-gold">
               <Star className="h-3 w-3 fill-current" />
               {destination.rating}
             </span>
           )}
         </div>
       </div>
-    </button>
+    </motion.button>
   );
 }

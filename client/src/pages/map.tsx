@@ -1,46 +1,39 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
 import AppLayout from "@/components/app-layout";
 import InteractiveMap from "@/components/interactive-map";
-import DestinationCard, { type DestinationCardData } from "@/components/brand/destination-card";
-import { Input } from "@/components/ui/input";
+import DestinationCard from "@/components/brand/destination-card";
 import { Search } from "lucide-react";
 import type { Place } from "@shared/schema";
 
-const showcaseDestinations: DestinationCardData[] = [
+const showcaseDestinations = [
   {
     id: "bali",
     name: "Бали",
-    imageUrl: "https://images.unsplash.com/photo-1537996195241-795aa0a07e0f?w=400&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1537996195241-795aa0a07e0f?w=500&q=85",
     placesCount: 342,
     rating: 4.8,
   },
   {
     id: "iceland",
     name: "Исландия",
-    imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=400&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=500&q=85",
     placesCount: 128,
     rating: 4.9,
   },
   {
-    id: "peru",
-    name: "Перу",
-    imageUrl: "https://images.unsplash.com/photo-1587595431973-160d0d94add1?w=400&q=80",
-    placesCount: 89,
-    rating: 4.7,
-  },
-  {
-    id: "italy",
-    name: "Италия",
-    imageUrl: "https://images.unsplash.com/photo-1516483638264-f4dbaf3a0e3a?w=400&q=80",
-    placesCount: 512,
+    id: "norway",
+    name: "Норвегия",
+    imageUrl: "https://images.unsplash.com/photo-1518837695005-2083099ee35b?w=500&q=85",
+    placesCount: 96,
     rating: 4.8,
   },
   {
     id: "japan",
     name: "Япония",
-    imageUrl: "https://images.unsplash.com/photo-1493976040374-85c8e912f437?w=400&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1493976040374-85c8e912f437?w=500&q=85",
     placesCount: 276,
     rating: 4.9,
   },
@@ -68,39 +61,42 @@ export function MapPage() {
     }));
 
   return (
-    <AppLayout fullWidth>
-      <div className="relative flex flex-col h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
-        <div className="absolute top-0 left-0 right-0 z-[1001] p-4 md:pl-4 space-y-3 pointer-events-none">
-          <div className="pointer-events-auto max-w-3xl mx-auto md:mx-0 md:ml-0">
-            <h1 className="text-2xl font-bold text-foreground drop-shadow-lg">
+    <AppLayout fullWidth immersive contentClassName="p-0">
+      <div className="relative h-[calc(100vh-5rem)] min-h-[600px]">
+        <div className="absolute top-4 left-4 right-4 z-[1001] pointer-events-none">
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="pointer-events-auto max-w-2xl"
+          >
+            <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg mb-3">
               Интерактивная карта
             </h1>
-            <div className="relative mt-2 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
+            <div className="ait-glass-strong rounded-2xl flex items-center gap-3 px-4 py-3 max-w-md">
+              <Search className="h-5 w-5 text-ait-purple shrink-0" />
+              <input
                 placeholder="Куда вы хотите?"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 ait-glass-strong border-white/10 bg-background/80"
+                className="flex-1 bg-transparent border-0 outline-none text-sm text-white placeholder:text-slate-500"
               />
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        <div className="flex-1 min-h-0 relative">
-          <InteractiveMap
-            places={mapPlaces}
-            fullHeight
-            onPlaceClick={(place) => navigate(`/place/${place.id}`)}
-          />
-        </div>
+        <InteractiveMap
+          places={mapPlaces}
+          fullHeight
+          onPlaceClick={(place) => navigate(`/place/${place.id}`)}
+        />
 
-        <div className="absolute bottom-20 md:bottom-4 left-0 right-0 z-[1001] px-4 pointer-events-none">
-          <div className="pointer-events-auto flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+        <div className="absolute bottom-24 md:bottom-8 left-0 right-0 z-[1001] px-4 pointer-events-none">
+          <div className="pointer-events-auto flex gap-4 overflow-x-auto pb-2 snap-x">
             {showcaseDestinations.map((d) => (
               <DestinationCard
                 key={d.id}
                 destination={d}
+                className="snap-start"
                 onClick={() => navigate("/places")}
               />
             ))}

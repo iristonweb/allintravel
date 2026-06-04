@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import PlaceMap, { type MapPlace } from "@/components/PlaceMap";
+import MapboxMap, { type MapboxPlace } from "@/components/maps/MapboxMap";
 import { cn } from "@/lib/utils";
 
 interface InteractiveMapProps {
-  places: MapPlace[];
-  onPlaceClick?: (place: MapPlace) => void;
+  places: MapboxPlace[];
+  onPlaceClick?: (place: MapboxPlace) => void;
   fullHeight?: boolean;
 }
 
@@ -26,8 +26,8 @@ export function InteractiveMap({ places = [], onPlaceClick, fullHeight }: Intera
   );
 
   return (
-    <div className={cn("relative w-full", fullHeight && "h-full")}>
-      <div className="absolute top-24 left-4 z-[1000] flex flex-wrap gap-2 max-w-[90%]">
+    <div className={cn("relative w-full", fullHeight && "h-full min-h-[500px]")}>
+      <div className="absolute top-28 left-4 z-[1000] flex flex-wrap gap-2 max-w-[90%]">
         {placeTypes.map((type) => (
           <Button
             key={type}
@@ -35,22 +35,21 @@ export function InteractiveMap({ places = [], onPlaceClick, fullHeight }: Intera
             variant={filterType === type ? "default" : "secondary"}
             onClick={() => setFilterType(type)}
             className={cn(
-              "rounded-full text-xs",
+              "rounded-full text-xs font-medium",
               filterType === type
-                ? "bg-ait-gradient-cta text-white border-0 hover:opacity-90"
-                : "ait-glass border-white/10 bg-background/60",
+                ? "ait-btn-glow border-0 text-white"
+                : "ait-glass border-white/10 bg-transparent text-slate-300 hover:text-white",
             )}
           >
             {typeLabels[type]}
           </Button>
         ))}
       </div>
-      <PlaceMap
+      <MapboxMap
         places={filteredPlaces}
-        height={fullHeight ? "100%" : "24rem"}
+        height={fullHeight ? "100%" : "28rem"}
         onPlaceClick={onPlaceClick}
-        className={cn(fullHeight && "rounded-none border-0 h-full")}
-        glowMarkers
+        className={cn(fullHeight && "h-full min-h-[calc(100vh-5rem)] rounded-none")}
       />
     </div>
   );

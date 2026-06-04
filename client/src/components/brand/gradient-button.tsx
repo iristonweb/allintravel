@@ -1,30 +1,55 @@
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ButtonHTMLAttributes } from "react";
+import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 
-type GradientButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type GradientButtonProps = {
   outline?: boolean;
+  className?: string;
+  children?: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
 };
 
-export default function GradientButton({ className, outline, children, ...props }: GradientButtonProps) {
+export default function GradientButton({
+  className,
+  outline,
+  children,
+  onClick,
+  disabled,
+  type = "button",
+}: GradientButtonProps) {
   if (outline) {
     return (
-      <Button
-        variant="outline"
+      <motion.button
+        type={type}
+        disabled={disabled}
+        onClick={onClick}
         className={cn(
-          "rounded-[var(--ait-radius-button)] border-white/20 bg-transparent text-foreground hover:bg-white/5",
+          "rounded-2xl px-8 py-4 text-base font-semibold text-white ait-glass border border-white/20 hover:bg-white/10 transition-colors disabled:opacity-50",
           className,
         )}
-        {...props}
+        whileHover={disabled ? undefined : { scale: 1.02 }}
+        whileTap={disabled ? undefined : { scale: 0.98 }}
       >
         {children}
-      </Button>
+      </motion.button>
     );
   }
 
   return (
-    <Button variant="premium" size="cta" className={className} {...props}>
+    <motion.button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "ait-btn-glow rounded-2xl px-8 py-4 text-base font-semibold text-white disabled:opacity-50",
+        className,
+      )}
+      whileHover={disabled ? undefined : { scale: 1.02 }}
+      whileTap={disabled ? undefined : { scale: 0.98 }}
+    >
       {children}
-    </Button>
+    </motion.button>
   );
 }

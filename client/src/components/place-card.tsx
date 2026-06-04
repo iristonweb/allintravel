@@ -27,7 +27,7 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
       : place.averageRating || 0;
 
   return (
-    <Card className="group overflow-hidden rounded-[20px] border-border/70 bg-card/50 transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(0,0,0,0.12)]">
+    <Card className="group overflow-hidden ait-gradient-border transition-all hover:-translate-y-1 hover:shadow-[var(--ait-glow-purple)]">
       <div className="relative">
         <img
           src={place.imageUrl || `https://images.unsplash.com/photo-1551632811-561732d1e306?w=400&h=200&fit=crop`}
