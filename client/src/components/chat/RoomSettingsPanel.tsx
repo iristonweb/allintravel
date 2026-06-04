@@ -14,6 +14,7 @@ import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user
 import type { ChatRoom, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { CHAT_BACKGROUND_PRESETS, type ChatBackgroundId } from "@/lib/chat-backgrounds";
 
 type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null };
 
@@ -55,10 +56,15 @@ export default function RoomSettingsPanel({
   );
   const [memberSearch, setMemberSearch] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [chatBackground, setChatBackground] = useState<ChatBackgroundId>(
+    (room.settings?.chatBackground as ChatBackgroundId) ?? "default",
+  );
 
-  const isAdmin = room.myRole === "admin" || room.myRole === "owner";
-  const isOwner = room.myRole === "owner";
-  const isMember = room.myRole != null;
+  const effectiveRole =
+    room.myRole ?? (room.createdBy && room.createdBy === currentUserId ? "owner" : null);
+  const isAdmin = effectiveRole === "admin" || effectiveRole === "owner";
+  const isOwner = effectiveRole === "owner";
+  const isMember = effectiveRole != null;
 
   const membersKey = [`/api/chat/rooms/${room.id}/members`] as const;
 
@@ -79,7 +85,7 @@ export default function RoomSettingsPanel({
   };
 
   const updateRoomMutation = useMutation({
-    mutationFn: async (patch: Partial<ChatRoom>) => {
+    mutationFn: async (patch: Partial<ChatRoom> & { settings?: ChatRoom["settings"] }) => {
       const res = await apiRequest("PATCH", `/api/chat/rooms/${room.id}`, patch);
       return (await res.json()) as ChatRoom;
     },
@@ -182,6 +188,7 @@ export default function RoomSettingsPanel({
       title: editTitle.trim(),
       description: editDescription.trim() || undefined,
       visibility: editVisibility,
+      settings: { ...room.settings, chatBackground },
     });
   };
 
@@ -189,7 +196,7 @@ export default function RoomSettingsPanel({
   const addCandidates = searchResults.filter((u) => u.id && !memberUserIds.has(u.id));
 
   return (
-    <div className="px-4 pb-4 border-b border-border/40 text-sm space-y-4 max-h-[min(70vh,520px)] overflow-y-auto">
+    <div className="px-4 pb-6 pt-2 text-sm space-y-4">
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
           {room.avatarUrl ? (
@@ -234,7 +241,7 @@ export default function RoomSettingsPanel({
           <p className="text-xs text-muted-foreground mt-0.5">
             {room.memberCount ?? members.length} участников ·{" "}
             {room.visibility === "private" ? "Закрытая" : "Открытая"}
-            {room.myRole && ` · ${roleLabels[room.myRole] ?? room.myRole}`}
+            {effectiveRole && ` · ${roleLabels[effectiveRole] ?? effectiveRole}`}
           </p>
         </div>
       </div>
@@ -283,6 +290,29 @@ export default function RoomSettingsPanel({
               <Lock className="h-3.5 w-3.5 mr-1" />
               Закрытая
             </Button>
+          </div>
+          <div>
+            <Label className="text-xs">Фон чата</Label>
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              {CHAT_BACKGROUND_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  title={preset.label}
+                  onClick={() => setChatBackground(preset.id)}
+                  className={cn(
+                    "aspect-square rounded-xl border-2 transition-all",
+                    chatBackground === preset.id
+                      ? "border-ait-purple ring-2 ring-ait-purple/30 scale-[1.02]"
+                      : "border-transparent hover:border-white/20",
+                  )}
+                  style={{ background: preset.preview }}
+                />
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              {CHAT_BACKGROUND_PRESETS.find((p) => p.id === chatBackground)?.label ?? "Стандарт"}
+            </p>
           </div>
           <Button
             size="sm"
@@ -401,7 +431,7 @@ export default function RoomSettingsPanel({
         )}
       </div>
 
-      {isMember && room.myRole !== "owner" && (
+      {isMember && effectiveRole !== "owner" && (
         <Button
           variant="outline"
           size="sm"

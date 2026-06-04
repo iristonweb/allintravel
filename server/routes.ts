@@ -1012,7 +1012,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     slug: z.string().max(100).optional(),
   });
 
+  const patchRoomSchema = createRoomSchema.partial().extend({
+    settings: z
+      .object({
+        slowModeSeconds: z.number().int().min(0).max(3600).optional(),
+        whoCanInvite: z.enum(["everyone", "admins"]).optional(),
+        whoCanPost: z.enum(["everyone", "members"]).optional(),
+        autoJoinOnPost: z.boolean().optional(),
+        chatBackground: z
+          .enum(["default", "aurora", "ocean", "sunset", "forest", "midnight", "lavender"])
+          .optional(),
+      })
+      .optional(),
+  });
+
   const isRoomAdmin = async (roomId: string, userId: string) => {
+    const room = await storage.getChatRoom(roomId);
+    if (room?.createdBy === userId) return true;
     const m = await storage.getChatRoomMember(roomId, userId);
     return m?.status === "active" && (m.role === "admin" || m.role === "owner");
   };
@@ -1073,7 +1089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!(await isRoomAdmin(req.params.id, userId))) {
         return res.status(403).json({ message: "Admin only" });
       }
-      const patch = createRoomSchema.partial().parse(req.body);
+      const patch = patchRoomSchema.parse(req.body);
       const room = await storage.updateChatRoom(req.params.id, patch);
       res.json(room);
     } catch (error) {

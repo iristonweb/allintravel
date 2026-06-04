@@ -6,6 +6,13 @@ import ChatMessageRow from "@/components/chat/ChatMessageRow";
 import { Button } from "@/components/ui/button";
 import MessageComposer from "@/components/chat/MessageComposer";
 import RoomSettingsPanel from "@/components/chat/RoomSettingsPanel";
+import { getChatBackgroundClass } from "@/lib/chat-backgrounds";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -26,7 +33,7 @@ import {
   Plus,
   Lock,
   Globe,
-  Info,
+  Settings,
   Pin,
   Camera,
 } from "lucide-react";
@@ -313,7 +320,11 @@ export function Chat() {
   const pinnedMessages = allMessages.filter((m) => m.id && pinnedIds.includes(m.id));
   const threadMessages = allMessages.filter((m) => !m.id || !pinnedIds.includes(m.id));
   const myRole = (activeRoomMeta as RoomListItem | undefined)?.myRole;
-  const isRoomAdmin = myRole === "admin" || myRole === "owner";
+  const isRoomAdmin =
+    myRole === "admin" ||
+    myRole === "owner" ||
+    activeRoomMeta?.createdBy === user?.id;
+  const chatBgClass = getChatBackgroundClass(activeRoomMeta?.settings?.chatBackground);
   const canSend = useHttpMode ? !postMessage.isPending : wsConnected;
 
   const handleSend = async (contentOverride?: string) => {
@@ -588,20 +599,36 @@ export function Chat() {
                   {activeRoomMeta?.description ?? "Групповое обсуждение"}
                 </p>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => setShowRoomInfo((v) => !v)}>
-                <Info className="h-4 w-4" />
+              <Button
+                size="icon"
+                variant="ghost"
+                title="Настройки комнаты"
+                onClick={() => setShowRoomInfo(true)}
+              >
+                <Settings className="h-4 w-4" />
               </Button>
             </div>
-            {showRoomInfo && activeRoomMeta && (
-              <RoomSettingsPanel
-                room={activeRoomMeta as RoomListItem}
-                currentUserId={user?.id}
-                onClose={() => setShowRoomInfo(false)}
-                onLeft={() => setActiveRoom("general")}
-              />
-            )}
 
-            <ScrollArea className="flex-1 p-4 ait-chat-thread">
+            <Sheet open={showRoomInfo} onOpenChange={setShowRoomInfo}>
+              <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0">
+                <SheetHeader className="p-4 pb-0">
+                  <SheetTitle>Настройки комнаты</SheetTitle>
+                </SheetHeader>
+                {activeRoomMeta && (
+                  <RoomSettingsPanel
+                    room={activeRoomMeta as RoomListItem}
+                    currentUserId={user?.id}
+                    onClose={() => setShowRoomInfo(false)}
+                    onLeft={() => {
+                      setShowRoomInfo(false);
+                      setActiveRoom("general");
+                    }}
+                  />
+                )}
+              </SheetContent>
+            </Sheet>
+
+            <ScrollArea className={cn("flex-1 p-4", chatBgClass)}>
               {allMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                   <MessageCircle className="h-10 w-10 mb-3 opacity-40" />

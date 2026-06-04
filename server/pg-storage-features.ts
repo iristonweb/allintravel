@@ -533,9 +533,18 @@ export async function updateChatRoomDb(
   id: string,
   patch: Partial<Pick<ChatRoom, "title" | "description" | "avatarUrl" | "visibility" | "settings">>,
 ): Promise<ChatRoom> {
+  let nextPatch = patch;
+  if (patch.settings) {
+    const [existing] = await db.select().from(chatRooms).where(eq(chatRooms.id, id)).limit(1);
+    if (!existing) throw new Error("Room not found");
+    nextPatch = {
+      ...patch,
+      settings: { ...(existing.settings ?? {}), ...patch.settings },
+    };
+  }
   const [row] = await db
     .update(chatRooms)
-    .set({ ...patch, updatedAt: new Date() })
+    .set({ ...nextPatch, updatedAt: new Date() })
     .where(eq(chatRooms.id, id))
     .returning();
   if (!row) throw new Error("Room not found");

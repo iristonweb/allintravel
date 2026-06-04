@@ -347,6 +347,55 @@
     );
   }
 
+  .ait-chat-bg-aurora {
+    background: linear-gradient(
+      180deg,
+      rgba(49, 46, 129, 0.35) 0%,
+      rgba(15, 23, 42, 0.15) 45%,
+      rgba(6, 78, 59, 0.25) 100%
+    );
+  }
+
+  .ait-chat-bg-ocean {
+    background: linear-gradient(
+      180deg,
+      rgba(12, 74, 110, 0.4) 0%,
+      rgba(8, 47, 73, 0.2) 50%,
+      rgba(15, 23, 42, 0.1) 100%
+    );
+  }
+
+  .ait-chat-bg-sunset {
+    background: linear-gradient(
+      180deg,
+      rgba(124, 45, 18, 0.35) 0%,
+      rgba(67, 20, 7, 0.2) 40%,
+      rgba(30, 27, 75, 0.25) 100%
+    );
+  }
+
+  .ait-chat-bg-forest {
+    background: linear-gradient(
+      180deg,
+      rgba(20, 83, 45, 0.35) 0%,
+      rgba(5, 46, 22, 0.2) 50%,
+      rgba(15, 23, 42, 0.1) 100%
+    );
+  }
+
+  .ait-chat-bg-midnight {
+    background: linear-gradient(180deg, rgba(30, 27, 75, 0.45) 0%, rgba(2, 6, 23, 0.2) 100%);
+  }
+
+  .ait-chat-bg-lavender {
+    background: linear-gradient(
+      180deg,
+      rgba(88, 28, 135, 0.4) 0%,
+      rgba(59, 7, 100, 0.25) 50%,
+      rgba(30, 27, 75, 0.15) 100%
+    );
+  }
+
   .ait-chat-list-item {
     @apply rounded-2xl mx-2 my-0.5 px-3 py-3 transition-all duration-200;
   }

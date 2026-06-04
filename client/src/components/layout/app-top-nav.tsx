@@ -19,6 +19,7 @@ import {
   scrollToAnchor,
 } from "@/lib/nav-config";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
+import HeaderQuickActions from "@/components/layout/header-quick-actions";
 
 const pageTitles: Record<string, string> = {
   "/": "Главная",
@@ -153,14 +154,17 @@ export default function AppTopNav() {
             </span>
           )}
 
-          <AvatarHubMenu
-            user={user ?? null}
+          <HeaderQuickActions
             unreadItems={unreadItems}
             notifCount={notifCount}
             friendRequestCount={friendRequestCount}
             unreadMessageCount={unreadMessageCount}
-            hasUnreadBadge={hasUnreadBadge}
             onMarkReadAndGo={markReadAndGo}
+          />
+
+          <AvatarHubMenu
+            user={user ?? null}
+            hasUnreadBadge={hasUnreadBadge}
             onLogout={logout}
           />
 

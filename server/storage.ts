@@ -1433,7 +1433,15 @@ export class MemStorage implements IStorage {
   ): Promise<ChatRoom> {
     const room = this.memChatRooms.get(id);
     if (!room) throw new Error("Room not found");
-    const updated = { ...room, ...patch, updatedAt: new Date() };
+    const mergedSettings = patch.settings
+      ? { ...(room.settings ?? {}), ...patch.settings }
+      : patch.settings;
+    const updated = {
+      ...room,
+      ...patch,
+      ...(mergedSettings !== undefined ? { settings: mergedSettings } : {}),
+      updatedAt: new Date(),
+    };
     this.memChatRooms.set(id, updated);
     return updated;
   }

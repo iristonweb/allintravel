@@ -56,15 +56,22 @@ function NavItem({
     <Link href={item.href}>
       <span
         className={cn(
-          "relative flex h-11 w-full items-center gap-3 rounded-xl px-3 transition-colors",
+          "relative flex h-11 w-full items-center gap-3 rounded-xl px-2.5 transition-colors",
           active
-            ? "text-white bg-white/10"
-            : "text-muted-foreground group-hover/sidebar:hover:bg-white/5 group-hover/sidebar:hover:text-foreground",
+            ? "text-white bg-white/12 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+            : "text-slate-300 hover:bg-white/8 hover:text-white group-hover/sidebar:hover:bg-white/8 group-hover/sidebar:hover:text-white",
           active &&
-            "before:absolute before:left-1 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-1 before:rounded-full before:bg-ait-purple before:content-['']",
+            "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-7 before:w-1 before:rounded-full before:bg-ait-purple before:content-['']",
         )}
       >
-        <Icon className="h-5 w-5 shrink-0" aria-hidden />
+        <span
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors",
+            active ? "bg-ait-purple/25 text-white" : "bg-white/[0.07] text-slate-200",
+          )}
+        >
+          <Icon className="h-[18px] w-[18px]" aria-hidden />
+        </span>
         <span
           className={cn(
             "min-w-0 flex-1 truncate text-sm font-medium",
@@ -137,8 +144,8 @@ export default function AppIconSidebar() {
     <aside
       className={cn(
         "group/sidebar hidden md:flex fixed left-0 top-20 z-40 flex-col",
-        "h-[calc(100vh-var(--ait-header-h,5rem))] border-r border-border/60",
-        "bg-background/95 backdrop-blur-xl py-3 overflow-y-auto overflow-x-hidden overscroll-contain",
+        "h-[calc(100vh-var(--ait-header-h,5rem))] border-r border-white/10",
+        "bg-[#070b14]/98 backdrop-blur-xl py-3 overflow-y-auto overflow-x-hidden overscroll-contain",
         "w-[72px] hover:w-[220px] focus-within:w-[220px]",
         "hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]",
         "transition-[width,box-shadow] duration-200 ease-out",

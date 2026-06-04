@@ -257,6 +257,7 @@ export const chatRooms = pgTable(
       whoCanInvite?: "everyone" | "admins";
       whoCanPost?: "everyone" | "members";
       autoJoinOnPost?: boolean;
+      chatBackground?: string;
     }>(),
     isLegacy: boolean("is_legacy").default(false),
     createdAt: timestamp("created_at").defaultNow(),

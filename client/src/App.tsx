@@ -85,11 +85,11 @@ function Router() {
           {isAuthenticated && <Route path="/blog/:id" component={BlogPostPage} />}
           {isAuthenticated && <Route path="/place/:id" component={PlaceDetails} />}
           {isAuthenticated && <Route path="/places" component={Places} />}
-          {isAuthenticated && <Route path="/profile" component={Profile} />}
           {isAuthenticated && <Route path="/profile/edit" component={ProfileEdit} />}
           {isAuthenticated && <Route path="/profile/settings" component={ProfileSettings} />}
           {isAuthenticated && <Route path="/profile/friends" component={Friends} />}
           {isAuthenticated && <Route path="/profile/music" component={ProfileMusic} />}
+          {isAuthenticated && <Route path="/profile" component={Profile} />}
           {isAuthenticated && <Route path="/u/:username" component={UserPublicProfile} />}
           {isAuthenticated && <Route path="/friends" component={Friends} />}
           {isAuthenticated && <Route path="/messages" component={Messages} />}
