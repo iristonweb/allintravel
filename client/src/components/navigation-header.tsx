@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,7 +155,7 @@ function NavigationHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.profileImageUrl || ""} alt={user?.firstName || ""} />
+                  <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} alt={user?.firstName || ""} />
                   <AvatarFallback>
                     {user?.firstName?.[0] || user?.email?.[0] || "?"}
                   </AvatarFallback>
@@ -218,7 +219,7 @@ function NavigationHeader() {
             <div className="flex items-center justify-between pt-4 border-t border-border">
               <div className="flex items-center space-x-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.profileImageUrl || ""} alt={user?.firstName || ""} />
+                  <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} alt={user?.firstName || ""} />
                   <AvatarFallback>
                     {user?.firstName?.[0] || user?.email?.[0] || "?"}
                   </AvatarFallback>

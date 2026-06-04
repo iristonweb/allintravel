@@ -30,7 +30,7 @@ export function RequireLogin() {
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Link href={loginHref}>
-              <Button className="bg-primary hover:bg-primary/90">Войти</Button>
+              <Button variant="premium">Войти</Button>
             </Link>
             <Link href="/">
               <Button variant="outline">На главную</Button>

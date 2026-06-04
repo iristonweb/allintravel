@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import InteractiveMap from "@/components/interactive-map";
 import DestinationCard from "@/components/brand/destination-card";
 import GlassCard from "@/components/brand/glass-card";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
 import { homeDaysFromWaypoints, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
+import { fetchBuiltRoute } from "@/lib/fetch-route";
 
 const showcaseDestinations = [
   {
@@ -194,6 +196,15 @@ function RouteMapPanel({
       ? day.routePlaces
       : fallbackRoute.filter((p) => (day?.routeIds ?? []).includes(p.id));
 
+  const points = routePlaces.map((p) => ({ lat: p.latitude, lon: p.longitude }));
+
+  const { data: builtRoute } = useQuery({
+    queryKey: ["home-route", points],
+    enabled: points.length >= 2,
+    queryFn: () => fetchBuiltRoute(points, "walking"),
+    staleTime: 120_000,
+  });
+
   return (
     <GlassCard
       strong
@@ -202,6 +213,7 @@ function RouteMapPanel({
       <TravelMap
         places={routePlaces.length > 0 ? routePlaces : fallbackRoute}
         showRoute
+        routeGeometry={builtRoute?.geometry}
         height="100%"
         className="h-full min-h-[480px] rounded-[24px]"
       />

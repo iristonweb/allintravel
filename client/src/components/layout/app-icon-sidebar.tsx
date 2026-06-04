@@ -149,7 +149,11 @@ function SectionDivider() {
   );
 }
 
-export default function AppIconSidebar() {
+type AppIconSidebarProps = {
+  minimalChrome?: boolean;
+};
+
+export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
   const [location] = useLocation();
   const { user } = useAuth();
 
@@ -173,11 +177,12 @@ export default function AppIconSidebar() {
     <aside
       className={cn(
         "group/sidebar hidden md:flex fixed left-0 top-20 z-40 flex-col",
-        "h-[calc(100vh-var(--ait-header-h,5rem))] border-r border-white/10",
-        "bg-[#070b14]/98 backdrop-blur-xl py-3 overflow-y-auto overflow-x-hidden overscroll-contain",
+        "h-[calc(100vh-var(--ait-header-h,5rem))] py-3 overflow-y-auto overflow-x-hidden overscroll-contain",
         "w-[72px] hover:w-[220px] focus-within:w-[220px]",
-        "hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]",
         "transition-[width,box-shadow] duration-200 ease-out",
+        minimalChrome
+          ? "ait-chrome-minimal-sidebar"
+          : "border-r border-white/10 bg-[#070b14]/98 backdrop-blur-xl hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]",
       )}
       aria-label="Основная навигация"
     >

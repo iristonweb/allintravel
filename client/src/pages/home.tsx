@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import AitDailyPulse from "@/components/ait/AitDailyPulse";
+import StoriesStrip from "@/components/feed/StoriesStrip";
 import { useToast } from "@/hooks/use-toast";
 import type { Place, Trip, Event, TripWaypointWithPlace } from "@shared/schema";
 import { motion } from "framer-motion";
@@ -88,6 +89,7 @@ export function Home() {
           </h2>
           <HomeQuickActions />
           {isAuthenticated && <AitDailyPulse />}
+          {isAuthenticated && <StoriesStrip compact title="Stories" />}
         </motion.section>
 
         {isAuthenticated && (
@@ -95,9 +97,10 @@ export function Home() {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="hidden md:block max-w-xl"
+            className="hidden md:block space-y-4 max-w-xl"
           >
             <AitDailyPulse />
+            <StoriesStrip compact title="Stories" />
           </motion.section>
         )}
 

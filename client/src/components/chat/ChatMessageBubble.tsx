@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import MessageReactionBar from "@/components/chat/MessageReactionBar";
 import MessageStatusTicks from "@/components/chat/MessageStatusTicks";
+import { QUICK_REACTION_EMOJIS } from "@/lib/message-reactions";
 import type { MessageDeliveryStatus, ReactionSummary } from "@shared/schema";
 
 const MENTION_LINK_RE = /@([a-zA-Z0-9_]{3,30})/g;
@@ -199,6 +200,28 @@ export default function ChatMessageBubble({
           disabled={reacting}
           className={isOwn ? "justify-end" : "justify-start"}
         />
+      )}
+
+      {onReact && reactions.length === 0 && (
+        <div
+          className={cn(
+            "flex flex-wrap gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity px-1",
+            isOwn ? "justify-end" : "justify-start",
+          )}
+        >
+          {QUICK_REACTION_EMOJIS.slice(0, 5).map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              disabled={reacting}
+              className="text-base leading-none p-0.5 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
+              onClick={() => onReact(emoji)}
+              aria-label={`Реакция ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
       )}
 
       <div className={cn("flex items-center gap-1.5 px-1", isOwn && "flex-row-reverse")}>

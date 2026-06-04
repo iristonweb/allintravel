@@ -31,6 +31,7 @@ import LocationAutocompleteInput from "@/components/location-autocomplete-input"
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { validateUsername } from "@shared/username";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { uploadUserAvatar } from "@/lib/upload-media";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 
@@ -42,23 +43,7 @@ export function ProfileEdit() {
   const [isEditing, setIsEditing] = useState(false);
 
   const avatarUploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/users/avatar", { method: "POST", body: form, credentials: "include" });
-      const text = await res.text();
-      if (!res.ok) {
-        let message = "Не удалось загрузить";
-        try {
-          const json = JSON.parse(text) as { message?: string };
-          if (json.message) message = json.message;
-        } catch {
-          if (text) message = text.slice(0, 200);
-        }
-        throw new Error(message);
-      }
-      return JSON.parse(text) as { url: string };
-    },
+    mutationFn: (file: File) => uploadUserAvatar(file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Аватар обновлён" });
@@ -245,6 +230,14 @@ export function ProfileEdit() {
                       </label>
                     </Button>
                   </div>
+                  {user?.profileImageUrl?.startsWith("/uploads/") && (
+                    <Alert className="mt-3 max-w-xs text-left">
+                      <AlertDescription className="text-xs">
+                        Старый аватар мог быть утерян после деплоя. Загрузите фото заново — оно
+                        сохранится в постоянное хранилище.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
 
                 <div className="flex-1">
@@ -415,7 +408,7 @@ export function ProfileEdit() {
                   <Button
                     onClick={() => updateProfileMutation.mutate(profileData)}
                     disabled={updateProfileMutation.isPending}
-                    className="bg-primary hover:bg-primary/90"
+                    variant="premium"
                   >
                     Сохранить
                   </Button>
@@ -447,7 +440,7 @@ export function ProfileEdit() {
                     <h3 className="text-lg font-semibold mb-2">Нет постов</h3>
                     <p className="text-muted-foreground mb-4">Поделитесь своими путешествиями</p>
                     <Link href="/social-feed">
-                      <Button className="bg-primary hover:bg-primary/90">Написать пост</Button>
+                      <Button variant="premium">Написать пост</Button>
                     </Link>
                   </CardContent>
                 </Card>
@@ -498,7 +491,7 @@ export function ProfileEdit() {
                     <h3 className="text-lg font-semibold mb-2">Нет поездок</h3>
                     <p className="text-muted-foreground mb-4">Запланируйте первую поездку</p>
                     <Link href="/trips">
-                      <Button className="bg-primary hover:bg-primary/90">Найти поездку</Button>
+                      <Button variant="premium">Найти поездку</Button>
                     </Link>
                   </CardContent>
                 </Card>

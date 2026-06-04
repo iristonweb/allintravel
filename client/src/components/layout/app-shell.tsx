@@ -6,8 +6,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePresenceHeartbeat } from "@/hooks/usePresence";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
-import GlobalMusicBar from "@/components/music/GlobalMusicBar";
 import AppShellPlayerPadding from "@/components/layout/app-shell-player-padding";
 import BroadcastModal from "@/components/admin/BroadcastModal";
 import { cn } from "@/lib/utils";
@@ -17,6 +15,7 @@ type AppShellProps = {
   children: ReactNode;
   fullWidth?: boolean;
   immersive?: boolean;
+  chrome?: "default" | "minimal";
   className?: string;
   contentClassName?: string;
 };
@@ -25,6 +24,7 @@ export default function AppShell({
   children,
   fullWidth,
   immersive,
+  chrome = "default",
   className,
   contentClassName,
 }: AppShellProps) {
@@ -32,6 +32,9 @@ export default function AppShell({
   usePresenceHeartbeat();
   useRealtimeNotifications();
   const { supported: pushSupported, vapidReady, subscribe: subscribePush } = usePushNotifications();
+
+  const minimalChrome = chrome === "minimal";
+  const effectiveImmersive = immersive || minimalChrome;
 
   useEffect(() => {
     if (!isAuthenticated || !pushSupported || !vapidReady) return;
@@ -41,38 +44,35 @@ export default function AppShell({
   }, [isAuthenticated, pushSupported, vapidReady, subscribePush]);
 
   return (
-    <MusicPlayerProvider>
-      <AmbientBackground showOrbs={!immersive}>
-        <div className="min-h-screen flex flex-col">
-          <AppTopNav />
-          {isAuthenticated && <AppIconSidebar />}
-          <AppShellPlayerPadding
+    <AmbientBackground showOrbs={!effectiveImmersive}>
+      <div className="min-h-screen flex flex-col">
+        <AppTopNav minimalChrome={minimalChrome} />
+        {isAuthenticated && <AppIconSidebar minimalChrome={minimalChrome} />}
+        <AppShellPlayerPadding
             className={cn(
               "flex-1",
-              !immersive && "pt-20",
-              immersive && "pt-0",
-              isAuthenticated && !immersive && "pb-24 md:pb-8",
-              isAuthenticated && immersive && "pb-24 md:pb-0",
-              isAuthenticated && "md:pl-[72px]",
+              !effectiveImmersive && "pt-20",
+              effectiveImmersive && "pt-0",
+              isAuthenticated && !effectiveImmersive && "pb-24 md:pb-8",
+              isAuthenticated && effectiveImmersive && "pb-24 md:pb-0",
+              isAuthenticated && !minimalChrome && "md:pl-[72px]",
               className,
             )}
           >
             <main
               className={cn(
-                !fullWidth && !immersive && "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
-                (fullWidth || immersive) && "w-full",
-                isAuthenticated && immersive && "md:pl-0",
+                !fullWidth && !effectiveImmersive && "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
+                (fullWidth || effectiveImmersive) && "w-full",
+                isAuthenticated && effectiveImmersive && "md:pl-0",
                 contentClassName,
               )}
             >
               {children}
             </main>
           </AppShellPlayerPadding>
-          {isAuthenticated && <MobileBottomNav />}
-          {isAuthenticated && <GlobalMusicBar />}
-          {isAuthenticated && <BroadcastModal />}
-        </div>
-      </AmbientBackground>
-    </MusicPlayerProvider>
+        {isAuthenticated && <MobileBottomNav />}
+        {isAuthenticated && <BroadcastModal />}
+      </div>
+    </AmbientBackground>
   );
 }

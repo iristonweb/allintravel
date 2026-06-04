@@ -108,6 +108,13 @@ export function Messages() {
         ),
       );
     },
+    onError: (err) => {
+      toast({
+        title: "Не удалось поставить реакцию",
+        description: err instanceof Error ? err.message : "Попробуйте ещё раз",
+        variant: "destructive",
+      });
+    },
   });
 
   const editMutation = useMutation({
@@ -247,7 +254,7 @@ export function Messages() {
   }
 
   return (
-    <AppLayout fullWidth contentClassName="p-2 md:p-4">
+    <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-2 md:p-4">
       <div className="max-w-[1600px] mx-auto">
         <h1 className="ait-section-title">Сообщения</h1>
         <p className="text-muted-foreground mt-1 mb-4">Личные чаты и групповые поездки</p>
@@ -264,7 +271,7 @@ export function Messages() {
           className="mb-6"
         />
 
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-3 h-[calc(100vh-180px)] min-h-[560px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-3 h-[calc(100dvh-var(--ait-header-h,5rem))] min-h-[560px]">
             <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
               <div className="ait-chat-panel-header p-4">
                 <h2 className="font-semibold flex items-center gap-2">
@@ -273,7 +280,7 @@ export function Messages() {
                 </h2>
               </div>
               <div className="p-0">
-                <ScrollArea className="h-[calc(100vh-300px)] md:h-[calc(100vh-280px)]">
+                <ScrollArea className="h-[calc(100dvh-var(--ait-header-h,5rem)-8rem)] md:h-[calc(100dvh-var(--ait-header-h,5rem)-6rem)]">
                   {msgTab === "groups" ? (
                     roomsLoading ? (
                       <div className="p-6 text-center text-sm text-muted-foreground">Загрузка…</div>
@@ -345,6 +352,7 @@ export function Messages() {
                               src={conversation.user.profileImageUrl}
                               fallback={getUserInitial(conversation.user)}
                               isOnline={conversation.user.isOnline}
+                              className="h-14 w-14"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
@@ -396,6 +404,7 @@ export function Messages() {
                         src={selectedConversation.user.profileImageUrl}
                         fallback={getUserInitial(selectedConversation.user)}
                         isOnline={selectedConversation.user.isOnline}
+                        className="h-16 w-16"
                       />
                       <div>
                         <h3 className="font-semibold">
@@ -424,6 +433,7 @@ export function Messages() {
                       <div className="ait-chat-thread-inner space-y-5">
                         {messages.map((message) => {
                           const isOwn = message.senderId === user?.id;
+                          const peer = selectedConversation.user;
                           return (
                             <ChatMessageRow
                               key={message.id}
@@ -431,7 +441,12 @@ export function Messages() {
                               content={message.content}
                               isOwn={isOwn}
                               senderInitial={
-                                !isOwn ? getUserInitial(selectedConversation.user) : undefined
+                                isOwn
+                                  ? (user ? getUserInitial(user) : "Я")
+                                  : getUserInitial(peer)
+                              }
+                              senderAvatarUrl={
+                                isOwn ? user?.profileImageUrl : peer.profileImageUrl
                               }
                               createdAt={message.createdAt}
                               updatedAt={message.updatedAt}
@@ -445,7 +460,10 @@ export function Messages() {
                               insightsUrl={`/api/messages/${message.id}/insights`}
                               onEdit={(c) => editMutation.mutate({ messageId: message.id, content: c })}
                               onDelete={() => deleteMutation.mutate(message.id)}
-                              reacting={reactionMutation.isPending}
+                              reacting={
+                                reactionMutation.isPending &&
+                                reactionMutation.variables?.messageId === message.id
+                              }
                               onReply={!isOwn ? () => startReply(message) : undefined}
                             />
                           );

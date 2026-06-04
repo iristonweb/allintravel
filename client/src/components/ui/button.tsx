@@ -22,6 +22,8 @@ const buttonVariants = cva(
           "ait-btn-glow rounded-2xl text-white border-0",
         glass:
           "ait-glass rounded-2xl text-foreground hover:bg-white/10",
+        filter:
+          "rounded-full text-xs font-medium shrink-0 h-8 px-3.5 ait-glass border-white/10 bg-transparent text-slate-300 hover:text-white border shadow-none",
       },
       size: {
         default: "h-11 px-5 py-2",

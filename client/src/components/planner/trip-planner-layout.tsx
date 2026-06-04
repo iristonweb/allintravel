@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Download, Route, Calendar, Users, BookOpen, GripVertical, Film, MapPin, Share2 } from "lucide-react";
+import { Plus, Trash2, Download, Route, Calendar, Users, BookOpen, GripVertical, Film, MapPin, Share2, Car, Footprints, Bus } from "lucide-react";
 import TripCinema from "@/components/trips/TripCinema";
 import { apiRequest, apiRequestJson, toApiUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,13 @@ import {
 import type { Trip } from "@shared/schema";
 import type { TripWaypointWithPlace } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import type { RouteMode } from "@/lib/fetch-route";
+
+const ROUTE_MODES: { id: RouteMode; label: string; icon: typeof Car }[] = [
+  { id: "driving", label: "Авто", icon: Car },
+  { id: "walking", label: "Пешком", icon: Footprints },
+  { id: "transit", label: "Транспорт", icon: Bus },
+];
 
 type TripPlannerLayoutProps = {
   trip: Trip;
@@ -57,6 +64,7 @@ export default function TripPlannerLayout({
   const [selectedDay, setSelectedDay] = useState(1);
   const [dragWaypointId, setDragWaypointId] = useState<string | null>(null);
   const [cinemaOpen, setCinemaOpen] = useState(false);
+  const [routeMode, setRouteMode] = useState<RouteMode>("walking");
 
   const totalDays = tripCalendarDayCount(trip);
 
@@ -106,16 +114,14 @@ export default function TripPlannerLayout({
     configured: boolean;
     route: { distanceKm: number; durationMin: number; geometry: [number, number][] } | null;
   }>({
-    queryKey: ["/api/trips", tripId, "yandex-route", yandexRouteDayKey],
+    queryKey: ["/api/trips", tripId, "yandex-route", yandexRouteDayKey, routeMode],
     enabled: routePlaces.length >= 2,
     queryFn: async () => {
-      const q = routeScopeHasDay ? `?day=${selectedDay}` : "";
-      const res = await fetch(toApiUrl(`/api/trips/${tripId}/yandex-route${q}`), {
+      const params = new URLSearchParams({ mode: routeMode });
+      if (routeScopeHasDay) params.set("day", String(selectedDay));
+      const res = await fetch(toApiUrl(`/api/trips/${tripId}/yandex-route?${params}`), {
         credentials: "include",
       });
-      if (res.status === 503) {
-        return { configured: false, route: null };
-      }
       if (!res.ok) {
         const text = (await res.text()) || res.statusText;
         throw new Error(`${res.status}: ${text}`);
@@ -445,6 +451,25 @@ export default function TripPlannerLayout({
             </Button>
           </div>
 
+          <div className="flex flex-wrap gap-2 mb-3">
+            {ROUTE_MODES.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setRouteMode(id)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors",
+                  routeMode === id
+                    ? "border-ait-purple/60 bg-ait-purple/15 text-white"
+                    : "border-white/10 text-muted-foreground hover:border-ait-purple/30",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div className="grid lg:grid-cols-[320px_1fr] gap-4 min-h-[480px]">
             <GlassCard className="p-4 overflow-y-auto max-h-[70vh] lg:max-h-[calc(100vh-12rem)]">
               <div className="flex items-center justify-between mb-4">
@@ -682,7 +707,7 @@ export default function TripPlannerLayout({
           </span>
           <span>
             <strong>{km || "—"}</strong> км
-            {yandexRoute ? " (Яндекс)" : ""}
+            {yandexRoute ? ` (${ROUTE_MODES.find((m) => m.id === routeMode)?.label ?? "маршрут"})` : ""}
           </span>
           {yandexRoute?.durationMin != null && (
             <span>

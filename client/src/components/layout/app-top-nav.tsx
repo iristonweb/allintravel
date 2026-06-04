@@ -48,7 +48,11 @@ function resolvePageTitle(path: string): string | null {
   return pageTitles[base] ?? null;
 }
 
-export default function AppTopNav() {
+type AppTopNavProps = {
+  minimalChrome?: boolean;
+};
+
+export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -99,7 +103,12 @@ export default function AppTopNav() {
 
   if (!isAuthenticated) {
     return (
-      <header className="fixed top-0 z-50 w-full ait-glass-nav h-20">
+      <header
+        className={cn(
+          "fixed top-0 z-50 w-full h-20",
+          minimalChrome ? "ait-chrome-minimal-nav" : "ait-glass-nav",
+        )}
+      >
         <div className="max-w-7xl mx-auto flex h-20 items-center justify-between gap-4 px-4 lg:px-8">
           <BrandLogo variant="nav" showText />
           <nav className="hidden sm:flex items-center gap-1">
@@ -130,7 +139,12 @@ export default function AppTopNav() {
   ];
 
   return (
-    <header className="fixed top-0 z-50 w-full ait-glass-nav h-20 overflow-visible">
+    <header
+      className={cn(
+        "fixed top-0 z-50 w-full h-20 overflow-visible",
+        minimalChrome ? "ait-chrome-minimal-nav" : "ait-glass-nav",
+      )}
+    >
       <div className="max-w-[1600px] mx-auto flex h-20 items-center gap-3 px-4 lg:px-8 md:pl-[calc(72px+1rem)]">
         <BrandLogo variant="nav" showText className="shrink-0" />
 

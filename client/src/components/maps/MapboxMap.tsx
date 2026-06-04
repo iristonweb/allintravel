@@ -196,13 +196,9 @@ export default function MapboxMap({
     const routeCoords =
       routeGeometry && routeGeometry.length > 1
         ? routeGeometry
-        : showRoute && validPlaces.length > 1
-          ? validPlaces.map(
-              (p) => [Number(p.longitude), Number(p.latitude)] as [number, number],
-            )
-          : null;
+        : null;
 
-    if (routeCoords && routeCoords.length > 1) {
+    if (showRoute && routeCoords && routeCoords.length > 1) {
       const routeId = "trip-route";
       const data = {
         type: "Feature" as const,
@@ -254,6 +250,7 @@ export default function MapboxMap({
           glowMarkers
           numberedMarkers={showRoute || showDemoMarkers}
           routeGlow={showRoute}
+          routeGeometry={routeGeometry}
           onPlaceClick={onPlaceClick}
           className="h-full rounded-none border-0"
         />

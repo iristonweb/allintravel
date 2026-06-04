@@ -31,7 +31,7 @@ import { validateUsername } from "@shared/username";
 import { updatePrivacySettingsSchema } from "@shared/privacy";
 import { isTravelDirectionId } from "@shared/travel-directions";
 import { toPublicUser, toSelfUser } from "./user-utils";
-import { getUploadsStaticDir, persistUploadedFile, VERCEL_BLOB_REQUIRED_MSG } from "./media-storage";
+import { getUploadsStaticDir, persistUploadedFile, assertPersistentMediaUrl, VERCEL_BLOB_REQUIRED_MSG } from "./media-storage";
 import { createUploadMiddleware, handleMulter } from "./upload";
 import { userCanManageTrip } from "./security";
 import { resolveChatRoomAccess, ensureMemberForPost } from "./chat-access";
@@ -585,9 +585,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/trips/:id/yandex-route", async (req, res) => {
     try {
       const { isYandexRouterConfigured } = await import("./geo/yandex-config");
-      if (!isYandexRouterConfigured()) {
-        return res.status(503).json({ message: "Yandex Router API key not configured" });
-      }
       const dayParam = req.query.day != null ? Number(req.query.day) : null;
       const waypoints = await storage.getTripWaypoints(req.params.id);
       const sorted = [...waypoints].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
@@ -604,17 +601,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (points.length < 2) {
         return res.json({ configured: true, route: null, message: "Need at least 2 stops" });
       }
+      const modeParam = String(req.query.mode ?? "driving");
       const mode =
-        req.query.mode === "walking" || req.query.mode === "driving"
-          ? req.query.mode
+        modeParam === "walking" || modeParam === "transit" || modeParam === "driving"
+          ? modeParam
           : "driving";
-      const { yandexBuildRoute } = await import("./geo/yandex-router");
-      const route = await yandexBuildRoute(points, mode);
+      const { buildRoute } = await import("./geo/yandex-router");
+      const route = await buildRoute(points, mode);
       if (!route) {
-        return res.json({ configured: true, route: null });
+        return res.json({
+          configured: isYandexRouterConfigured(),
+          route: null,
+        });
       }
       res.json({
-        configured: true,
+        configured: isYandexRouterConfigured(),
         route: {
           distanceKm: Math.round((route.distanceM / 1000) * 10) / 10,
           durationMin: Math.round(route.durationS / 60),
@@ -623,6 +624,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error building Yandex route:", error);
+      res.status(500).json({ message: "Failed to build route" });
+    }
+  });
+
+  app.get("/api/geo/route", async (req, res) => {
+    try {
+      const raw = String(req.query.points ?? "").trim();
+      if (!raw) {
+        return res.status(400).json({ message: "points query required (lat,lon|lat,lon|...)" });
+      }
+      const points = raw
+        .split("|")
+        .map((pair) => {
+          const [latS, lonS] = pair.split(",").map((s) => s.trim());
+          const lat = Number(latS);
+          const lon = Number(lonS);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+          return { lat, lon };
+        })
+        .filter(Boolean) as Array<{ lat: number; lon: number }>;
+      if (points.length < 2) {
+        return res.status(400).json({ message: "Need at least 2 valid points" });
+      }
+      const modeParam = String(req.query.mode ?? "driving");
+      const mode =
+        modeParam === "walking" || modeParam === "transit" || modeParam === "driving"
+          ? modeParam
+          : "driving";
+      const { buildRoute } = await import("./geo/yandex-router");
+      const route = await buildRoute(points, mode);
+      if (!route) {
+        return res.json({ route: null });
+      }
+      res.json({
+        route: {
+          distanceKm: Math.round((route.distanceM / 1000) * 10) / 10,
+          durationMin: Math.round(route.durationS / 60),
+          geometry: route.geometry,
+        },
+      });
+    } catch (error) {
+      console.error("Error building geo route:", error);
       res.status(500).json({ message: "Failed to build route" });
     }
   });
@@ -1613,6 +1656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       throw new Error("Аватар должен быть изображением (JPG, PNG, WebP, GIF)");
     }
     const url = await persistUploadedFile(file);
+    assertPersistentMediaUrl(url);
     if (url.startsWith("data:")) {
       throw new Error(VERCEL_BLOB_REQUIRED_MSG);
     }
@@ -2714,6 +2758,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Post not found" });
       }
       const author = post.userId ? await storage.getUser(post.userId) : null;
+      const likesCount = await storage.getPostLikesCount(post.id);
+      const commentsCount = await storage.getPostCommentsCount(post.id);
+      const isLiked = currentUserId ? await storage.isPostLikedByUser(currentUserId, post.id) : false;
       res.json({
         ...post,
         author: author
@@ -2724,6 +2771,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               profileImageUrl: author.profileImageUrl,
             }
           : null,
+        likesCount,
+        commentsCount,
+        isLiked,
       });
     } catch (error) {
       console.error("Error fetching post:", error);

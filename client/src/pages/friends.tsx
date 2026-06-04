@@ -21,6 +21,7 @@ import UserPreviewCell, { friendProfileHref } from "@/components/social/UserPrev
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import TripRouteMatches from "@/components/planner/trip-route-matches";
+import { cn } from "@/lib/utils";
 
 export function Friends() {
   const { user, isAuthenticated } = useAuth();
@@ -148,10 +149,11 @@ export function Friends() {
 
             {/* Friends tab */}
             <TabsContent value="friends" className="space-y-4 mt-4">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
                 <Button
                   size="sm"
-                  variant={friendDirection === "" ? "default" : "outline"}
+                  variant="filter"
+                  className={cn(friendDirection === "" && "ait-btn-glow border-0 text-white shadow-none hover:text-white")}
                   onClick={() => setFriendDirection("")}
                 >
                   Все
@@ -160,7 +162,10 @@ export function Friends() {
                   <Button
                     key={d.id}
                     size="sm"
-                    variant={friendDirection === d.id ? "default" : "outline"}
+                    variant="filter"
+                    className={cn(
+                      friendDirection === d.id && "ait-btn-glow border-0 text-white shadow-none hover:text-white",
+                    )}
                     onClick={() => setFriendDirection(d.id)}
                   >
                     {d.label}
@@ -212,11 +217,14 @@ export function Friends() {
 
             {/* Search tab */}
             <TabsContent value="search" className="space-y-4 mt-4">
-              <div className="flex flex-wrap gap-2">
-                <span className="text-sm text-muted-foreground w-full">Направление:</span>
+              <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
+                <span className="text-sm text-muted-foreground w-full px-2 pt-1">Направление:</span>
                 <Button
                   size="sm"
-                  variant={discoverDirection === "" ? "default" : "outline"}
+                  variant="filter"
+                  className={cn(
+                    discoverDirection === "" && "ait-btn-glow border-0 text-white shadow-none hover:text-white",
+                  )}
                   onClick={() => setDiscoverDirection("")}
                 >
                   Любое
@@ -225,7 +233,10 @@ export function Friends() {
                   <Button
                     key={d.id}
                     size="sm"
-                    variant={discoverDirection === d.id ? "default" : "outline"}
+                    variant="filter"
+                    className={cn(
+                      discoverDirection === d.id && "ait-btn-glow border-0 text-white shadow-none hover:text-white",
+                    )}
                     onClick={() => setDiscoverDirection(d.id)}
                   >
                     {d.label}
@@ -310,9 +321,9 @@ export function Friends() {
                                   <FollowButton userId={result.id} />
                                   <Button
                                   size="sm"
+                                  variant="premium"
                                   onClick={() => sendRequestMutation.mutate(result.id)}
                                   disabled={sendRequestMutation.isPending}
-                                  className="bg-primary hover:bg-primary/90"
                                 >
                                   <UserPlus className="mr-2 h-4 w-4" />
                                   Добавить

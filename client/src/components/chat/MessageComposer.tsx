@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import EmojiPicker, { type EmojiClickData, Theme } from "emoji-picker-react";
 import { ImageIcon, Mic, Music, Paperclip, Reply, Smile, Sticker, X } from "lucide-react";
@@ -139,6 +139,12 @@ export default function MessageComposer({
   const voiceChunksRef = useRef<Blob[]>([]);
   const voiceStartedRef = useRef<number>(0);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!replyTo) return;
+    const frame = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [replyTo?.username, replyTo?.preview]);
 
   const { data: musicTracks = [], isLoading: musicLoading } = useQuery<UserTrack[]>({
     queryKey: ["/api/music/tracks"],

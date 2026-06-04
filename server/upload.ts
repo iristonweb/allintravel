@@ -8,6 +8,9 @@ import {
   getUploadsStaticDir,
   isValidBlobDeliveryPathname,
   persistUploadedFile,
+  persistUserAvatar,
+  assertPersistentMediaUrl,
+  logMediaStorageStatus,
   VERCEL_BLOB_REQUIRED_MSG,
 } from "./media-storage";
 
@@ -85,6 +88,7 @@ export function handleMulter(
 }
 
 export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolean }): void {
+  logMediaStorageStatus();
   const upload = createUploadMiddleware();
   const serveStatic = options?.serveStatic !== false;
 
@@ -123,6 +127,7 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
           return res.status(400).json({ message: "Файл не выбран" });
         }
         const url = await persistUploadedFile(req.file);
+        assertPersistentMediaUrl(url);
         res.json({ url });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Не удалось сохранить файл";
@@ -146,7 +151,7 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
           return res.status(400).json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
         }
         const userId = req.user.claims.sub;
-        const url = await persistUploadedFile(req.file);
+        const url = await persistUserAvatar(userId, req.file);
         const existing = await storage.getUser(userId);
         if (existing) {
           await storage.upsertUser({ ...existing, profileImageUrl: url });
@@ -191,6 +196,7 @@ function mountRoomAvatarRoute(
           return res.status(400).json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
         }
         const url = await persistUploadedFile(req.file);
+        assertPersistentMediaUrl(url);
         if (url.startsWith("data:")) {
           return res.status(500).json({ message: VERCEL_BLOB_REQUIRED_MSG });
         }

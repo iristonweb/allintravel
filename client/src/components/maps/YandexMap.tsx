@@ -274,9 +274,7 @@ export default function YandexMap({
       const roadCoords =
         routeGeometry && routeGeometry.length > 1
           ? routeGeometry.map(([lng, lat]) => [lat, lng] as [number, number])
-          : validPlaces.length > 1
-            ? validPlaces.map((p) => [Number(p.latitude), Number(p.longitude)] as [number, number])
-            : null;
+          : null;
 
       if (roadCoords && roadCoords.length > 1) {
         const polyline = new ymaps.Polyline(
@@ -338,6 +336,7 @@ export default function YandexMap({
         glowMarkers
         numberedMarkers={showRoute || showDemoMarkers}
         routeGlow={showRoute}
+        routeGeometry={routeGeometry}
         onPlaceClick={onPlaceClick}
         className={cn("h-full border-0", className)}
       />

@@ -141,6 +141,22 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
+  .ait-chrome-minimal-nav {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid transparent;
+    box-shadow: none;
+  }
+
+  .ait-chrome-minimal-sidebar {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-right: 1px solid transparent;
+    box-shadow: none;
+  }
+
   .ait-gradient-border {
     position: relative;
     background: linear-gradient(var(--ait-deep), var(--ait-deep)) padding-box,

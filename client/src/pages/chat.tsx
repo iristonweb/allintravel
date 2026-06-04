@@ -317,6 +317,13 @@ export function Chat() {
         },
       );
     },
+    onError: (err) => {
+      toast({
+        title: "Не удалось поставить реакцию",
+        description: err instanceof Error ? err.message : "Попробуйте ещё раз",
+        variant: "destructive",
+      });
+    },
   });
 
   const markRoomReadMutation = useMutation({
@@ -581,7 +588,7 @@ export function Chat() {
       : "Подключение…";
 
   return (
-    <AppLayout fullWidth contentClassName="p-0 md:p-4">
+    <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-0 md:p-4">
       <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -611,7 +618,7 @@ export function Chat() {
 
         <div
           className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3"
-          style={{ height: "calc(100vh - 200px)", minHeight: "560px" }}
+          style={{ height: "calc(100dvh - var(--ait-header-h, 5rem))", minHeight: "560px" }}
         >
           <div className="ait-chat-panel flex flex-col min-h-0">
             <div className="ait-chat-panel-header p-4">
@@ -755,7 +762,7 @@ export function Chat() {
                             : "text-slate-400",
                         )}
                       >
-                        <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} />
+                        <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} className="h-14 w-14" />
                         <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
                         {(room.unreadCount ?? 0) > 0 && (
                           <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
@@ -785,7 +792,7 @@ export function Chat() {
               <RoomAvatar
                 title={activeRoomMeta?.title ?? activeRoom}
                 avatarUrl={activeRoomMeta?.avatarUrl}
-                className="h-12 w-12"
+                className="h-16 w-16"
               />
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
@@ -862,6 +869,9 @@ export function Chat() {
                       : msg.sender
                         ? getUserInitial(msg.sender)
                         : "?";
+                    const senderAvatarUrl = isOwn
+                      ? user?.profileImageUrl
+                      : msg.sender?.profileImageUrl;
 
                     return (
                       <ChatMessageRow
@@ -872,6 +882,7 @@ export function Chat() {
                         isPinned={isPinned}
                         senderLabel={!isOwn ? senderName : undefined}
                         senderInitial={senderInitial}
+                        senderAvatarUrl={senderAvatarUrl}
                         createdAt={msg.createdAt}
                         updatedAt={msg.updatedAt}
                         meta={{ reactions: msg.reactions ?? [] }}
@@ -905,7 +916,10 @@ export function Chat() {
                             ? (c) => editMutation.mutate({ messageId: msg.id!, content: c })
                             : undefined
                         }
-                        reacting={reactionMutation.isPending}
+                        reacting={
+                          reactionMutation.isPending &&
+                          reactionMutation.variables?.messageId === msg.id
+                        }
                         onReply={
                           !isOwn && msg.sender?.username
                             ? () => startReply(msg, senderName, msg.sender?.username)

@@ -36,6 +36,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import AitGrantListener from "@/components/ait/AitGrantListener";
 import ReferralAutoApply from "@/components/ait/ReferralAutoApply";
 import PushSoundListener from "@/components/PushSoundListener";
+import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
+import GlobalMusicBar from "@/components/music/GlobalMusicBar";
 import AdminPage from "@/pages/admin";
 import { captureReferralFromUrl } from "@/lib/referral-pending";
 
@@ -122,15 +124,18 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <AitGrantListener />
-        <ReferralAutoApply />
-        <PushSoundListener />
-        <ErrorBoundary>
-          <Router />
-        </ErrorBoundary>
-      </TooltipProvider>
+      <MusicPlayerProvider>
+        <TooltipProvider>
+          <Toaster />
+          <AitGrantListener />
+          <ReferralAutoApply />
+          <PushSoundListener />
+          <GlobalMusicBar />
+          <ErrorBoundary>
+            <Router />
+          </ErrorBoundary>
+        </TooltipProvider>
+      </MusicPlayerProvider>
     </QueryClientProvider>
   );
 }

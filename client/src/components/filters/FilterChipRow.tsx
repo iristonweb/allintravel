@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FilterOption } from "@/lib/filter-config";
@@ -30,18 +29,34 @@ export default function FilterChipRow({
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide shrink-0">
         {label}
       </span>
-      {options.map((opt) => (
-        <Badge
-          key={opt.value || "__all"}
-          variant={value === opt.value ? "default" : "outline"}
-          className="cursor-pointer rounded-full px-3 py-1 text-xs font-medium"
-          onClick={() => onChange(opt.value)}
-        >
-          {opt.label}
-        </Badge>
-      ))}
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const active = value === opt.value;
+          return (
+            <Button
+              key={opt.value || "__all"}
+              type="button"
+              size="sm"
+              variant="filter"
+              className={cn(
+                active &&
+                  "ait-btn-glow border-0 text-white shadow-none hover:text-white",
+              )}
+              onClick={() => onChange(opt.value)}
+            >
+              {opt.label}
+            </Button>
+          );
+        })}
+      </div>
       {showClear && hasActive && onClear && (
-        <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onClear}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+          onClick={onClear}
+        >
           <X className="h-3 w-3 mr-1" />
           Сбросить
         </Button>

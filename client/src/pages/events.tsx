@@ -132,7 +132,7 @@ export function Events() {
         rightSlot={
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
+              <Button variant="premium">
                 <Plus className="mr-2 h-4 w-4" />
                 Создать событие
               </Button>
@@ -200,7 +200,8 @@ export function Events() {
                   onChange={(urls) => setNewEvent({ ...newEvent, imageUrl: urls[0] ?? "" })}
                 />
                 <Button
-                  className="w-full bg-primary hover:bg-primary/90"
+                  className="w-full"
+                  variant="premium"
                   disabled={!newEvent.title || !newEvent.startDate || createMutation.isPending}
                   onClick={() => createMutation.mutate()}
                 >

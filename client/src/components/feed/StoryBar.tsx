@@ -37,14 +37,17 @@ function groupStories(posts: TravelPostWithAuthor[]): StoryGroup[] {
 type StoryBarProps = {
   posts: TravelPostWithAuthor[];
   onOpenGroup: (group: StoryGroup, startIndex: number) => void;
+  /** Встроен в полосу с кнопкой «Создать» — без отдельного пустого блока */
+  inline?: boolean;
 };
 
 export type { StoryGroup };
 
-export default function StoryBar({ posts, onOpenGroup }: StoryBarProps) {
+export default function StoryBar({ posts, onOpenGroup, inline }: StoryBarProps) {
   const groups = groupStories(posts);
 
   if (!groups.length) {
+    if (inline) return null;
     return (
       <p className="text-sm text-muted-foreground py-4 text-center">
         Пока нет Stories — опубликуйте фото или видео на 24 часа
@@ -53,7 +56,7 @@ export default function StoryBar({ posts, onOpenGroup }: StoryBarProps) {
   }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
+    <div className={cn("flex gap-4 overflow-x-auto scrollbar-thin", inline ? "pb-0" : "pb-4")}>
       {groups.map((group) => {
         const allViewed = group.posts.every((p) => isStoryViewed(p.id));
         return (

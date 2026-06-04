@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { TravelPostWithAuthor } from "@shared/schema";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 const FEED_MODES: FeedMode[] = ["all", "following", "popular"];
 
@@ -37,7 +38,7 @@ function PostCard({
     <GlassCard strong className="overflow-hidden min-w-[280px] max-w-sm flex-1 snap-start">
       <div className="p-5 flex items-center gap-3">
         <Avatar className="h-12 w-12 border-2 border-ait-purple/40">
-          <AvatarImage src={post.authorAvatar} />
+          <AvatarImage src={resolveMediaUrl(post.authorAvatar) ?? post.authorAvatar} />
           <AvatarFallback>{post.authorName[0]}</AvatarFallback>
         </Avatar>
         <div>

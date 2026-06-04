@@ -19,7 +19,23 @@ async function parseUploadResponse(res: Response): Promise<string> {
       "Сервер вернул временный data-URL вместо постоянной ссылки. Подключите Vercel Blob (BLOB_READ_WRITE_TOKEN) в настройках проекта.",
     );
   }
+  if (import.meta.env.PROD && data.url.startsWith("/uploads/")) {
+    throw new Error(
+      "Аватар сохранён во временное хранилище. На production подключите Vercel Blob: Dashboard → Storage → Blob → Connect to Project.",
+    );
+  }
   return data.url;
+}
+
+export async function uploadUserAvatar(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(toApiUrl("/api/users/avatar"), {
+    method: "POST",
+    body: form,
+    credentials: "include",
+  });
+  return parseUploadResponse(res);
 }
 
 export async function uploadMediaFile(file: File): Promise<string> {

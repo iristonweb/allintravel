@@ -138,7 +138,7 @@ export function Places() {
         rightSlot={
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
+              <Button variant="premium">
                 <Plus className="mr-2 h-4 w-4" />
                 Добавить место
               </Button>
@@ -168,7 +168,7 @@ export function Places() {
                   value={newPlace.imageUrl ? [newPlace.imageUrl] : []}
                   onChange={(urls) => setNewPlace({ ...newPlace, imageUrl: urls[0] ?? "" })}
                 />
-                <Button className="w-full bg-primary hover:bg-primary/90" disabled={!newPlace.name || createPlaceMutation.isPending} onClick={() => createPlaceMutation.mutate()}>
+                <Button className="w-full" variant="premium" disabled={!newPlace.name || createPlaceMutation.isPending} onClick={() => createPlaceMutation.mutate()}>
                   Сохранить
                 </Button>
               </div>

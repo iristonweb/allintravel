@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { renderRichText } from "@/lib/rich-text";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 export function BlogPostPage() {
   const [, params] = useRoute("/blog/:id");
@@ -55,7 +56,7 @@ export function BlogPostPage() {
             )}
             <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={post.author?.profileImageUrl ?? undefined} />
+                <AvatarImage src={resolveMediaUrl(post.author?.profileImageUrl)} />
                 <AvatarFallback>
                   {post.author ? getUserInitial(post.author) : "?"}
                 </AvatarFallback>

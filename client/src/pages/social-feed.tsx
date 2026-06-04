@@ -1,4 +1,5 @@
 import { useRef, useState, useMemo, useEffect } from "react";
+import { Link } from "wouter";
 import { feedModeFromQuery, filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import GlassCard from "@/components/brand/glass-card";
+import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
@@ -44,6 +46,7 @@ import { Label } from "@/components/ui/label";
 import type { PostFormat } from "@shared/post-formats";
 import StoryBar, { type StoryGroup } from "@/components/feed/StoryBar";
 import StoryViewer from "@/components/feed/StoryViewer";
+import StoriesStrip from "@/components/feed/StoriesStrip";
 import ReelFeed from "@/components/feed/ReelFeed";
 import JournalCard from "@/components/feed/JournalCard";
 import PostTipButton from "@/components/ait/PostTipButton";
@@ -52,6 +55,20 @@ import AitLeaderboard from "@/components/ait/AitLeaderboard";
 import CreatorAvatar from "@/components/ait/CreatorAvatar";
 import BoostPostButton from "@/components/ait/BoostPostButton";
 import { isVideoUrl as isVideoUrlShared } from "@shared/post-formats";
+import { FEED_MODE_TAB_FILTERS } from "@/lib/filter-config";
+import { cn } from "@/lib/utils";
+
+const FEED_MODE_TABS = FEED_MODE_TAB_FILTERS.map(({ value, label }) => ({
+  id: value as FeedMode,
+  label,
+}));
+
+const CONTENT_FORMAT_TABS = [
+  { id: "feed", label: "Лента", icon: Sparkles },
+  { id: "stories", label: "Stories", icon: BookMarked },
+  { id: "reels", label: "Reels", icon: Film },
+  { id: "journals", label: "Journals", icon: Compass },
+] as const;
 
 function contentFormatToApi(format: "feed" | "stories" | "reels" | "journals"): PostFormat {
   if (format === "stories") return "story";
@@ -75,6 +92,14 @@ export function SocialFeed() {
       setFeedMode("following");
     } else {
       setFeedMode(feedModeFromQuery(params.get("mode")));
+    }
+    const formatParam = params.get("format");
+    if (formatParam === "stories") setContentFormat("stories");
+    else if (formatParam === "reels") setContentFormat("reels");
+    else if (formatParam === "journals") setContentFormat("journals");
+    if (params.get("create") === "1") {
+      setContentFormat("stories");
+      setIsCreating(true);
     }
   }, [isAuthenticated]);
 
@@ -331,28 +356,21 @@ export function SocialFeed() {
         </div>
 
         <div className="my-4 space-y-4">
+          {contentFormat !== "stories" && <StoriesStrip compact title="Stories" />}
           <CreatorSpotlight />
           <AitLeaderboard compact />
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-6 mb-4">
-          {(
-            [
-              { id: "feed", label: "Лента", icon: Sparkles },
-              { id: "stories", label: "Stories", icon: BookMarked },
-              { id: "reels", label: "Reels", icon: Film },
-              { id: "journals", label: "Journals", icon: Compass },
-            ] as const
-          ).map(({ id, label, icon: Icon }) => (
+        <div className="flex flex-wrap gap-1.5 mt-6 mb-4 ait-glass rounded-full p-1 w-fit">
+          {CONTENT_FORMAT_TABS.map(({ id, label, icon: Icon }) => (
             <Button
               key={id}
               size="sm"
-              variant={contentFormat === id ? "default" : "ghost"}
-              className={
-                contentFormat === id
-                  ? "rounded-full ait-btn-glow border-0 text-white"
-                  : "rounded-full ait-glass text-slate-400"
-              }
+              variant="filter"
+              className={cn(
+                contentFormat === id &&
+                  "ait-btn-glow border-0 text-white shadow-none hover:text-white",
+              )}
               onClick={() => setContentFormat(id)}
             >
               <Icon className="h-4 w-4 mr-1" />
@@ -361,33 +379,18 @@ export function SocialFeed() {
           ))}
         </div>
 
-        <div className="flex gap-2 mb-2 ait-glass rounded-full p-1 w-fit">
-          <Button
-            variant={feedMode === "all" ? "default" : "ghost"}
-            size="sm"
-            className={feedMode === "all" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
-            onClick={() => { setFeedModeWithUrl("all"); setActiveTag(null); }}
-          >
-            Все
-          </Button>
-          <Button
-            variant={feedMode === "following" ? "default" : "ghost"}
-            size="sm"
-            className={feedMode === "following" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
-            onClick={() => { setFeedModeWithUrl("following"); setActiveTag(null); }}
-          >
-            Подписки
-          </Button>
-          <Button
-            variant={feedMode === "popular" ? "default" : "ghost"}
-            size="sm"
-            className={feedMode === "popular" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
-            onClick={() => { setFeedModeWithUrl("popular"); setActiveTag(null); }}
-          >
-            Популярное
-          </Button>
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <ChatFilterTabs
+            tabs={FEED_MODE_TABS}
+            value={feedMode}
+            onChange={(id) => {
+              setFeedModeWithUrl(id);
+              setActiveTag(null);
+            }}
+            layoutId="social-feed-mode-glider"
+          />
           {activeTag && (
-            <Badge variant="default" className="cursor-pointer" onClick={() => setActiveTag(null)}>
+            <Badge variant="default" className="cursor-pointer rounded-full" onClick={() => setActiveTag(null)}>
               #{activeTag} ×
             </Badge>
           )}
@@ -562,7 +565,7 @@ export function SocialFeed() {
                         <Button
                           onClick={handleCreatePost}
                           disabled={createPostMutation.isPending}
-                          className="bg-primary hover:bg-primary/90"
+                          variant="premium"
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Опубликовать
@@ -595,7 +598,27 @@ export function SocialFeed() {
                 <p className="text-muted-foreground mt-2">Загружаем посты...</p>
               </div>
             ) : contentFormat === "stories" ? (
-              <StoryBar posts={displayedPosts} onOpenGroup={openStoryGroup} />
+              <div className="space-y-4">
+                <div className="flex gap-3 items-start">
+                  <Link href="/social-feed?format=stories&create=1">
+                    <button
+                      type="button"
+                      className="flex flex-col items-center gap-2 shrink-0"
+                    >
+                      <div className="h-14 w-14 rounded-full border-2 border-dashed border-ait-purple/50 flex items-center justify-center bg-ait-purple/10">
+                        <Plus className="h-6 w-6 text-ait-purple" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">Создать</span>
+                    </button>
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <StoryBar posts={displayedPosts} onOpenGroup={openStoryGroup} inline />
+                  </div>
+                </div>
+                <p className="text-xs text-center text-muted-foreground">
+                  Stories живут 24 часа · лайки и реакции видны автору
+                </p>
+              </div>
             ) : contentFormat === "reels" ? (
               <ReelFeed posts={displayedPosts} />
             ) : displayedPosts.length === 0 ? (
@@ -800,9 +823,10 @@ export function SocialFeed() {
                             />
                             <Button
                               size="sm"
+                              variant="premium"
                               disabled={!commentInputs[post.id]?.trim() || commentMutation.isPending}
                               onClick={() => handleSubmitComment(post.id)}
-                              className="bg-primary hover:bg-primary/90 shrink-0"
+                              className="shrink-0"
                             >
                               <Send className="h-4 w-4" />
                             </Button>

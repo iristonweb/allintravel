@@ -94,10 +94,18 @@ export async function setupGoogleAuth(app: Express): Promise<void> {
           lastName: (claims?.family_name as string) ?? null,
           profileImageUrl: (claims?.picture as string) ?? null,
         });
-      } else if (!user.isAdmin) {
-        const { resolveIsAdmin } = await import("./admin");
-        if (resolveIsAdmin(email)) {
-          user = await storage.setUserAdmin(user.id, true);
+      } else {
+        if (!user.isAdmin) {
+          const { resolveIsAdmin } = await import("./admin");
+          if (resolveIsAdmin(email)) {
+            user = await storage.setUserAdmin(user.id, true);
+          }
+        }
+        const googlePicture = (claims?.picture as string | undefined)?.trim();
+        const deadLocalAvatar =
+          !user.profileImageUrl?.trim() || user.profileImageUrl.startsWith("/uploads/");
+        if (googlePicture && deadLocalAvatar) {
+          user = await storage.upsertUser({ ...user, profileImageUrl: googlePicture });
         }
       }
 

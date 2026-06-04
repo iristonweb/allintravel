@@ -41,6 +41,8 @@ type PlaceMapProps = {
   onPlaceClick?: (place: MapPlace) => void;
   className?: string;
   glowMarkers?: boolean;
+  /** Road geometry [lng, lat] — when set, draws along roads instead of straight segments */
+  routeGeometry?: [number, number][];
 };
 
 const purpleIcon = L.divIcon({
@@ -97,6 +99,7 @@ export default function PlaceMap({
   onPlaceClick,
   className = "",
   glowMarkers = false,
+  routeGeometry,
 }: PlaceMapProps) {
   const validPlaces = useMemo(
     () =>
@@ -108,11 +111,14 @@ export default function PlaceMap({
     [places],
   );
 
-  const routeCoords = useMemo(
-    () =>
-      validPlaces.map((p) => [Number(p.latitude), Number(p.longitude)] as [number, number]),
-    [validPlaces],
-  );
+  const routeCoords = useMemo(() => {
+    if (routeGeometry && routeGeometry.length > 1) {
+      return routeGeometry.map(([lng, lat]) => [lat, lng] as [number, number]);
+    }
+    return validPlaces.map((p) => [Number(p.latitude), Number(p.longitude)] as [number, number]);
+  }, [validPlaces, routeGeometry]);
+
+  const drawRoute = showRoute && routeCoords.length > 1 && (routeGeometry?.length ?? 0) > 1;
 
   const mapCenter: [number, number] =
     validPlaces.length === 1
@@ -136,7 +142,7 @@ export default function PlaceMap({
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         {validPlaces.length > 1 && <FitBounds places={validPlaces} />}
-        {showRoute && routeCoords.length > 1 && (
+        {drawRoute && (
           <Polyline
             positions={routeCoords}
             color={routeGlow ? "#22d3ee" : "var(--ait-primary)"}

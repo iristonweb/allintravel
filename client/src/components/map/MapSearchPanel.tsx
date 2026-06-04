@@ -48,13 +48,11 @@ export default function MapSearchPanel({
               <Button
                 key={type}
                 size="sm"
-                variant={filterType === type ? "default" : "secondary"}
+                variant="filter"
                 onClick={() => onFilterTypeChange(type)}
                 className={cn(
-                  "rounded-full text-xs font-medium shrink-0",
-                  filterType === type
-                    ? "ait-btn-glow border-0 text-white"
-                    : "ait-glass border-white/10 bg-transparent text-slate-300 hover:text-white",
+                  filterType === type &&
+                    "ait-btn-glow border-0 text-white shadow-none hover:text-white",
                 )}
               >
                 {typeLabels[type]}

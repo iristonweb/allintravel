@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { Send } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -131,7 +132,7 @@ export function ChatComponent({ chatRoom, title = "Чат", height = "h-96" }: C
                 className={`flex gap-3 ${isOwnMessage ? "flex-row-reverse" : ""}`}
               >
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarImage src={user?.profileImageUrl || ""} alt="User" />
+                  <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} alt="User" />
                   <AvatarFallback>
                     {user?.firstName?.[0] || "U"}
                   </AvatarFallback>

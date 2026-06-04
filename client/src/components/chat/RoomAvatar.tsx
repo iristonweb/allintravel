@@ -40,7 +40,15 @@ export default function RoomAvatar({
         <span
           className={cn(
             "leading-none",
-            className.includes("h-12") ? "text-base" : className.includes("h-11") ? "text-sm" : "text-xs",
+            className.includes("h-16")
+              ? "text-lg"
+              : className.includes("h-14")
+                ? "text-base"
+                : className.includes("h-12")
+                  ? "text-base"
+                  : className.includes("h-11")
+                    ? "text-sm"
+                    : "text-xs",
           )}
         >
           {initial}
@@ -49,5 +57,5 @@ export default function RoomAvatar({
     );
   }
 
-  return <Hash className={cn("shrink-0 text-ait-purple opacity-70", className.includes("h-12") ? "h-6 w-6" : className.includes("h-11") ? "h-5 w-5" : "h-4 w-4")} />;
+  return <Hash className={cn("shrink-0 text-ait-purple opacity-70", className.includes("h-16") ? "h-7 w-7" : className.includes("h-14") ? "h-6 w-6" : className.includes("h-12") ? "h-6 w-6" : className.includes("h-11") ? "h-5 w-5" : "h-4 w-4")} />;
 }

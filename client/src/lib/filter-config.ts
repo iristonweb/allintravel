@@ -74,3 +74,9 @@ export const FEED_MODE_FILTERS: FilterOption[] = [
   { value: "following", label: "Подписки" },
   { value: "nearby", label: "Рядом" },
 ];
+
+export const FEED_MODE_TAB_FILTERS: FilterOption[] = [
+  { value: "all", label: "Все" },
+  { value: "following", label: "Подписки" },
+  { value: "popular", label: "Популярное" },
+];

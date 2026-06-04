@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -24,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import FormatToolbar from "@/components/rich-text/FormatToolbar";
 import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
@@ -38,7 +40,8 @@ import {
 } from "lucide-react";
 import type { MessageDeliveryStatus, MessageReactionMeta, MessageReadMeta, ReactionSummary, User } from "@shared/schema";
 import { QUICK_REACTION_EMOJIS, DEFAULT_REACTION, findMyReaction, toggleReactionEmoji } from "@/lib/message-reactions";
-import { getUserDisplayLabel } from "@shared/user-display";
+import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -49,6 +52,7 @@ export type ChatMessageRowProps = {
   isPinned?: boolean;
   senderLabel?: string;
   senderInitial?: string;
+  senderAvatarUrl?: string | null;
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
   meta?: MessageReactionMeta & Partial<MessageReadMeta>;
@@ -79,6 +83,7 @@ export default function ChatMessageRow({
   isPinned,
   senderLabel,
   senderInitial,
+  senderAvatarUrl,
   createdAt,
   updatedAt,
   meta,
@@ -99,7 +104,7 @@ export default function ChatMessageRow({
   const [editText, setEditText] = useState(content);
   const editTextRef = useRef<HTMLTextAreaElement>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
-  const hasActions = Boolean(onReact || onPin || onUnpin || onDelete || onEdit);
+  const hasActions = Boolean(onReact || onReply || onPin || onUnpin || onDelete || onEdit);
 
   const { data: insights, isLoading: insightsLoading } = useQuery<InsightsPayload>({
     queryKey: [insightsUrl, messageId],
@@ -116,6 +121,16 @@ export default function ChatMessageRow({
 
   const reactions: ReactionSummary[] = meta?.reactions ?? [];
   const myReaction = findMyReaction(reactions);
+
+  const userRow = (u: User) => (
+    <li key={u.id} className="flex items-center gap-2">
+      <Avatar className="h-8 w-8 shrink-0">
+        <AvatarImage src={resolveMediaUrl(u.profileImageUrl)} />
+        <AvatarFallback className="text-xs bg-primary/20">{getUserInitial(u)}</AvatarFallback>
+      </Avatar>
+      <span>{getUserDisplayLabel(u)}</span>
+    </li>
+  );
 
   const submitEdit = () => {
     const trimmed = editText.trim();
@@ -189,9 +204,12 @@ export default function ChatMessageRow({
             data-message-id={messageId}
           >
             {senderInitial != null && (
-              <div className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
-                {senderInitial}
-              </div>
+              <Avatar className="h-11 w-11 shrink-0">
+                <AvatarImage src={resolveMediaUrl(senderAvatarUrl)} />
+                <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
+                  {senderInitial}
+                </AvatarFallback>
+              </Avatar>
             )}
             <div className={cn("flex flex-col max-w-[82%] min-w-0", isOwn && "items-end")}>
               {isPinned && (
@@ -224,6 +242,13 @@ export default function ChatMessageRow({
                       <Reply className="h-4 w-4 mr-2" />
                       Ответить
                     </DropdownMenuItem>
+                  )}
+                  {onReact && (
+                    <>
+                      {onReply && <DropdownMenuSeparator />}
+                      <DropdownMenuLabel>Реакция</DropdownMenuLabel>
+                      {reactionPicker}
+                    </>
                   )}
                   {canEdit && onEdit && (
                         <DropdownMenuItem
@@ -277,8 +302,12 @@ export default function ChatMessageRow({
               <ContextMenuSeparator />
             </>
           )}
-          <ContextMenuLabel>Реакция</ContextMenuLabel>
-          {reactionPicker}
+          {onReact && (
+            <>
+              <ContextMenuLabel>Реакция</ContextMenuLabel>
+              {reactionPicker}
+            </>
+          )}
           {insightsUrl && (
             <>
               <ContextMenuSeparator />
@@ -306,10 +335,8 @@ export default function ChatMessageRow({
                 {insights.readers.length === 0 ? (
                   <p className="text-muted-foreground">Пока никто</p>
                 ) : (
-                  <ul className="space-y-1">
-                    {insights.readers.map((u) => (
-                      <li key={u.id}>{getUserDisplayLabel(u)}</li>
-                    ))}
+                  <ul className="space-y-2">
+                    {insights.readers.map((u) => userRow(u))}
                   </ul>
                 )}
               </div>
@@ -318,11 +345,13 @@ export default function ChatMessageRow({
                 {insights.reactions.length === 0 ? (
                   <p className="text-muted-foreground">Нет реакций</p>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {insights.reactions.map((g) => (
                       <li key={g.emoji}>
                         <span className="mr-2">{g.emoji}</span>
-                        {g.users.map((u) => getUserDisplayLabel(u)).join(", ")}
+                        <ul className="mt-1 space-y-1">
+                          {g.users.map((u) => userRow(u))}
+                        </ul>
                       </li>
                     ))}
                   </ul>

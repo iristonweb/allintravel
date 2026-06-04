@@ -70,7 +70,41 @@ export function blobDeliveryUrl(pathname: string): string {
 
 export function isValidBlobDeliveryPathname(pathname: string): boolean {
   if (!pathname || pathname.includes("..") || pathname.startsWith("/")) return false;
-  return pathname.startsWith("media/") || pathname.startsWith("music/");
+  return (
+    pathname.startsWith("media/") ||
+    pathname.startsWith("music/") ||
+    pathname.startsWith("avatars/")
+  );
+}
+
+/** True for URLs that will not survive Vercel redeploy (must not be saved to DB on Vercel). */
+export function isEphemeralMediaUrl(url: string): boolean {
+  if (!url?.trim()) return false;
+  if (url.startsWith("data:")) return true;
+  if (process.env.VERCEL && url.startsWith("/uploads/")) return true;
+  return false;
+}
+
+/** Reject non-durable media URLs before writing to the database. */
+export function assertPersistentMediaUrl(url: string): void {
+  if (url.startsWith("data:")) {
+    throw new Error(VERCEL_BLOB_REQUIRED_MSG);
+  }
+  if (process.env.VERCEL && url.startsWith("/uploads/")) {
+    throw new Error(
+      "На Vercel нельзя сохранять файлы в /uploads — подключите Vercel Blob (Dashboard → Storage → Blob → Connect to Project).",
+    );
+  }
+}
+
+export function logMediaStorageStatus(): void {
+  if (process.env.VERCEL && !hasBlobStorage()) {
+    console.error(
+      "[media-storage] Vercel без Blob: загрузки аватаров и медиа будут падать. Подключите Blob store к проекту.",
+    );
+  } else if (hasBlobStorage()) {
+    console.log("[media-storage] Vercel Blob активен — загрузки сохраняются постоянно.");
+  }
 }
 
 /** Upload buffer to Vercel Blob; auto-detects public vs private store. */
@@ -111,6 +145,29 @@ export async function persistUploadedFile(file: Express.Multer.File): Promise<st
 
   if (!process.env.VERCEL) {
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    fs.writeFileSync(path.join(getUploadsDir(), filename), buffer);
+    return `/uploads/${filename}`;
+  }
+
+  throw new Error(VERCEL_BLOB_REQUIRED_MSG);
+}
+
+/** User profile avatar — stored under avatars/{userId}/ in Blob or local uploads/. */
+export async function persistUserAvatar(userId: string, file: Express.Multer.File): Promise<string> {
+  const buffer = fileBuffer(file);
+  const mime = file.mimetype || "application/octet-stream";
+  const ext = guessExtension(mime, file.originalname);
+  const safeId = userId.replace(/[^a-zA-Z0-9_-]/g, "") || "user";
+
+  if (hasBlobStorage()) {
+    const key = `avatars/${safeId}/${Date.now()}${ext}`;
+    const url = await putBlobBuffer(key, buffer, mime);
+    assertPersistentMediaUrl(url);
+    return url;
+  }
+
+  if (!process.env.VERCEL) {
+    const filename = `avatar-${safeId}-${Date.now()}${ext}`;
     fs.writeFileSync(path.join(getUploadsDir(), filename), buffer);
     return `/uploads/${filename}`;
   }

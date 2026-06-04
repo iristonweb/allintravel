@@ -6,6 +6,7 @@ type AppLayoutProps = {
   contentClassName?: string;
   fullWidth?: boolean;
   immersive?: boolean;
+  chrome?: "default" | "minimal";
 };
 
 export default function AppLayout({
@@ -13,11 +14,13 @@ export default function AppLayout({
   contentClassName,
   fullWidth,
   immersive,
+  chrome,
 }: AppLayoutProps) {
   return (
     <AppShell
       fullWidth={fullWidth}
       immersive={immersive}
+      chrome={chrome}
       contentClassName={contentClassName}
     >
       {children}

@@ -351,7 +351,7 @@ export default function PlaceDetails() {
               <Button
                 onClick={handleSubmitReview}
                 disabled={createReviewMutation.isPending}
-                className="bg-primary hover:bg-primary/90"
+                variant="premium"
               >
                 {createReviewMutation.isPending ? "Публикуем…" : "Опубликовать"}
               </Button>

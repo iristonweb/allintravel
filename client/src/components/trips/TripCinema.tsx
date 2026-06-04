@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { Play, Pause, X, Film, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TravelMap from "@/components/maps/TravelMap";
 import { apiRequestJson } from "@/lib/queryClient";
+import { fetchBuiltRoute } from "@/lib/fetch-route";
 import { groupWaypointsByDay, dayLabel, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
 import type { Trip, TripWaypointWithPlace } from "@shared/schema";
@@ -75,7 +77,23 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
     [visiblePlaces],
   );
 
-  const totalKm = totalRouteKm(routeCoords);
+  const routePoints = useMemo(
+    () =>
+      visiblePlaces.map((p) => ({
+        lat: Number(p.latitude),
+        lon: Number(p.longitude),
+      })),
+    [visiblePlaces],
+  );
+
+  const { data: builtRoute } = useQuery({
+    queryKey: ["trip-cinema-route", routePoints],
+    enabled: routePoints.length >= 2,
+    queryFn: () => fetchBuiltRoute(routePoints, "walking"),
+    staleTime: 60_000,
+  });
+
+  const totalKm = builtRoute?.distanceKm ?? totalRouteKm(routeCoords);
 
   const mapFocus = currentStop
     ? { lat: currentStop.lat, lon: currentStop.lon, zoom: 12 }
@@ -138,7 +156,7 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
           places={visiblePlaces}
           height="100%"
           showRoute
-          routeGeometry={routeCoords}
+          routeGeometry={builtRoute?.geometry}
           mapFocus={mapFocus}
           className="h-full w-full rounded-none"
         />
