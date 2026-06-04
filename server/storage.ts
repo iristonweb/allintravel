@@ -1076,7 +1076,11 @@ export class MemStorage implements IStorage {
 
 export async function initAppStorage(): Promise<void> {
   if (storage instanceof PgStorage) {
-    await storage.ensureSeeded();
+    try {
+      await storage.ensureSeeded();
+    } catch (error) {
+      console.error("ensureSeeded failed (app will continue):", error);
+    }
   }
 }
 

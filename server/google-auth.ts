@@ -37,11 +37,18 @@ export async function setupGoogleAuth(app: Express): Promise<void> {
       const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
       (req.session as unknown as Record<string, unknown>).oauthCodeVerifier = codeVerifier;
 
+      const rawRedirect = typeof req.query.state === "string" ? req.query.state : "/";
+      const oauthState =
+        rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") && !rawRedirect.includes("://")
+          ? rawRedirect
+          : "/";
+
       const authUrl = client.buildAuthorizationUrl(config, {
         redirect_uri: redirectUri,
         scope: "openid email profile",
         code_challenge: codeChallenge,
         code_challenge_method: "S256",
+        state: oauthState,
       });
 
       res.redirect(authUrl.href);

@@ -2,34 +2,47 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import createMemoryStore from "memorystore";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
-import { getPool } from "./db";
+import { getSessionPool } from "./db";
 import { setupGoogleAuth } from "./google-auth";
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
 const PgSession = connectPgSimple(session);
+const MemoryStore = createMemoryStore(session);
+
+let sessionMiddleware: ReturnType<typeof session> | null = null;
 
 export function getSession() {
+  if (sessionMiddleware) return sessionMiddleware;
+
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pool = getPool();
-  return session({
+  const isProduction = process.env.NODE_ENV === "production";
+  const pgPool = getSessionPool();
+
+  const store = pgPool
+    ? new PgSession({
+        pool: pgPool,
+        tableName: "sessions",
+        createTableIfMissing: true,
+      })
+    : new MemoryStore({ checkPeriod: 86_400_000 });
+
+  sessionMiddleware = session({
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: pool
-      ? new PgSession({
-          pool: pool as import("pg").Pool,
-          tableName: "sessions",
-          createTableIfMissing: true,
-        })
-      : undefined,
+    store,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });
+
+  return sessionMiddleware;
 }
 
 export type SessionUser = {
@@ -129,14 +142,17 @@ export async function setupAuth(app: Express) {
     }
   );
 
-  app.get("/api/logout", (req, res) => {
+  const handleLogout = (req: import("express").Request, res: import("express").Response) => {
     req.logout((err) => {
       if (err) {
         return res.redirect("/");
       }
       res.redirect("/");
     });
-  });
+  };
+
+  app.get("/api/logout", handleLogout);
+  app.post("/api/logout", handleLogout);
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

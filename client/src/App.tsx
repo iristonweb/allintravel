@@ -38,6 +38,12 @@ function Router() {
     }
   }, [isAuthenticated, isLoading, location, navigate]);
 
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && location === "/login") {
+      navigate("/");
+    }
+  }, [isAuthenticated, isLoading, location, navigate]);
+
   // Show loading while checking auth status
   if (isLoading) {
     return (

@@ -11,7 +11,30 @@ neonConfig.webSocketConstructor = ws;
 type AppDb = ReturnType<typeof drizzleNodePg<typeof schema>>;
 
 let poolInstance: NodePgPool | NeonPool | null = null;
+let sessionPoolInstance: NodePgPool | null = null;
 let dbInstance: AppDb | null = null;
+
+/** node-postgres pool for express-session (connect-pg-simple); not Neon serverless. */
+export function getSessionPool(): NodePgPool | null {
+  if (!process.env.DATABASE_URL) return null;
+  if (sessionPoolInstance) return sessionPoolInstance;
+
+  const databaseUrl = process.env.DATABASE_URL;
+  const needsSsl =
+    databaseUrl.includes("neon.tech") ||
+    databaseUrl.includes("sslmode=require") ||
+    databaseUrl.includes("ssl=true");
+
+  sessionPoolInstance = new NodePgPool({
+    connectionString: databaseUrl,
+    max: process.env.VERCEL ? 1 : 5,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+  });
+
+  return sessionPoolInstance;
+}
 
 export function isDatabaseConfigured(): boolean {
   return Boolean(process.env.DATABASE_URL);

@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, getSession, type SessionUser } from "./auth";
+import { isGoogleAuthEnabled } from "./google-auth";
 import passport from "passport";
 import { allowGeoRequest, nominatimAutocomplete } from "./geo/nominatim";
 import { isYandexGeocoderConfigured, yandexAutocomplete } from "./geo/yandex";
@@ -80,15 +81,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/auth/config", (_req, res) => {
+    res.json({
+      googleOAuth: isGoogleAuthEnabled(),
+      /** First login with email + access code creates the account (no separate signup page). */
+      emailSignup: true,
+    });
+  });
+
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/user", async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const sessionUser = req.user as SessionUser | undefined;
+      const userId = sessionUser?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      res.status(401).json({ message: "Unauthorized" });
     }
   });
 
@@ -460,25 +479,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat routes
-  app.get('/api/chat/:room', async (req, res) => {
+  // Chat routes (HTTP fallback for Vercel — WebSocket is not available on serverless)
+  const enrichChatMessages = async (messages: Awaited<ReturnType<typeof storage.getChatMessages>>) =>
+    Promise.all(
+      messages.map(async (msg) => {
+        const sender = msg.userId ? await storage.getUser(msg.userId) : null;
+        return {
+          ...msg,
+          sender: sender
+            ? {
+                id: sender.id,
+                firstName: sender.firstName,
+                lastName: sender.lastName,
+                profileImageUrl: sender.profileImageUrl,
+              }
+            : null,
+        };
+      }),
+    );
+
+  app.get("/api/chat/:room", async (req, res) => {
     try {
       const { room } = req.params;
       const { limit = 50 } = req.query;
       const messages = await storage.getChatMessages(room, Number(limit));
-      const withSenders = await Promise.all(
-        messages.map(async (msg) => {
-          const sender = msg.userId ? await storage.getUser(msg.userId) : null;
-          return {
-            ...msg,
-            sender: sender ? { id: sender.id, firstName: sender.firstName, lastName: sender.lastName, profileImageUrl: sender.profileImageUrl } : null,
-          };
-        })
-      );
-      res.json(withSenders.reverse()); // Return in chronological order
+      const withSenders = await enrichChatMessages(messages);
+      res.json(withSenders.reverse());
     } catch (error) {
       console.error("Error fetching chat messages:", error);
       res.status(500).json({ message: "Failed to fetch chat messages" });
+    }
+  });
+
+  app.post("/api/chat/:room", isAuthenticated, async (req: any, res) => {
+    try {
+      const { room } = req.params;
+      const userId = req.user.claims.sub;
+      const content = String(req.body?.content ?? "").trim();
+      if (!content) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+      const messageData = insertChatMessageSchema.parse({
+        userId,
+        content,
+        chatRoom: room,
+      });
+      const savedMessage = await storage.createChatMessage(messageData);
+      const sender = await storage.getUser(userId);
+      res.status(201).json({
+        ...savedMessage,
+        sender: sender
+          ? {
+              id: sender.id,
+              firstName: sender.firstName,
+              lastName: sender.lastName,
+              profileImageUrl: sender.profileImageUrl,
+            }
+          : null,
+      });
+    } catch (error) {
+      console.error("Error posting chat message:", error);
+      res.status(500).json({ message: "Failed to post message" });
     }
   });
 
