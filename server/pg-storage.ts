@@ -255,17 +255,28 @@ export class PgStorage implements IStorage {
     if (filters?.type) conditions.push(eq(places.type, filters.type));
     if (filters?.search) {
       const term = filters.search.trim();
-      const q = `%${term}%`;
-      const placeMatch = or(
-        ilike(places.name, q),
-        ilike(places.address, q),
-        ilike(places.description, q),
-      )!;
+      const words = term
+        .split(/[\s,;]+/)
+        .map((w) => w.trim())
+        .filter((w) => w.length >= 2);
+      const tokens = words.length > 0 ? words : [term];
 
+      const tokenMatches = tokens.map((word) => {
+        const q = `%${word}%`;
+        return or(
+          ilike(places.name, q),
+          ilike(places.address, q),
+          ilike(places.description, q),
+        )!;
+      });
+      const placeMatch =
+        tokenMatches.length === 1 ? tokenMatches[0]! : and(...tokenMatches)!;
+
+      const cityQ = `%${tokens[0] ?? term}%`;
       const cityRows = await this.db
         .select({ name: cities.name })
         .from(cities)
-        .where(or(ilike(cities.name, q), ilike(cities.asciiName, q))!)
+        .where(or(ilike(cities.name, cityQ), ilike(cities.asciiName, cityQ))!)
         .orderBy(desc(cities.population))
         .limit(5);
 

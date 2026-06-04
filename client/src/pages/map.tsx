@@ -146,25 +146,29 @@ export function MapPage() {
 
 
 
-  const { data: places = [] } = useQuery<Place[]>({
+  const { data: poiResponse, isFetching: poisLoading } = useQuery<{ places: Place[] }>({
 
     queryKey: [
 
-      "/api/places",
+      "/api/map/pois",
 
       {
 
-        limit: 50,
+        q: activeSearch,
 
-        ...(activeSearch && { search: activeSearch }),
+        type: filterType,
 
-        ...(filterType !== "all" && { type: filterType }),
+        ...(mapFocus && { lat: mapFocus.lat, lon: mapFocus.lon }),
 
       },
 
     ],
 
+    enabled: activeSearch.length >= 2,
+
   });
+
+  const places = poiResponse?.places ?? [];
 
 
 
@@ -196,11 +200,7 @@ export function MapPage() {
 
   const showPlacesHint =
 
-    Boolean(activeSearch) &&
-
-    mapPlaces.length === 0 &&
-
-    mapFocus != null;
+    activeSearch.length >= 2 && mapPlaces.length === 0 && !poisLoading;
 
 
 
@@ -290,9 +290,11 @@ export function MapPage() {
 
       <div className="relative h-[calc(100vh-var(--ait-header-h))] min-h-[600px]">
 
-        <div className="absolute top-[calc(var(--ait-header-h)+0.75rem)] left-4 right-4 md:left-[calc(1rem+72px)] z-50 pointer-events-none">
+        <div className="absolute top-[calc(var(--ait-header-h)+5rem)] left-3 right-3 md:left-[calc(72px+1rem)] md:right-8 z-50 pointer-events-none flex justify-center">
 
           <motion.div
+
+            className="w-full"
 
             initial={{ opacity: 0, y: -12 }}
 
@@ -336,13 +338,16 @@ export function MapPage() {
 
           filterType={filterType}
 
-          showDemoMarkers={mapPlaces.length === 0 && !mapFocus}
+          showDemoMarkers={mapPlaces.length === 0 && !mapFocus && activeSearch.length < 2}
 
           mapFocus={mapFocus}
 
           showDestinationPin={mapFocus != null}
 
-          onPlaceClick={(place) => navigate(`/place/${place.id}`)}
+          onPlaceClick={(place) => {
+            if (String(place.id).startsWith("osm-")) return;
+            navigate(`/place/${place.id}`);
+          }}
 
         />
 

@@ -55,8 +55,10 @@ function NavItem({
         className={cn(
           "relative flex h-11 w-full items-center gap-3 rounded-xl px-3 transition-colors",
           active
-            ? "ait-nav-active text-white"
-            : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+            ? "text-white bg-white/10"
+            : "text-muted-foreground group-hover/sidebar:hover:bg-white/5 group-hover/sidebar:hover:text-foreground",
+          active &&
+            "before:absolute before:left-1 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-1 before:rounded-full before:bg-ait-purple before:content-['']",
         )}
       >
         <Icon className="h-5 w-5 shrink-0" aria-hidden />

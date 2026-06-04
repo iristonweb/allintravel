@@ -51,6 +51,7 @@ type DestinationSearchProps = {
   dropdownPortal?: boolean;
   showSubmit?: boolean;
   showPopular?: boolean;
+  showLeadingIcon?: boolean;
   debounceMs?: number;
   minChars?: number;
 };
@@ -67,6 +68,7 @@ export default function DestinationSearch({
   dropdownPortal = false,
   showSubmit = true,
   showPopular = true,
+  showLeadingIcon = true,
   debounceMs = 280,
   minChars = 2,
 }: DestinationSearchProps) {
@@ -275,12 +277,14 @@ export default function DestinationSearch({
     <div className={cn("relative", className)} ref={anchorRef}>
       <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          {showLeadingIcon && (
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          )}
           <Input
             value={value}
             placeholder={placeholder}
             autoComplete="off"
-            className={cn("pl-9", inputClassName)}
+            className={cn(showLeadingIcon ? "pl-9 pr-3" : "pl-3 pr-3", inputClassName)}
             onChange={(e) => {
               onChange(e.target.value);
               setOpen(true);

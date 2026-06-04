@@ -112,6 +112,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/map/pois", async (req, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      const type = typeof req.query.type === "string" ? req.query.type : undefined;
+      const latRaw = req.query.lat != null ? Number(req.query.lat) : NaN;
+      const lonRaw = req.query.lon != null ? Number(req.query.lon) : NaN;
+      const lat = Number.isFinite(latRaw) ? latRaw : undefined;
+      const lon = Number.isFinite(lonRaw) ? lonRaw : undefined;
+
+      if (q.length < 2) {
+        return res.json({ places: [] });
+      }
+
+      const ip =
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.socket.remoteAddress ||
+        "unknown";
+
+      const { allowGeoRequest: allowPoi } = await import("./geo/nominatim-poi");
+      if (!allowPoi(`poi:${ip}`)) {
+        return res.status(429).json({ message: "Too many requests" });
+      }
+
+      const acceptLanguage =
+        (req.headers["accept-language"] as string | undefined) ??
+        (typeof req.query.lang === "string" ? req.query.lang : undefined);
+
+      const segments = q
+        .split(/[,;]|(?:\s+—\s+)|(?:\s+–\s+)|(?:\s+-\s+)/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const keywords =
+        segments.length >= 2 ? segments[segments.length - 1]! : q;
+      const locationHint =
+        segments.length >= 2 ? segments.slice(0, -1).join(", ") : q;
+
+      const catalogTerms = [keywords, locationHint, q].filter(
+        (t, i, arr) => t.length >= 2 && arr.indexOf(t) === i,
+      );
+
+      const catalogBatches = await Promise.all(
+        catalogTerms.map((term) =>
+          storage.getPlaces({
+            search: term,
+            type: type && type !== "all" ? type : undefined,
+            limit: 20,
+          }),
+        ),
+      );
+
+      const catalogMap = new Map<string, (typeof catalogBatches)[0][0]>();
+      for (const batch of catalogBatches) {
+        for (const p of batch) {
+          catalogMap.set(p.id, p);
+        }
+      }
+
+      const { nominatimPoiSearch } = await import("./geo/nominatim-poi");
+      const osmPlaces = await nominatimPoiSearch({
+        q: keywords.length >= 2 ? keywords : q,
+        limit: 20,
+        lat,
+        lon,
+        filterType: type,
+        acceptLanguage,
+      });
+
+      const merged = [
+        ...Array.from(catalogMap.values()),
+        ...osmPlaces.filter((o) => !catalogMap.has(o.id)),
+      ].slice(0, 40);
+
+      res.json({ places: merged });
+    } catch (error) {
+      console.error("Error searching map POIs:", error);
+      res.status(500).json({ message: "Failed to search places on map" });
+    }
+  });
+
   app.get("/api/geo/status", async (_req, res) => {
     try {
       let countries = 0;

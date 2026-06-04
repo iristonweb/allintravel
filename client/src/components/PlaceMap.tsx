@@ -177,11 +177,18 @@ export default function PlaceMap({
                       {rating.toFixed(1)}
                     </div>
                   )}
-                  <Link href={`/place/${place.id}`}>
-                    <Button size="sm" className="w-full mt-1 bg-primary hover:bg-primary/90">
-                      Подробнее
-                    </Button>
-                  </Link>
+                  {place.address && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{place.address}</p>
+                  )}
+                  {!String(place.id).startsWith("osm-") ? (
+                    <Link href={`/place/${place.id}`}>
+                      <Button size="sm" className="w-full mt-1 bg-primary hover:bg-primary/90">
+                        Подробнее
+                      </Button>
+                    </Link>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground">Источник: OpenStreetMap</p>
+                  )}
                 </div>
               </Popup>
             </Marker>

@@ -57,11 +57,11 @@ export default function GlobalSearchPanel() {
   };
 
   const fieldClass =
-    "flex items-start gap-3 px-4 py-3 min-w-0 border-b border-white/10 lg:border-b-0 lg:border-r lg:last:border-r-0";
+    "flex items-start gap-3 px-4 py-3 min-w-0 rounded-xl lg:rounded-none border-b border-white/10 lg:border-0 last:border-b-0";
 
   return (
     <div className="ait-glass-strong rounded-2xl md:rounded-[28px] p-3 md:p-4 ait-gradient-border shadow-2xl">
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.85fr)_minmax(0,1fr)_auto] lg:divide-x divide-white/10 gap-0">
+      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.85fr)_minmax(0,1fr)_auto] lg:gap-1 gap-0">
         <div className={fieldClass}>
           <MapPin className="h-5 w-5 text-ait-purple shrink-0 mt-1.5" />
           <div className="flex-1 min-w-0">
@@ -72,8 +72,9 @@ export default function GlobalSearchPanel() {
               onNavigate={navigate}
               showSubmit={false}
               showPopular={false}
+              showLeadingIcon={false}
               placeholder="Страна, город или место"
-              inputClassName="border-0 bg-transparent h-9 px-0 focus-visible:ring-0 text-sm"
+              inputClassName="border-0 bg-transparent h-9 px-0 focus-visible:ring-0 text-sm w-full"
               hrefMode="map"
             />
           </div>

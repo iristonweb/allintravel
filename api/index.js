@@ -1074,6 +1074,107 @@ var init_resolve_autocomplete = __esm({
   }
 });
 
+// server/geo/nominatim-poi.ts
+var nominatim_poi_exports = {};
+__export(nominatim_poi_exports, {
+  allowGeoRequest: () => allowGeoRequest,
+  nominatimPoiSearch: () => nominatimPoiSearch
+});
+function shortName(displayName) {
+  const first = displayName.split(",")[0]?.trim();
+  return first || displayName;
+}
+function inferPlaceType(osmType, osmClass) {
+  const t = (osmType ?? "").toLowerCase();
+  if (["hotel", "motel", "hostel", "guest_house"].includes(t)) return "hotel";
+  if (["restaurant", "cafe", "fast_food", "food_court", "bar", "pub"].includes(t)) return "restaurant";
+  if (["museum", "attraction", "viewpoint", "theme_park", "gallery"].includes(t)) return "attraction";
+  if (osmClass === "tourism") return "attraction";
+  if (osmClass === "amenity" && t.includes("restaurant")) return "restaurant";
+  return "attraction";
+}
+function buildPoiQuery(q, filterType) {
+  const trimmed = q.trim();
+  if (!trimmed) return "";
+  const mapped = filterType && filterType !== "all" ? TYPE_TO_OSM[filterType] : null;
+  if (mapped && !trimmed.toLowerCase().includes(mapped)) {
+    return `${mapped} ${trimmed}`;
+  }
+  return trimmed;
+}
+async function nominatimPoiSearch(params) {
+  const q = buildPoiQuery(params.q, params.filterType);
+  if (q.length < 2) return [];
+  const limit = Math.max(1, Math.min(25, Math.floor(params.limit ?? 15)));
+  const lang = (params.acceptLanguage ?? "").trim();
+  const cacheKey = `poi:v1:${q.toLowerCase()}:${limit}:${params.lat ?? ""}:${params.lon ?? ""}:${params.filterType ?? ""}`;
+  const cached = cache3.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+  const url = new URL(BASE_URL2);
+  url.searchParams.set("q", q);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("limit", String(limit * 2));
+  url.searchParams.set("dedupe", "1");
+  if (params.lat != null && params.lon != null && Number.isFinite(params.lat) && Number.isFinite(params.lon)) {
+    const d = 0.35;
+    const minLon = params.lon - d;
+    const maxLon = params.lon + d;
+    const minLat = params.lat - d;
+    const maxLat = params.lat + d;
+    url.searchParams.set("viewbox", `${minLon},${maxLat},${maxLon},${minLat}`);
+    url.searchParams.set("bounded", "1");
+  }
+  const res = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": USER_AGENT2,
+      ...lang ? { "Accept-Language": lang } : {}
+    }
+  });
+  if (!res.ok) {
+    throw new Error(`Nominatim POI error: ${res.status}`);
+  }
+  const json = await res.json();
+  const rows = (Array.isArray(json) ? json : []).filter((it) => {
+    const cls = it.class ?? "";
+    if (POI_CLASSES.has(cls)) return true;
+    const t = (it.type ?? "").toLowerCase();
+    return ["restaurant", "hotel", "cafe", "fast_food", "museum", "attraction"].includes(t);
+  }).filter((it) => it.lat && it.lon).sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0)).slice(0, limit);
+  const items = rows.map((it) => {
+    const osmId = it.osm_id ?? it.place_id ?? Math.random();
+    const placeType = inferPlaceType(it.type, it.class);
+    return {
+      id: `osm-${it.osm_type ?? "node"}-${osmId}`,
+      name: shortName(it.display_name ?? q),
+      latitude: it.lat,
+      longitude: it.lon,
+      type: placeType,
+      address: it.display_name ?? null,
+      source: "osm"
+    };
+  });
+  cache3.set(cacheKey, { data: items, expiresAt: Date.now() + 3 * 60 * 60 * 1e3 });
+  return items;
+}
+var BASE_URL2, USER_AGENT2, POI_CLASSES, TYPE_TO_OSM, cache3;
+var init_nominatim_poi = __esm({
+  "server/geo/nominatim-poi.ts"() {
+    "use strict";
+    init_nominatim();
+    BASE_URL2 = "https://nominatim.openstreetmap.org/search";
+    USER_AGENT2 = "All-in-travel/1.0 (poi search)";
+    POI_CLASSES = /* @__PURE__ */ new Set(["amenity", "shop", "tourism", "leisure", "office", "craft", "building"]);
+    TYPE_TO_OSM = {
+      hotel: "hotel",
+      restaurant: "restaurant",
+      attraction: "attraction",
+      tour: "travel_agency"
+    };
+    cache3 = /* @__PURE__ */ new Map();
+  }
+});
+
 // server/geo/yandex-router.ts
 var yandex_router_exports = {};
 __export(yandex_router_exports, {
@@ -1554,13 +1655,19 @@ var PgStorage = class {
     if (filters?.type) conditions.push(eq(places.type, filters.type));
     if (filters?.search) {
       const term = filters.search.trim();
-      const q = `%${term}%`;
-      const placeMatch = or(
-        ilike(places.name, q),
-        ilike(places.address, q),
-        ilike(places.description, q)
-      );
-      const cityRows = await this.db.select({ name: cities.name }).from(cities).where(or(ilike(cities.name, q), ilike(cities.asciiName, q))).orderBy(desc(cities.population)).limit(5);
+      const words = term.split(/[\s,;]+/).map((w) => w.trim()).filter((w) => w.length >= 2);
+      const tokens = words.length > 0 ? words : [term];
+      const tokenMatches = tokens.map((word) => {
+        const q = `%${word}%`;
+        return or(
+          ilike(places.name, q),
+          ilike(places.address, q),
+          ilike(places.description, q)
+        );
+      });
+      const placeMatch = tokenMatches.length === 1 ? tokenMatches[0] : and(...tokenMatches);
+      const cityQ = `%${tokens[0] ?? term}%`;
+      const cityRows = await this.db.select({ name: cities.name }).from(cities).where(or(ilike(cities.name, cityQ), ilike(cities.asciiName, cityQ))).orderBy(desc(cities.population)).limit(5);
       if (cityRows.length > 0) {
         const cityAddressMatch = or(
           ...cityRows.map((c) => ilike(places.address, `%${c.name}%`))
@@ -3177,6 +3284,63 @@ async function registerRoutes(app) {
     } catch (error) {
       console.error("Error searching destinations:", error);
       res.status(500).json({ message: "Failed to search destinations" });
+    }
+  });
+  app.get("/api/map/pois", async (req, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      const type = typeof req.query.type === "string" ? req.query.type : void 0;
+      const latRaw = req.query.lat != null ? Number(req.query.lat) : NaN;
+      const lonRaw = req.query.lon != null ? Number(req.query.lon) : NaN;
+      const lat = Number.isFinite(latRaw) ? latRaw : void 0;
+      const lon = Number.isFinite(lonRaw) ? lonRaw : void 0;
+      if (q.length < 2) {
+        return res.json({ places: [] });
+      }
+      const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+      const { allowGeoRequest: allowPoi } = await Promise.resolve().then(() => (init_nominatim_poi(), nominatim_poi_exports));
+      if (!allowPoi(`poi:${ip}`)) {
+        return res.status(429).json({ message: "Too many requests" });
+      }
+      const acceptLanguage = req.headers["accept-language"] ?? (typeof req.query.lang === "string" ? req.query.lang : void 0);
+      const segments = q.split(/[,;]|(?:\s+—\s+)|(?:\s+–\s+)|(?:\s+-\s+)/).map((s) => s.trim()).filter(Boolean);
+      const keywords = segments.length >= 2 ? segments[segments.length - 1] : q;
+      const locationHint = segments.length >= 2 ? segments.slice(0, -1).join(", ") : q;
+      const catalogTerms = [keywords, locationHint, q].filter(
+        (t, i, arr) => t.length >= 2 && arr.indexOf(t) === i
+      );
+      const catalogBatches = await Promise.all(
+        catalogTerms.map(
+          (term) => storage.getPlaces({
+            search: term,
+            type: type && type !== "all" ? type : void 0,
+            limit: 20
+          })
+        )
+      );
+      const catalogMap = /* @__PURE__ */ new Map();
+      for (const batch of catalogBatches) {
+        for (const p of batch) {
+          catalogMap.set(p.id, p);
+        }
+      }
+      const { nominatimPoiSearch: nominatimPoiSearch2 } = await Promise.resolve().then(() => (init_nominatim_poi(), nominatim_poi_exports));
+      const osmPlaces = await nominatimPoiSearch2({
+        q: keywords.length >= 2 ? keywords : q,
+        limit: 20,
+        lat,
+        lon,
+        filterType: type,
+        acceptLanguage
+      });
+      const merged = [
+        ...Array.from(catalogMap.values()),
+        ...osmPlaces.filter((o) => !catalogMap.has(o.id))
+      ].slice(0, 40);
+      res.json({ places: merged });
+    } catch (error) {
+      console.error("Error searching map POIs:", error);
+      res.status(500).json({ message: "Failed to search places on map" });
     }
   });
   app.get("/api/geo/status", async (_req, res) => {

@@ -28,7 +28,7 @@ export default function MapSearchPanel({
   className,
 }: MapSearchPanelProps) {
   return (
-    <div className={cn("pointer-events-auto max-w-2xl w-full", className)}>
+    <div className={cn("pointer-events-auto w-full max-w-4xl xl:max-w-5xl", className)}>
       <div className="ait-glass-strong rounded-2xl p-3 md:p-4 ait-gradient-border shadow-2xl">
         <h1 className="text-lg md:text-xl font-bold text-white mb-3">Интерактивная карта</h1>
         <div className="flex flex-col gap-3">
@@ -36,8 +36,9 @@ export default function MapSearchPanel({
             value={search}
             onChange={onSearchChange}
             onNavigate={onNavigate}
-            placeholder="Город, страна или место"
-            inputClassName="ait-glass-strong border-0 bg-transparent text-white placeholder:text-slate-500"
+            placeholder="Город, заведение или адрес…"
+            showLeadingIcon={false}
+            inputClassName="ait-glass border-0 bg-white/5 text-white placeholder:text-slate-500 h-11 text-sm truncate"
             placeType={filterType}
             hrefMode="map"
             dropdownPortal
@@ -62,7 +63,7 @@ export default function MapSearchPanel({
           </div>
           {showPlacesHint && (
             <p className="text-xs text-slate-400 px-1">
-              Места по запросу не найдены — карта показывает выбранный город
+              В каталоге ничего не найдено — показаны заведения из OpenStreetMap по запросу или точка на карте
             </p>
           )}
         </div>
