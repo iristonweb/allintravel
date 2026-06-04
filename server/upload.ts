@@ -18,6 +18,7 @@ const ALLOWED_MIME = new Set([
   "audio/mp4",
   "audio/ogg",
   "audio/wav",
+  "audio/webm",
   "audio/x-m4a",
   "audio/mp3",
 ]);
@@ -28,13 +29,19 @@ function isAllowedMime(mime: string, originalName: string): boolean {
   if (mime === "application/octet-stream") {
     if (lower.endsWith(".gif")) return true;
     if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
-    if (lower.endsWith(".mp3") || lower.endsWith(".m4a") || lower.endsWith(".ogg") || lower.endsWith(".wav"))
+    if (
+      lower.endsWith(".mp3") ||
+      lower.endsWith(".m4a") ||
+      lower.endsWith(".ogg") ||
+      lower.endsWith(".wav") ||
+      lower.endsWith(".webm")
+    )
       return true;
   }
   return false;
 }
 
-function createUploadMiddleware() {
+export function createUploadMiddleware() {
   return multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 50 * 1024 * 1024 },
@@ -48,7 +55,7 @@ function createUploadMiddleware() {
   });
 }
 
-function handleMulter(
+export function handleMulter(
   req: Request,
   res: Response,
   next: NextFunction,

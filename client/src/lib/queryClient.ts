@@ -3,7 +3,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 const API_BASE =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_ORIGIN) || "";
 
-function toApiUrl(path: string): string {
+export function toApiUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   const base = API_BASE.replace(/\/$/, "");
   return base ? `${base}${path.startsWith("/") ? path : `/${path}`}` : path;

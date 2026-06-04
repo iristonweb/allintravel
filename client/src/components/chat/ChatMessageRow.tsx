@@ -9,6 +9,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -20,14 +28,18 @@ import { Textarea } from "@/components/ui/textarea";
 import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
 import { cn } from "@/lib/utils";
 import {
-  Heart,
   MoreHorizontal,
   Pencil,
   Pin,
   PinOff,
   Trash2,
+  Reply,
 } from "lucide-react";
-import type { MessageReactionMeta } from "@shared/schema";
+import type { MessageDeliveryStatus, MessageReactionMeta, MessageReadMeta, ReactionSummary, User } from "@shared/schema";
+import { QUICK_REACTION_EMOJIS, DEFAULT_REACTION, findMyReaction, toggleReactionEmoji } from "@/lib/message-reactions";
+import { getUserDisplayLabel } from "@shared/user-display";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export type ChatMessageRowProps = {
   messageId: string;
@@ -38,16 +50,25 @@ export type ChatMessageRowProps = {
   senderInitial?: string;
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
-  meta?: MessageReactionMeta;
+  meta?: MessageReactionMeta & Partial<MessageReadMeta>;
   canPin?: boolean;
   canDelete?: boolean;
   canEdit?: boolean;
-  onLike?: () => void;
+  onReact?: (emoji: string | null) => void;
   onPin?: () => void;
   onUnpin?: () => void;
   onDelete?: () => void;
   onEdit?: (content: string) => void;
-  liking?: boolean;
+  reacting?: boolean;
+  insightsUrl?: string;
+  deliveryStatus?: MessageDeliveryStatus;
+  onReply?: () => void;
+};
+
+type InsightsPayload = {
+  readCount: number;
+  readers: User[];
+  reactions: { emoji: string; users: User[] }[];
 };
 
 export default function ChatMessageRow({
@@ -63,20 +84,36 @@ export default function ChatMessageRow({
   canPin,
   canDelete,
   canEdit,
-  onLike,
+  onReact,
   onPin,
   onUnpin,
   onDelete,
   onEdit,
-  liking,
+  reacting,
+  insightsUrl,
+  deliveryStatus,
+  onReply,
 }: ChatMessageRowProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [editText, setEditText] = useState(content);
-  const hasActions = Boolean(onLike || onPin || onUnpin || onDelete || onEdit);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const hasActions = Boolean(onReact || onPin || onUnpin || onDelete || onEdit);
+
+  const { data: insights, isLoading: insightsLoading } = useQuery<InsightsPayload>({
+    queryKey: [insightsUrl, messageId],
+    enabled: insightsOpen && Boolean(insightsUrl),
+    queryFn: async () => {
+      const res = await apiRequest("GET", insightsUrl!);
+      return res.json();
+    },
+  });
 
   const timeStr = createdAt
     ? format(new Date(createdAt as string), "HH:mm", { locale: ru })
     : "";
+
+  const reactions: ReactionSummary[] = meta?.reactions ?? [];
+  const myReaction = findMyReaction(reactions);
 
   const submitEdit = () => {
     const trimmed = editText.trim();
@@ -88,115 +125,211 @@ export default function ChatMessageRow({
     setEditOpen(false);
   };
 
+  const handleQuickReact = (emoji: string) => {
+    if (!onReact) return;
+    onReact(toggleReactionEmoji(myReaction, emoji));
+  };
+
+  const handleDoubleClick = () => {
+    if (!onReact) return;
+    onReact(toggleReactionEmoji(myReaction, DEFAULT_REACTION));
+  };
+
+  const reactionPicker = (
+    <div className="flex flex-wrap gap-1 px-2 py-1.5">
+      {QUICK_REACTION_EMOJIS.map((emoji) => (
+        <button
+          key={emoji}
+          type="button"
+          className={cn(
+            "text-lg leading-none p-1 rounded-md hover:bg-accent transition-colors",
+            myReaction === emoji && "bg-ait-orange/15 ring-1 ring-ait-orange/40",
+          )}
+          onClick={() => handleQuickReact(emoji)}
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  );
+
+  const bubble = (
+    <ChatMessageBubble
+      content={content}
+      isOwn={isOwn}
+      edited={Boolean(updatedAt)}
+      reactions={reactions}
+      onReact={onReact ? handleQuickReact : undefined}
+      reacting={reacting}
+      deliveryStatus={deliveryStatus ?? meta?.deliveryStatus}
+      onDoubleClickReact={onReact ? handleDoubleClick : undefined}
+      senderLabel={
+        senderLabel ? (
+          <span className="text-xs text-muted-foreground px-1">{senderLabel}</span>
+        ) : undefined
+      }
+      timestamp={
+        <span className="text-[10px] text-muted-foreground px-1">{timeStr}</span>
+      }
+    />
+  );
+
   return (
     <>
-      <div
-        className={cn(
-          "group flex gap-2",
-          isOwn && "flex-row-reverse",
-          isPinned && "relative",
-        )}
-        data-message-id={messageId}
-      >
-        {senderInitial != null && (
-          <div className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
-            {senderInitial}
-          </div>
-        )}
-        <div className={cn("flex flex-col max-w-[82%] min-w-0", isOwn && "items-end")}>
-          {isPinned && (
-            <span className="text-[10px] text-ait-orange font-medium px-1 mb-0.5 flex items-center gap-1">
-              <Pin className="h-3 w-3" />
-              Закреплено
-            </span>
-          )}
-          <div className="flex items-end gap-1">
-            <ChatMessageBubble
-              content={content}
-              isOwn={isOwn}
-              edited={Boolean(updatedAt)}
-              senderLabel={
-                senderLabel ? (
-                  <span className="text-xs text-muted-foreground px-1">{senderLabel}</span>
-                ) : undefined
-              }
-              timestamp={
-                <span className="text-[10px] text-muted-foreground px-1">{timeStr}</span>
-              }
-              likeCount={meta?.likeCount}
-              likedByMe={meta?.likedByMe}
-              onLike={onLike}
-              liking={liking}
-            />
-            {hasActions && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-7 w-7 shrink-0 rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
-                      isOwn ? "order-first" : "",
-                    )}
-                    aria-label="Действия с сообщением"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-48">
-                  {onLike && (
-                    <DropdownMenuItem onClick={onLike} disabled={liking}>
-                      <Heart
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            className={cn(
+              "group flex gap-2",
+              isOwn && "flex-row-reverse",
+              isPinned && "relative",
+            )}
+            data-message-id={messageId}
+          >
+            {senderInitial != null && (
+              <div className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
+                {senderInitial}
+              </div>
+            )}
+            <div className={cn("flex flex-col max-w-[82%] min-w-0", isOwn && "items-end")}>
+              {isPinned && (
+                <span className="text-[10px] text-ait-orange font-medium px-1 mb-0.5 flex items-center gap-1">
+                  <Pin className="h-3 w-3" />
+                  Закреплено
+                </span>
+              )}
+              <div className="flex items-end gap-1">
+                {bubble}
+                {hasActions && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
                         className={cn(
-                          "h-4 w-4 mr-2",
-                          meta?.likedByMe && "fill-ait-orange text-ait-orange",
+                          "h-7 w-7 shrink-0 rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
+                          isOwn ? "order-first" : "",
                         )}
-                      />
-                      {meta?.likedByMe ? "Убрать лайк" : "Лайк"}
+                        aria-label="Действия с сообщением"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-48">
+                  {onReply && (
+                    <DropdownMenuItem onClick={onReply}>
+                      <Reply className="h-4 w-4 mr-2" />
+                      Ответить
                     </DropdownMenuItem>
                   )}
                   {canEdit && onEdit && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setEditText(content);
-                        setEditOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Редактировать
-                    </DropdownMenuItem>
-                  )}
-                  {canPin && !isPinned && onPin && (
-                    <DropdownMenuItem onClick={onPin}>
-                      <Pin className="h-4 w-4 mr-2" />
-                      Закрепить
-                    </DropdownMenuItem>
-                  )}
-                  {canPin && isPinned && onUnpin && (
-                    <DropdownMenuItem onClick={onUnpin}>
-                      <PinOff className="h-4 w-4 mr-2" />
-                      Открепить
-                    </DropdownMenuItem>
-                  )}
-                  {canDelete && onDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={onDelete}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Удалить
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditText(content);
+                            setEditOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Редактировать
+                        </DropdownMenuItem>
+                      )}
+                      {canPin && !isPinned && onPin && (
+                        <DropdownMenuItem onClick={onPin}>
+                          <Pin className="h-4 w-4 mr-2" />
+                          Закрепить
+                        </DropdownMenuItem>
+                      )}
+                      {canPin && isPinned && onUnpin && (
+                        <DropdownMenuItem onClick={onUnpin}>
+                          <PinOff className="h-4 w-4 mr-2" />
+                          Открепить
+                        </DropdownMenuItem>
+                      )}
+                      {canDelete && onDelete && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={onDelete}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-56">
+          {onReply && (
+            <>
+              <ContextMenuItem onClick={onReply}>
+                <Reply className="h-4 w-4 mr-2" />
+                Ответить
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+            </>
+          )}
+          <ContextMenuLabel>Реакция</ContextMenuLabel>
+          {reactionPicker}
+          {insightsUrl && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => setInsightsOpen(true)}>
+                Кто просмотрел и реагировал
+              </ContextMenuItem>
+            </>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <Dialog open={insightsOpen} onOpenChange={setInsightsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Просмотры и реакции</DialogTitle>
+          </DialogHeader>
+          {insightsLoading ? (
+            <p className="text-sm text-muted-foreground">Загрузка…</p>
+          ) : insights ? (
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="font-medium mb-1">
+                  Просмотрели ({insights.readCount})
+                </p>
+                {insights.readers.length === 0 ? (
+                  <p className="text-muted-foreground">Пока никто</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {insights.readers.map((u) => (
+                      <li key={u.id}>{getUserDisplayLabel(u)}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <p className="font-medium mb-1">Реакции</p>
+                {insights.reactions.length === 0 ? (
+                  <p className="text-muted-foreground">Нет реакций</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {insights.reactions.map((g) => (
+                      <li key={g.emoji}>
+                        <span className="mr-2">{g.emoji}</span>
+                        {g.users.map((u) => getUserDisplayLabel(u)).join(", ")}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">

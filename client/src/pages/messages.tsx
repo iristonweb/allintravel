@@ -17,6 +17,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { PrivateMessage, PrivateMessageWithMeta, User } from "@shared/schema";
+import { messagePreview, withReplyMention } from "@/lib/chat-message";
+import { useToast } from "@/hooks/use-toast";
 import { Hash } from "lucide-react";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 
@@ -26,16 +28,20 @@ interface Conversation {
   unreadCount: number;
 }
 
+type ReplyTarget = { username: string; label: string; preview: string };
+
 const isVercelHost =
   typeof window !== "undefined" &&
   (window.location.hostname.includes("vercel.app") || import.meta.env.PROD);
 
 export function Messages() {
   const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [location] = useLocation();
   const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [msgTab, setMsgTab] = useState<"all" | "personal" | "groups">("all");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -79,12 +85,18 @@ export function Messages() {
     refetchInterval: isVercelHost && !!selectedConversation?.user?.id ? 3000 : false,
   });
 
-  const likeMutation = useMutation({
-    mutationFn: async (messageId: string) => {
-      const res = await apiRequest("POST", `/api/messages/${messageId}/like`);
-      return res.json();
+  const reactionMutation = useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string | null }) => {
+      const res = await apiRequest("PUT", `/api/messages/${messageId}/reactions`, { emoji });
+      return (await res.json()) as { reactions: PrivateMessageWithMeta["reactions"] };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: messagesKey }),
+    onSuccess: (meta, { messageId }) => {
+      queryClient.setQueryData<PrivateMessageWithMeta[]>(messagesKey, (old) =>
+        (old ?? []).map((m) =>
+          m.id === messageId ? { ...m, reactions: meta.reactions ?? [] } : m,
+        ),
+      );
+    },
   });
 
   const editMutation = useMutation({
@@ -127,10 +139,10 @@ export function Messages() {
         receiverId: messageData.receiverId,
         content: messageData.content,
         isRead: false,
+        deliveredAt: null,
         createdAt: new Date(),
         updatedAt: null,
-        likeCount: 0,
-        likedByMe: false,
+        reactions: [],
       };
       queryClient.setQueryData(key, [...previous, optimistic]);
       setNewMessage("");
@@ -142,6 +154,7 @@ export function Messages() {
       const withoutTemp = current.filter((m) => !String(m.id).startsWith("temp-"));
       queryClient.setQueryData(context.key, [...withoutTemp, saved]);
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setReplyTo(null);
     },
     onError: (_err, _vars, context) => {
       if (context) {
@@ -160,8 +173,11 @@ export function Messages() {
   });
 
   const handleSendMessage = (contentOverride?: string) => {
-    const content = (contentOverride ?? newMessage).trim();
+    let content = (contentOverride ?? newMessage).trim();
     if (!content || !selectedConversation) return;
+    if (replyTo && !contentOverride?.includes("[") && !content.includes(`@${replyTo.username}`)) {
+      content = withReplyMention(content, replyTo.username);
+    }
 
     sendMessageMutation.mutate({
       receiverId: selectedConversation.user.id,
@@ -169,8 +185,26 @@ export function Messages() {
     });
   };
 
+  const startReply = (message: PrivateMessageWithMeta) => {
+    const partner = selectedConversation?.user;
+    if (!partner?.username) {
+      toast({
+        title: "Нельзя ответить",
+        description: "У собеседника нет @username в профиле",
+        variant: "destructive",
+      });
+      return;
+    }
+    setReplyTo({
+      username: partner.username,
+      label: getUserDisplayLabel(partner),
+      preview: messagePreview(message.content),
+    });
+  };
+
   const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
+    setReplyTo(null);
     if (conversation.unreadCount > 0) {
       markAsReadMutation.mutate(conversation.user.id);
     }
@@ -201,8 +235,8 @@ export function Messages() {
   }
 
   return (
-    <AppLayout fullWidth contentClassName="p-4">
-      <div className="max-w-6xl mx-auto">
+    <AppLayout fullWidth contentClassName="p-2 md:p-4">
+      <div className="max-w-[1600px] mx-auto">
         <h1 className="ait-section-title">Сообщения</h1>
         <p className="text-muted-foreground mt-1 mb-4">Личные чаты и групповые поездки</p>
 
@@ -218,7 +252,7 @@ export function Messages() {
           className="mb-6"
         />
 
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-4 h-[calc(100vh-200px)] min-h-[520px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-3 h-[calc(100vh-180px)] min-h-[560px]">
             <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
               <div className="ait-chat-panel-header p-4">
                 <h2 className="font-semibold flex items-center gap-2">
@@ -349,16 +383,18 @@ export function Messages() {
                               }
                               createdAt={message.createdAt}
                               updatedAt={message.updatedAt}
-                              meta={{
-                                likeCount: message.likeCount ?? 0,
-                                likedByMe: message.likedByMe ?? false,
-                              }}
+                              meta={{ reactions: message.reactions ?? [] }}
+                              deliveryStatus={isOwn ? message.deliveryStatus : undefined}
                               canEdit={isOwn}
                               canDelete={isOwn}
-                              onLike={() => likeMutation.mutate(message.id)}
+                              onReact={(emoji) =>
+                                reactionMutation.mutate({ messageId: message.id, emoji })
+                              }
+                              insightsUrl={`/api/messages/${message.id}/insights`}
                               onEdit={(c) => editMutation.mutate({ messageId: message.id, content: c })}
                               onDelete={() => deleteMutation.mutate(message.id)}
-                              liking={likeMutation.isPending}
+                              reacting={reactionMutation.isPending}
+                              onReply={!isOwn ? () => startReply(message) : undefined}
                             />
                           );
                         })}
@@ -371,10 +407,12 @@ export function Messages() {
                         <MessageComposer
                           value={newMessage}
                           onChange={setNewMessage}
-                          onSend={handleSendMessage}
+                          onSend={(content) => handleSendMessage(content)}
                           placeholder="Введите сообщение..."
                           disabled={sendMessageMutation.isPending}
                           className="flex-1"
+                          replyTo={replyTo}
+                          onCancelReply={() => setReplyTo(null)}
                         />
                         <Button
                           variant="premium"

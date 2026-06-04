@@ -817,8 +817,7 @@ export class PgStorage implements IStorage {
         .select({ id: userFollows.followingId })
         .from(userFollows)
         .where(eq(userFollows.followerId, filters.following));
-      const ids = followingRows.map((r) => r.id);
-      if (!ids.length) return [];
+      const ids = Array.from(new Set([filters.following, ...followingRows.map((r) => r.id)]));
       conditions.push(inArray(travelPosts.userId, ids));
     }
     if (filters?.tag) {
@@ -988,6 +987,30 @@ export class PgStorage implements IStorage {
     return features.toggleChatMessageLikeDb(this.db, messageId, userId);
   }
 
+  async getChatMessageReactionsMeta(messageIds: string[], viewerId: string) {
+    return features.getChatMessageReactionsMetaDb(this.db, messageIds, viewerId);
+  }
+
+  async setChatMessageReaction(messageId: string, userId: string, emoji: string | null) {
+    return features.setChatMessageReactionDb(this.db, messageId, userId, emoji);
+  }
+
+  async getChatMessageReactionDetails(messageId: string) {
+    return features.getChatMessageReactionDetailsDb(this.db, messageId);
+  }
+
+  async upsertChatRoomReadCursor(roomId: string, userId: string, lastReadMessageId: string) {
+    return features.upsertChatRoomReadCursorDb(this.db, roomId, userId, lastReadMessageId);
+  }
+
+  async getChatMessageReaders(roomId: string, messageId: string, excludeUserId?: string) {
+    return features.getChatMessageReadersDb(this.db, roomId, messageId, excludeUserId);
+  }
+
+  async getChatMessageReadMeta(roomId: string, messageIds: string[], authorId: string) {
+    return features.getChatMessageReadMetaDb(this.db, roomId, messageIds, authorId);
+  }
+
   async pinChatMessage(roomId: string, messageId: string, pinnedBy: string) {
     return features.pinChatMessageDb(this.db, roomId, messageId, pinnedBy);
   }
@@ -1022,6 +1045,22 @@ export class PgStorage implements IStorage {
 
   async togglePrivateMessageLike(messageId: string, userId: string) {
     return features.togglePrivateMessageLikeDb(this.db, messageId, userId);
+  }
+
+  async getPrivateMessageReactionsMeta(messageIds: string[], viewerId: string) {
+    return features.getPrivateMessageReactionsMetaDb(this.db, messageIds, viewerId);
+  }
+
+  async setPrivateMessageReaction(messageId: string, userId: string, emoji: string | null) {
+    return features.setPrivateMessageReactionDb(this.db, messageId, userId, emoji);
+  }
+
+  async getPrivateMessageReactionDetails(messageId: string) {
+    return features.getPrivateMessageReactionDetailsDb(this.db, messageId);
+  }
+
+  async markPrivateMessagesDelivered(receiverId: string, senderId: string) {
+    return features.markPrivateMessagesDeliveredDb(this.db, receiverId, senderId);
   }
 
   async createNotification(data: Parameters<typeof import("./notification-storage").createNotificationDb>[1]) {

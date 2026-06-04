@@ -14,7 +14,19 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
   const app = express();
   app.use(
     helmet({
-      contentSecurityPolicy: isProductionEnv() ? undefined : false,
+      contentSecurityPolicy: isProductionEnv()
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: ["'self'", "data:", "blob:", "https:"],
+              mediaSrc: ["'self'", "blob:", "https:"],
+              connectSrc: ["'self'", "https:", "wss:"],
+              fontSrc: ["'self'", "data:", "https:"],
+            },
+          }
+        : false,
     }),
   );
   app.use(express.json());

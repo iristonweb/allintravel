@@ -1,16 +1,32 @@
 import { useRef, useState } from "react";
 import EmojiPicker, { type EmojiClickData, Theme } from "emoji-picker-react";
-import { ImageIcon, Smile, Sticker, X } from "lucide-react";
+import { ImageIcon, Mic, Music, Paperclip, Reply, Smile, Sticker, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { encodeGifMessage, encodeStickerMessage } from "@/lib/chat-message";
+import {
+  encodeAudioMessage,
+  encodeGifMessage,
+  encodeImageMessage,
+  encodeStickerMessage,
+  encodeVideoMessage,
+  encodeVoiceMessage,
+} from "@/lib/chat-message";
+import {
+  isAudioFile,
+  isImageFile,
+  isVideoFile,
+  uploadMediaFile,
+} from "@/lib/upload-media";
+import { useToast } from "@/hooks/use-toast";
 import MentionAutocomplete, {
   getMentionQuery,
   type MentionAutocompleteHandle,
 } from "@/components/chat/MentionAutocomplete";
-import type { User } from "@shared/schema";
+import type { User, UserTrack } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 const STICKERS = [
   { id: "plane", src: "/stickers/plane.svg", label: "Самолёт" },
@@ -85,6 +101,8 @@ type MessageComposerProps = {
   disabled?: boolean;
   className?: string;
   suggestUsers?: User[];
+  replyTo?: { username: string; label: string; preview?: string } | null;
+  onCancelReply?: () => void;
 };
 
 export default function MessageComposer({
@@ -95,8 +113,11 @@ export default function MessageComposer({
   disabled,
   className,
   suggestUsers,
+  replyTo,
+  onCancelReply,
 }: MessageComposerProps) {
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [musicOpen, setMusicOpen] = useState(false);
   const [gifOpen, setGifOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [gifQuery, setGifQuery] = useState("");
@@ -105,9 +126,21 @@ export default function MessageComposer({
   const [gifLoading, setGifLoading] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [cursorPos, setCursorPos] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
   const gifSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mentionRef = useRef<MentionAutocompleteHandle>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
+  const voiceStartedRef = useRef<number>(0);
+  const { toast } = useToast();
+
+  const { data: musicTracks = [], isLoading: musicLoading } = useQuery<UserTrack[]>({
+    queryKey: ["/api/music/tracks"],
+    enabled: musicOpen,
+  });
 
   const giphyEnabled = Boolean(getGiphyKey());
   const mentionQuery = getMentionQuery(value, cursorPos);
@@ -145,9 +178,97 @@ export default function MessageComposer({
   };
 
   const insertSticker = (src: string) => {
-    const next = value ? `${value} ${encodeStickerMessage(src)}` : encodeStickerMessage(src);
-    onChange(next.trim());
     setStickerOpen(false);
+    onSend(encodeStickerMessage(src));
+  };
+
+  const sendMusicTrack = (track: UserTrack) => {
+    const url = resolveMediaUrl(track.fileUrl) ?? track.fileUrl;
+    if (!url) {
+      toast({ title: "Трек недоступен", variant: "destructive" });
+      return;
+    }
+    setMusicOpen(false);
+    onSend(encodeAudioMessage(url));
+  };
+
+  const handleAttachFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const url = await uploadMediaFile(file);
+      if (isImageFile(file)) {
+        onSend(encodeImageMessage(url));
+      } else if (isVideoFile(file)) {
+        onSend(encodeVideoMessage(url));
+      } else if (isAudioFile(file)) {
+        onSend(encodeAudioMessage(url));
+      } else {
+        toast({ title: "Неподдерживаемый тип файла", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({
+        title: "Не удалось загрузить",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    setRecording(false);
+  };
+
+  const startVoiceRecording = async () => {
+    if (disabled || uploading) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/ogg";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      voiceChunksRef.current = [];
+      voiceStartedRef.current = Date.now();
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) voiceChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        void (async () => {
+          const blob = new Blob(voiceChunksRef.current, { type: mimeType });
+          if (blob.size < 100) return;
+          const durationSec = Math.max(
+            1,
+            Math.round((Date.now() - voiceStartedRef.current) / 1000),
+          );
+          setUploading(true);
+          try {
+            const ext = mimeType.includes("ogg") ? "ogg" : "webm";
+            const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
+            const url = await uploadMediaFile(file);
+            onSend(encodeVoiceMessage(url, durationSec));
+          } catch (err) {
+            toast({
+              title: "Не удалось отправить голосовое",
+              description: err instanceof Error ? err.message : undefined,
+              variant: "destructive",
+            });
+          } finally {
+            setUploading(false);
+          }
+        })();
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      toast({ title: "Нет доступа к микрофону", variant: "destructive" });
+    }
   };
 
   const onEmojiClick = (data: EmojiClickData) => {
@@ -197,15 +318,110 @@ export default function MessageComposer({
         }
       }
       e.preventDefault();
-      onSend();
+      if (!uploading) onSend();
     }
   };
 
+  const composerDisabled = disabled || uploading;
+
   return (
-    <div className={cn("ait-chat-composer-bar flex items-center gap-1.5", className)}>
+    <div className={cn("flex flex-col gap-1.5 min-w-0", className)}>
+      {replyTo && (
+        <div className="flex items-center gap-2 rounded-xl border border-ait-purple/25 bg-ait-purple/5 px-3 py-2 text-xs">
+          <Reply className="h-3.5 w-3.5 text-ait-purple shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-ait-purple truncate">Ответ @{replyTo.username}</p>
+            {replyTo.preview && (
+              <p className="text-muted-foreground truncate mt-0.5">{replyTo.preview}</p>
+            )}
+          </div>
+          {onCancelReply && (
+            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onCancelReply}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      )}
+    <div className="ait-chat-composer-bar flex items-center gap-1.5 min-w-0">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm,.mp3,.m4a,.ogg,.wav,.webm"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleAttachFile(file);
+          e.target.value = "";
+        }}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="shrink-0"
+        disabled={composerDisabled}
+        title="Прикрепить файл"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <Paperclip className="h-5 w-5" />
+      </Button>
+      <Popover open={musicOpen} onOpenChange={setMusicOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            disabled={composerDisabled}
+            title="Музыка из библиотеки"
+          >
+            <Music className="h-5 w-5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-2 ait-glass-ios" align="start" side="top">
+          <p className="text-xs font-medium px-1 pb-2 text-muted-foreground">Моя музыка</p>
+          {musicLoading ? (
+            <p className="text-xs text-muted-foreground px-1 py-3">Загрузка…</p>
+          ) : musicTracks.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-1 py-3">
+              Добавьте треки в{" "}
+              <a href="/profile/music" className="text-ait-purple hover:underline">
+                Моя музыка
+              </a>
+            </p>
+          ) : (
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {musicTracks.map((track) => (
+                <button
+                  key={track.id}
+                  type="button"
+                  className="w-full text-left rounded-lg px-2 py-1.5 hover:bg-accent text-sm truncate"
+                  onClick={() => sendMusicTrack(track)}
+                >
+                  {track.title}
+                  {track.artist ? (
+                    <span className="text-muted-foreground text-xs block truncate">{track.artist}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={cn("shrink-0", recording && "text-red-400 animate-pulse")}
+        disabled={composerDisabled}
+        title={recording ? "Остановить запись" : "Голосовое сообщение"}
+        onClick={() => (recording ? stopVoiceRecording() : void startVoiceRecording())}
+      >
+        <Mic className="h-5 w-5" />
+      </Button>
       <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
         <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={disabled}>
+          <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={composerDisabled}>
             <Smile className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
@@ -216,7 +432,7 @@ export default function MessageComposer({
 
       <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
         <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={disabled}>
+          <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={composerDisabled}>
             <Sticker className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
@@ -241,7 +457,7 @@ export default function MessageComposer({
       {giphyEnabled && (
         <Popover open={gifOpen} onOpenChange={handleGifOpenChange}>
           <PopoverTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={disabled}>
+            <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={composerDisabled}>
               <ImageIcon className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
@@ -310,12 +526,13 @@ export default function MessageComposer({
             const target = e.target as HTMLInputElement;
             setCursorPos(target.selectionStart ?? value.length);
           }}
-          placeholder={placeholder}
-          disabled={disabled}
+          placeholder={uploading ? "Загрузка…" : recording ? "Запись…" : placeholder}
+          disabled={composerDisabled}
           className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0"
           onKeyDown={handleInputKeyDown}
         />
       </div>
+    </div>
     </div>
   );
 }

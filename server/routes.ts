@@ -31,9 +31,16 @@ import { validateUsername } from "@shared/username";
 import { updatePrivacySettingsSchema } from "@shared/privacy";
 import { isTravelDirectionId } from "@shared/travel-directions";
 import { toPublicUser, toSelfUser } from "./user-utils";
-import { getUploadsStaticDir } from "./media-storage";
+import { getUploadsStaticDir, persistUploadedFile } from "./media-storage";
+import { createUploadMiddleware, handleMulter } from "./upload";
 import { userCanManageTrip } from "./security";
 import { resolveChatRoomAccess, ensureMemberForPost } from "./chat-access";
+import { validateChatMessageMediaContent } from "./chat-media-content";
+import {
+  importJamendoTrackToBlob,
+  searchMusicCatalog,
+  getItunesTrackById,
+} from "./music-search";
 import {
   canViewProfile,
   canSendDm,
@@ -891,6 +898,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/music/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      if (q.length < 2) {
+        return res.json({ jamendo: [], itunes: [] });
+      }
+      const results = await searchMusicCatalog(q);
+      res.json(results);
+    } catch (error) {
+      console.error("Error searching music:", error);
+      res.status(500).json({ message: "Failed to search music" });
+    }
+  });
+
+  const importTrackSchema = z.object({
+    source: z.enum(["jamendo", "itunes"]),
+    externalId: z.string().min(1).max(100),
+  });
+
+  app.post("/api/music/tracks/import", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = importTrackSchema.parse(req.body);
+
+      if (body.source === "jamendo") {
+        const imported = await importJamendoTrackToBlob(body.externalId);
+        const track = await storage.createUserTrack({
+          userId,
+          title: imported.title,
+          fileUrl: imported.fileUrl,
+          mimeType: imported.mimeType,
+          fileSizeBytes: imported.fileSizeBytes,
+          durationSeconds: imported.durationSeconds,
+          artist: imported.artist,
+          sourceProvider: "jamendo",
+          sourceId: imported.sourceId,
+          license: imported.license ?? undefined,
+          isPreview: false,
+        });
+        return res.status(201).json(track);
+      }
+
+      const itunes = await getItunesTrackById(body.externalId);
+      if (!itunes) return res.status(404).json({ message: "Трек не найден" });
+      const track = await storage.createUserTrack({
+        userId,
+        title: itunes.title.slice(0, 200),
+        fileUrl: itunes.previewUrl,
+        mimeType: "audio/mpeg",
+        durationSeconds: 30,
+        artist: itunes.artist.slice(0, 200),
+        sourceProvider: "itunes",
+        sourceId: itunes.id,
+        isPreview: true,
+      });
+      res.status(201).json(track);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error importing music track:", error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to import track",
+      });
+    }
+  });
+
   app.delete("/api/music/tracks/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1004,10 +1078,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const avatarUrlSchema = z
+    .string()
+    .max(2048)
+    .refine((u) => !u.startsWith("data:"), { message: "Data URLs are not allowed" })
+    .optional();
+
   const createRoomSchema = z.object({
     title: z.string().min(1).max(120),
     description: z.string().max(2000).optional(),
-    avatarUrl: z.string().max(500).optional(),
+    avatarUrl: avatarUrlSchema,
     visibility: z.enum(["public", "private"]),
     slug: z.string().max(100).optional(),
   });
@@ -1045,27 +1125,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chat/rooms", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const body = createRoomSchema.parse(req.body);
-      const room = await storage.createChatRoom({
-        title: body.title,
-        description: body.description,
-        avatarUrl: body.avatarUrl,
-        visibility: body.visibility,
-        ...(body.slug ? { slug: body.slug } : {}),
-        createdBy: userId,
-      });
-      res.status(201).json(room);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid room data", errors: error.errors });
-      }
-      console.error("Error creating chat room:", error);
-      res.status(500).json({ message: "Failed to create room" });
+  const roomAvatarUpload = createUploadMiddleware();
+
+  async function saveRoomAvatarFromFile(file: Express.Multer.File): Promise<string> {
+    const mime = file.mimetype || "";
+    if (!mime.startsWith("image/")) {
+      throw new Error("Аватар должен быть изображением (JPG, PNG, WebP, GIF)");
     }
-  });
+    const url = await persistUploadedFile(file);
+    if (url.startsWith("data:")) {
+      throw new Error(
+        "Подключите Vercel Blob для загрузки аватаров или используйте изображение до 3 МБ на dev",
+      );
+    }
+    return url;
+  }
+
+  app.post(
+    "/api/chat/rooms",
+    isAuthenticated,
+    (req, res, next) => handleMulter(req, res, next, roomAvatarUpload.single("file")),
+    async (req: any, res: Response) => {
+      try {
+        const userId = req.user.claims.sub;
+        const body = createRoomSchema.parse({
+          title: req.body?.title,
+          description: req.body?.description || undefined,
+          visibility: req.body?.visibility,
+          avatarUrl: req.body?.avatarUrl,
+          slug: req.body?.slug,
+        });
+        let avatarUrl = body.avatarUrl;
+        let avatarWarning: string | undefined;
+        if (req.file) {
+          try {
+            avatarUrl = await saveRoomAvatarFromFile(req.file);
+          } catch (e) {
+            avatarWarning = e instanceof Error ? e.message : "Не удалось загрузить аватар";
+          }
+        }
+        const room = await storage.createChatRoom({
+          title: body.title,
+          description: body.description,
+          avatarUrl,
+          visibility: body.visibility,
+          ...(body.slug ? { slug: body.slug } : {}),
+          createdBy: userId,
+        });
+        res.status(201).json({ room, ...(avatarWarning ? { avatarWarning } : {}) });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Invalid room data", errors: error.errors });
+        }
+        console.error("Error creating chat room:", error);
+        res.status(500).json({ message: "Failed to create room" });
+      }
+    },
+  );
 
   app.get("/api/chat/rooms/:id", isAuthenticated, async (req: any, res) => {
     try {
@@ -1100,6 +1216,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update room" });
     }
   });
+
+  app.post(
+    "/api/chat/rooms/:id/avatar",
+    isAuthenticated,
+    (req, res, next) => handleMulter(req, res, next, roomAvatarUpload.single("file")),
+    async (req: any, res: Response) => {
+      try {
+        const userId = req.user.claims.sub;
+        const roomId = req.params.id;
+        if (!(await isRoomAdmin(roomId, userId))) {
+          return res.status(403).json({ message: "Admin only" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ message: "Файл не выбран" });
+        }
+        const url = await saveRoomAvatarFromFile(req.file);
+        const room = await storage.updateChatRoom(roomId, { avatarUrl: url });
+        res.json({ url, room });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Не удалось загрузить аватар";
+        console.error("[room-avatar]", message);
+        res.status(500).json({ message });
+      }
+    },
+  );
 
   app.post("/api/chat/rooms/:id/join", isAuthenticated, async (req: any, res) => {
     try {
@@ -1309,8 +1450,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { content } = updateChatMessageSchema.parse(req.body);
       const updated = await storage.updateChatMessage(req.params.messageId, content);
       const sender = await storage.getUser(userId);
-      const likeMeta = await storage.getChatMessageLikeMeta([req.params.messageId], userId);
-      const meta = likeMeta[req.params.messageId] ?? { likeCount: 0, likedByMe: false };
+      const likeMeta = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
+      const meta = likeMeta[req.params.messageId] ?? { reactions: [] };
       res.json({
         ...updated,
         ...meta,
@@ -1330,7 +1471,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const msg = await storage.getChatMessage(req.params.messageId);
       if (!msg) return res.status(404).json({ message: "Message not found" });
-      const meta = await storage.toggleChatMessageLike(req.params.messageId, userId);
+      const existing = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
+      const mine = existing[req.params.messageId]?.reactions.find((r) => r.reactedByMe);
+      const meta = await storage.setChatMessageReaction(
+        req.params.messageId,
+        userId,
+        mine?.emoji === "❤️" ? null : "❤️",
+      );
       res.json(meta);
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -1338,20 +1485,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/chat/rooms/:roomId/messages/:messageId/reactions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getChatMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      const body = z.object({ emoji: z.string().min(1).max(16).nullable() }).parse(req.body);
+      const meta = await storage.setChatMessageReaction(req.params.messageId, userId, body.emoji);
+      const { broadcastToUser } = await import("./realtime-hub");
+      const members = await storage.getChatRoomMembers(req.params.roomId);
+      for (const m of members) {
+        if (m.userId !== userId) {
+          broadcastToUser(m.userId, {
+            type: "reaction_updated",
+            roomId: req.params.roomId,
+            messageId: req.params.messageId,
+            reactions: meta.reactions,
+          });
+        }
+      }
+      res.json(meta);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid reaction", errors: error.errors });
+      }
+      console.error("Error setting reaction:", error);
+      res.status(500).json({ message: "Failed to set reaction" });
+    }
+  });
+
+  app.get("/api/chat/rooms/:roomId/messages/:messageId/insights", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const room = await storage.getChatRoom(req.params.roomId);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      const access = await resolveChatRoomAccess(storage, room.slug, userId);
+      if (!access.allowed) return res.status(403).json({ message: access.reason });
+      const msg = await storage.getChatMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      const readers = await storage.getChatMessageReaders(room.id, req.params.messageId, msg.userId ?? undefined);
+      const reactionGroups = await storage.getChatMessageReactionDetails(req.params.messageId);
+      res.json({
+        readCount: readers.length,
+        readers: readers.map(toPublicUser),
+        reactions: reactionGroups.map((g) => ({
+          emoji: g.emoji,
+          users: g.users.map(toPublicUser),
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching message insights:", error);
+      res.status(500).json({ message: "Failed to fetch insights" });
+    }
+  });
+
+  app.post("/api/chat/rooms/:roomId/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const roomId = req.params.roomId;
+      const room = await storage.getChatRoom(roomId);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      const access = await resolveChatRoomAccess(storage, room.slug, userId);
+      if (!access.allowed) return res.status(403).json({ message: access.reason });
+      const body = z.object({ messageId: z.string().uuid() }).parse(req.body);
+      await storage.upsertChatRoomReadCursor(roomId, userId, body.messageId);
+      const { broadcastToUser } = await import("./realtime-hub");
+      const members = await storage.getChatRoomMembers(roomId);
+      for (const m of members) {
+        if (m.userId !== userId) {
+          broadcastToUser(m.userId, {
+            type: "read_cursor_updated",
+            roomId,
+            userId,
+            messageId: body.messageId,
+          });
+        }
+      }
+      res.status(204).send();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating read cursor:", error);
+      res.status(500).json({ message: "Failed to update read cursor" });
+    }
+  });
+
   // Chat routes (HTTP fallback for Vercel — WebSocket is not available on serverless)
   const enrichChatMessages = async (
     messages: Awaited<ReturnType<typeof storage.getChatMessages>>,
     viewerId: string,
+    roomId?: string,
   ) => {
     const ids = messages.map((m) => m.id).filter(Boolean) as string[];
-    const likeMeta = await storage.getChatMessageLikeMeta(ids, viewerId);
+    const reactionMeta = await storage.getChatMessageReactionsMeta(ids, viewerId);
+    const ownIds = messages
+      .filter((m) => m.userId === viewerId && m.id)
+      .map((m) => m.id!) as string[];
+    const readMeta =
+      roomId && ownIds.length > 0
+        ? await storage.getChatMessageReadMeta(roomId, ownIds, viewerId)
+        : {};
     return Promise.all(
       messages.map(async (msg) => {
         const sender = msg.userId ? await storage.getUser(msg.userId) : null;
-        const meta = likeMeta[msg.id] ?? { likeCount: 0, likedByMe: false };
+        const reactions = reactionMeta[msg.id] ?? { reactions: [] };
+        const read = msg.id && msg.userId === viewerId ? readMeta[msg.id] : undefined;
         return {
           ...msg,
-          ...meta,
+          ...reactions,
+          ...(read ?? {}),
           sender: sender ? toPublicUser(sender) : null,
         };
       }),
@@ -1369,7 +1612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { limit = 50 } = req.query;
       const messages = await storage.getChatMessages(room, Number(limit));
-      const withSenders = await enrichChatMessages(messages, userId);
+      const withSenders = await enrichChatMessages(messages, userId, access.room?.id);
       const pinnedIds = access.room ? await storage.getPinnedMessageIds(access.room.id) : [];
       res.json({ messages: withSenders, pinnedMessageIds: pinnedIds, room: access.room });
     } catch (error) {
@@ -1394,6 +1637,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const content = String(req.body?.content ?? "").trim();
       if (!content) {
         return res.status(400).json({ message: "Content is required" });
+      }
+      const mediaError = validateChatMessageMediaContent(content);
+      if (mediaError) {
+        return res.status(400).json({ message: mediaError });
       }
       const messageData = insertChatMessageSchema.parse({
         userId,
@@ -1693,6 +1940,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!canSendDm(targetSettings, senderId, receiverId, isFriend)) {
         return res.status(403).json({ message: "User does not accept messages from you" });
       }
+      const mediaError = validateChatMessageMediaContent(messageData.content);
+      if (mediaError) {
+        return res.status(400).json({ message: mediaError });
+      }
       const message = await storage.sendPrivateMessage(messageData);
       const sender = await storage.getUser(senderId);
       if (sender) {
@@ -1713,14 +1964,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUserId = req.user.claims.sub;
       const otherUserId = req.params.userId;
       const { limit = 50 } = req.query;
+      await storage.markPrivateMessagesDelivered(currentUserId, otherUserId);
       const messages = await storage.getPrivateMessages(currentUserId, otherUserId, Number(limit));
       const ids = messages.map((m) => m.id).filter(Boolean) as string[];
-      const likeMeta = await storage.getPrivateMessageLikeMeta(ids, currentUserId);
+      const reactionMeta = await storage.getPrivateMessageReactionsMeta(ids, currentUserId);
       res.json(
-        messages.map((m) => ({
-          ...m,
-          ...(likeMeta[m.id] ?? { likeCount: 0, likedByMe: false }),
-        })),
+        messages.map((m) => {
+          const reactions = reactionMeta[m.id] ?? { reactions: [] };
+          const deliveryStatus =
+            m.senderId === currentUserId
+              ? m.isRead
+                ? "read"
+                : m.deliveredAt
+                  ? "delivered"
+                  : "sent"
+              : undefined;
+          return {
+            ...m,
+            ...reactions,
+            ...(deliveryStatus ? { deliveryStatus } : {}),
+          };
+        }),
       );
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -1736,10 +2000,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (msg.senderId !== userId) return res.status(403).json({ message: "Only author can edit" });
       const { content } = updatePrivateMessageSchema.parse(req.body);
       const updated = await storage.updatePrivateMessage(req.params.messageId, content);
-      const likeMeta = await storage.getPrivateMessageLikeMeta([req.params.messageId], userId);
+      const likeMeta = await storage.getPrivateMessageReactionsMeta([req.params.messageId], userId);
       res.json({
         ...updated,
-        ...(likeMeta[req.params.messageId] ?? { likeCount: 0, likedByMe: false }),
+        ...(likeMeta[req.params.messageId] ?? { reactions: [] }),
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1769,11 +2033,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const msg = await storage.getPrivateMessage(req.params.messageId);
       if (!msg) return res.status(404).json({ message: "Message not found" });
-      const meta = await storage.togglePrivateMessageLike(req.params.messageId, userId);
+      const existing = await storage.getPrivateMessageReactionsMeta([req.params.messageId], userId);
+      const mine = existing[req.params.messageId]?.reactions.find((r) => r.reactedByMe);
+      const meta = await storage.setPrivateMessageReaction(
+        req.params.messageId,
+        userId,
+        mine?.emoji === "❤️" ? null : "❤️",
+      );
       res.json(meta);
     } catch (error) {
       console.error("Error toggling private like:", error);
       res.status(500).json({ message: "Failed to toggle like" });
+    }
+  });
+
+  app.put('/api/messages/:messageId/reactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getPrivateMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      const body = z.object({ emoji: z.string().min(1).max(16).nullable() }).parse(req.body);
+      const meta = await storage.setPrivateMessageReaction(req.params.messageId, userId, body.emoji);
+      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      if (partnerId) {
+        const { broadcastToUser } = await import("./realtime-hub");
+        broadcastToUser(partnerId, {
+          type: "reaction_updated",
+          messageId: req.params.messageId,
+          reactions: meta.reactions,
+        });
+      }
+      res.json(meta);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid reaction", errors: error.errors });
+      }
+      console.error("Error setting private reaction:", error);
+      res.status(500).json({ message: "Failed to set reaction" });
+    }
+  });
+
+  app.get('/api/messages/:messageId/insights', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getPrivateMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      if (msg.senderId !== userId && msg.receiverId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      const partner = partnerId ? await storage.getUser(partnerId) : null;
+      const readers = msg.isRead && partner ? [partner] : [];
+      const reactionGroups = await storage.getPrivateMessageReactionDetails(req.params.messageId);
+      res.json({
+        readCount: readers.length,
+        readers: readers.map(toPublicUser),
+        reactions: reactionGroups.map((g) => ({
+          emoji: g.emoji,
+          users: g.users.map(toPublicUser),
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching private message insights:", error);
+      res.status(500).json({ message: "Failed to fetch insights" });
     }
   });
 
@@ -2098,9 +2420,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return;
           }
           await ensureMemberForPost(storage, access.room, userId);
+          const content = String(data.content ?? "").trim();
+          if (!content) {
+            ws.send(JSON.stringify({ type: "error", message: "Content is required" }));
+            return;
+          }
+          const mediaError = validateChatMessageMediaContent(content);
+          if (mediaError) {
+            ws.send(JSON.stringify({ type: "error", message: mediaError }));
+            return;
+          }
           const messageData = insertChatMessageSchema.parse({
             userId,
-            content: data.content,
+            content,
             chatRoom,
           });
 

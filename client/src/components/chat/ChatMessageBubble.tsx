@@ -1,8 +1,12 @@
-import { parseChatMessage } from "@/lib/chat-message";
+import { parseChatMessage, type ParsedChatMessage } from "@/lib/chat-message";
+import { isSafeChatMediaUrl } from "@/lib/safe-media-url";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { cn } from "@/lib/utils";
-import { Heart } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "wouter";
+import MessageReactionBar from "@/components/chat/MessageReactionBar";
+import MessageStatusTicks from "@/components/chat/MessageStatusTicks";
+import type { MessageDeliveryStatus, ReactionSummary } from "@shared/schema";
 
 const MENTION_LINK_RE = /@([a-zA-Z0-9_]{3,30})/g;
 
@@ -42,27 +46,88 @@ type ChatMessageBubbleProps = {
   timestamp?: ReactNode;
   senderLabel?: ReactNode;
   edited?: boolean;
-  likeCount?: number;
-  likedByMe?: boolean;
-  onLike?: () => void;
-  liking?: boolean;
+  reactions?: ReactionSummary[];
+  onReact?: (emoji: string) => void;
+  reacting?: boolean;
+  deliveryStatus?: MessageDeliveryStatus;
+  onDoubleClickReact?: () => void;
 };
 
-function MediaBlock({ url, kind }: { url: string; kind: "gif" | "sticker" }) {
-  return (
-    <img
-      src={url}
-      alt={kind === "gif" ? "GIF" : ""}
-      className={cn(
-        "block bg-transparent",
-        kind === "gif"
-          ? "ait-chat-gif max-w-[min(280px,78vw)] max-h-[240px] w-auto h-auto object-contain"
-          : "ait-chat-sticker h-24 w-24 object-contain",
-      )}
-      loading="lazy"
-      decoding="async"
-    />
-  );
+function safeUrl(url: string): string | undefined {
+  const resolved = resolveMediaUrl(url) ?? url;
+  return isSafeChatMediaUrl(resolved) ? resolved : undefined;
+}
+
+function MediaPart({ part }: { part: ParsedChatMessage }) {
+  if (part.type === "text") return null;
+
+  if (part.type === "gif" || part.type === "sticker") {
+    const src = safeUrl(part.url);
+    if (!src) return <span className="text-xs text-muted-foreground">[медиа]</span>;
+    return (
+      <img
+        src={src}
+        alt={part.type === "gif" ? "GIF" : ""}
+        className={cn(
+          "block bg-transparent",
+          part.type === "gif"
+            ? "ait-chat-gif max-w-[min(280px,78vw)] max-h-[240px] w-auto h-auto object-contain"
+            : "ait-chat-sticker h-24 w-24 object-contain",
+        )}
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
+
+  if (part.type === "image") {
+    const src = safeUrl(part.url);
+    if (!src) return <span className="text-xs text-muted-foreground">[фото]</span>;
+    return (
+      <img
+        src={src}
+        alt="Фото"
+        className="block max-w-[min(320px,85vw)] max-h-[360px] rounded-2xl object-cover"
+        loading="lazy"
+      />
+    );
+  }
+
+  if (part.type === "video") {
+    const src = safeUrl(part.url);
+    if (!src) return <span className="text-xs text-muted-foreground">[видео]</span>;
+    return (
+      <video
+        src={src}
+        controls
+        playsInline
+        className="block max-w-[min(320px,85vw)] max-h-[360px] rounded-2xl bg-black/40"
+      />
+    );
+  }
+
+  if (part.type === "audio") {
+    const src = safeUrl(part.url);
+    if (!src) return <span className="text-xs text-muted-foreground">[аудио]</span>;
+    return (
+      <audio src={src} controls className="w-[min(280px,85vw)] h-10" preload="metadata" />
+    );
+  }
+
+  if (part.type === "voice") {
+    const src = safeUrl(part.url);
+    if (!src) return <span className="text-xs text-muted-foreground">[голосовое]</span>;
+    return (
+      <div className="flex items-center gap-2 rounded-2xl bg-white/8 px-3 py-2 min-w-[200px]">
+        <audio src={src} controls className="h-8 flex-1 min-w-0" preload="metadata" />
+        {part.durationSec > 0 && (
+          <span className="text-[10px] text-muted-foreground shrink-0">{part.durationSec}с</span>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default function ChatMessageBubble({
@@ -71,34 +136,28 @@ export default function ChatMessageBubble({
   timestamp,
   senderLabel,
   edited,
-  likeCount = 0,
-  likedByMe,
-  onLike,
-  liking,
+  reactions = [],
+  onReact,
+  reacting,
+  deliveryStatus,
+  onDoubleClickReact,
 }: ChatMessageBubbleProps) {
   const parts = parseChatMessage(content);
-  const mediaParts = parts.filter((p) => p.type === "gif" || p.type === "sticker");
+  const mediaParts = parts.filter((p) => p.type !== "text");
   const textContent = parts
     .filter((p): p is { type: "text"; text: string } => p.type === "text")
     .map((p) => p.text)
     .join("");
 
-  return (
-    <div className={cn("flex flex-col gap-1.5 min-w-0", isOwn ? "items-end" : "items-start")}>
-      {senderLabel}
-
+  const bubbleBody = (
+    <>
       {mediaParts.map((part, i) => (
-        <MediaBlock
-          key={`m-${i}`}
-          url={part.type === "gif" ? part.url : part.url}
-          kind={part.type}
-        />
+        <MediaPart key={`m-${i}`} part={part} />
       ))}
-
       {textContent.trim() ? (
         <div
           className={cn(
-            "px-4 py-2.5 rounded-2xl text-sm break-words max-w-[min(320px,85vw)]",
+            "px-4 py-2.5 rounded-2xl text-sm break-words max-w-[min(320px,85vw)] select-none",
             isOwn
               ? "ait-chat-bubble-own text-white rounded-tr-md"
               : "ait-chat-bubble-other text-foreground rounded-tl-md",
@@ -107,28 +166,42 @@ export default function ChatMessageBubble({
           {renderTextWithMentions(textContent, isOwn)}
         </div>
       ) : null}
+    </>
+  );
 
-      <div className={cn("flex items-center gap-2 px-1", isOwn && "flex-row-reverse")}>
+  return (
+    <div className={cn("flex flex-col gap-1.5 min-w-0", isOwn ? "items-end" : "items-start")}>
+      {senderLabel}
+
+      {onDoubleClickReact ? (
+        <div
+          className="flex flex-col gap-1.5 cursor-default"
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            onDoubleClickReact();
+          }}
+        >
+          {bubbleBody}
+        </div>
+      ) : (
+        bubbleBody
+      )}
+
+      {reactions.length > 0 && (
+        <MessageReactionBar
+          reactions={reactions}
+          onToggle={onReact}
+          disabled={reacting}
+          className={isOwn ? "justify-end" : "justify-start"}
+        />
+      )}
+
+      <div className={cn("flex items-center gap-1.5 px-1", isOwn && "flex-row-reverse")}>
         {timestamp}
         {edited && (
           <span className="text-[10px] text-muted-foreground italic">изменено</span>
         )}
-        {(likeCount > 0 || likedByMe) && (
-          <button
-            type="button"
-            disabled={liking || !onLike}
-            onClick={onLike}
-            className={cn(
-              "inline-flex items-center gap-0.5 text-[10px] rounded-full px-1.5 py-0.5 transition-colors",
-              likedByMe
-                ? "text-ait-orange bg-ait-orange/15"
-                : "text-muted-foreground hover:text-ait-orange",
-            )}
-          >
-            <Heart className={cn("h-3 w-3", likedByMe && "fill-current")} />
-            {likeCount > 0 ? likeCount : null}
-          </button>
-        )}
+        {isOwn && deliveryStatus && <MessageStatusTicks status={deliveryStatus} />}
       </div>
     </div>
   );

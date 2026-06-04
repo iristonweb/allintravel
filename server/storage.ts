@@ -217,6 +217,23 @@ export interface IStorage {
     viewerId: string,
   ): Promise<Record<string, { likeCount: number; likedByMe: boolean }>>;
   toggleChatMessageLike(messageId: string, userId: string): Promise<{ likeCount: number; likedByMe: boolean }>;
+  getChatMessageReactionsMeta(
+    messageIds: string[],
+    viewerId: string,
+  ): Promise<Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>>;
+  setChatMessageReaction(
+    messageId: string,
+    userId: string,
+    emoji: string | null,
+  ): Promise<{ reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>;
+  getChatMessageReactionDetails(messageId: string): Promise<{ emoji: string; users: User[] }[]>;
+  getChatMessageReaders(roomId: string, messageId: string, excludeUserId?: string): Promise<User[]>;
+  getChatMessageReadMeta(
+    roomId: string,
+    messageIds: string[],
+    authorId: string,
+  ): Promise<Record<string, { deliveryStatus: "sent" | "delivered" | "read"; readByCount: number; memberCount: number }>>;
+  upsertChatRoomReadCursor(roomId: string, userId: string, lastReadMessageId: string): Promise<void>;
   pinChatMessage(roomId: string, messageId: string, pinnedBy: string): Promise<void>;
   unpinChatMessage(roomId: string, messageId: string): Promise<void>;
   getPinnedMessageIds(roomId: string): Promise<string[]>;
@@ -229,6 +246,17 @@ export interface IStorage {
     viewerId: string,
   ): Promise<Record<string, { likeCount: number; likedByMe: boolean }>>;
   togglePrivateMessageLike(messageId: string, userId: string): Promise<{ likeCount: number; likedByMe: boolean }>;
+  getPrivateMessageReactionsMeta(
+    messageIds: string[],
+    viewerId: string,
+  ): Promise<Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>>;
+  setPrivateMessageReaction(
+    messageId: string,
+    userId: string,
+    emoji: string | null,
+  ): Promise<{ reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>;
+  getPrivateMessageReactionDetails(messageId: string): Promise<{ emoji: string; users: User[] }[]>;
+  markPrivateMessagesDelivered(receiverId: string, senderId: string): Promise<void>;
 
   createNotification(data: {
     userId: string;
@@ -294,6 +322,9 @@ export class MemStorage implements IStorage {
   private memPinnedMessages: Map<string, { roomId: string; messageId: string }> = new Map();
   private memChatLikes = new Set<string>();
   private memPrivateLikes = new Set<string>();
+  private memChatReactions = new Map<string, string>();
+  private memPrivateReactions = new Map<string, string>();
+  private memReadCursors = new Map<string, { lastReadMessageId: string; updatedAt: Date }>();
   private memLegacyRoomsReady = false;
   private memNotifications: Map<string, import("@shared/schema").NotificationRow> = new Map();
   private memPushSubs: Map<string, { userId: string; endpoint: string; p256dh: string; auth: string }> =
@@ -1220,9 +1251,10 @@ export class MemStorage implements IStorage {
     }
     if (filters?.following) {
       const followingIds = Array.from(this.userFollows.values())
-        .filter(f => f.followerId === filters.following)
-        .map(f => f.followingId);
-      results = results.filter(p => followingIds.includes(p.userId!));
+        .filter((f) => f.followerId === filters.following)
+        .map((f) => f.followingId);
+      const allowed = new Set([filters.following, ...followingIds]);
+      results = results.filter((p) => p.userId && allowed.has(p.userId));
     }
     if (filters?.tag) {
       const tag = filters.tag.toLowerCase();
@@ -1605,6 +1637,141 @@ export class MemStorage implements IStorage {
     return meta[messageId] ?? { likeCount: 0, likedByMe: false };
   }
 
+  private buildReactionsMeta(
+    messageIds: string[],
+    viewerId: string,
+    store: Map<string, string>,
+  ): Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }> {
+    const out: Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }> = {};
+    for (const id of messageIds) {
+      const byEmoji = new Map<string, { count: number; reactedByMe: boolean }>();
+      for (const [key, emoji] of Array.from(store.entries())) {
+        if (!key.startsWith(`${id}:`)) continue;
+        const uid = key.slice(id.length + 1);
+        const existing = byEmoji.get(emoji) ?? { count: 0, reactedByMe: false };
+        existing.count += 1;
+        if (uid === viewerId) existing.reactedByMe = true;
+        byEmoji.set(emoji, existing);
+      }
+      out[id] = {
+        reactions: Array.from(byEmoji.entries()).map(([emoji, v]) => ({ emoji, ...v })),
+      };
+    }
+    return out;
+  }
+
+  async getChatMessageReactionsMeta(messageIds: string[], viewerId: string) {
+    return this.buildReactionsMeta(messageIds, viewerId, this.memChatReactions);
+  }
+
+  async setChatMessageReaction(messageId: string, userId: string, emoji: string | null) {
+    const key = `${messageId}:${userId}`;
+    if (!emoji) this.memChatReactions.delete(key);
+    else this.memChatReactions.set(key, emoji);
+    const meta = await this.getChatMessageReactionsMeta([messageId], userId);
+    return meta[messageId] ?? { reactions: [] };
+  }
+
+  async getChatMessageReactionDetails(messageId: string) {
+    const byEmoji = new Map<string, User[]>();
+    for (const [key, emoji] of Array.from(this.memChatReactions.entries())) {
+      if (!key.startsWith(`${messageId}:`)) continue;
+      const uid = key.slice(messageId.length + 1);
+      const user = this.users.get(uid);
+      if (!user) continue;
+      const list = byEmoji.get(emoji) ?? [];
+      list.push(user);
+      byEmoji.set(emoji, list);
+    }
+    return Array.from(byEmoji.entries()).map(([emoji, users]) => ({ emoji, users }));
+  }
+
+  async upsertChatRoomReadCursor(roomId: string, userId: string, lastReadMessageId: string) {
+    this.memReadCursors.set(`${roomId}:${userId}`, { lastReadMessageId, updatedAt: new Date() });
+  }
+
+  async getChatMessageReaders(roomId: string, messageId: string, excludeUserId?: string) {
+    const msg = this.chatMessages.get(messageId);
+    if (!msg?.createdAt) return [];
+    const readers: User[] = [];
+    for (const [key, cursor] of Array.from(this.memReadCursors.entries())) {
+      if (!key.startsWith(`${roomId}:`)) continue;
+      const uid = key.slice(roomId.length + 1);
+      if (excludeUserId && uid === excludeUserId) continue;
+      const readMsg = this.chatMessages.get(cursor.lastReadMessageId);
+      if (readMsg?.createdAt && new Date(readMsg.createdAt) >= new Date(msg.createdAt)) {
+        const user = this.users.get(uid);
+        if (user) readers.push(user);
+      }
+    }
+    return readers;
+  }
+
+  async getChatMessageReadMeta(roomId: string, messageIds: string[], authorId: string) {
+    const members = Array.from(this.memChatMembers.values()).filter(
+      (m) => m.roomId === roomId && m.status === "active" && m.userId !== authorId,
+    );
+    const memberCount = members.length;
+    const out: Record<string, { deliveryStatus: "sent" | "delivered" | "read"; readByCount: number; memberCount: number }> = {};
+    for (const id of messageIds) {
+      const msg = this.chatMessages.get(id);
+      if (!msg?.createdAt) {
+        out[id] = { deliveryStatus: "sent", readByCount: 0, memberCount };
+        continue;
+      }
+      const msgTime = new Date(msg.createdAt);
+      let readByCount = 0;
+      let deliveredCount = 0;
+      for (const member of members) {
+        const cursor = this.memReadCursors.get(`${roomId}:${member.userId}`);
+        if (!cursor) continue;
+        deliveredCount += 1;
+        const readMsg = this.chatMessages.get(cursor.lastReadMessageId);
+        if (readMsg?.createdAt && new Date(readMsg.createdAt) >= msgTime) readByCount += 1;
+      }
+      let deliveryStatus: "sent" | "delivered" | "read" = "sent";
+      if (memberCount === 0) deliveryStatus = "delivered";
+      else if (readByCount === memberCount) deliveryStatus = "read";
+      else if (deliveredCount === memberCount || readByCount > 0) deliveryStatus = "delivered";
+      out[id] = { deliveryStatus, readByCount, memberCount };
+    }
+    return out;
+  }
+
+  async getPrivateMessageReactionsMeta(messageIds: string[], viewerId: string) {
+    return this.buildReactionsMeta(messageIds, viewerId, this.memPrivateReactions);
+  }
+
+  async setPrivateMessageReaction(messageId: string, userId: string, emoji: string | null) {
+    const key = `${messageId}:${userId}`;
+    if (!emoji) this.memPrivateReactions.delete(key);
+    else this.memPrivateReactions.set(key, emoji);
+    const meta = await this.getPrivateMessageReactionsMeta([messageId], userId);
+    return meta[messageId] ?? { reactions: [] };
+  }
+
+  async getPrivateMessageReactionDetails(messageId: string) {
+    const byEmoji = new Map<string, User[]>();
+    for (const [key, emoji] of Array.from(this.memPrivateReactions.entries())) {
+      if (!key.startsWith(`${messageId}:`)) continue;
+      const uid = key.slice(messageId.length + 1);
+      const user = this.users.get(uid);
+      if (!user) continue;
+      const list = byEmoji.get(emoji) ?? [];
+      list.push(user);
+      byEmoji.set(emoji, list);
+    }
+    return Array.from(byEmoji.entries()).map(([emoji, users]) => ({ emoji, users }));
+  }
+
+  async markPrivateMessagesDelivered(receiverId: string, senderId: string) {
+    for (const [id, msg] of Array.from(this.privateMessages.entries())) {
+      if (msg.receiverId === receiverId && msg.senderId === senderId && !msg.deliveredAt) {
+        this.privateMessages.set(id, { ...msg, deliveredAt: new Date() });
+      }
+    }
+  }
+
   async createNotification(data: {
     userId: string;
     type: string;
@@ -1752,6 +1919,11 @@ export class MemStorage implements IStorage {
       mimeType: data.mimeType ?? null,
       fileSizeBytes: data.fileSizeBytes ?? null,
       durationSeconds: data.durationSeconds ?? null,
+      artist: data.artist ?? null,
+      sourceProvider: data.sourceProvider ?? null,
+      sourceId: data.sourceId ?? null,
+      license: data.license ?? null,
+      isPreview: data.isPreview ?? false,
       createdAt: new Date(),
     };
     this.userTracksMap.set(id, track);

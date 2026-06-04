@@ -24,6 +24,7 @@ export default function FollowButton({ userId, size = "sm" }: FollowButtonProps)
     mutationFn: () => apiRequest("POST", `/api/follow/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/follow/${userId}/check`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       toast({ title: "Подписка оформлена" });
     },
   });
@@ -32,6 +33,7 @@ export default function FollowButton({ userId, size = "sm" }: FollowButtonProps)
     mutationFn: () => apiRequest("DELETE", `/api/follow/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/follow/${userId}/check`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       toast({ title: "Подписка отменена" });
     },
   });

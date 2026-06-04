@@ -36,26 +36,37 @@ import {
   Settings,
   Pin,
   Camera,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { uploadMediaFile } from "@/lib/upload-media";
-import type { ChatMessage, ChatRoom, MessageReactionMeta, User } from "@shared/schema";
+import { createChatRoom } from "@/lib/upload-media";
+import RoomAvatar from "@/components/chat/RoomAvatar";
+import type {
+  ChatMessage,
+  ChatRoom,
+  MessageReactionMeta,
+  MessageReadMeta,
+  User,
+} from "@shared/schema";
 import { mergeChronologicalMessages } from "@/lib/chat-thread";
+import { messagePreview, withReplyMention } from "@/lib/chat-message";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import type { UserLabelFields } from "@shared/user-display";
 import { useToast } from "@/hooks/use-toast";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 type ChatTab = "all" | "personal" | "mine";
+
+type ReplyTarget = { username: string; label: string; preview: string };
 
 type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null };
 
 type ChatMessageWithSender = ChatMessage &
-  MessageReactionMeta & {
+  MessageReactionMeta &
+  Partial<MessageReadMeta> & {
     sender?: (UserLabelFields & { id?: string; profileImageUrl?: string | null }) | null;
   };
 
@@ -75,6 +86,7 @@ export function Chat() {
   const { toast } = useToast();
   const [location] = useLocation();
   const [chatTab, setChatTab] = useState<ChatTab>("all");
+  const [roomQuery, setRoomQuery] = useState("");
   const [activeRoom, setActiveRoom] = useState("general");
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -82,11 +94,12 @@ export function Chat() {
     title: "",
     description: "",
     visibility: "public" as "public" | "private",
-    avatarUrl: "" as string | undefined,
   });
-  const [newRoomAvatarUploading, setNewRoomAvatarUploading] = useState(false);
+  const [newRoomAvatarFile, setNewRoomAvatarFile] = useState<File | null>(null);
+  const [newRoomAvatarPreview, setNewRoomAvatarPreview] = useState<string | null>(null);
   const createAvatarInputRef = useRef<HTMLInputElement>(null);
   const [messageText, setMessageText] = useState("");
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [wsMessages, setWsMessages] = useState<Record<string, ChatMessageWithSender[]>>({});
   const [wsConnected, setWsConnected] = useState(false);
   const [useHttpMode, setUseHttpMode] = useState(isVercelHost);
@@ -117,6 +130,13 @@ export function Chat() {
     if (chatTab === "mine") return r.myRole != null;
     if (chatTab === "personal") return false;
     return true;
+  }).filter((r) => {
+    const q = roomQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      r.title.toLowerCase().includes(q) ||
+      (r.description?.toLowerCase().includes(q) ?? false)
+    );
   });
 
   const historyKey = [`/api/chat/${activeRoom}`] as const;
@@ -130,32 +150,50 @@ export function Chat() {
   const history: ChatMessageWithSender[] = Array.isArray(historyPayload)
     ? historyPayload
     : (historyPayload?.messages ?? []);
-  const activeRoomMeta = Array.isArray(historyPayload)
-    ? rooms.find((r) => r.slug === activeRoom)
-    : historyPayload?.room ?? rooms.find((r) => r.slug === activeRoom);
+  const listRoom = rooms.find((r) => r.slug === activeRoom);
+  const historyRoom = Array.isArray(historyPayload) ? undefined : historyPayload?.room;
+  const activeRoomMeta: RoomListItem | ChatRoom | undefined =
+    listRoom && historyRoom
+      ? { ...historyRoom, memberCount: listRoom.memberCount, myRole: listRoom.myRole }
+      : listRoom ?? historyRoom;
   const pinnedIds = Array.isArray(historyPayload)
     ? []
     : (historyPayload?.pinnedMessageIds ?? []);
 
   const createRoomMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const { room, avatarWarning } = await createChatRoom({
         title: newRoom.title,
         description: newRoom.description || undefined,
         visibility: newRoom.visibility,
-        ...(newRoom.avatarUrl ? { avatarUrl: newRoom.avatarUrl } : {}),
-      };
-      const res = await apiRequest("POST", "/api/chat/rooms", payload);
-      return (await res.json()) as ChatRoom;
+        avatarFile: newRoomAvatarFile,
+      });
+      return { room, avatarWarning };
     },
-    onSuccess: (room) => {
-      toast({ title: "Комната создана" });
+    onSuccess: ({ room, avatarWarning }) => {
+      if (avatarWarning) {
+        toast({
+          title: "Комната создана",
+          description: avatarWarning,
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Комната создана" });
+      }
       setCreateOpen(false);
-      setNewRoom({ title: "", description: "", visibility: "public", avatarUrl: undefined });
+      setNewRoom({ title: "", description: "", visibility: "public" });
+      if (newRoomAvatarPreview) URL.revokeObjectURL(newRoomAvatarPreview);
+      setNewRoomAvatarFile(null);
+      setNewRoomAvatarPreview(null);
       queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
       setActiveRoom(room.slug);
     },
-    onError: () => toast({ title: "Не удалось создать", variant: "destructive" }),
+    onError: (err) =>
+      toast({
+        title: "Не удалось создать",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      }),
   });
 
   const appendMessageToHistory = useCallback(
@@ -181,7 +219,14 @@ export function Chat() {
     },
     onSuccess: (saved) => {
       appendMessageToHistory(saved);
+      setReplyTo(null);
     },
+    onError: (err) =>
+      toast({
+        title: "Не удалось отправить",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      }),
   });
 
   const roomId = activeRoomMeta?.id;
@@ -202,13 +247,35 @@ export function Chat() {
     setWsMessages((prev) => ({ ...prev, [activeRoom]: [] }));
   };
 
-  const likeMutation = useMutation({
-    mutationFn: async (messageId: string) => {
+  const reactionMutation = useMutation({
+    mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string | null }) => {
       if (!roomId) throw new Error("no room");
-      const res = await apiRequest("POST", `/api/chat/rooms/${roomId}/messages/${messageId}/like`);
-      return res.json();
+      const res = await apiRequest(
+        "PUT",
+        `/api/chat/rooms/${roomId}/messages/${messageId}/reactions`,
+        { emoji },
+      );
+      return (await res.json()) as MessageReactionMeta;
     },
-    onSuccess: invalidateThread,
+    onSuccess: (meta, { messageId }) => {
+      queryClient.setQueryData<ChatHistoryPayload | ChatMessageWithSender[]>(
+        historyKey,
+        (old) => {
+          const patch = (m: ChatMessageWithSender) =>
+            m.id === messageId ? { ...m, ...meta } : m;
+          if (Array.isArray(old)) return old.map(patch);
+          if (!old?.messages) return old;
+          return { ...old, messages: old.messages.map(patch) };
+        },
+      );
+    },
+  });
+
+  const markRoomReadMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      if (!roomId) return;
+      await apiRequest("POST", `/api/chat/rooms/${roomId}/read`, { messageId });
+    },
   });
 
   const pinMutation = useMutation({
@@ -274,7 +341,7 @@ export function Chat() {
         const data = JSON.parse(event.data);
         if (data.type === "new_message" && data.message) {
           const room: string = data.message.chatRoom;
-          const messageWithSender = { ...data.message, sender: data.sender ?? null };
+          const messageWithSender = { ...data.message, sender: data.sender ?? null, reactions: [] };
           setWsMessages((prev) => {
             const roomMsgs = prev[room] || [];
             const withoutTemp = roomMsgs.filter(
@@ -288,12 +355,19 @@ export function Chat() {
             if (withoutTemp.some((m) => m.id === messageWithSender.id)) return prev;
             return { ...prev, [room]: [...withoutTemp, messageWithSender] };
           });
+        } else if (
+          (data.type === "reaction_updated" || data.type === "read_cursor_updated") &&
+          data.roomId
+        ) {
+          queryClient.invalidateQueries({ queryKey: [`/api/chat/${activeRoom}`] });
+        } else if (data.type === "error" && data.message) {
+          toast({ title: "Ошибка чата", description: String(data.message), variant: "destructive" });
         }
       } catch {
         /* ignore */
       }
     };
-  }, [isAuthenticated, user, useHttpMode]);
+  }, [isAuthenticated, user, useHttpMode, queryClient, activeRoom, toast]);
 
   useEffect(() => {
     if (useHttpMode) return;
@@ -317,6 +391,12 @@ export function Chat() {
 
   const currentWsMessages = wsMessages[activeRoom] || [];
   const allMessages = mergeChronologicalMessages(history, currentWsMessages);
+
+  useEffect(() => {
+    if (!roomId || allMessages.length === 0) return;
+    const last = [...allMessages].reverse().find((m) => m.id && !String(m.id).startsWith("temp-"));
+    if (last?.id) markRoomReadMutation.mutate(last.id);
+  }, [roomId, allMessages.length, activeRoom]);
   const pinnedMessages = allMessages.filter((m) => m.id && pinnedIds.includes(m.id));
   const threadMessages = allMessages.filter((m) => !m.id || !pinnedIds.includes(m.id));
   const myRole = (activeRoomMeta as RoomListItem | undefined)?.myRole;
@@ -328,12 +408,19 @@ export function Chat() {
   const canSend = useHttpMode ? !postMessage.isPending : wsConnected;
 
   const handleSend = async (contentOverride?: string) => {
-    const body = (contentOverride ?? messageText).trim();
+    let body = (contentOverride ?? messageText).trim();
     if (!body || !canSend) return;
+    if (replyTo && !contentOverride?.includes("[") && !body.includes(`@${replyTo.username}`)) {
+      body = withReplyMention(body, replyTo.username);
+    }
 
     if (useHttpMode) {
-      await postMessage.mutateAsync(body);
-      setMessageText("");
+      try {
+        await postMessage.mutateAsync(body);
+        setMessageText("");
+      } catch {
+        /* toast in onError */
+      }
       return;
     }
 
@@ -359,14 +446,14 @@ export function Chat() {
             profileImageUrl: user.profileImageUrl,
           }
         : null,
-      likeCount: 0,
-      likedByMe: false,
+      reactions: [],
     };
     setWsMessages((prev) => ({
       ...prev,
       [activeRoom]: [...(prev[activeRoom] || []), optimistic],
     }));
     setMessageText("");
+    setReplyTo(null);
 
     wsRef.current.send(
       JSON.stringify({
@@ -376,6 +463,18 @@ export function Chat() {
         chatRoom: activeRoom,
       }),
     );
+  };
+
+  const startReply = (msg: ChatMessageWithSender, label: string, username?: string | null) => {
+    if (!username) {
+      toast({
+        title: "Нельзя ответить",
+        description: "У автора нет @username в профиле",
+        variant: "destructive",
+      });
+      return;
+    }
+    setReplyTo({ username, label, preview: messagePreview(msg.content) });
   };
 
   if (!isAuthenticated) {
@@ -398,7 +497,7 @@ export function Chat() {
 
   return (
     <AppLayout fullWidth contentClassName="p-0 md:p-4">
-      <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
+      <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -423,8 +522,8 @@ export function Chat() {
         />
 
         <div
-          className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4"
-          style={{ height: "calc(100vh - 220px)", minHeight: "520px" }}
+          className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3"
+          style={{ height: "calc(100vh - 200px)", minHeight: "560px" }}
         >
           <div className="ait-chat-panel flex flex-col min-h-0">
             <div className="ait-chat-panel-header p-4">
@@ -446,9 +545,9 @@ export function Chat() {
                       </DialogHeader>
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          {newRoom.avatarUrl ? (
+                          {newRoomAvatarPreview ? (
                             <img
-                              src={resolveMediaUrl(newRoom.avatarUrl)}
+                              src={newRoomAvatarPreview}
                               alt=""
                               className="h-14 w-14 rounded-full object-cover"
                             />
@@ -461,18 +560,14 @@ export function Chat() {
                             <input
                               ref={createAvatarInputRef}
                               type="file"
-                              accept="image/*"
+                              accept="image/jpeg,image/png,image/webp,image/gif"
                               className="hidden"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
-                                setNewRoomAvatarUploading(true);
-                                void uploadMediaFile(file)
-                                  .then((url) => setNewRoom((r) => ({ ...r, avatarUrl: url })))
-                                  .catch(() =>
-                                    toast({ title: "Не удалось загрузить аватар", variant: "destructive" }),
-                                  )
-                                  .finally(() => setNewRoomAvatarUploading(false));
+                                if (newRoomAvatarPreview) URL.revokeObjectURL(newRoomAvatarPreview);
+                                setNewRoomAvatarFile(file);
+                                setNewRoomAvatarPreview(URL.createObjectURL(file));
                                 e.target.value = "";
                               }}
                             />
@@ -480,11 +575,11 @@ export function Chat() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              disabled={newRoomAvatarUploading}
+                              disabled={createRoomMutation.isPending}
                               onClick={() => createAvatarInputRef.current?.click()}
                             >
                               <Camera className="h-4 w-4 mr-1" />
-                              {newRoomAvatarUploading ? "Загрузка…" : "Аватар"}
+                              Аватар
                             </Button>
                           </div>
                         </div>
@@ -536,6 +631,19 @@ export function Chat() {
                 </div>
               </div>
             </div>
+            {chatTab !== "personal" && (
+              <div className="px-3 pb-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={roomQuery}
+                    onChange={(e) => setRoomQuery(e.target.value)}
+                    placeholder="Поиск комнат…"
+                    className="h-8 pl-8 text-sm bg-background/50"
+                  />
+                </div>
+              </div>
+            )}
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-1">
                 {chatTab === "personal" ? (
@@ -545,6 +653,10 @@ export function Chat() {
                     <a href="/messages" className="text-ait-purple hover:underline">
                       Сообщения
                     </a>
+                  </div>
+                ) : filteredRooms.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    {roomQuery.trim() ? "Ничего не найдено" : "Нет комнат"}
                   </div>
                 ) : (
                   filteredRooms.map((room) => (
@@ -559,15 +671,7 @@ export function Chat() {
                             : "text-slate-400",
                         )}
                       >
-                        {room.avatarUrl ? (
-                          <img
-                            src={resolveMediaUrl(room.avatarUrl)}
-                            alt=""
-                            className="h-8 w-8 rounded-full object-cover shrink-0"
-                          />
-                        ) : (
-                          <Hash className="h-4 w-4 shrink-0" />
-                        )}
+                        <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} />
                         <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
                         {room.visibility === "private" && <Lock className="h-3 w-3 shrink-0 opacity-60" />}
                         {room.isLegacy && (
@@ -584,15 +688,11 @@ export function Chat() {
 
           <div className="ait-chat-panel flex flex-col overflow-hidden min-h-0">
             <div className="ait-chat-panel-header p-4 flex items-center gap-3">
-              {activeRoomMeta?.avatarUrl ? (
-                <img
-                  src={resolveMediaUrl(activeRoomMeta.avatarUrl)}
-                  alt=""
-                  className="h-10 w-10 rounded-full object-cover"
-                />
-              ) : (
-                <Hash className="h-5 w-5 text-ait-orange" />
-              )}
+              <RoomAvatar
+                title={activeRoomMeta?.title ?? activeRoom}
+                avatarUrl={activeRoomMeta?.avatarUrl}
+                className="h-10 w-10"
+              />
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
                 <p className="text-xs text-muted-foreground truncate">
@@ -653,15 +753,36 @@ export function Chat() {
                             isPinned
                             createdAt={msg.createdAt}
                             updatedAt={msg.updatedAt}
-                            meta={{ likeCount: msg.likeCount ?? 0, likedByMe: msg.likedByMe ?? false }}
+                            meta={{ reactions: msg.reactions ?? [] }}
+                            deliveryStatus={msg.deliveryStatus}
                             canPin={isOwn || isRoomAdmin}
                             canDelete={isOwn || isRoomAdmin}
                             canEdit={isOwn}
-                            onLike={() => likeMutation.mutate(msg.id!)}
+                            onReact={
+                              msg.id
+                                ? (emoji) =>
+                                    reactionMutation.mutate({ messageId: msg.id!, emoji })
+                                : undefined
+                            }
+                            insightsUrl={
+                              roomId && msg.id
+                                ? `/api/chat/rooms/${roomId}/messages/${msg.id}/insights`
+                                : undefined
+                            }
                             onUnpin={() => pinMutation.mutate({ messageId: msg.id!, pin: false })}
                             onDelete={() => deleteMutation.mutate(msg.id!)}
                             onEdit={(c) => editMutation.mutate({ messageId: msg.id!, content: c })}
-                            liking={likeMutation.isPending}
+                            reacting={reactionMutation.isPending}
+                            onReply={
+                              !isOwn && msg.sender?.username
+                                ? () =>
+                                    startReply(
+                                      msg,
+                                      msg.sender ? getUserDisplayLabel(msg.sender) : "Пользователь",
+                                      msg.sender?.username,
+                                    )
+                                : undefined
+                            }
                           />
                         );
                       })}
@@ -690,11 +811,21 @@ export function Chat() {
                         senderInitial={senderInitial}
                         createdAt={msg.createdAt}
                         updatedAt={msg.updatedAt}
-                        meta={{ likeCount: msg.likeCount ?? 0, likedByMe: msg.likedByMe ?? false }}
+                        meta={{ reactions: msg.reactions ?? [] }}
+                        deliveryStatus={msg.deliveryStatus}
                         canPin={Boolean(roomId && (isOwn || isRoomAdmin))}
                         canDelete={isOwn || isRoomAdmin}
                         canEdit={isOwn}
-                        onLike={msg.id ? () => likeMutation.mutate(msg.id!) : undefined}
+                        onReact={
+                          msg.id
+                            ? (emoji) => reactionMutation.mutate({ messageId: msg.id!, emoji })
+                            : undefined
+                        }
+                        insightsUrl={
+                          roomId && msg.id
+                            ? `/api/chat/rooms/${roomId}/messages/${msg.id}/insights`
+                            : undefined
+                        }
                         onPin={
                           msg.id && roomId
                             ? () => pinMutation.mutate({ messageId: msg.id!, pin: true })
@@ -706,7 +837,12 @@ export function Chat() {
                             ? (c) => editMutation.mutate({ messageId: msg.id!, content: c })
                             : undefined
                         }
-                        liking={likeMutation.isPending}
+                        reacting={reactionMutation.isPending}
+                        onReply={
+                          !isOwn && msg.sender?.username
+                            ? () => startReply(msg, senderName, msg.sender?.username)
+                            : undefined
+                        }
                       />
                     );
                   })}
@@ -720,11 +856,13 @@ export function Chat() {
                 <MessageComposer
                   value={messageText}
                   onChange={setMessageText}
-                  onSend={handleSend}
+                  onSend={(content) => void handleSend(content)}
                   placeholder={canSend ? "Сообщение…" : "Подключение…"}
                   disabled={!canSend}
                   className="flex-1"
                   suggestUsers={mentionSuggestUsers}
+                  replyTo={replyTo}
+                  onCancelReply={() => setReplyTo(null)}
                 />
                 <Button
                   variant="premium"

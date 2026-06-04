@@ -1,10 +1,27 @@
 export type ParsedChatMessage =
   | { type: "text"; text: string }
   | { type: "gif"; url: string }
-  | { type: "sticker"; url: string };
+  | { type: "sticker"; url: string }
+  | { type: "image"; url: string }
+  | { type: "video"; url: string }
+  | { type: "audio"; url: string }
+  | { type: "voice"; url: string; durationSec: number };
 
 const GIF_PREFIX = "[gif:";
 const STICKER_PREFIX = "[sticker:";
+const IMAGE_PREFIX = "[image:";
+const VIDEO_PREFIX = "[video:";
+const AUDIO_PREFIX = "[audio:";
+const VOICE_PREFIX = "[voice:";
+
+const SPECIAL_PREFIXES = [
+  GIF_PREFIX,
+  STICKER_PREFIX,
+  IMAGE_PREFIX,
+  VIDEO_PREFIX,
+  AUDIO_PREFIX,
+  VOICE_PREFIX,
+] as const;
 
 export function encodeGifMessage(url: string): string {
   return `${GIF_PREFIX}${url}]`;
@@ -14,20 +31,82 @@ export function encodeStickerMessage(url: string): string {
   return `${STICKER_PREFIX}${url}]`;
 }
 
+export function encodeImageMessage(url: string): string {
+  return `${IMAGE_PREFIX}${url}]`;
+}
+
+export function encodeVideoMessage(url: string): string {
+  return `${VIDEO_PREFIX}${url}]`;
+}
+
+export function encodeAudioMessage(url: string): string {
+  return `${AUDIO_PREFIX}${url}]`;
+}
+
+export function encodeVoiceMessage(url: string, durationSec: number): string {
+  return `${VOICE_PREFIX}${url}|${Math.max(0, Math.round(durationSec))}]`;
+}
+
+function findNextSpecialIndex(text: string): number {
+  let min = -1;
+  for (const prefix of SPECIAL_PREFIXES) {
+    const idx = text.indexOf(prefix);
+    if (idx === -1) continue;
+    if (min === -1 || idx < min) min = idx;
+  }
+  return min;
+}
+
+function parseSpecialToken(rest: string): { part: ParsedChatMessage; consumed: number } | null {
+  if (rest.startsWith(GIF_PREFIX)) {
+    const close = rest.indexOf("]", GIF_PREFIX.length);
+    if (close === -1) return null;
+    const url = rest.slice(GIF_PREFIX.length, close);
+    return { part: { type: "gif", url }, consumed: close + 1 };
+  }
+  if (rest.startsWith(STICKER_PREFIX)) {
+    const close = rest.indexOf("]", STICKER_PREFIX.length);
+    if (close === -1) return null;
+    const url = rest.slice(STICKER_PREFIX.length, close);
+    return { part: { type: "sticker", url }, consumed: close + 1 };
+  }
+  if (rest.startsWith(IMAGE_PREFIX)) {
+    const close = rest.indexOf("]", IMAGE_PREFIX.length);
+    if (close === -1) return null;
+    const url = rest.slice(IMAGE_PREFIX.length, close);
+    return { part: { type: "image", url }, consumed: close + 1 };
+  }
+  if (rest.startsWith(VIDEO_PREFIX)) {
+    const close = rest.indexOf("]", VIDEO_PREFIX.length);
+    if (close === -1) return null;
+    const url = rest.slice(VIDEO_PREFIX.length, close);
+    return { part: { type: "video", url }, consumed: close + 1 };
+  }
+  if (rest.startsWith(AUDIO_PREFIX)) {
+    const close = rest.indexOf("]", AUDIO_PREFIX.length);
+    if (close === -1) return null;
+    const url = rest.slice(AUDIO_PREFIX.length, close);
+    return { part: { type: "audio", url }, consumed: close + 1 };
+  }
+  if (rest.startsWith(VOICE_PREFIX)) {
+    const close = rest.indexOf("]", VOICE_PREFIX.length);
+    if (close === -1) return null;
+    const inner = rest.slice(VOICE_PREFIX.length, close);
+    const pipeIdx = inner.lastIndexOf("|");
+    const url = pipeIdx === -1 ? inner : inner.slice(0, pipeIdx);
+    const durationSec =
+      pipeIdx === -1 ? 0 : Number.parseInt(inner.slice(pipeIdx + 1), 10) || 0;
+    return { part: { type: "voice", url, durationSec }, consumed: close + 1 };
+  }
+  return null;
+}
+
 export function parseChatMessage(content: string): ParsedChatMessage[] {
   const parts: ParsedChatMessage[] = [];
   let rest = content;
 
   while (rest.length > 0) {
-    const gifIdx = rest.indexOf(GIF_PREFIX);
-    const stickerIdx = rest.indexOf(STICKER_PREFIX);
-    const nextSpecial =
-      gifIdx === -1
-        ? stickerIdx
-        : stickerIdx === -1
-          ? gifIdx
-          : Math.min(gifIdx, stickerIdx);
-
+    const nextSpecial = findNextSpecialIndex(rest);
     if (nextSpecial === -1) {
       if (rest) parts.push({ type: "text", text: rest });
       break;
@@ -39,37 +118,65 @@ export function parseChatMessage(content: string): ParsedChatMessage[] {
       continue;
     }
 
-    const isGif = rest.startsWith(GIF_PREFIX);
-    const prefix = isGif ? GIF_PREFIX : STICKER_PREFIX;
-    const close = rest.indexOf("]", prefix.length);
-    if (close === -1) {
+    const parsed = parseSpecialToken(rest);
+    if (!parsed) {
       parts.push({ type: "text", text: rest });
       break;
     }
-    const url = rest.slice(prefix.length, close);
-    if (url) {
-      parts.push(isGif ? { type: "gif", url } : { type: "sticker", url });
+    if (parsed.part.type !== "text" && "url" in parsed.part && parsed.part.url) {
+      parts.push(parsed.part);
     }
-    rest = rest.slice(close + 1);
+    rest = rest.slice(parsed.consumed);
   }
 
   if (parts.length === 0) parts.push({ type: "text", text: content });
   return parts;
 }
 
+const MEDIA_TYPES = new Set(["gif", "sticker", "image", "video", "audio", "voice"]);
+
 export function isRichChatMessage(content: string): boolean {
-  return content.includes(GIF_PREFIX) || content.includes(STICKER_PREFIX);
+  return SPECIAL_PREFIXES.some((p) => content.includes(p));
 }
 
 export function hasMediaParts(content: string): boolean {
-  return parseChatMessage(content).some((p) => p.type === "gif" || p.type === "sticker");
+  return parseChatMessage(content).some((p) => MEDIA_TYPES.has(p.type));
 }
 
-/** Сообщение только из GIF/стикеров — без текстового пузыря. */
 export function isMediaOnlyMessage(content: string): boolean {
   const parts = parseChatMessage(content);
   return (
-    parts.some((p) => p.type === "gif" || p.type === "sticker") &&
-    parts.every((p) => p.type !== "text" || !p.text.trim())
+    parts.some((p) => MEDIA_TYPES.has(p.type)) &&
+    parts.every((p) => p.type === "text" ? !p.text.trim() : true)
   );
+}
+
+export function compactMessageLabel(content: string): string | null {
+  const parts = parseChatMessage(content);
+  if (parts.some((p) => p.type === "voice")) return "Голосовое";
+  if (parts.some((p) => p.type === "video")) return "Видео";
+  if (parts.some((p) => p.type === "image")) return "Фото";
+  if (parts.some((p) => p.type === "audio")) return "Аудио";
+  if (parts.some((p) => p.type === "gif")) return "GIF";
+  if (parts.some((p) => p.type === "sticker")) return "Стикер";
+  return null;
+}
+
+export function messagePreview(content: string, maxLen = 80): string {
+  const media = compactMessageLabel(content);
+  const text = parseChatMessage(content)
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join(" ")
+    .trim();
+  const base = text || media || "Сообщение";
+  return base.length > maxLen ? `${base.slice(0, maxLen)}…` : base;
+}
+
+export function withReplyMention(body: string, username: string | undefined): string {
+  const trimmed = body.trim();
+  if (!trimmed || !username) return trimmed;
+  const mention = `@${username}`;
+  if (trimmed.includes(mention)) return trimmed;
+  return `${mention} ${trimmed}`;
 }

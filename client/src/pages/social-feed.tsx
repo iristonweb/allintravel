@@ -57,15 +57,19 @@ export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [feedMode, setFeedMode] = useState<FeedMode>(() =>
-    feedModeFromQuery(new URLSearchParams(window.location.search).get("mode")),
-  );
+  const [feedMode, setFeedMode] = useState<FeedMode>(() => {
+    const fromUrl = feedModeFromQuery(new URLSearchParams(window.location.search).get("mode"));
+    return fromUrl;
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const next = feedModeFromQuery(params.get("mode"));
-    setFeedMode(next);
-  }, []);
+    if (!params.get("mode") && isAuthenticated) {
+      setFeedMode("following");
+    } else {
+      setFeedMode(feedModeFromQuery(params.get("mode")));
+    }
+  }, [isAuthenticated]);
 
   const setFeedModeWithUrl = (mode: FeedMode) => {
     setFeedMode(mode);
@@ -101,13 +105,16 @@ export function SocialFeed() {
   const postsQueryParams = useMemo(() => {
     const base: Record<string, string> = { format: apiFormat };
     if (activeTag) base.tag = activeTag;
-    if (feedMode === "following" && user?.id) base.following = user.id;
+    if (user?.id && (feedMode === "following" || feedMode === "all")) {
+      base.following = user.id;
+    }
     return base;
   }, [apiFormat, activeTag, feedMode, user?.id]);
 
   const { data: posts = [], isLoading } = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", postsQueryParams],
     enabled: isAuthenticated && (feedMode !== "following" || !!user?.id),
+    refetchInterval: isAuthenticated ? 20_000 : false,
   });
 
   const displayedPosts = useMemo(() => filterPostsForFeedMode(posts, feedMode), [posts, feedMode]);

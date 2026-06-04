@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Camera, Globe, Link2, Lock, LogOut, UserPlus, UserMinus, Shield } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
-import { uploadMediaFile } from "@/lib/upload-media";
+import { uploadRoomAvatar } from "@/lib/upload-media";
+import RoomAvatar from "@/components/chat/RoomAvatar";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import type { ChatRoom, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -174,10 +175,15 @@ export default function RoomSettingsPanel({
     if (!isAdmin) return;
     setAvatarUploading(true);
     try {
-      const url = await uploadMediaFile(file);
-      await updateRoomMutation.mutateAsync({ avatarUrl: url });
-    } catch {
-      toast({ title: "Не удалось загрузить аватар", variant: "destructive" });
+      await uploadRoomAvatar(room.id, file);
+      toast({ title: "Аватар обновлён" });
+      invalidateRoom();
+    } catch (err) {
+      toast({
+        title: "Не удалось загрузить аватар",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
     } finally {
       setAvatarUploading(false);
     }
@@ -199,17 +205,7 @@ export default function RoomSettingsPanel({
     <div className="px-4 pb-6 pt-2 text-sm space-y-4">
       <div className="flex items-start gap-3">
         <div className="relative shrink-0">
-          {room.avatarUrl ? (
-            <img
-              src={resolveMediaUrl(room.avatarUrl)}
-              alt=""
-              className="h-16 w-16 rounded-full object-cover border border-border/40"
-            />
-          ) : (
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
-              {room.title.slice(0, 1).toUpperCase()}
-            </div>
-          )}
+          <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} className="h-16 w-16" />
           {isAdmin && (
             <>
               <input

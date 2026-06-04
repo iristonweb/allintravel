@@ -19,13 +19,16 @@ import type {
 } from "@shared/schema";
 import {
   chatMessageLikes,
+  chatMessageReactions,
   chatMessages,
   chatPinnedMessages,
   chatRoomInvites,
   chatRoomMembers,
+  chatRoomReadCursors,
   chatRooms,
   friendships,
   privateMessageLikes,
+  privateMessageReactions,
   privateMessages,
   userPresence,
   userPrivacySettings,
@@ -137,6 +140,44 @@ export async function ensureExtendedSchema(db: PgFeaturesDb): Promise<void> {
       PRIMARY KEY (message_id, user_id)
     )
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS chat_message_reactions (
+      message_id uuid NOT NULL REFERENCES chat_messages(id) ON DELETE CASCADE,
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      emoji varchar(16) NOT NULL,
+      created_at timestamp DEFAULT now(),
+      PRIMARY KEY (message_id, user_id)
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS private_message_reactions (
+      message_id uuid NOT NULL REFERENCES private_messages(id) ON DELETE CASCADE,
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      emoji varchar(16) NOT NULL,
+      created_at timestamp DEFAULT now(),
+      PRIMARY KEY (message_id, user_id)
+    )
+  `);
+  await db.execute(sql`
+    INSERT INTO chat_message_reactions (message_id, user_id, emoji, created_at)
+    SELECT message_id, user_id, ${"❤️"}, created_at FROM chat_message_likes
+    ON CONFLICT (message_id, user_id) DO NOTHING
+  `);
+  await db.execute(sql`
+    INSERT INTO private_message_reactions (message_id, user_id, emoji, created_at)
+    SELECT message_id, user_id, ${"❤️"}, created_at FROM private_message_likes
+    ON CONFLICT (message_id, user_id) DO NOTHING
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS chat_room_read_cursors (
+      room_id uuid NOT NULL REFERENCES chat_rooms(id) ON DELETE CASCADE,
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      last_read_message_id uuid REFERENCES chat_messages(id) ON DELETE SET NULL,
+      updated_at timestamp DEFAULT now(),
+      PRIMARY KEY (room_id, user_id)
+    )
+  `);
+  await db.execute(sql`ALTER TABLE private_messages ADD COLUMN IF NOT EXISTS delivered_at timestamp`);
   await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS image_url varchar(500)`);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS user_tracks (
@@ -151,9 +192,24 @@ export async function ensureExtendedSchema(db: PgFeaturesDb): Promise<void> {
     )
   `);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS "IDX_user_tracks_user" ON user_tracks (user_id)`);
+  await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS artist varchar(200)`);
+  await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS source_provider varchar(50)`);
+  await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS source_id varchar(100)`);
+  await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS license varchar(100)`);
+  await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS is_preview boolean DEFAULT false`);
 }
 
 export type MessageLikeMeta = { likeCount: number; likedByMe: boolean };
+
+export type ReactionSummary = { emoji: string; count: number; reactedByMe: boolean };
+
+export type MessageReactionsMeta = { reactions: ReactionSummary[] };
+
+export type MessageDeliveryStatus = "sent" | "delivered" | "read";
+
+const DEFAULT_HEART = "❤️";
+
+export const QUICK_REACTION_EMOJIS = ["❤️", "👍", "😂", "🔥", "😮", "😢", "🎉", "👏"] as const;
 
 export async function getChatMessageDb(db: PgFeaturesDb, messageId: string): Promise<ChatMessage | undefined> {
   const [row] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId)).limit(1);
@@ -286,6 +342,307 @@ export async function togglePrivateMessageLikeDb(
   }
   const meta = await getPrivateMessageLikeMetaDb(db, [messageId], userId);
   return meta[messageId] ?? { likeCount: 0, likedByMe: false };
+}
+
+async function reactionsMetaForIds(
+  db: PgFeaturesDb,
+  table: typeof chatMessageReactions | typeof privateMessageReactions,
+  messageIds: string[],
+  viewerId: string,
+): Promise<Record<string, MessageReactionsMeta>> {
+  const out: Record<string, MessageReactionsMeta> = {};
+  if (messageIds.length === 0) return out;
+  for (const id of messageIds) out[id] = { reactions: [] };
+
+  const rows = await db
+    .select({
+      messageId: table.messageId,
+      emoji: table.emoji,
+      userId: table.userId,
+    })
+    .from(table)
+    .where(inArray(table.messageId, messageIds));
+
+  const grouped = new Map<string, Map<string, { count: number; reactedByMe: boolean }>>();
+  for (const id of messageIds) grouped.set(id, new Map());
+
+  for (const row of rows) {
+    const byEmoji = grouped.get(row.messageId)!;
+    const existing = byEmoji.get(row.emoji) ?? { count: 0, reactedByMe: false };
+    existing.count += 1;
+    if (row.userId === viewerId) existing.reactedByMe = true;
+    byEmoji.set(row.emoji, existing);
+  }
+
+  for (const [messageId, byEmoji] of Array.from(grouped.entries())) {
+    out[messageId] = {
+      reactions: Array.from(byEmoji.entries())
+        .map(([emoji, v]) => ({ emoji, count: v.count, reactedByMe: v.reactedByMe }))
+        .sort((a, b) => b.count - a.count || a.emoji.localeCompare(b.emoji)),
+    };
+  }
+  return out;
+}
+
+export async function getChatMessageReactionsMetaDb(
+  db: PgFeaturesDb,
+  messageIds: string[],
+  viewerId: string,
+): Promise<Record<string, MessageReactionsMeta>> {
+  return reactionsMetaForIds(db, chatMessageReactions, messageIds, viewerId);
+}
+
+export async function getPrivateMessageReactionsMetaDb(
+  db: PgFeaturesDb,
+  messageIds: string[],
+  viewerId: string,
+): Promise<Record<string, MessageReactionsMeta>> {
+  return reactionsMetaForIds(db, privateMessageReactions, messageIds, viewerId);
+}
+
+export async function setChatMessageReactionDb(
+  db: PgFeaturesDb,
+  messageId: string,
+  userId: string,
+  emoji: string | null,
+): Promise<MessageReactionsMeta> {
+  if (!emoji) {
+    await db
+      .delete(chatMessageReactions)
+      .where(and(eq(chatMessageReactions.messageId, messageId), eq(chatMessageReactions.userId, userId)));
+  } else {
+    await db
+      .insert(chatMessageReactions)
+      .values({ messageId, userId, emoji })
+      .onConflictDoUpdate({
+        target: [chatMessageReactions.messageId, chatMessageReactions.userId],
+        set: { emoji, createdAt: new Date() },
+      });
+  }
+  const meta = await getChatMessageReactionsMetaDb(db, [messageId], userId);
+  return meta[messageId] ?? { reactions: [] };
+}
+
+export async function setPrivateMessageReactionDb(
+  db: PgFeaturesDb,
+  messageId: string,
+  userId: string,
+  emoji: string | null,
+): Promise<MessageReactionsMeta> {
+  if (!emoji) {
+    await db
+      .delete(privateMessageReactions)
+      .where(and(eq(privateMessageReactions.messageId, messageId), eq(privateMessageReactions.userId, userId)));
+  } else {
+    await db
+      .insert(privateMessageReactions)
+      .values({ messageId, userId, emoji })
+      .onConflictDoUpdate({
+        target: [privateMessageReactions.messageId, privateMessageReactions.userId],
+        set: { emoji, createdAt: new Date() },
+      });
+  }
+  const meta = await getPrivateMessageReactionsMetaDb(db, [messageId], userId);
+  return meta[messageId] ?? { reactions: [] };
+}
+
+export async function getChatMessageReactionDetailsDb(
+  db: PgFeaturesDb,
+  messageId: string,
+): Promise<{ emoji: string; users: User[] }[]> {
+  const rows = await db
+    .select({
+      emoji: chatMessageReactions.emoji,
+      userId: chatMessageReactions.userId,
+    })
+    .from(chatMessageReactions)
+    .where(eq(chatMessageReactions.messageId, messageId));
+
+  const byEmoji = new Map<string, string[]>();
+  for (const row of rows) {
+    const list = byEmoji.get(row.emoji) ?? [];
+    list.push(row.userId);
+    byEmoji.set(row.emoji, list);
+  }
+
+  const result: { emoji: string; users: User[] }[] = [];
+  for (const [emoji, userIds] of Array.from(byEmoji.entries())) {
+    if (userIds.length === 0) continue;
+    const userRows = await db.select().from(users).where(inArray(users.id, userIds));
+    result.push({ emoji, users: userRows });
+  }
+  return result.sort((a, b) => b.users.length - a.users.length || a.emoji.localeCompare(b.emoji));
+}
+
+export async function getPrivateMessageReactionDetailsDb(
+  db: PgFeaturesDb,
+  messageId: string,
+): Promise<{ emoji: string; users: User[] }[]> {
+  const rows = await db
+    .select({
+      emoji: privateMessageReactions.emoji,
+      userId: privateMessageReactions.userId,
+    })
+    .from(privateMessageReactions)
+    .where(eq(privateMessageReactions.messageId, messageId));
+
+  const byEmoji = new Map<string, string[]>();
+  for (const row of rows) {
+    const list = byEmoji.get(row.emoji) ?? [];
+    list.push(row.userId);
+    byEmoji.set(row.emoji, list);
+  }
+
+  const result: { emoji: string; users: User[] }[] = [];
+  for (const [emoji, userIds] of Array.from(byEmoji.entries())) {
+    if (userIds.length === 0) continue;
+    const userRows = await db.select().from(users).where(inArray(users.id, userIds));
+    result.push({ emoji, users: userRows });
+  }
+  return result.sort((a, b) => b.users.length - a.users.length || a.emoji.localeCompare(b.emoji));
+}
+
+export async function upsertChatRoomReadCursorDb(
+  db: PgFeaturesDb,
+  roomId: string,
+  userId: string,
+  lastReadMessageId: string,
+): Promise<void> {
+  await db
+    .insert(chatRoomReadCursors)
+    .values({ roomId, userId, lastReadMessageId, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: [chatRoomReadCursors.roomId, chatRoomReadCursors.userId],
+      set: { lastReadMessageId, updatedAt: new Date() },
+    });
+}
+
+export async function getChatRoomReadCursorsDb(
+  db: PgFeaturesDb,
+  roomId: string,
+): Promise<{ userId: string; lastReadMessageId: string | null; updatedAt: Date | null }[]> {
+  return db.select().from(chatRoomReadCursors).where(eq(chatRoomReadCursors.roomId, roomId));
+}
+
+export async function getChatMessageReadersDb(
+  db: PgFeaturesDb,
+  roomId: string,
+  messageId: string,
+  excludeUserId?: string,
+): Promise<User[]> {
+  const [msg] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId)).limit(1);
+  if (!msg?.createdAt) return [];
+
+  const cursors = await getChatRoomReadCursorsDb(db, roomId);
+  const readerIds: string[] = [];
+  for (const cursor of cursors) {
+    if (excludeUserId && cursor.userId === excludeUserId) continue;
+    if (!cursor.lastReadMessageId) continue;
+    const [readMsg] = await db
+      .select({ createdAt: chatMessages.createdAt })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, cursor.lastReadMessageId))
+      .limit(1);
+    if (readMsg?.createdAt && new Date(readMsg.createdAt) >= new Date(msg.createdAt)) {
+      readerIds.push(cursor.userId);
+    }
+  }
+  if (readerIds.length === 0) return [];
+  return db.select().from(users).where(inArray(users.id, readerIds));
+}
+
+export async function getChatMessageReadMetaDb(
+  db: PgFeaturesDb,
+  roomId: string,
+  messageIds: string[],
+  authorId: string,
+): Promise<
+  Record<string, { deliveryStatus: MessageDeliveryStatus; readByCount: number; memberCount: number }>
+> {
+  const out: Record<string, { deliveryStatus: MessageDeliveryStatus; readByCount: number; memberCount: number }> =
+    {};
+  if (messageIds.length === 0) return out;
+
+  const members = await db
+    .select({ userId: chatRoomMembers.userId })
+    .from(chatRoomMembers)
+    .where(and(eq(chatRoomMembers.roomId, roomId), eq(chatRoomMembers.status, "active")));
+  const otherMemberIds = members.map((m) => m.userId).filter((id) => id !== authorId);
+  const memberCount = otherMemberIds.length;
+
+  const cursors = await getChatRoomReadCursorsDb(db, roomId);
+  const cursorByUser = new Map(cursors.map((c) => [c.userId, c]));
+
+  const readMsgIds = cursors.map((c) => c.lastReadMessageId).filter(Boolean) as string[];
+  const readMsgTimes = new Map<string, Date>();
+  if (readMsgIds.length > 0) {
+    const readMsgs = await db
+      .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
+      .from(chatMessages)
+      .where(inArray(chatMessages.id, readMsgIds));
+    for (const m of readMsgs) {
+      if (m.createdAt) readMsgTimes.set(m.id, new Date(m.createdAt));
+    }
+  }
+
+  const msgs = await db
+    .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
+    .from(chatMessages)
+    .where(inArray(chatMessages.id, messageIds));
+
+  for (const msg of msgs) {
+    if (!msg.createdAt) {
+      out[msg.id] = { deliveryStatus: "sent", readByCount: 0, memberCount };
+      continue;
+    }
+    const msgTime = new Date(msg.createdAt);
+    let readByCount = 0;
+    let deliveredCount = 0;
+    for (const memberId of otherMemberIds) {
+      const cursor = cursorByUser.get(memberId);
+      if (!cursor) continue;
+      deliveredCount += 1;
+      const readTime = cursor.lastReadMessageId ? readMsgTimes.get(cursor.lastReadMessageId) : undefined;
+      if (readTime && readTime >= msgTime) readByCount += 1;
+    }
+    let deliveryStatus: MessageDeliveryStatus = "sent";
+    if (memberCount === 0) {
+      deliveryStatus = "delivered";
+    } else if (readByCount === memberCount) {
+      deliveryStatus = "read";
+    } else if (deliveredCount === memberCount || readByCount > 0) {
+      deliveryStatus = "delivered";
+    }
+    out[msg.id] = { deliveryStatus, readByCount, memberCount };
+  }
+  return out;
+}
+
+export async function markPrivateMessagesDeliveredDb(
+  db: PgFeaturesDb,
+  receiverId: string,
+  senderId: string,
+): Promise<void> {
+  await db
+    .update(privateMessages)
+    .set({ deliveredAt: new Date() })
+    .where(
+      and(
+        eq(privateMessages.receiverId, receiverId),
+        eq(privateMessages.senderId, senderId),
+        sql`${privateMessages.deliveredAt} IS NULL`,
+      ),
+    );
+}
+
+export function privateMessageDeliveryStatus(
+  msg: PrivateMessage,
+  viewerId: string,
+): MessageDeliveryStatus {
+  if (msg.senderId !== viewerId) return "sent";
+  if (msg.isRead) return "read";
+  if (msg.deliveredAt) return "delivered";
+  return "sent";
 }
 
 export async function ensureLegacyChatRoomsDb(db: PgFeaturesDb): Promise<void> {

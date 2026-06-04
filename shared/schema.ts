@@ -10,6 +10,7 @@ import {
   decimal,
   boolean,
   uuid,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -202,6 +203,24 @@ export const chatMessageLikes = pgTable(
   (t) => [index("IDX_chat_message_likes_msg").on(t.messageId)],
 );
 
+export const chatMessageReactions = pgTable(
+  "chat_message_reactions",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => chatMessages.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emoji: varchar("emoji", { length: 16 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.messageId, t.userId] }),
+    index("IDX_chat_message_reactions_msg").on(t.messageId),
+  ],
+);
+
 // User favorites table
 export const userFavorites = pgTable("user_favorites", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -282,6 +301,23 @@ export const chatRoomMembers = pgTable(
   ],
 );
 
+export const chatRoomReadCursors = pgTable(
+  "chat_room_read_cursors",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => chatRooms.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lastReadMessageId: uuid("last_read_message_id").references(() => chatMessages.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.roomId, t.userId] })],
+);
+
 export const chatRoomInvites = pgTable("chat_room_invites", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   roomId: uuid("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
@@ -351,6 +387,7 @@ export const privateMessages = pgTable("private_messages", {
   receiverId: varchar("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   isRead: boolean("is_read").default(false),
+  deliveredAt: timestamp("delivered_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
 });
@@ -367,6 +404,24 @@ export const privateMessageLikes = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
   },
   (t) => [index("IDX_private_message_likes_msg").on(t.messageId)],
+);
+
+export const privateMessageReactions = pgTable(
+  "private_message_reactions",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => privateMessages.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emoji: varchar("emoji", { length: 16 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.messageId, t.userId] }),
+    index("IDX_private_message_reactions_msg").on(t.messageId),
+  ],
 );
 
 // Travel posts — format: post | story | reel | journal
@@ -432,6 +487,11 @@ export const userTracks = pgTable(
     mimeType: varchar("mime_type", { length: 50 }),
     fileSizeBytes: integer("file_size_bytes"),
     durationSeconds: integer("duration_seconds"),
+    artist: varchar("artist", { length: 200 }),
+    sourceProvider: varchar("source_provider", { length: 50 }),
+    sourceId: varchar("source_id", { length: 100 }),
+    license: varchar("license", { length: 100 }),
+    isPreview: boolean("is_preview").default(false),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (t) => [index("IDX_user_tracks_user").on(t.userId)],
@@ -693,12 +753,25 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 /** Enriched on list endpoints */
-export type MessageReactionMeta = {
-  likeCount: number;
-  likedByMe: boolean;
+export type ReactionSummary = {
+  emoji: string;
+  count: number;
+  reactedByMe: boolean;
 };
 
-export type ChatMessageWithMeta = ChatMessage & MessageReactionMeta;
+export type MessageReactionMeta = {
+  reactions: ReactionSummary[];
+};
+
+export type MessageDeliveryStatus = "sent" | "delivered" | "read";
+
+export type MessageReadMeta = {
+  deliveryStatus?: MessageDeliveryStatus;
+  readByCount?: number;
+  memberCount?: number;
+};
+
+export type ChatMessageWithMeta = ChatMessage & MessageReactionMeta & MessageReadMeta;
 export type UserFavorite = typeof userFavorites.$inferSelect;
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
@@ -742,7 +815,7 @@ export interface ReviewWithPlace extends Review {
 }
 export type PrivateMessage = typeof privateMessages.$inferSelect;
 export type InsertPrivateMessage = z.infer<typeof insertPrivateMessageSchema>;
-export type PrivateMessageWithMeta = PrivateMessage & MessageReactionMeta;
+export type PrivateMessageWithMeta = PrivateMessage & MessageReactionMeta & MessageReadMeta;
 export type TravelPost = typeof travelPosts.$inferSelect;
 export type InsertTravelPost = z.infer<typeof insertTravelPostSchema>;
 export type PostLike = typeof postLikes.$inferSelect;
