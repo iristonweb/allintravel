@@ -50,16 +50,9 @@ function resolvePageTitle(path: string): string | null {
 
 type AppTopNavProps = {
   minimalChrome?: boolean;
-  transparentChrome?: boolean;
 };
 
-function navChromeClass(minimalChrome?: boolean, transparentChrome?: boolean) {
-  if (transparentChrome) return "ait-chrome-transparent-nav";
-  if (minimalChrome) return "ait-chrome-minimal-nav";
-  return "ait-glass-nav";
-}
-
-export default function AppTopNav({ minimalChrome, transparentChrome }: AppTopNavProps) {
+export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -113,7 +106,7 @@ export default function AppTopNav({ minimalChrome, transparentChrome }: AppTopNa
       <header
         className={cn(
           "fixed top-0 z-50 w-full h-20",
-          navChromeClass(minimalChrome, transparentChrome),
+          minimalChrome ? "ait-chrome-minimal-nav" : "ait-glass-nav",
         )}
       >
         <div className="max-w-7xl mx-auto flex h-20 items-center justify-between gap-4 px-4 lg:px-8">
@@ -149,7 +142,7 @@ export default function AppTopNav({ minimalChrome, transparentChrome }: AppTopNa
     <header
       className={cn(
         "fixed top-0 z-50 w-full h-20 overflow-visible",
-        navChromeClass(minimalChrome, transparentChrome),
+        minimalChrome ? "ait-chrome-minimal-nav" : "ait-glass-nav",
       )}
     >
       <div className="max-w-[1600px] mx-auto flex h-20 items-center gap-3 px-4 lg:px-8 md:pl-[calc(72px+1rem)]">

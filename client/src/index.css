@@ -142,14 +142,6 @@
     box-shadow: none;
   }
 
-  .ait-chrome-transparent-nav {
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-bottom: none;
-    box-shadow: none;
-  }
-
   .ait-chrome-minimal-nav {
     background: var(--ait-void);
     backdrop-filter: none;
@@ -160,14 +152,6 @@
 
   .ait-chrome-minimal-sidebar {
     background: var(--ait-void);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-right: none;
-    box-shadow: none;
-  }
-
-  .ait-chrome-transparent-sidebar {
-    background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border-right: none;

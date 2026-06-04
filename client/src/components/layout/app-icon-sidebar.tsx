@@ -151,16 +151,9 @@ function SectionDivider() {
 
 type AppIconSidebarProps = {
   minimalChrome?: boolean;
-  transparentChrome?: boolean;
 };
 
-function sidebarChromeClass(minimalChrome?: boolean, transparentChrome?: boolean) {
-  if (transparentChrome) return "ait-chrome-transparent-sidebar";
-  if (minimalChrome) return "ait-chrome-minimal-sidebar";
-  return "ait-chrome-solid-sidebar backdrop-blur-xl hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]";
-}
-
-export default function AppIconSidebar({ minimalChrome, transparentChrome }: AppIconSidebarProps) {
+export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
   const [location] = useLocation();
   const { user } = useAuth();
 
@@ -187,7 +180,9 @@ export default function AppIconSidebar({ minimalChrome, transparentChrome }: App
         "h-[calc(100vh-var(--ait-header-h,5rem))] py-3 overflow-y-auto overflow-x-hidden overscroll-contain",
         "w-[72px] hover:w-[220px] focus-within:w-[220px]",
         "transition-[width,box-shadow] duration-200 ease-out",
-        sidebarChromeClass(minimalChrome, transparentChrome),
+        minimalChrome
+          ? "ait-chrome-minimal-sidebar"
+          : "ait-chrome-solid-sidebar backdrop-blur-xl hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]",
       )}
       aria-label="Основная навигация"
     >
