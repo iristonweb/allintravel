@@ -23,6 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrandLogo from "@/components/brand/brand-logo";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
 import {
   guestAnchors,
@@ -206,7 +207,7 @@ export default function AppTopNav() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="rounded-2xl p-1 h-11 w-11 hover:bg-white/8">
                 <Avatar className="h-9 w-9 border-2 border-white/20 ait-neon-purple">
-                  <AvatarImage src={user?.profileImageUrl ?? undefined} />
+                  <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
                   <AvatarFallback className="bg-gradient-to-br from-[#8b5cf6] to-[#ff7a18] text-xs text-white">
                     {user?.firstName?.[0] ?? "U"}
                   </AvatarFallback>

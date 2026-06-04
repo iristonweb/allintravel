@@ -664,6 +664,16 @@ function pickCity(a) {
   if (!a) return null;
   return a.city ?? a.town ?? a.village ?? a.municipality ?? a.state ?? null;
 }
+function inferNominatimKind(it) {
+  const cls = it.class ?? "";
+  const typ = it.type ?? "";
+  if (cls === "boundary" && typ === "country") return "country";
+  if (cls === "place" && ["city", "town", "village", "hamlet", "municipality"].includes(typ)) {
+    return "city";
+  }
+  if (["amenity", "shop", "tourism", "leisure", "building", "craft"].includes(cls)) return "poi";
+  return "address";
+}
 function toNumberOrNull(v) {
   if (!v) return null;
   const n = Number(v);
@@ -694,6 +704,7 @@ async function nominatimAutocomplete(params) {
   const json = await res.json();
   const items = (Array.isArray(json) ? json : []).map((it) => ({
     label: it.display_name ?? "",
+    kind: inferNominatimKind(it),
     city: pickCity(it.address),
     country: it.address?.country ?? null,
     lat: toNumberOrNull(it.lat),
@@ -712,6 +723,70 @@ var init_nominatim = __esm({
     USER_AGENT = "All-in-travel/1.0 (geocoding autocomplete)";
     cache = /* @__PURE__ */ new Map();
     buckets = /* @__PURE__ */ new Map();
+  }
+});
+
+// server/geo/photon.ts
+function buildLabel(p) {
+  const parts = [
+    p.name,
+    p.street ? [p.street, p.housenumber].filter(Boolean).join(" ") : null,
+    p.city,
+    p.state,
+    p.country
+  ].filter(Boolean);
+  return Array.from(new Set(parts)).join(", ");
+}
+function inferKind(p) {
+  const key = p.osm_key ?? "";
+  const val = p.osm_value ?? "";
+  if (key === "place" && ["city", "town", "village", "hamlet", "municipality"].includes(val)) {
+    return "city";
+  }
+  if (key === "boundary" && val === "country") return "country";
+  if (["amenity", "shop", "tourism", "leisure", "building"].includes(key)) return "poi";
+  return "address";
+}
+async function photonAutocomplete(params) {
+  const q = params.q.trim();
+  const limit = Math.max(1, Math.min(15, Math.floor(params.limit)));
+  if (q.length < 2) return [];
+  const url = new URL(BASE);
+  url.searchParams.set("q", q);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("lang", (params.lang ?? "ru").split(",")[0] || "ru");
+  const res = await fetch(url.toString(), {
+    headers: { Accept: "application/json" }
+  });
+  if (!res.ok) {
+    throw new Error(`Photon error: ${res.status}`);
+  }
+  const json = await res.json();
+  const features = Array.isArray(json.features) ? json.features : [];
+  const out = [];
+  for (const f of features) {
+    const p = f.properties;
+    const coords = f.geometry?.coordinates;
+    if (!p) continue;
+    const label = buildLabel(p);
+    if (!label) continue;
+    out.push({
+      label,
+      kind: inferKind(p),
+      lat: coords?.[1] ?? null,
+      lon: coords?.[0] ?? null,
+      city: p.city ?? null,
+      country: p.country ?? null
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+var BASE;
+var init_photon = __esm({
+  "server/geo/photon.ts"() {
+    "use strict";
+    BASE = "https://photon.komoot.io/api/";
   }
 });
 
@@ -992,7 +1067,7 @@ __export(resolve_autocomplete_exports, {
   resolveGeoAutocomplete: () => resolveGeoAutocomplete
 });
 function clampLimit2(limit) {
-  return Math.max(1, Math.min(12, Math.floor(limit)));
+  return Math.max(1, Math.min(15, Math.floor(limit)));
 }
 function labelKey(item) {
   return item.label.trim().toLowerCase();
@@ -1030,36 +1105,51 @@ function dbItemToGeo(item) {
 }
 async function resolveGeoAutocomplete(params) {
   const q = params.q.trim();
-  const limit = clampLimit2(params.limit ?? 8);
+  const limit = clampLimit2(params.limit ?? 10);
   const scope = params.scope ?? "all";
+  const lang = params.acceptLanguage ?? "ru";
   const results = [];
-  if (process.env.DATABASE_URL) {
+  const remaining = () => Math.max(0, limit - results.length);
+  const useFull = scope === "full" || scope === "all";
+  if (useFull && remaining() > 0) {
     try {
-      const dbItems = await dbGeoAutocomplete({ q, limit, scope });
-      mergeUnique(results, dbItems.map(dbItemToGeo), limit);
+      const photon = await photonAutocomplete({ q, limit: remaining(), lang });
+      mergeUnique(results, photon, limit);
     } catch (e) {
-      console.warn("DB geo autocomplete failed; using external providers.", e);
+      console.warn("Photon autocomplete failed.", e);
     }
   }
-  const remaining = () => Math.max(0, limit - results.length);
   if (remaining() > 0 && isAnyYandexGeoConfigured()) {
     try {
-      const ya = await yandexAutocomplete({
-        q,
-        limit: remaining(),
-        acceptLanguage: params.acceptLanguage ?? null
-      });
-      mergeUnique(results, ya, limit);
+      const ya = await yandexAutocomplete({ q, limit: remaining(), acceptLanguage: lang });
+      mergeUnique(
+        results,
+        ya.map((item) => ({ ...item, kind: item.kind ?? "address" })),
+        limit
+      );
     } catch (e) {
-      console.warn("Yandex autocomplete failed; trying Nominatim.", e);
+      console.warn("Yandex autocomplete failed.", e);
     }
   }
-  if (remaining() > 0) {
-    const nom = await nominatimAutocomplete({
-      q,
-      limit: remaining(),
-      acceptLanguage: params.acceptLanguage ?? null
-    });
+  if (useFull && remaining() > 0) {
+    try {
+      const nom = await nominatimAutocomplete({ q, limit: remaining(), acceptLanguage: lang });
+      mergeUnique(results, nom, limit);
+    } catch (e) {
+      console.warn("Nominatim autocomplete failed.", e);
+    }
+  }
+  if (scope !== "full" && process.env.DATABASE_URL && remaining() > 0) {
+    try {
+      const dbScope = scope === "country" ? "country" : scope === "city" ? "city" : "all";
+      const dbItems = await dbGeoAutocomplete({ q, limit: remaining(), scope: dbScope });
+      mergeUnique(results, dbItems.map(dbItemToGeo), limit);
+    } catch (e) {
+      console.warn("DB geo autocomplete failed.", e);
+    }
+  }
+  if (!useFull && remaining() > 0) {
+    const nom = await nominatimAutocomplete({ q, limit: remaining(), acceptLanguage: lang });
     mergeUnique(results, nom, limit);
   }
   return results;
@@ -1068,6 +1158,7 @@ var init_resolve_autocomplete = __esm({
   "server/geo/resolve-autocomplete.ts"() {
     "use strict";
     init_nominatim();
+    init_photon();
     init_yandex_config();
     init_yandex();
     init_db_autocomplete();
@@ -2886,7 +2977,9 @@ async function initAppStorage() {
   try {
     if (storage instanceof PgStorage) {
       await storage.ensureSchema();
-      await storage.ensureSeeded();
+      if (!process.env.VERCEL) {
+        await storage.ensureSeeded();
+      }
     }
     if (storage.ensureAdminUsers) {
       await storage.ensureAdminUsers();
@@ -3093,21 +3186,31 @@ function toSessionUser(user) {
     }
   };
 }
-async function setupAuth(app) {
+function applyPassportMiddleware(app) {
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
-  const googleTimeoutMs = process.env.VERCEL ? 2e3 : 1e4;
-  try {
-    await Promise.race([
-      setupGoogleAuth(app),
-      new Promise(
-        (_, reject) => setTimeout(() => reject(new Error("Google OAuth setup timeout")), googleTimeoutMs)
-      )
-    ]);
-  } catch (err) {
+  passport.serializeUser((user, cb) => cb(null, user));
+  passport.deserializeUser((user, cb) => cb(null, user));
+}
+async function setupAuth(app) {
+  applyPassportMiddleware(app);
+  const googleSetup = setupGoogleAuth(app).catch((err) => {
     console.error("[auth] Google OAuth setup skipped:", err);
+  });
+  if (!process.env.VERCEL) {
+    const googleTimeoutMs = 1e4;
+    try {
+      await Promise.race([
+        googleSetup,
+        new Promise(
+          (_, reject) => setTimeout(() => reject(new Error("Google OAuth setup timeout")), googleTimeoutMs)
+        )
+      ]);
+    } catch (err) {
+      console.error("[auth] Google OAuth setup skipped:", err);
+    }
   }
   passport.use(
     new LocalStrategy(
@@ -3162,8 +3265,6 @@ async function setupAuth(app) {
       }
     )
   );
-  passport.serializeUser((user, cb) => cb(null, user));
-  passport.deserializeUser((user, cb) => cb(null, user));
   app.get("/api/login", (_req, res) => {
     res.redirect("/login");
   });
@@ -3237,9 +3338,9 @@ async function registerRoutes(app) {
     try {
       const q = String(req.query.q ?? "").trim();
       const limitRaw = req.query.limit != null ? Number(req.query.limit) : 8;
-      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(10, Math.floor(limitRaw))) : 8;
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(15, Math.floor(limitRaw))) : 10;
       const scopeRaw = typeof req.query.scope === "string" ? req.query.scope : "all";
-      const scope = scopeRaw === "city" || scopeRaw === "country" || scopeRaw === "all" ? scopeRaw : "all";
+      const scope = scopeRaw === "city" || scopeRaw === "country" || scopeRaw === "all" || scopeRaw === "full" ? scopeRaw : "all";
       if (q.length < 2) {
         return res.json([]);
       }
@@ -3629,6 +3730,43 @@ async function registerRoutes(app) {
       res.status(500).json({ message: "Failed to add waypoint" });
     }
   });
+  app.post("/api/trips/:id/waypoints/from-location", isAuthenticated, async (req, res) => {
+    try {
+      const label = String(req.body?.label ?? "").trim();
+      const lat = Number(req.body?.lat);
+      const lon = Number(req.body?.lon);
+      if (!label || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return res.status(400).json({ message: "\u0423\u043A\u0430\u0436\u0438\u0442\u0435 \u0430\u0434\u0440\u0435\u0441 \u0438 \u043A\u043E\u043E\u0440\u0434\u0438\u043D\u0430\u0442\u044B" });
+      }
+      const name = label.split(",")[0]?.trim() || label;
+      const candidates = await storage.getPlaces({ search: name, limit: 10 });
+      let place = candidates.find((p) => {
+        const plat = Number(p.latitude);
+        const plon = Number(p.longitude);
+        return Number.isFinite(plat) && Number.isFinite(plon) && Math.abs(plat - lat) < 0.08 && Math.abs(plon - lon) < 0.08;
+      });
+      if (!place) {
+        place = await storage.createPlace({
+          name,
+          type: "attraction",
+          latitude: String(lat),
+          longitude: String(lon),
+          address: label,
+          description: "\u0422\u043E\u0447\u043A\u0430 \u043C\u0430\u0440\u0448\u0440\u0443\u0442\u0430"
+        });
+      }
+      const waypoint = await storage.addTripWaypoint(
+        req.params.id,
+        place.id,
+        req.body.orderIndex != null ? Number(req.body.orderIndex) : void 0,
+        req.body.dayNumber != null ? Number(req.body.dayNumber) : void 0
+      );
+      res.status(201).json({ waypoint, place });
+    } catch (error) {
+      console.error("Error adding waypoint from location:", error);
+      res.status(500).json({ message: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0443" });
+    }
+  });
   app.patch("/api/trips/:id/waypoints/:waypointId", isAuthenticated, async (req, res) => {
     try {
       const { orderIndex, dayNumber } = req.body;
@@ -3920,9 +4058,18 @@ async function registerRoutes(app) {
   });
   app.get("/api/profile/:userId", async (req, res) => {
     try {
-      const profile = await storage.getUserProfile(req.params.userId);
+      const userId = req.params.userId;
+      const profile = await storage.getUserProfile(userId);
       if (!profile) {
-        return res.status(404).json({ message: "Profile not found" });
+        return res.json({
+          userId,
+          bio: null,
+          location: null,
+          travelStyle: null,
+          isPublic: true,
+          createdAt: null,
+          updatedAt: null
+        });
       }
       res.json(profile);
     } catch (error) {
@@ -4346,7 +4493,8 @@ import multer, { MulterError } from "multer";
 // server/media-storage.ts
 import fs from "fs";
 import path from "path";
-var MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024;
+import { put } from "@vercel/blob";
+var MAX_INLINE_IMAGE_BYTES = 3 * 1024 * 1024;
 function resolveUploadsDir() {
   if (process.env.VERCEL) {
     return path.join("/tmp", "ait-uploads");
@@ -4381,12 +4529,14 @@ function fileBuffer(file) {
   if (file.path && fs.existsSync(file.path)) return fs.readFileSync(file.path);
   throw new Error("Empty upload");
 }
+function hasBlobStorage() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
+}
 async function persistUploadedFile(file) {
   const buffer = fileBuffer(file);
   const mime = file.mimetype || "application/octet-stream";
   const ext = guessExtension(mime, file.originalname);
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const { put } = await import("@vercel/blob");
+  if (hasBlobStorage()) {
     const key = `media/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
     const blob = await put(key, buffer, {
       access: "public",
@@ -4404,7 +4554,7 @@ async function persistUploadedFile(file) {
     return `data:${mime};base64,${buffer.toString("base64")}`;
   }
   throw new Error(
-    "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0444\u0430\u0439\u043B\u043E\u0432 \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430: \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0435 Vercel Blob (Storage) \u0432 \u043F\u0440\u043E\u0435\u043A\u0442\u0435 \u0438\u043B\u0438 \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0434\u043E 2 \u041C\u0411."
+    "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u043D\u0430 Vercel: \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0435 Vercel Blob (Storage \u2192 Blob) \u0432 \u043F\u0440\u043E\u0435\u043A\u0442\u0435 \u0438\u043B\u0438 \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0434\u043E 3 \u041C\u0411."
   );
 }
 function getUploadsStaticDir() {
@@ -4455,10 +4605,13 @@ function handleMulter(req, res, next, middleware) {
     return res.status(400).json({ message });
   });
 }
-function setupUploadRoutes(app) {
+function mountUploadRoutes(app, options) {
   const upload = createUploadMiddleware();
-  const dir = getUploadsStaticDir();
-  app.use("/uploads", express.static(dir));
+  const serveStatic2 = options?.serveStatic !== false;
+  if (serveStatic2) {
+    const dir = getUploadsStaticDir();
+    app.use("/uploads", express.static(dir));
+  }
   app.post(
     "/api/upload",
     isAuthenticated,
@@ -4504,6 +4657,9 @@ function setupUploadRoutes(app) {
       }
     }
   );
+}
+function setupUploadRoutes(app) {
+  mountUploadRoutes(app);
 }
 
 // server/push.ts
@@ -4656,6 +4812,56 @@ async function createApp() {
   return { app, server };
 }
 
+// server/vercel/media-upload-app.ts
+import express3 from "express";
+var uploadApp = null;
+function getMediaUploadApp() {
+  if (uploadApp) return uploadApp;
+  const app = express3();
+  app.set("trust proxy", 1);
+  applyPassportMiddleware(app);
+  mountUploadRoutes(app, { serveStatic: false });
+  uploadApp = app;
+  return app;
+}
+function isMediaUploadPath(method, url) {
+  if (method !== "POST" || !url) return false;
+  const path2 = url.split("?")[0] ?? "";
+  return path2 === "/api/upload" || path2 === "/api/users/avatar";
+}
+function runMediaUploadApp(req, res) {
+  const app = getMediaUploadApp();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    res.once("finish", done);
+    res.once("close", done);
+    res.once("error", (err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
+    try {
+      app(req, res, (err) => {
+        if (err && !settled) {
+          settled = true;
+          reject(err);
+        }
+      });
+    } catch (err) {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    }
+  });
+}
+
 // server/vercel/handler.ts
 var appPromise = null;
 async function getApp() {
@@ -4702,6 +4908,10 @@ function runExpress(app, req, res) {
 }
 async function handler(req, res) {
   try {
+    if (process.env.VERCEL && isMediaUploadPath(req.method, req.url)) {
+      await runMediaUploadApp(req, res);
+      return;
+    }
     const app = await getApp();
     await runExpress(app, req, res);
   } catch (error) {

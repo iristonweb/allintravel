@@ -30,6 +30,7 @@ import type { UserProfile, TravelPostWithAuthor, UserFavoriteWithPlace, ReviewWi
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { validateUsername } from "@shared/username";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function Profile() {
@@ -215,7 +216,7 @@ export function Profile() {
                 <div className="flex flex-col items-center">
                   <div className="relative">
                     <Avatar className="h-32 w-32">
-                      <AvatarImage src={user?.profileImageUrl ?? undefined} />
+                      <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
                       <AvatarFallback className="text-3xl">
                         {user ? getUserInitial(user) : "?"}
                       </AvatarFallback>

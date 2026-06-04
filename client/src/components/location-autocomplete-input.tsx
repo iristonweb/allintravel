@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 
 export type GeoAutocompleteItem = {
   label: string;
-  // DB-backed fields
-  kind?: "city" | "country";
+  kind?: "city" | "country" | "address" | "poi";
   countryCode?: string;
   geonameId?: number;
   lat?: number | null;
@@ -30,8 +29,15 @@ type Props = Omit<React.ComponentProps<typeof Input>, "value" | "onChange"> & {
   debounceMs?: number;
   /** Max suggestions. Default: 8. */
   limit?: number;
-  /** Search scope. Default: all. */
-  scope?: "city" | "country" | "all";
+  /** Search scope. `full` = addresses, streets, POI (OSM). Default: all. */
+  scope?: "city" | "country" | "all" | "full";
+};
+
+const KIND_LABELS: Record<string, string> = {
+  city: "Город",
+  country: "Страна",
+  address: "Адрес",
+  poi: "Заведение",
 };
 
 export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Props>(function LocationAutocompleteInput(
@@ -174,13 +180,17 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
                     setOpen(false);
                   }}
                 >
-                  <div className="flex flex-col">
+                  <div className="flex flex-col min-w-0 flex-1">
                     <span className="truncate">{item.label}</span>
-                    {(item.city || item.country) && (
-                      <span className="text-xs text-muted-foreground truncate">
-                        {[item.city, item.country].filter(Boolean).join(", ")}
-                      </span>
-                    )}
+                    <span className="text-xs text-muted-foreground truncate">
+                      {[
+                        item.kind ? KIND_LABELS[item.kind] ?? item.kind : null,
+                        item.city,
+                        item.country,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
                   </div>
                 </CommandItem>
               ))}

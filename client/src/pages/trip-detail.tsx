@@ -4,13 +4,12 @@ import AppLayout from "@/components/app-layout";
 import TripPlannerLayout from "@/components/planner/trip-planner-layout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import type { Trip, Place } from "@shared/schema";
+import type { Trip } from "@shared/schema";
 import type { TripWaypointWithPlace } from "@shared/schema";
 import { useState } from "react";
 
 export function TripDetail() {
   const { id } = useParams();
-  const [placeSearch, setPlaceSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
 
   const { data: trip, isLoading: tripLoading } = useQuery<Trip>({
@@ -21,11 +20,6 @@ export function TripDetail() {
   const { data: waypoints = [], isLoading: waypointsLoading } = useQuery<TripWaypointWithPlace[]>({
     queryKey: ["/api/trips", id, "waypoints"],
     enabled: !!id,
-  });
-
-  const { data: places = [] } = useQuery<Place[]>({
-    queryKey: ["/api/places", { limit: 20, ...(placeSearch && { search: placeSearch }) }],
-    enabled: addOpen,
   });
 
   if (!id) {
@@ -63,9 +57,6 @@ export function TripDetail() {
         tripId={id}
         waypoints={waypoints}
         waypointsLoading={waypointsLoading}
-        places={places}
-        placeSearch={placeSearch}
-        setPlaceSearch={setPlaceSearch}
         addOpen={addOpen}
         setAddOpen={setAddOpen}
       />

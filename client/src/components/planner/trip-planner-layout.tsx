@@ -6,6 +6,8 @@ import GlassCard from "@/components/brand/glass-card";
 import GradientButton from "@/components/brand/gradient-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import AddStopSearch from "@/components/planner/add-stop-search";
+import type { GeoAutocompleteItem } from "@/components/location-autocomplete-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -19,7 +21,7 @@ import { Plus, Trash2, Download, Route } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { optimizeWaypointOrder, totalRouteKm } from "@/lib/routeUtils";
-import type { Trip, Place } from "@shared/schema";
+import type { Trip } from "@shared/schema";
 import type { TripWaypointWithPlace } from "@shared/schema";
 import { differenceInCalendarDays } from "date-fns";
 
@@ -28,9 +30,6 @@ type TripPlannerLayoutProps = {
   tripId: string;
   waypoints: TripWaypointWithPlace[];
   waypointsLoading: boolean;
-  places: Place[];
-  placeSearch: string;
-  setPlaceSearch: (v: string) => void;
   addOpen: boolean;
   setAddOpen: (v: boolean) => void;
 };
@@ -40,9 +39,6 @@ export default function TripPlannerLayout({
   tripId,
   waypoints,
   waypointsLoading,
-  places,
-  placeSearch,
-  setPlaceSearch,
   addOpen,
   setAddOpen,
 }: TripPlannerLayoutProps) {
@@ -103,8 +99,26 @@ export default function TripPlannerLayout({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
       setAddOpen(false);
-      setPlaceSearch("");
       toast({ title: "Остановка добавлена" });
+    },
+  });
+
+  const addFromLocationMutation = useMutation({
+    mutationFn: async (item: GeoAutocompleteItem) => {
+      const res = await apiRequest("POST", `/api/trips/${tripId}/waypoints/from-location`, {
+        label: item.label,
+        lat: Number(item.lat),
+        lon: Number(item.lon),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
+      setAddOpen(false);
+      toast({ title: "Остановка добавлена" });
+    },
+    onError: () => {
+      toast({ title: "Не удалось добавить остановку", variant: "destructive" });
     },
   });
 
@@ -169,7 +183,7 @@ export default function TripPlannerLayout({
   };
 
   const existingPlaceIds = new Set(waypoints.map((w) => w.placeId));
-  const placeOptions = places.filter((p) => !existingPlaceIds.has(p.id));
+  const addingStop = addWaypointMutation.isPending || addFromLocationMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -201,32 +215,16 @@ export default function TripPlannerLayout({
                       <Plus className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="ait-glass-strong">
+                  <DialogContent className="ait-glass-strong sm:max-w-lg max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Добавить остановку</DialogTitle>
                     </DialogHeader>
-                    <Input
-                      placeholder="Поиск мест..."
-                      value={placeSearch}
-                      onChange={(e) => setPlaceSearch(e.target.value)}
+                    <AddStopSearch
+                      existingPlaceIds={existingPlaceIds}
+                      adding={addingStop}
+                      onAddPlace={(placeId) => addWaypointMutation.mutate(placeId)}
+                      onAddLocation={(item) => addFromLocationMutation.mutateAsync(item)}
                     />
-                    <div className="max-h-64 overflow-auto space-y-2 mt-2">
-                      {placeOptions.slice(0, 15).map((place) => (
-                        <div
-                          key={place.id}
-                          className="flex justify-between p-2 rounded-lg border border-white/10"
-                        >
-                          <span className="text-sm font-medium">{place.name}</span>
-                          <Button
-                            size="sm"
-                            variant="premium"
-                            onClick={() => addWaypointMutation.mutate(place.id)}
-                          >
-                            +
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
                   </DialogContent>
                 </Dialog>
               </div>

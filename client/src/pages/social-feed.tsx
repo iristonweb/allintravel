@@ -36,6 +36,7 @@ import LocationAutocompleteInput from "@/components/location-autocomplete-input"
 import PostComments from "@/components/social/PostComments";
 import { shareUrl } from "@/lib/share";
 import { uploadMediaFile, isVideoUrl } from "@/lib/upload-media";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -283,7 +284,7 @@ export function SocialFeed() {
             <div className="pt-0">
               <div className="flex items-start gap-3">
                 <Avatar>
-                  <AvatarImage src={user?.profileImageUrl ?? undefined} />
+                  <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
                   <AvatarFallback>{user?.firstName?.[0] || user?.email?.[0] || "?"}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
@@ -443,7 +444,7 @@ export function SocialFeed() {
                   <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
                       <Avatar>
-                        <AvatarImage src={post.author?.profileImageUrl ?? undefined} />
+                        <AvatarImage src={resolveMediaUrl(post.author?.profileImageUrl)} />
                         <AvatarFallback>
                           {post.author?.firstName?.[0] || "?"}
                         </AvatarFallback>
@@ -475,18 +476,18 @@ export function SocialFeed() {
                       <p className="text-muted-foreground leading-relaxed">{post.content}</p>
                     </div>
 
-                    {post.images && post.images.length > 0 ? (
+                    {post.images && post.images.length > 0 && resolveMediaUrl(post.images[0]) ? (
                       <div className="rounded-2xl overflow-hidden mx-1">
                         {isVideoUrl(post.images[0]) ? (
                           <video
-                            src={post.images[0]}
+                            src={resolveMediaUrl(post.images[0])!}
                             className="w-full h-64 md:h-[420px] object-cover"
                             controls
                             playsInline
                           />
                         ) : (
                           <img
-                            src={post.images[0]}
+                            src={resolveMediaUrl(post.images[0])!}
                             alt={post.title}
                             className="w-full h-64 md:h-[420px] object-cover"
                           />
@@ -575,7 +576,7 @@ export function SocialFeed() {
                         <PostComments postId={post.id} enabled={expandedComments[post.id]} />
                         <div className="flex gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={user?.profileImageUrl ?? undefined} />
+                            <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
                             <AvatarFallback>{user?.firstName?.[0] || "?"}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 flex gap-2">
