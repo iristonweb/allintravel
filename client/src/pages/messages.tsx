@@ -16,11 +16,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import type { PrivateMessage, PrivateMessageWithMeta, User } from "@shared/schema";
+import type { ChatRoom, PrivateMessage, PrivateMessageWithMeta, User } from "@shared/schema";
 import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
 import { useToast } from "@/hooks/use-toast";
 import { Hash } from "lucide-react";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
+import RoomAvatar from "@/components/chat/RoomAvatar";
+
+type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number };
 
 interface Conversation {
   user: User & { isOnline?: boolean };
@@ -55,6 +58,13 @@ export function Messages() {
     enabled: isAuthenticated,
     refetchInterval: 30_000,
   });
+
+  const { data: chatRooms = [], isLoading: roomsLoading } = useQuery<RoomListItem[]>({
+    queryKey: ["/api/chat/rooms"],
+    enabled: isAuthenticated,
+  });
+
+  const myRooms = chatRooms.filter((r) => r.myRole != null);
 
   const { data: userToOpen } = useQuery<User | null>({
     queryKey: ["/api/users", withUserId || ""],
@@ -266,13 +276,42 @@ export function Messages() {
               <div className="p-0">
                 <ScrollArea className="h-[calc(100vh-300px)] md:h-[calc(100vh-280px)]">
                   {msgTab === "groups" ? (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
-                      <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      Групповые чаты — в разделе{" "}
-                      <Link href="/chat" className="text-ait-purple hover:underline">
-                        Чаты
-                      </Link>
-                    </div>
+                    roomsLoading ? (
+                      <div className="p-6 text-center text-sm text-muted-foreground">Загрузка…</div>
+                    ) : myRooms.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-muted-foreground space-y-2">
+                        <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Вы ещё не состоите в групповых чатах</p>
+                        <Link href="/chat">
+                          <Button variant="outline" size="sm" className="rounded-full">
+                            Открыть комнаты
+                          </Button>
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="py-2">
+                        {myRooms.map((room) => (
+                          <Link key={room.id} href={`/chat?room=${room.slug}`}>
+                            <div className="ait-chat-list-item cursor-pointer">
+                              <div className="flex items-center gap-3">
+                                <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{room.title}</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {room.memberCount} участн.
+                                  </p>
+                                </div>
+                                {(room.unreadCount ?? 0) > 0 && (
+                                  <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
+                                    {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )
                   ) : visibleConversations.length === 0 ? (
                     <div className="p-4 text-center">
                       <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />

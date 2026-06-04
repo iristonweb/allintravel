@@ -191,7 +191,7 @@ export interface IStorage {
   ensureLegacyChatRooms(): Promise<void>;
   getChatRoomBySlug(slug: string): Promise<ChatRoom | undefined>;
   getChatRoom(id: string): Promise<ChatRoom | undefined>;
-  listChatRoomsForUser(userId: string): Promise<(ChatRoom & { memberCount: number; myRole: string | null })[]>;
+  listChatRoomsForUser(userId: string): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]>;
   createChatRoom(data: {
     slug?: string;
     title: string;
@@ -1430,15 +1430,40 @@ export class MemStorage implements IStorage {
 
   async listChatRoomsForUser(userId: string) {
     this.ensureMemLegacyRooms();
-    return Array.from(this.memChatRooms.values()).map((room) => ({
-      ...room,
-      memberCount: Array.from(this.memChatMembers.values()).filter(
-        (m) => m.roomId === room.id && m.status === "active",
-      ).length,
-      myRole:
-        Array.from(this.memChatMembers.values()).find((m) => m.roomId === room.id && m.userId === userId)
-          ?.role ?? null,
-    }));
+    return Array.from(this.memChatRooms.values())
+      .filter((room) => {
+        if (room.visibility === "private") {
+          const my = Array.from(this.memChatMembers.values()).find(
+            (m) => m.roomId === room.id && m.userId === userId && m.status === "active",
+          );
+          if (!my) return false;
+        }
+        return true;
+      })
+      .map((room) => {
+        const cursor = this.memReadCursors.get(`${room.id}:${userId}`);
+        let afterTime: Date | null = null;
+        if (cursor?.lastReadMessageId) {
+          const readMsg = this.chatMessages.get(cursor.lastReadMessageId);
+          if (readMsg?.createdAt) afterTime = new Date(readMsg.createdAt);
+        }
+        const unreadCount = Array.from(this.chatMessages.values()).filter((m) => {
+          if (m.chatRoom !== room.slug || m.userId === userId) return false;
+          if (!afterTime) return true;
+          return m.createdAt && new Date(m.createdAt) > afterTime;
+        }).length;
+        return {
+          ...room,
+          memberCount: Array.from(this.memChatMembers.values()).filter(
+            (m) => m.roomId === room.id && m.status === "active",
+          ).length,
+          myRole:
+            Array.from(this.memChatMembers.values()).find(
+              (m) => m.roomId === room.id && m.userId === userId,
+            )?.role ?? null,
+          unreadCount,
+        };
+      });
   }
 
   async createChatRoom(data: {

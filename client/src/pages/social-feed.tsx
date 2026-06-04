@@ -96,6 +96,7 @@ export function SocialFeed() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const postContentRef = useRef<HTMLTextAreaElement>(null);
+  const commentInputRef = useRef<HTMLInputElement>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [storyView, setStoryView] = useState<{
@@ -742,8 +743,18 @@ export function SocialFeed() {
                             <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
                             <AvatarFallback>{user?.firstName?.[0] || "?"}</AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 flex gap-2">
+                          <div className="flex-1 flex flex-col gap-1 min-w-0">
+                          <FormatToolbar
+                            value={commentInputs[post.id] || ""}
+                            onChange={(v) =>
+                              setCommentInputs((prev) => ({ ...prev, [post.id]: v }))
+                            }
+                            inputRef={commentInputRef}
+                            compact
+                          />
+                          <div className="flex gap-2">
                             <Input
+                              ref={commentInputRef}
                               placeholder="Написать комментарий..."
                               value={commentInputs[post.id] || ""}
                               onChange={(e) =>
@@ -760,11 +771,12 @@ export function SocialFeed() {
                               size="sm"
                               disabled={!commentInputs[post.id]?.trim() || commentMutation.isPending}
                               onClick={() => handleSubmitComment(post.id)}
-                              className="bg-primary hover:bg-primary/90"
+                              className="bg-primary hover:bg-primary/90 shrink-0"
                             >
                               <Send className="h-4 w-4" />
                             </Button>
                           </div>
+                        </div>
                         </div>
                       </div>
                     )}

@@ -1787,6 +1787,20 @@ async function getChatRoomDb(db2, id) {
   const [row] = await db2.select().from(chatRooms).where(eq2(chatRooms.id, id)).limit(1);
   return row;
 }
+async function countUnreadInRoomDb(db2, roomSlug, roomId, userId) {
+  const [cursor] = await db2.select().from(chatRoomReadCursors).where(and2(eq2(chatRoomReadCursors.roomId, roomId), eq2(chatRoomReadCursors.userId, userId))).limit(1);
+  let afterTime = null;
+  if (cursor?.lastReadMessageId) {
+    const [readMsg] = await db2.select({ createdAt: chatMessages.createdAt }).from(chatMessages).where(eq2(chatMessages.id, cursor.lastReadMessageId)).limit(1);
+    if (readMsg?.createdAt) afterTime = new Date(readMsg.createdAt);
+  }
+  const conditions = [eq2(chatMessages.chatRoom, roomSlug), sql3`${chatMessages.userId} <> ${userId}`];
+  if (afterTime) {
+    conditions.push(sql3`${chatMessages.createdAt} > ${afterTime}`);
+  }
+  const [{ value }] = await db2.select({ value: count2() }).from(chatMessages).where(and2(...conditions));
+  return Number(value);
+}
 async function listChatRoomsForUserDb(db2, userId) {
   const allRooms = await db2.select().from(chatRooms).orderBy(desc2(chatRooms.isLegacy), desc2(chatRooms.createdAt));
   const result = [];
@@ -1794,7 +1808,8 @@ async function listChatRoomsForUserDb(db2, userId) {
     const [{ value: memberCount }] = await db2.select({ value: count2() }).from(chatRoomMembers).where(and2(eq2(chatRoomMembers.roomId, room.id), eq2(chatRoomMembers.status, "active")));
     const [my] = await db2.select().from(chatRoomMembers).where(and2(eq2(chatRoomMembers.roomId, room.id), eq2(chatRoomMembers.userId, userId))).limit(1);
     if (room.visibility === "private" && (!my || my.status !== "active")) continue;
-    result.push({ ...room, memberCount: Number(memberCount), myRole: my?.role ?? null });
+    const unreadCount = await countUnreadInRoomDb(db2, room.slug, room.id, userId);
+    result.push({ ...room, memberCount: Number(memberCount), myRole: my?.role ?? null, unreadCount });
   }
   return result;
 }
@@ -4660,13 +4675,37 @@ var init_storage = __esm({
       }
       async listChatRoomsForUser(userId) {
         this.ensureMemLegacyRooms();
-        return Array.from(this.memChatRooms.values()).map((room) => ({
-          ...room,
-          memberCount: Array.from(this.memChatMembers.values()).filter(
-            (m) => m.roomId === room.id && m.status === "active"
-          ).length,
-          myRole: Array.from(this.memChatMembers.values()).find((m) => m.roomId === room.id && m.userId === userId)?.role ?? null
-        }));
+        return Array.from(this.memChatRooms.values()).filter((room) => {
+          if (room.visibility === "private") {
+            const my = Array.from(this.memChatMembers.values()).find(
+              (m) => m.roomId === room.id && m.userId === userId && m.status === "active"
+            );
+            if (!my) return false;
+          }
+          return true;
+        }).map((room) => {
+          const cursor = this.memReadCursors.get(`${room.id}:${userId}`);
+          let afterTime = null;
+          if (cursor?.lastReadMessageId) {
+            const readMsg = this.chatMessages.get(cursor.lastReadMessageId);
+            if (readMsg?.createdAt) afterTime = new Date(readMsg.createdAt);
+          }
+          const unreadCount = Array.from(this.chatMessages.values()).filter((m) => {
+            if (m.chatRoom !== room.slug || m.userId === userId) return false;
+            if (!afterTime) return true;
+            return m.createdAt && new Date(m.createdAt) > afterTime;
+          }).length;
+          return {
+            ...room,
+            memberCount: Array.from(this.memChatMembers.values()).filter(
+              (m) => m.roomId === room.id && m.status === "active"
+            ).length,
+            myRole: Array.from(this.memChatMembers.values()).find(
+              (m) => m.roomId === room.id && m.userId === userId
+            )?.role ?? null,
+            unreadCount
+          };
+        });
       }
       async createChatRoom(data) {
         const id = genId();

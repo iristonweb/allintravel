@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, BookOpen } from "lucide-react";
 import GlassCard from "@/components/brand/glass-card";
+import { renderRichText } from "@/lib/rich-text";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import type { TravelPostWithAuthor } from "@shared/schema";
 type JournalCardProps = {
@@ -31,7 +32,9 @@ export default function JournalCard({ post, formatDate, onTagClick }: JournalCar
             </p>
           </div>
         </div>
-        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{excerpt}</p>
+        <div className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+          {renderRichText(excerpt)}
+        </div>
         {post.location && (
           <p className="mt-3 flex items-center gap-1 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />

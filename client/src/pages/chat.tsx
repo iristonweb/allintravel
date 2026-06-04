@@ -60,11 +60,11 @@ import type { UserLabelFields } from "@shared/user-display";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
-type ChatTab = "all" | "mine";
+type ChatTab = "all" | "mine" | "unread";
 
 type ReplyTarget = { username: string; label: string; preview: string };
 
-type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null };
+type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number };
 
 type ChatMessageWithSender = ChatMessage &
   MessageReactionMeta &
@@ -148,6 +148,7 @@ export function Chat() {
 
   const filteredRooms = rooms.filter((r) => {
     if (chatTab === "mine") return r.myRole != null;
+    if (chatTab === "unread") return (r.unreadCount ?? 0) > 0;
     return true;
   }).filter((r) => {
     const q = roomQuery.trim().toLowerCase();
@@ -294,6 +295,9 @@ export function Chat() {
     mutationFn: async (messageId: string) => {
       if (!roomId) return;
       await apiRequest("POST", `/api/chat/rooms/${roomId}/read`, { messageId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
     },
   });
 
@@ -569,6 +573,7 @@ export function Chat() {
           layoutId="chat-page-filter"
           tabs={[
             { id: "all", label: "Все комнаты" },
+            { id: "unread", label: "Непрочит." },
             { id: "mine", label: "Мои" },
           ]}
           value={chatTab}
@@ -701,7 +706,13 @@ export function Chat() {
               <div className="p-2 space-y-1">
                 {filteredRooms.length === 0 ? (
                   <div className="p-6 text-center text-sm text-muted-foreground">
-                    {roomQuery.trim() ? "Ничего не найдено" : "Нет комнат"}
+                    {roomQuery.trim()
+                      ? "Ничего не найдено"
+                      : chatTab === "unread"
+                        ? "Нет непрочитанных комнат"
+                        : chatTab === "mine"
+                          ? "Вы ещё не состоите в комнатах"
+                          : "Нет комнат"}
                   </div>
                 ) : (
                   filteredRooms.map((room) => (
@@ -718,6 +729,11 @@ export function Chat() {
                       >
                         <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} />
                         <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
+                        {(room.unreadCount ?? 0) > 0 && (
+                          <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
+                            {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                          </Badge>
+                        )}
                         {room.visibility === "private" && <Lock className="h-3 w-3 shrink-0 opacity-60" />}
                         {room.isLegacy && (
                           <Badge variant="outline" className="text-[9px] px-1 py-0">

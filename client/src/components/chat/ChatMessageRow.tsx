@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import FormatToolbar from "@/components/rich-text/FormatToolbar";
 import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
 import { cn } from "@/lib/utils";
 import {
@@ -96,6 +97,7 @@ export default function ChatMessageRow({
 }: ChatMessageRowProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [editText, setEditText] = useState(content);
+  const editTextRef = useRef<HTMLTextAreaElement>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
   const hasActions = Boolean(onReact || onPin || onUnpin || onDelete || onEdit);
 
@@ -336,7 +338,13 @@ export default function ChatMessageRow({
           <DialogHeader>
             <DialogTitle>Редактировать сообщение</DialogTitle>
           </DialogHeader>
+          <FormatToolbar
+            value={editText}
+            onChange={setEditText}
+            inputRef={editTextRef}
+          />
           <Textarea
+            ref={editTextRef}
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             rows={4}

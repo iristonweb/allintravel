@@ -850,12 +850,46 @@ export async function getChatRoomDb(db: PgFeaturesDb, id: string): Promise<ChatR
   return row;
 }
 
+export async function countUnreadInRoomDb(
+  db: PgFeaturesDb,
+  roomSlug: string,
+  roomId: string,
+  userId: string,
+): Promise<number> {
+  const [cursor] = await db
+    .select()
+    .from(chatRoomReadCursors)
+    .where(and(eq(chatRoomReadCursors.roomId, roomId), eq(chatRoomReadCursors.userId, userId)))
+    .limit(1);
+
+  let afterTime: Date | null = null;
+  if (cursor?.lastReadMessageId) {
+    const [readMsg] = await db
+      .select({ createdAt: chatMessages.createdAt })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, cursor.lastReadMessageId))
+      .limit(1);
+    if (readMsg?.createdAt) afterTime = new Date(readMsg.createdAt);
+  }
+
+  const conditions = [eq(chatMessages.chatRoom, roomSlug), sql`${chatMessages.userId} <> ${userId}`];
+  if (afterTime) {
+    conditions.push(sql`${chatMessages.createdAt} > ${afterTime}`);
+  }
+
+  const [{ value }] = await db
+    .select({ value: count() })
+    .from(chatMessages)
+    .where(and(...conditions));
+  return Number(value);
+}
+
 export async function listChatRoomsForUserDb(
   db: PgFeaturesDb,
   userId: string,
-): Promise<(ChatRoom & { memberCount: number; myRole: string | null })[]> {
+): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]> {
   const allRooms = await db.select().from(chatRooms).orderBy(desc(chatRooms.isLegacy), desc(chatRooms.createdAt));
-  const result: (ChatRoom & { memberCount: number; myRole: string | null })[] = [];
+  const result: (ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[] = [];
   for (const room of allRooms) {
     const [{ value: memberCount }] = await db
       .select({ value: count() })
@@ -867,7 +901,8 @@ export async function listChatRoomsForUserDb(
       .where(and(eq(chatRoomMembers.roomId, room.id), eq(chatRoomMembers.userId, userId)))
       .limit(1);
     if (room.visibility === "private" && (!my || my.status !== "active")) continue;
-    result.push({ ...room, memberCount: Number(memberCount), myRole: my?.role ?? null });
+    const unreadCount = await countUnreadInRoomDb(db, room.slug, room.id, userId);
+    result.push({ ...room, memberCount: Number(memberCount), myRole: my?.role ?? null, unreadCount });
   }
   return result;
 }
