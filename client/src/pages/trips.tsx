@@ -138,20 +138,9 @@ export function Trips() {
   const openCreateDialog = () => setOpen(true);
 
   return (
-    <AppLayout>
-      <PageHeader
-        title="Поездки"
-        description="Найдите попутчиков или создайте свою группу"
-        rightSlot={
-          <Button variant="premium" type="button" onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Создать поездку
-          </Button>
-        }
-      />
-
+    <>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="ait-glass-strong ait-gradient-border border-white/10 text-foreground">
+        <DialogContent className="ait-glass-strong ait-gradient-border border-white/10 text-foreground sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Новая поездка</DialogTitle>
             <DialogDescription>
@@ -306,6 +295,18 @@ export function Trips() {
         </DialogContent>
       </Dialog>
 
+    <AppLayout>
+      <PageHeader
+        title="Поездки"
+        description="Найдите попутчиков или создайте свою группу"
+        rightSlot={
+          <Button variant="premium" type="button" onClick={openCreateDialog}>
+            <Plus className="mr-2 h-4 w-4" />
+            Создать поездку
+          </Button>
+        }
+      />
+
       <div className="mb-6 mt-8 max-w-xl">
           <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -405,6 +406,7 @@ export function Trips() {
           </>
         )}
     </AppLayout>
+    </>
   );
 }
 
