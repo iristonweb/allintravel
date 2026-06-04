@@ -51,6 +51,43 @@ function weekKey(): string {
   return `${d.getFullYear()}-W${week}`;
 }
 
+/** Monday 00:00 UTC for the current calendar week */
+function weekStartMondayUtc(): Date {
+  const d = new Date();
+  const day = d.getUTCDay();
+  const diff = day === 0 ? 6 : day - 1;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - diff));
+}
+
+/** Distinct login days this week (for weekly quest «Пульс») */
+export async function getWeeklyLoginDayCount(userId: string): Promise<number> {
+  const start = weekStartMondayUtc();
+  const db = getDb();
+  if (!db) {
+    const days = new Set<string>();
+    for (const t of memTx) {
+      if (
+        t.userId === userId &&
+        t.reasonCode === "daily_login" &&
+        t.delta > 0 &&
+        t.createdAt >= start
+      ) {
+        days.add(t.createdAt.toISOString().slice(0, 10));
+      }
+    }
+    return days.size;
+  }
+  const res = await db.execute(sql`
+    SELECT count(DISTINCT (created_at AT TIME ZONE 'UTC')::date)::int AS c
+    FROM ait_transactions
+    WHERE user_id = ${userId}
+      AND reason_code = 'daily_login'
+      AND delta > 0
+      AND created_at >= ${start.toISOString()}::timestamptz
+  `);
+  return Number((res as unknown as { rows?: { c: number }[] }).rows?.[0]?.c ?? 0);
+}
+
 function genTxId(): string {
   return `ait-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -610,9 +647,15 @@ export async function getQuestProgress(
     }
   }
 
+  const weeklyLogins = await getWeeklyLoginDayCount(userId);
   const out: Record<string, { claimed: boolean; progress: number }> = {};
   for (const q of WEEKLY_QUESTS) {
-    const progress = q.ring ? Math.min(q.target, rings[q.ring]?.count ?? 0) : 0;
+    let progress = 0;
+    if (q.id === "pulse_5") {
+      progress = Math.min(q.target, weeklyLogins);
+    } else if (q.ring) {
+      progress = Math.min(q.target, rings[q.ring]?.count ?? 0);
+    }
     out[q.id] = { claimed: claimedSet.has(q.id), progress };
   }
   void RING_DAILY_TARGET;

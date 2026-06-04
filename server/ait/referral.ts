@@ -1,17 +1,37 @@
 import { sql } from "drizzle-orm";
 import { AIT_REFERRAL_REWARD } from "@shared/ait";
 import { getDb } from "../db";
+import { storage } from "../storage";
 import type { AitGrantResult } from "./service";
 import { tryGrantSpend } from "./service";
 import * as store from "./store";
 
 const memCodes = new Map<string, string>();
 const memCodeToUser = new Map<string, string>();
-const memReferrals = new Map<string, string>();
+const memReferrals = new Map<string, { referrerId: string; rewarded: boolean; createdAt: Date }>();
 
 function codeFromUserId(userId: string): string {
   return userId.replace(/-/g, "").slice(0, 10).toUpperCase();
 }
+
+export type ReferralInvitee = {
+  userId: string;
+  displayName: string;
+  username: string | null;
+  profileImageUrl: string | null;
+  rewarded: boolean;
+  createdAt: string;
+};
+
+export type ReferralInfo = {
+  code: string;
+  invited: number;
+  rewardedCount: number;
+  totalEarned: number;
+  hasUsedCode: boolean;
+  myReferrerCode: string | null;
+  invitees: ReferralInvitee[];
+};
 
 export async function ensureReferralSchema(): Promise<void> {
   const db = getDb();
@@ -77,6 +97,101 @@ async function resolveReferrerId(code: string): Promise<string | null> {
   return (res as unknown as { rows?: { user_id: string }[] }).rows?.[0]?.user_id ?? null;
 }
 
+export async function getReferrerIdForUser(referredUserId: string): Promise<string | null> {
+  await ensureReferralSchema();
+  const db = getDb();
+  if (!db) {
+    return memReferrals.get(referredUserId)?.referrerId ?? null;
+  }
+  const res = await db.execute(sql`
+    SELECT referrer_id FROM ait_referrals WHERE referred_id = ${referredUserId}
+  `);
+  return (res as unknown as { rows?: { referrer_id: string }[] }).rows?.[0]?.referrer_id ?? null;
+}
+
+async function markReferralRewarded(referredUserId: string): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const row = memReferrals.get(referredUserId);
+    if (row) row.rewarded = true;
+    return;
+  }
+  await db.execute(sql`
+    UPDATE ait_referrals SET rewarded = true WHERE referred_id = ${referredUserId}
+  `);
+}
+
+async function insertReferralLink(referredUserId: string, referrerId: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) {
+    if (memReferrals.has(referredUserId)) return false;
+    memReferrals.set(referredUserId, {
+      referrerId,
+      rewarded: false,
+      createdAt: new Date(),
+    });
+    return true;
+  }
+  try {
+    await db.execute(sql`
+      INSERT INTO ait_referrals (referred_id, referrer_id) VALUES (${referredUserId}, ${referrerId})
+    `);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function completeReferralRewards(
+  referredUserId: string,
+  referrerId: string,
+): Promise<{ ok: boolean; message?: string; grant?: AitGrantResult }> {
+  const alreadyJoined = await store.hasGrantForEntity(
+    referredUserId,
+    "referral_joined",
+    referrerId,
+  );
+  const alreadyInviter = await store.hasGrantForEntity(
+    referrerId,
+    "referral_inviter",
+    referredUserId,
+  );
+
+  const joined =
+    alreadyJoined ||
+    (await tryGrantSpend(referredUserId, "referral_joined", {
+      skipCap: true,
+      entityType: "referral",
+      entityId: referrerId,
+    }));
+  const inviter =
+    alreadyInviter ||
+    (await tryGrantSpend(referrerId, "referral_inviter", {
+      skipCap: true,
+      entityType: "referral",
+      entityId: referredUserId,
+    }));
+
+  if (!joined || !inviter) {
+    return { ok: false, message: "Не удалось начислить реферальный бонус. Попробуйте позже." };
+  }
+
+  await markReferralRewarded(referredUserId);
+
+  const grant: AitGrantResult =
+    typeof joined === "object" && joined !== null && "granted" in joined
+      ? joined
+      : {
+          granted: true,
+          amount: AIT_REFERRAL_REWARD,
+          wallet: "spend",
+          title: "Реферальный бонус",
+          reason: "referral_joined",
+        };
+
+  return { ok: true, grant };
+}
+
 export async function applyReferralCode(
   referredUserId: string,
   code: string,
@@ -86,65 +201,103 @@ export async function applyReferralCode(
   if (!referrerId) return { ok: false, message: "Код не найден" };
   if (referrerId === referredUserId) return { ok: false, message: "Нельзя использовать свой код" };
 
-  const db = getDb();
-  if (!db) {
-    if (memReferrals.has(referredUserId)) {
+  const existingReferrer = await getReferrerIdForUser(referredUserId);
+  if (existingReferrer) {
+    if (existingReferrer !== referrerId) {
       return { ok: false, message: "Реферал уже применён" };
     }
-    memReferrals.set(referredUserId, referrerId);
-  } else {
-    try {
-      await db.execute(sql`
-        INSERT INTO ait_referrals (referred_id, referrer_id) VALUES (${referredUserId}, ${referrerId})
-      `);
-    } catch {
-      return { ok: false, message: "Реферал уже применён" };
-    }
+    return completeReferralRewards(referredUserId, referrerId);
   }
 
-  const joined = await tryGrantSpend(referredUserId, "referral_joined", {
-    skipCap: true,
-    entityType: "referral",
-    entityId: referrerId,
-  });
-  await tryGrantSpend(referrerId, "referral_inviter", {
-    skipCap: true,
-    entityType: "referral",
-    entityId: referredUserId,
-  });
+  const inserted = await insertReferralLink(referredUserId, referrerId);
+  if (!inserted) return { ok: false, message: "Реферал уже применён" };
 
-  if (db) {
-    await db.execute(sql`
-      UPDATE ait_referrals SET rewarded = true WHERE referred_id = ${referredUserId}
-    `);
-  }
-
-  return {
-    ok: true,
-    grant: joined ?? {
-      granted: true,
-      amount: AIT_REFERRAL_REWARD,
-      wallet: "spend",
-      title: "Реферальный бонус",
-      reason: "referral_joined",
-    },
-  };
+  return completeReferralRewards(referredUserId, referrerId);
 }
 
-export async function getReferralInfo(userId: string): Promise<{ code: string; invited: number }> {
+async function listInvitees(referrerId: string): Promise<ReferralInvitee[]> {
+  const db = getDb();
+  type Row = { referred_id: string; rewarded: boolean; created_at: string };
+  let rows: Row[] = [];
+  if (!db) {
+    for (const [referredId, row] of Array.from(memReferrals.entries())) {
+      if (row.referrerId === referrerId) {
+        rows.push({
+          referred_id: referredId,
+          rewarded: row.rewarded,
+          created_at: row.createdAt.toISOString(),
+        });
+      }
+    }
+  } else {
+    const res = await db.execute(sql`
+      SELECT referred_id, rewarded, created_at
+      FROM ait_referrals
+      WHERE referrer_id = ${referrerId}
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+    rows = ((res as unknown as { rows?: Row[] }).rows ?? []) as Row[];
+  }
+
+  const invitees: ReferralInvitee[] = [];
+  for (const r of rows) {
+    const user = await storage.getUser(r.referred_id);
+    invitees.push({
+      userId: r.referred_id,
+      displayName: user
+        ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Путешественник"
+        : "Путешественник",
+      username: user?.username ?? null,
+      profileImageUrl: user?.profileImageUrl ?? null,
+      rewarded: r.rewarded,
+      createdAt: new Date(r.created_at).toISOString(),
+    });
+  }
+  return invitees;
+}
+
+export async function getReferralInfo(userId: string): Promise<ReferralInfo> {
   await ensureReferralSchema();
   const code = await getOrCreateReferralCode(userId);
   const db = getDb();
+  let invited = 0;
+  let rewardedCount = 0;
   if (!db) {
-    let invited = 0;
-    for (const [, ref] of Array.from(memReferrals.entries())) {
-      if (ref === userId) invited++;
+    for (const [, row] of Array.from(memReferrals.entries())) {
+      if (row.referrerId === userId) {
+        invited++;
+        if (row.rewarded) rewardedCount++;
+      }
     }
-    return { code, invited };
+  } else {
+    const res = await db.execute(sql`
+      SELECT
+        count(*)::int AS invited,
+        count(*) FILTER (WHERE rewarded)::int AS rewarded_count
+      FROM ait_referrals
+      WHERE referrer_id = ${userId}
+    `);
+    const row = (res as unknown as { rows?: { invited: number; rewarded_count: number }[] }).rows?.[0];
+    invited = Number(row?.invited ?? 0);
+    rewardedCount = Number(row?.rewarded_count ?? 0);
   }
-  const res = await db.execute(sql`
-    SELECT count(*)::int AS c FROM ait_referrals WHERE referrer_id = ${userId}
-  `);
-  const invited = Number((res as unknown as { rows?: { c: number }[] }).rows?.[0]?.c ?? 0);
-  return { code, invited };
+
+  const myReferrerId = await getReferrerIdForUser(userId);
+  let myReferrerCode: string | null = null;
+  if (myReferrerId) {
+    myReferrerCode = await getOrCreateReferralCode(myReferrerId);
+  }
+
+  const invitees = await listInvitees(userId);
+
+  return {
+    code,
+    invited,
+    rewardedCount,
+    totalEarned: rewardedCount * AIT_REFERRAL_REWARD,
+    hasUsedCode: Boolean(myReferrerId),
+    myReferrerCode,
+    invitees,
+  };
 }

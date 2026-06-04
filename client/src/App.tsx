@@ -34,8 +34,10 @@ import PremiumBackground from "@/components/premium/PremiumBackground";
 import ErrorBoundary from "@/components/error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
 import AitGrantListener from "@/components/ait/AitGrantListener";
+import ReferralAutoApply from "@/components/ait/ReferralAutoApply";
 import PushSoundListener from "@/components/PushSoundListener";
 import AdminPage from "@/pages/admin";
+import { captureReferralFromUrl } from "@/lib/referral-pending";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -114,11 +116,16 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    captureReferralFromUrl();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <AitGrantListener />
+        <ReferralAutoApply />
         <PushSoundListener />
         <ErrorBoundary>
           <Router />

@@ -34,8 +34,7 @@ export default function AitHub() {
 
   const claim = (questId: string) => {
     claimMutation.mutate(questId, {
-      onSuccess: () => toast({ title: "+AIT за квест" }),
-      onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+      onError: (e: Error) => toast({ title: e.message.replace(/^\d+:\s*/, ""), variant: "destructive" }),
     });
   };
 
