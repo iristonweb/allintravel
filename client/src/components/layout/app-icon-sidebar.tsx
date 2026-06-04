@@ -14,16 +14,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   sidebarPrimaryNav,
   sidebarDiscoverNav,
   sidebarExtraNav,
 } from "@/lib/nav-config";
 import type { LucideIcon } from "lucide-react";
+
+/** Collapsed rail width — keep in sync with app-shell md:pl-[72px] */
+export const SIDEBAR_WIDTH_COLLAPSED = 72;
+export const SIDEBAR_WIDTH_EXPANDED = 220;
 
 const iconByHref: Record<string, LucideIcon> = {
   "/": Home,
@@ -42,7 +41,7 @@ const iconByHref: Record<string, LucideIcon> = {
 
 type NavItemWithMeta = { href: string; label: string; badge?: string };
 
-function NavIcon({
+function NavItem({
   item,
   active,
 }: {
@@ -51,38 +50,69 @@ function NavIcon({
 }) {
   const Icon = iconByHref[item.href] ?? MapPin;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Link href={item.href}>
+    <Link href={item.href}>
+      <span
+        className={cn(
+          "relative flex h-11 w-full items-center gap-3 rounded-xl px-3 transition-colors",
+          active
+            ? "ait-nav-active text-white"
+            : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+        )}
+      >
+        <Icon className="h-5 w-5 shrink-0" aria-hidden />
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm font-medium",
+            "opacity-0 max-w-0 overflow-hidden transition-all duration-200 ease-out",
+            "group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px]",
+            "group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-w-[160px]",
+          )}
+        >
+          {item.label}
+        </span>
+        {item.badge && (
           <span
             className={cn(
-              "relative flex h-11 w-11 items-center justify-center rounded-xl transition-all",
-              active
-                ? "ait-nav-active text-white"
-                : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+              "shrink-0 text-[10px] font-bold text-ait-orange",
+              "opacity-0 max-w-0 overflow-hidden transition-all duration-200",
+              "group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[3rem]",
+              "group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-w-[3rem]",
             )}
           >
-            <Icon className="h-5 w-5" />
-            {item.badge && (
-              <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold px-1 rounded bg-ait-orange text-white leading-tight">
-                {item.badge}
-              </span>
-            )}
+            {item.badge}
           </span>
-        </Link>
-      </TooltipTrigger>
-      <TooltipContent side="right">{item.label}</TooltipContent>
-    </Tooltip>
+        )}
+      </span>
+    </Link>
   );
 }
 
-function NavSection({ items, activeFn }: { items: NavItemWithMeta[]; activeFn: (href: string) => boolean }) {
+function NavSection({
+  items,
+  activeFn,
+}: {
+  items: NavItemWithMeta[];
+  activeFn: (href: string) => boolean;
+}) {
   return (
-    <>
+    <div className="flex flex-col gap-0.5 w-full">
       {items.map((item) => (
-        <NavIcon key={item.href} item={item} active={activeFn(item.href)} />
+        <NavItem key={item.href} item={item} active={activeFn(item.href)} />
       ))}
-    </>
+    </div>
+  );
+}
+
+function SectionDivider() {
+  return (
+    <div
+      className={cn(
+        "my-2 shrink-0 border-t border-white/10 transition-all duration-200",
+        "w-10 mx-auto group-hover/sidebar:w-[calc(100%-1rem)] group-hover/sidebar:mx-2",
+        "group-focus-within/sidebar:w-[calc(100%-1rem)] group-focus-within/sidebar:mx-2",
+      )}
+      aria-hidden
+    />
   );
 }
 
@@ -100,13 +130,20 @@ export default function AppIconSidebar() {
 
   return (
     <aside
-      className="hidden md:flex fixed left-0 top-20 z-40 h-[calc(100vh-var(--ait-header-h,5rem))] w-[72px] flex-col items-center gap-0.5 border-r border-border/60 bg-background/40 backdrop-blur-xl py-3 overflow-y-auto overscroll-contain"
+      className={cn(
+        "group/sidebar hidden md:flex fixed left-0 top-20 z-40 flex-col",
+        "h-[calc(100vh-var(--ait-header-h,5rem))] border-r border-border/60",
+        "bg-background/95 backdrop-blur-xl py-3 overflow-y-auto overflow-x-hidden overscroll-contain",
+        "w-[72px] hover:w-[220px] focus-within:w-[220px]",
+        "hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]",
+        "transition-[width,box-shadow] duration-200 ease-out",
+      )}
       aria-label="Основная навигация"
     >
       <NavSection items={sidebarPrimaryNav} activeFn={isActive} />
-      <div className="w-8 border-t border-white/10 my-2 shrink-0" aria-hidden />
+      <SectionDivider />
       <NavSection items={sidebarDiscoverNav} activeFn={isActive} />
-      <div className="w-8 border-t border-white/10 my-2 shrink-0" aria-hidden />
+      <SectionDivider />
       <NavSection items={extraItems} activeFn={isActive} />
     </aside>
   );
