@@ -127,3 +127,5 @@ export function MapPage() {
     </AppLayout>
   );
 }
+
+export default MapPage;
