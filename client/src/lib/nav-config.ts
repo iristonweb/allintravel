@@ -31,6 +31,7 @@ export const sidebarDiscoverNav: NavItem[] = [
   { href: "/blog", label: "Блог" },
   { href: "/social-feed", label: "Сообщество" },
   { href: "/chat", label: "Комнаты" },
+  { href: "/profile/music", label: "Моя музыка" },
 ];
 
 /** Sidebar: доп. инструменты */
@@ -75,6 +76,7 @@ export const mobileEcosystemNav: NavItem[] = [
   { href: "/events", label: "События" },
   { href: "/social-feed", label: "Сообщество" },
   { href: "/chat", label: "Комнаты" },
+  { href: "/profile/music", label: "Моя музыка" },
   { href: "/profile", label: "Профиль" },
 ];
 

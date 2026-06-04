@@ -14,6 +14,11 @@ async function parseUploadResponse(res: Response): Promise<string> {
   }
   const data = JSON.parse(text) as { url: string };
   if (!data.url) throw new Error("Сервер не вернул URL файла");
+  if (data.url.startsWith("data:")) {
+    throw new Error(
+      "Сервер вернул временный data-URL вместо постоянной ссылки. Подключите Vercel Blob (BLOB_READ_WRITE_TOKEN) в настройках проекта.",
+    );
+  }
   return data.url;
 }
 

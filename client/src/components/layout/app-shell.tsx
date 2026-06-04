@@ -8,6 +8,7 @@ import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import GlobalMusicBar from "@/components/music/GlobalMusicBar";
+import BroadcastModal from "@/components/admin/BroadcastModal";
 import { cn } from "@/lib/utils";
 import { useEffect, type ReactNode } from "react";
 
@@ -68,6 +69,7 @@ export default function AppShell({
           </div>
           {isAuthenticated && <MobileBottomNav />}
           {isAuthenticated && <GlobalMusicBar />}
+          {isAuthenticated && <BroadcastModal />}
         </div>
       </AmbientBackground>
     </MusicPlayerProvider>

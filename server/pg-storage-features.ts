@@ -16,8 +16,12 @@ import type {
   User,
   UserPresence,
   UserTrack,
+  AdminBroadcast,
+  InsertAdminBroadcast,
 } from "@shared/schema";
 import {
+  adminBroadcastDismissals,
+  adminBroadcasts,
   chatMessageLikes,
   chatMessageReactions,
   chatMessages,
@@ -197,6 +201,29 @@ export async function ensureExtendedSchema(db: PgFeaturesDb): Promise<void> {
   await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS source_id varchar(100)`);
   await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS license varchar(100)`);
   await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS is_preview boolean DEFAULT false`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS admin_broadcasts (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      created_by varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content text NOT NULL,
+      is_active boolean NOT NULL DEFAULT true,
+      expires_at timestamp,
+      created_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS admin_broadcast_dismissals (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      broadcast_id uuid NOT NULL REFERENCES admin_broadcasts(id) ON DELETE CASCADE,
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      action varchar(20) NOT NULL,
+      dismissed_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS IDX_broadcast_dismissal_user
+    ON admin_broadcast_dismissals (broadcast_id, user_id)
+  `);
 }
 
 export type MessageLikeMeta = { likeCount: number; likedByMe: boolean };
@@ -1035,6 +1062,9 @@ export async function pinChatMessageDb(
   messageId: string,
   pinnedBy: string,
 ): Promise<void> {
+  await db
+    .delete(chatPinnedMessages)
+    .where(and(eq(chatPinnedMessages.roomId, roomId), eq(chatPinnedMessages.messageId, messageId)));
   await db.insert(chatPinnedMessages).values({ roomId, messageId, pinnedBy });
 }
 
@@ -1076,4 +1106,70 @@ export async function createUserTrackDb(db: PgFeaturesDb, data: InsertUserTrack)
 
 export async function deleteUserTrackDb(db: PgFeaturesDb, id: string): Promise<void> {
   await db.delete(userTracks).where(eq(userTracks.id, id));
+}
+
+export async function createAdminBroadcastDb(
+  db: PgFeaturesDb,
+  data: InsertAdminBroadcast,
+): Promise<AdminBroadcast> {
+  const [row] = await db.insert(adminBroadcasts).values(data).returning();
+  return row;
+}
+
+export async function getAdminBroadcastsDb(db: PgFeaturesDb): Promise<AdminBroadcast[]> {
+  return db.select().from(adminBroadcasts).orderBy(desc(adminBroadcasts.createdAt));
+}
+
+export async function getPendingAdminBroadcastDb(
+  db: PgFeaturesDb,
+  userId: string,
+): Promise<AdminBroadcast | undefined> {
+  const result = await db.execute(sql`
+    SELECT b.id, b.created_by, b.content, b.is_active, b.expires_at, b.created_at
+    FROM admin_broadcasts b
+    WHERE b.is_active = true
+      AND (b.expires_at IS NULL OR b.expires_at > now())
+      AND NOT EXISTS (
+        SELECT 1 FROM admin_broadcast_dismissals d
+        WHERE d.broadcast_id = b.id AND d.user_id = ${userId}
+      )
+    ORDER BY b.created_at ASC
+    LIMIT 1
+  `);
+  const rows = result.rows as Array<{
+    id: string;
+    created_by: string;
+    content: string;
+    is_active: boolean;
+    expires_at: Date | null;
+    created_at: Date | null;
+  }>;
+  const row = rows[0];
+  if (!row) return undefined;
+  return {
+    id: row.id,
+    createdBy: row.created_by,
+    content: row.content,
+    isActive: row.is_active,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+  };
+}
+
+export async function dismissAdminBroadcastDb(
+  db: PgFeaturesDb,
+  broadcastId: string,
+  userId: string,
+  action: string,
+): Promise<void> {
+  await db.execute(sql`
+    INSERT INTO admin_broadcast_dismissals (broadcast_id, user_id, action)
+    VALUES (${broadcastId}, ${userId}, ${action})
+    ON CONFLICT (broadcast_id, user_id) DO NOTHING
+  `);
+}
+
+export async function getAllUserIdsDb(db: PgFeaturesDb): Promise<string[]> {
+  const rows = await db.select({ id: users.id }).from(users);
+  return rows.map((r) => r.id);
 }

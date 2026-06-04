@@ -1,4 +1,5 @@
 import { compactMessageLabel, parseChatMessage } from "@/lib/chat-message";
+import ReplyQuote from "@/components/chat/ReplyQuote";
 import { isSafeChatMediaUrl } from "@/lib/safe-media-url";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,17 @@ export default function MessageContent({ content, className, compact }: MessageC
   return (
     <span className={cn("break-words", className)}>
       {parts.map((part, i) => {
+        if (part.type === "reply") {
+          return (
+            <ReplyQuote
+              key={i}
+              username={part.username}
+              preview={part.preview}
+              compact={compact}
+              className="block"
+            />
+          );
+        }
         if (part.type === "text") {
           return part.text ? <span key={i}>{part.text}</span> : null;
         }

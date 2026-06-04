@@ -3,7 +3,8 @@ import path from "path";
 import type { Express } from "express";
 import { put } from "@vercel/blob";
 
-const MAX_INLINE_IMAGE_BYTES = 3 * 1024 * 1024;
+export const VERCEL_BLOB_REQUIRED_MSG =
+  "Загрузка на Vercel требует Vercel Blob: создайте store в Vercel → Storage → Blob и добавьте переменную BLOB_READ_WRITE_TOKEN (не BLOB_WEBHOOK_PUBLIC_KEY). После redeploy загрузки заработают. Лимит тела запроса на Vercel ~4.5 МБ.";
 
 function resolveUploadsDir(): string {
   if (process.env.VERCEL) {
@@ -76,13 +77,7 @@ export async function persistUploadedFile(file: Express.Multer.File): Promise<st
     return `/uploads/${filename}`;
   }
 
-  if (mime.startsWith("image/") && buffer.length <= MAX_INLINE_IMAGE_BYTES) {
-    return `data:${mime};base64,${buffer.toString("base64")}`;
-  }
-
-  throw new Error(
-    "Загрузка на Vercel: подключите Vercel Blob (Storage → Blob) в проекте или используйте изображение до 3 МБ.",
-  );
+  throw new Error(VERCEL_BLOB_REQUIRED_MSG);
 }
 
 export function getUploadsStaticDir(): string {

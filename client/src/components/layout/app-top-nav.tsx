@@ -20,6 +20,7 @@ import {
 } from "@/lib/nav-config";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
+import AdminBroadcastDialog from "@/components/admin/AdminBroadcastDialog";
 
 const pageTitles: Record<string, string> = {
   "/": "Главная",
@@ -149,9 +150,12 @@ export default function AppTopNav() {
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
           {user?.isAdmin && (
-            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-ait-orange px-2 py-1 rounded-full border border-ait-orange/40 mr-1">
-              Admin
-            </span>
+            <>
+              <AdminBroadcastDialog />
+              <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-ait-orange px-2 py-1 rounded-full border border-ait-orange/40 mr-1">
+                Admin
+              </span>
+            </>
           )}
 
           <HeaderQuickActions

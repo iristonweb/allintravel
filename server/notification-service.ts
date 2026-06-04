@@ -177,3 +177,28 @@ export async function notifyGroupJoin(
     });
   }
 }
+
+export async function notifyChatMessagePinned(
+  memberIds: string[],
+  pinner: User,
+  roomTitle: string,
+  roomSlug: string,
+  messageId: string,
+  preview: string,
+): Promise<void> {
+  const name = getUserDisplayLabel(pinner);
+  const body = preview.length > 120 ? `${preview.slice(0, 117)}…` : preview;
+  const link = `/chat?room=${encodeURIComponent(roomSlug)}&message=${messageId}`;
+  for (const memberId of memberIds) {
+    if (memberId === pinner.id) continue;
+    await notifyUser({
+      userId: memberId,
+      type: "message_pinned",
+      title: `Закреплено в «${roomTitle}»`,
+      body: `${name}: ${body}`,
+      link,
+      actorId: pinner.id,
+      entityId: messageId,
+    });
+  }
+}

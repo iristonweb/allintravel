@@ -173,6 +173,15 @@ export default function RoomSettingsPanel({
 
   const handleAvatarChange = async (file: File) => {
     if (!isAdmin) return;
+    const maxBytes = 4 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast({
+        title: "Файл слишком большой",
+        description: "Для загрузки на сервер используйте изображение до 4 МБ.",
+        variant: "destructive",
+      });
+      return;
+    }
     setAvatarUploading(true);
     try {
       await uploadRoomAvatar(room.id, file);

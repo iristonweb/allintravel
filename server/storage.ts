@@ -290,6 +290,12 @@ export interface IStorage {
   getUserTrack(id: string): Promise<import("@shared/schema").UserTrack | undefined>;
   createUserTrack(data: import("@shared/schema").InsertUserTrack): Promise<import("@shared/schema").UserTrack>;
   deleteUserTrack(id: string): Promise<void>;
+
+  createAdminBroadcast(data: import("@shared/schema").InsertAdminBroadcast): Promise<import("@shared/schema").AdminBroadcast>;
+  getAdminBroadcasts(): Promise<import("@shared/schema").AdminBroadcast[]>;
+  getPendingAdminBroadcast(userId: string): Promise<import("@shared/schema").AdminBroadcast | undefined>;
+  dismissAdminBroadcast(broadcastId: string, userId: string, action: string): Promise<void>;
+  getAllUserIds(): Promise<string[]>;
 }
 
 function genId(): string {
@@ -330,6 +336,8 @@ export class MemStorage implements IStorage {
   private memPushSubs: Map<string, { userId: string; endpoint: string; p256dh: string; auth: string }> =
     new Map();
   private userTracksMap: Map<string, UserTrack> = new Map();
+  private adminBroadcastsMap: Map<string, import("@shared/schema").AdminBroadcast> = new Map();
+  private adminBroadcastDismissalsSet: Set<string> = new Set();
 
   constructor() {
     this.seedData();
@@ -822,6 +830,14 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     } as Trip;
     this.trips.set(id, newTrip);
+    const participantId = genId();
+    this.tripParticipants.set(participantId, {
+      id: participantId,
+      tripId: id,
+      userId: trip.userId,
+      joinedAt: new Date(),
+      status: "confirmed",
+    } as TripParticipant);
     return newTrip;
   }
 
@@ -1932,6 +1948,51 @@ export class MemStorage implements IStorage {
 
   async deleteUserTrack(id: string): Promise<void> {
     this.userTracksMap.delete(id);
+  }
+
+  async createAdminBroadcast(
+    data: import("@shared/schema").InsertAdminBroadcast,
+  ): Promise<import("@shared/schema").AdminBroadcast> {
+    const id = genId();
+    const row: import("@shared/schema").AdminBroadcast = {
+      id,
+      createdBy: data.createdBy,
+      content: data.content,
+      isActive: data.isActive ?? true,
+      expiresAt: data.expiresAt ?? null,
+      createdAt: new Date(),
+    };
+    this.adminBroadcastsMap.set(id, row);
+    return row;
+  }
+
+  async getAdminBroadcasts(): Promise<import("@shared/schema").AdminBroadcast[]> {
+    return Array.from(this.adminBroadcastsMap.values()).sort(
+      (a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime(),
+    );
+  }
+
+  async getPendingAdminBroadcast(
+    userId: string,
+  ): Promise<import("@shared/schema").AdminBroadcast | undefined> {
+    const now = Date.now();
+    return Array.from(this.adminBroadcastsMap.values())
+      .filter((b) => {
+        if (!b.isActive) return false;
+        if (b.expiresAt && new Date(b.expiresAt).getTime() <= now) return false;
+        if (this.adminBroadcastDismissalsSet.has(`${b.id}:${userId}`)) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime())[0];
+  }
+
+  async dismissAdminBroadcast(broadcastId: string, userId: string, action: string): Promise<void> {
+    this.adminBroadcastDismissalsSet.add(`${broadcastId}:${userId}`);
+    void action;
+  }
+
+  async getAllUserIds(): Promise<string[]> {
+    return Array.from(this.users.keys());
   }
 
   async exportUserData(userId: string): Promise<Record<string, unknown>> {

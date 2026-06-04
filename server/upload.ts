@@ -2,7 +2,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import multer, { MulterError } from "multer";
 import { isAuthenticated } from "./auth";
 import { storage } from "./storage";
-import { getUploadsStaticDir, persistUploadedFile } from "./media-storage";
+import { getUploadsStaticDir, persistUploadedFile, VERCEL_BLOB_REQUIRED_MSG } from "./media-storage";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -66,7 +66,9 @@ export function handleMulter(
     if (err instanceof MulterError) {
       const msg =
         err.code === "LIMIT_FILE_SIZE"
-          ? "Файл слишком большой (макс. 50 МБ)"
+          ? process.env.VERCEL
+            ? "Файл слишком большой (на Vercel лимит ~4.5 МБ на один запрос)"
+            : "Файл слишком большой (макс. 50 МБ)"
           : err.message;
       return res.status(400).json({ message: msg });
     }
@@ -126,6 +128,50 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
       } catch (e) {
         const message = e instanceof Error ? e.message : "Не удалось загрузить аватар";
         console.error("[avatar]", message);
+        res.status(500).json({ message });
+      }
+    },
+  );
+
+  mountRoomAvatarRoute(app, upload);
+}
+
+async function isRoomAdminForUpload(roomId: string, userId: string): Promise<boolean> {
+  const member = await storage.getChatRoomMember(roomId, userId);
+  return member?.role === "admin" || member?.role === "owner";
+}
+
+function mountRoomAvatarRoute(
+  app: Express,
+  upload: ReturnType<typeof createUploadMiddleware>,
+): void {
+  app.post(
+    "/api/chat/rooms/:id/avatar",
+    isAuthenticated,
+    (req, res, next) => handleMulter(req, res, next, upload.single("file")),
+    async (req: any, res: Response) => {
+      try {
+        const userId = req.user.claims.sub;
+        const roomId = req.params.id;
+        if (!(await isRoomAdminForUpload(roomId, userId))) {
+          return res.status(403).json({ message: "Admin only" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ message: "Файл не выбран" });
+        }
+        const mime = req.file.mimetype || "";
+        if (!mime.startsWith("image/")) {
+          return res.status(400).json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
+        }
+        const url = await persistUploadedFile(req.file);
+        if (url.startsWith("data:")) {
+          return res.status(500).json({ message: VERCEL_BLOB_REQUIRED_MSG });
+        }
+        const room = await storage.updateChatRoom(roomId, { avatarUrl: url });
+        res.json({ url, room });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Не удалось загрузить аватар";
+        console.error("[room-avatar]", message);
         res.status(500).json({ message });
       }
     },

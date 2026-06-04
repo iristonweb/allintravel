@@ -11,6 +11,7 @@ import {
   boolean,
   uuid,
   primaryKey,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -372,6 +373,30 @@ export const pushSubscriptions = pgTable(
   (t) => [index("IDX_push_subscriptions_user").on(t.userId)],
 );
 
+// Admin broadcast announcements (modal for all users)
+export const adminBroadcasts = pgTable("admin_broadcasts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const adminBroadcastDismissals = pgTable(
+  "admin_broadcast_dismissals",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    broadcastId: uuid("broadcast_id")
+      .notNull()
+      .references(() => adminBroadcasts.id, { onDelete: "cascade" }),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    action: varchar("action", { length: 20 }).notNull(),
+    dismissedAt: timestamp("dismissed_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("IDX_broadcast_dismissal_user").on(t.broadcastId, t.userId)],
+);
+
 // User follows table
 export const userFollows = pgTable("user_follows", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -672,6 +697,11 @@ export const insertUserFollowSchema = createInsertSchema(userFollows).omit({
   createdAt: true,
 });
 
+export const insertAdminBroadcastSchema = createInsertSchema(adminBroadcasts).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertPrivateMessageSchema = createInsertSchema(privateMessages).omit({
   id: true,
   createdAt: true,
@@ -840,3 +870,6 @@ export type ChatRoomWithMeta = ChatRoom & {
 };
 export type NotificationRow = typeof notifications.$inferSelect;
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+export type AdminBroadcast = typeof adminBroadcasts.$inferSelect;
+export type InsertAdminBroadcast = z.infer<typeof insertAdminBroadcastSchema>;
+export type AdminBroadcastDismissal = typeof adminBroadcastDismissals.$inferSelect;

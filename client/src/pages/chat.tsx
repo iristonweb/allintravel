@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import ChatMessageRow from "@/components/chat/ChatMessageRow";
@@ -53,10 +53,12 @@ import type {
   User,
 } from "@shared/schema";
 import { mergeChronologicalMessages } from "@/lib/chat-thread";
-import { messagePreview, withReplyMention } from "@/lib/chat-message";
+import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
+import MessageContent from "@/components/chat/MessageContent";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import type { UserLabelFields } from "@shared/user-display";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 type ChatTab = "all" | "personal" | "mine";
 
@@ -85,6 +87,7 @@ export function Chat() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [location] = useLocation();
+  const searchString = useSearch();
   const [chatTab, setChatTab] = useState<ChatTab>("all");
   const [roomQuery, setRoomQuery] = useState("");
   const [activeRoom, setActiveRoom] = useState("general");
@@ -106,6 +109,23 @@ export function Chat() {
   const wsRef = useRef<WebSocket | null>(null);
   const wsFailCount = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingScrollMessageId = useRef<string | null>(null);
+
+  const scrollToMessage = useCallback((messageId: string) => {
+    const el = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ait-message-highlight");
+    window.setTimeout(() => el.classList.remove("ait-message-highlight"), 2000);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const room = params.get("room");
+    const message = params.get("message");
+    if (room) setActiveRoom(room);
+    if (message) pendingScrollMessageId.current = message;
+  }, [searchString]);
 
   const { data: rooms = [] } = useQuery<RoomListItem[]>({
     queryKey: ["/api/chat/rooms"],
@@ -287,7 +307,12 @@ export function Chat() {
         await apiRequest("DELETE", `/api/chat/rooms/${roomId}/messages/${messageId}/pin`);
       }
     },
-    onSuccess: invalidateThread,
+    onSuccess: (_data, variables) => {
+      invalidateThread();
+      if (variables.pin) {
+        toast({ title: "Сообщение закреплено" });
+      }
+    },
   });
 
   const editMutation = useMutation({
@@ -360,6 +385,26 @@ export function Chat() {
           data.roomId
         ) {
           queryClient.invalidateQueries({ queryKey: [`/api/chat/${activeRoom}`] });
+        } else if (
+          (data.type === "message_pinned" || data.type === "message_unpinned") &&
+          data.roomSlug
+        ) {
+          queryClient.invalidateQueries({ queryKey: [`/api/chat/${data.roomSlug}`] });
+          if (data.type === "message_pinned" && data.messageId) {
+            const inRoom = data.roomSlug === activeRoom;
+            toast({
+              title: "Сообщение закреплено",
+              description: inRoom ? "Нажмите на плашку сверху, чтобы перейти" : "Откройте чат комнаты",
+              action: inRoom ? (
+                <ToastAction
+                  altText="Перейти"
+                  onClick={() => scrollToMessage(String(data.messageId))}
+                >
+                  Перейти
+                </ToastAction>
+              ) : undefined,
+            });
+          }
         } else if (data.type === "error" && data.message) {
           toast({ title: "Ошибка чата", description: String(data.message), variant: "destructive" });
         }
@@ -367,7 +412,7 @@ export function Chat() {
         /* ignore */
       }
     };
-  }, [isAuthenticated, user, useHttpMode, queryClient, activeRoom, toast]);
+  }, [isAuthenticated, user, useHttpMode, queryClient, activeRoom, toast, scrollToMessage]);
 
   useEffect(() => {
     if (useHttpMode) return;
@@ -398,7 +443,16 @@ export function Chat() {
     if (last?.id) markRoomReadMutation.mutate(last.id);
   }, [roomId, allMessages.length, activeRoom]);
   const pinnedMessages = allMessages.filter((m) => m.id && pinnedIds.includes(m.id));
-  const threadMessages = allMessages.filter((m) => !m.id || !pinnedIds.includes(m.id));
+  const latestPinned = pinnedMessages[pinnedMessages.length - 1];
+
+  useEffect(() => {
+    const messageId = pendingScrollMessageId.current;
+    if (!messageId || allMessages.length === 0) return;
+    if (!allMessages.some((m) => m.id === messageId)) return;
+    pendingScrollMessageId.current = null;
+    window.setTimeout(() => scrollToMessage(messageId), 150);
+  }, [allMessages, activeRoom, scrollToMessage]);
+
   const myRole = (activeRoomMeta as RoomListItem | undefined)?.myRole;
   const isRoomAdmin =
     myRole === "admin" ||
@@ -410,8 +464,8 @@ export function Chat() {
   const handleSend = async (contentOverride?: string) => {
     let body = (contentOverride ?? messageText).trim();
     if (!body || !canSend) return;
-    if (replyTo && !contentOverride?.includes("[") && !body.includes(`@${replyTo.username}`)) {
-      body = withReplyMention(body, replyTo.username);
+    if (replyTo && !contentOverride?.includes("[reply:")) {
+      body = encodeReplyBlock(replyTo.username, replyTo.preview, body);
     }
 
     if (useHttpMode) {
@@ -728,6 +782,25 @@ export function Chat() {
               </SheetContent>
             </Sheet>
 
+            {latestPinned?.id && (
+              <button
+                type="button"
+                onClick={() => scrollToMessage(latestPinned.id!)}
+                className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-ait-orange/30 bg-ait-orange/10 px-3 py-2 text-left hover:bg-ait-orange/15 transition-colors"
+              >
+                <Pin className="h-3.5 w-3.5 shrink-0 text-ait-orange" />
+                <span className="text-xs text-ait-orange font-semibold shrink-0">Закреплено</span>
+                <span className="text-sm truncate flex-1 min-w-0 text-foreground/90">
+                  <MessageContent content={latestPinned.content} compact />
+                </span>
+                {pinnedMessages.length > 1 && (
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                    +{pinnedMessages.length - 1}
+                  </Badge>
+                )}
+              </button>
+            )}
+
             <ScrollArea className={cn("flex-1 p-4", chatBgClass)}>
               {allMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
@@ -736,60 +809,9 @@ export function Chat() {
                 </div>
               ) : (
                 <div className="ait-chat-thread-inner space-y-4">
-                  {pinnedMessages.length > 0 && (
-                    <div className="mb-2 p-3 rounded-xl border border-ait-orange/25 bg-ait-orange/5 space-y-3">
-                      <p className="text-xs font-semibold text-ait-orange flex items-center gap-1.5">
-                        <Pin className="h-3.5 w-3.5" />
-                        Закреплённые
-                      </p>
-                      {pinnedMessages.map((msg) => {
-                        const isOwn = msg.userId === user?.id;
-                        return (
-                          <ChatMessageRow
-                            key={`pin-${msg.id}`}
-                            messageId={msg.id!}
-                            content={msg.content}
-                            isOwn={isOwn}
-                            isPinned
-                            createdAt={msg.createdAt}
-                            updatedAt={msg.updatedAt}
-                            meta={{ reactions: msg.reactions ?? [] }}
-                            deliveryStatus={msg.deliveryStatus}
-                            canPin={isOwn || isRoomAdmin}
-                            canDelete={isOwn || isRoomAdmin}
-                            canEdit={isOwn}
-                            onReact={
-                              msg.id
-                                ? (emoji) =>
-                                    reactionMutation.mutate({ messageId: msg.id!, emoji })
-                                : undefined
-                            }
-                            insightsUrl={
-                              roomId && msg.id
-                                ? `/api/chat/rooms/${roomId}/messages/${msg.id}/insights`
-                                : undefined
-                            }
-                            onUnpin={() => pinMutation.mutate({ messageId: msg.id!, pin: false })}
-                            onDelete={() => deleteMutation.mutate(msg.id!)}
-                            onEdit={(c) => editMutation.mutate({ messageId: msg.id!, content: c })}
-                            reacting={reactionMutation.isPending}
-                            onReply={
-                              !isOwn && msg.sender?.username
-                                ? () =>
-                                    startReply(
-                                      msg,
-                                      msg.sender ? getUserDisplayLabel(msg.sender) : "Пользователь",
-                                      msg.sender?.username,
-                                    )
-                                : undefined
-                            }
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                  {threadMessages.map((msg) => {
+                  {allMessages.map((msg) => {
                     const isOwn = msg.userId === user?.id;
+                    const isPinned = Boolean(msg.id && pinnedIds.includes(msg.id));
                     const senderName = isOwn
                       ? (user ? getUserDisplayLabel(user) : "Я")
                       : msg.sender
@@ -807,6 +829,7 @@ export function Chat() {
                         messageId={msg.id ?? `tmp-${msg.createdAt}`}
                         content={msg.content}
                         isOwn={isOwn}
+                        isPinned={isPinned}
                         senderLabel={!isOwn ? senderName : undefined}
                         senderInitial={senderInitial}
                         createdAt={msg.createdAt}
@@ -827,8 +850,13 @@ export function Chat() {
                             : undefined
                         }
                         onPin={
-                          msg.id && roomId
+                          msg.id && roomId && !isPinned
                             ? () => pinMutation.mutate({ messageId: msg.id!, pin: true })
+                            : undefined
+                        }
+                        onUnpin={
+                          msg.id && isPinned
+                            ? () => pinMutation.mutate({ messageId: msg.id!, pin: false })
                             : undefined
                         }
                         onDelete={msg.id ? () => deleteMutation.mutate(msg.id!) : undefined}

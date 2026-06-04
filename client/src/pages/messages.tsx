@@ -7,7 +7,7 @@ import ChatMessageRow from "@/components/chat/ChatMessageRow";
 import MessageContent from "@/components/chat/MessageContent";
 import { Button } from "@/components/ui/button";
 import MessageComposer from "@/components/chat/MessageComposer";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarWithPresence } from "@/components/PresenceDot";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle, ArrowLeft } from "lucide-react";
@@ -17,13 +17,13 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { PrivateMessage, PrivateMessageWithMeta, User } from "@shared/schema";
-import { messagePreview, withReplyMention } from "@/lib/chat-message";
+import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
 import { useToast } from "@/hooks/use-toast";
 import { Hash } from "lucide-react";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 
 interface Conversation {
-  user: User;
+  user: User & { isOnline?: boolean };
   lastMessage: PrivateMessage | null;
   unreadCount: number;
 }
@@ -53,6 +53,7 @@ export function Messages() {
   const { data: conversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
     enabled: isAuthenticated,
+    refetchInterval: 30_000,
   });
 
   const { data: userToOpen } = useQuery<User | null>({
@@ -175,8 +176,8 @@ export function Messages() {
   const handleSendMessage = (contentOverride?: string) => {
     let content = (contentOverride ?? newMessage).trim();
     if (!content || !selectedConversation) return;
-    if (replyTo && !contentOverride?.includes("[") && !content.includes(`@${replyTo.username}`)) {
-      content = withReplyMention(content, replyTo.username);
+    if (replyTo && !contentOverride?.includes("[reply:")) {
+      content = encodeReplyBlock(replyTo.username, replyTo.preview, content);
     }
 
     sendMessageMutation.mutate({
@@ -296,12 +297,12 @@ export function Messages() {
                           }}
                         >
                           <div className="flex items-start gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={conversation.user.profileImageUrl ?? undefined} />
-                              <AvatarFallback>
-                                {getUserInitial(conversation.user)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <AvatarWithPresence
+                              src={conversation.user.profileImageUrl}
+                              fallback={getUserInitial(conversation.user)}
+                              isOnline={conversation.user.isOnline}
+                              className="h-10 w-10"
+                            />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <h4 className="font-medium truncate">
@@ -348,16 +349,24 @@ export function Messages() {
                       >
                         <ArrowLeft className="h-4 w-4" />
                       </Button>
-                      <Avatar>
-                        <AvatarImage src={selectedConversation.user.profileImageUrl ?? undefined} />
-                        <AvatarFallback>
-                          {getUserInitial(selectedConversation.user)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <AvatarWithPresence
+                        src={selectedConversation.user.profileImageUrl}
+                        fallback={getUserInitial(selectedConversation.user)}
+                        isOnline={selectedConversation.user.isOnline}
+                      />
                       <div>
                         <h3 className="font-semibold">
                           {getUserDisplayLabel(selectedConversation.user)}
                         </h3>
+                        {selectedConversation.user.isOnline !== undefined && (
+                          <p className="text-xs mt-0.5">
+                            {selectedConversation.user.isOnline ? (
+                              <span className="text-green-500">В сети</span>
+                            ) : (
+                              <span className="text-muted-foreground">Не в сети</span>
+                            )}
+                          </p>
+                        )}
                         {getUserHandle(selectedConversation.user) && (
                           <p className="text-sm text-ait-purple">
                             {getUserHandle(selectedConversation.user)}

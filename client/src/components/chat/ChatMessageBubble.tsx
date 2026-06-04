@@ -1,4 +1,5 @@
 import { parseChatMessage, type ParsedChatMessage } from "@/lib/chat-message";
+import ReplyQuote from "@/components/chat/ReplyQuote";
 import { isSafeChatMediaUrl } from "@/lib/safe-media-url";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { cn } from "@/lib/utils";
@@ -143,7 +144,8 @@ export default function ChatMessageBubble({
   onDoubleClickReact,
 }: ChatMessageBubbleProps) {
   const parts = parseChatMessage(content);
-  const mediaParts = parts.filter((p) => p.type !== "text");
+  const replyPart = parts.find((p): p is { type: "reply"; username: string; preview: string } => p.type === "reply");
+  const mediaParts = parts.filter((p) => p.type !== "text" && p.type !== "reply");
   const textContent = parts
     .filter((p): p is { type: "text"; text: string } => p.type === "text")
     .map((p) => p.text)
@@ -151,6 +153,9 @@ export default function ChatMessageBubble({
 
   const bubbleBody = (
     <>
+      {replyPart && (
+        <ReplyQuote username={replyPart.username} preview={replyPart.preview} isOwn={isOwn} />
+      )}
       {mediaParts.map((part, i) => (
         <MediaPart key={`m-${i}`} part={part} />
       ))}

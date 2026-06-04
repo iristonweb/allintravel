@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, getSession, type SessionUser } from "./auth";
+import { setupAuth, isAuthenticated, isAdmin, getSession, type SessionUser } from "./auth";
 import { isGoogleAuthEnabled } from "./google-auth";
 import passport from "passport";
 import { allowGeoRequest } from "./geo/nominatim";
@@ -31,7 +31,7 @@ import { validateUsername } from "@shared/username";
 import { updatePrivacySettingsSchema } from "@shared/privacy";
 import { isTravelDirectionId } from "@shared/travel-directions";
 import { toPublicUser, toSelfUser } from "./user-utils";
-import { getUploadsStaticDir, persistUploadedFile } from "./media-storage";
+import { getUploadsStaticDir, persistUploadedFile, VERCEL_BLOB_REQUIRED_MSG } from "./media-storage";
 import { createUploadMiddleware, handleMulter } from "./upload";
 import { userCanManageTrip } from "./security";
 import { resolveChatRoomAccess, ensureMemberForPost } from "./chat-access";
@@ -55,6 +55,7 @@ import {
   notifyTripJoin,
   notifyEventRegistration,
   notifyGroupJoin,
+  notifyChatMessagePinned,
 } from "./notification-service";
 import { registerUserSocket, unregisterUserSocket } from "./realtime-hub";
 
@@ -733,15 +734,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/trips', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const tripData = insertTripSchema.parse({
-        ...req.body,
-        userId,
-      });
+      const { parseCreateTripBody } = await import("./trip-validation");
+      const tripData = parseCreateTripBody(req.body, userId);
       const trip = await storage.createTrip(tripData);
       res.status(201).json(trip);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid trip data", errors: error.errors });
+        const first = error.errors[0]?.message ?? "Invalid trip data";
+        return res.status(400).json({ message: first, errors: error.errors });
       }
       console.error("Error creating trip:", error);
       res.status(500).json({ message: "Failed to create trip" });
@@ -1078,6 +1078,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/admin/broadcasts", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = z
+        .object({
+          content: z.string().min(1).max(8000),
+          expiresAt: z.coerce.date().optional(),
+        })
+        .parse(req.body);
+      validateChatMessageMediaContent(body.content);
+      const broadcast = await storage.createAdminBroadcast({
+        createdBy: userId,
+        content: body.content,
+        isActive: true,
+        expiresAt: body.expiresAt ?? null,
+      });
+      const { broadcastToUser } = await import("./realtime-hub");
+      const userIds = await storage.getAllUserIds();
+      for (const uid of userIds) {
+        broadcastToUser(uid, {
+          type: "broadcast_published",
+          broadcast: {
+            id: broadcast.id,
+            content: broadcast.content,
+            createdAt: broadcast.createdAt?.toISOString() ?? new Date().toISOString(),
+          },
+        });
+      }
+      res.status(201).json(broadcast);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid broadcast", errors: error.errors });
+      }
+      console.error("Error creating broadcast:", error);
+      res.status(500).json({ message: "Failed to create broadcast" });
+    }
+  });
+
+  app.get("/api/admin/broadcasts", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const broadcasts = await storage.getAdminBroadcasts();
+      res.json(broadcasts);
+    } catch (error) {
+      console.error("Error fetching broadcasts:", error);
+      res.status(500).json({ message: "Failed to fetch broadcasts" });
+    }
+  });
+
+  app.get("/api/broadcasts/pending", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const broadcast = await storage.getPendingAdminBroadcast(userId);
+      res.json(broadcast ?? null);
+    } catch (error) {
+      console.error("Error fetching pending broadcast:", error);
+      res.status(500).json({ message: "Failed to fetch broadcast" });
+    }
+  });
+
+  app.post("/api/broadcasts/:id/dismiss", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = z
+        .object({ action: z.enum(["ack", "skip_video"]) })
+        .parse(req.body);
+      await storage.dismissAdminBroadcast(req.params.id, userId, body.action);
+      res.status(204).send();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid dismiss action", errors: error.errors });
+      }
+      console.error("Error dismissing broadcast:", error);
+      res.status(500).json({ message: "Failed to dismiss broadcast" });
+    }
+  });
+
   const avatarUrlSchema = z
     .string()
     .max(2048)
@@ -1134,9 +1210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     const url = await persistUploadedFile(file);
     if (url.startsWith("data:")) {
-      throw new Error(
-        "Подключите Vercel Blob для загрузки аватаров или используйте изображение до 3 МБ на dev",
-      );
+      throw new Error(VERCEL_BLOB_REQUIRED_MSG);
     }
     return url;
   }
@@ -1216,31 +1290,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update room" });
     }
   });
-
-  app.post(
-    "/api/chat/rooms/:id/avatar",
-    isAuthenticated,
-    (req, res, next) => handleMulter(req, res, next, roomAvatarUpload.single("file")),
-    async (req: any, res: Response) => {
-      try {
-        const userId = req.user.claims.sub;
-        const roomId = req.params.id;
-        if (!(await isRoomAdmin(roomId, userId))) {
-          return res.status(403).json({ message: "Admin only" });
-        }
-        if (!req.file) {
-          return res.status(400).json({ message: "Файл не выбран" });
-        }
-        const url = await saveRoomAvatarFromFile(req.file);
-        const room = await storage.updateChatRoom(roomId, { avatarUrl: url });
-        res.json({ url, room });
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Не удалось загрузить аватар";
-        console.error("[room-avatar]", message);
-        res.status(500).json({ message });
-      }
-    },
-  );
 
   app.post("/api/chat/rooms/:id/join", isAuthenticated, async (req: any, res) => {
     try {
@@ -1408,6 +1457,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
       if (!access.ok) return res.status(access.status).json({ message: access.message });
       await storage.pinChatMessage(req.params.roomId, req.params.messageId, userId);
+      const room = await storage.getChatRoom(req.params.roomId);
+      const pinner = await storage.getUser(userId);
+      if (room && pinner) {
+        const members = await storage.getChatRoomMembers(req.params.roomId);
+        const memberIds = members.map((m) => m.userId);
+        const preview = access.msg.content.replace(/\[[^\]]+\]/g, "").trim() || "Сообщение";
+        void notifyChatMessagePinned(memberIds, pinner, room.title, room.slug, req.params.messageId, preview);
+        const { broadcastToUser } = await import("./realtime-hub");
+        for (const m of members) {
+          broadcastToUser(m.userId, {
+            type: "message_pinned",
+            roomId: req.params.roomId,
+            roomSlug: room.slug,
+            messageId: req.params.messageId,
+          });
+        }
+      }
       res.status(204).send();
     } catch (error) {
       console.error("Error pinning message:", error);
@@ -1421,6 +1487,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
       if (!access.ok) return res.status(access.status).json({ message: access.message });
       await storage.unpinChatMessage(req.params.roomId, req.params.messageId);
+      const room = await storage.getChatRoom(req.params.roomId);
+      if (room) {
+        const { broadcastToUser } = await import("./realtime-hub");
+        const members = await storage.getChatRoomMembers(req.params.roomId);
+        for (const m of members) {
+          broadcastToUser(m.userId, {
+            type: "message_unpinned",
+            roomId: req.params.roomId,
+            roomSlug: room.slug,
+            messageId: req.params.messageId,
+          });
+        }
+      }
       res.status(204).send();
     } catch (error) {
       console.error("Error unpinning message:", error);
@@ -2103,12 +2182,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const conversations = await storage.getConversations(userId);
-      res.json(
-        conversations.map((c) => ({
-          ...c,
-          user: toPublicUser(c.user),
-        })),
+      const enriched = await Promise.all(
+        conversations.map(async (c) => {
+          const settings = await storage.getPrivacySettings(c.user.id);
+          const isFriend = await storage.areFriends(userId, c.user.id);
+          const presence = await storage.getPresence(c.user.id);
+          const showOnline = canSeeOnlineStatus(settings, userId, c.user.id, isFriend);
+          return {
+            ...c,
+            user: {
+              ...toPublicUser(c.user),
+              isOnline: showOnline ? (presence?.isOnline ?? false) : undefined,
+            },
+          };
+        }),
       );
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });

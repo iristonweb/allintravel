@@ -41,6 +41,9 @@ export function useRealtimeNotifications() {
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
         }
+        if (data.type === "broadcast_published") {
+          queryClient.invalidateQueries({ queryKey: ["/api/broadcasts/pending"] });
+        }
       } catch {
         /* ignore */
       }

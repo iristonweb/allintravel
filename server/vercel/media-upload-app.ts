@@ -20,7 +20,8 @@ export function getMediaUploadApp(): Express {
 export function isMediaUploadPath(method: string | undefined, url: string | undefined): boolean {
   if (method !== "POST" || !url) return false;
   const path = url.split("?")[0] ?? "";
-  return path === "/api/upload" || path === "/api/users/avatar";
+  if (path === "/api/upload" || path === "/api/users/avatar") return true;
+  return /^\/api\/chat\/rooms\/[^/]+\/avatar$/.test(path);
 }
 
 export function runMediaUploadApp(req: Request, res: Response): Promise<void> {

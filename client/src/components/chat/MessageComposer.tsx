@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Link } from "wouter";
 import EmojiPicker, { type EmojiClickData, Theme } from "emoji-picker-react";
 import { ImageIcon, Mic, Music, Paperclip, Reply, Smile, Sticker, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -241,7 +242,10 @@ export default function MessageComposer({
         stream.getTracks().forEach((t) => t.stop());
         void (async () => {
           const blob = new Blob(voiceChunksRef.current, { type: mimeType });
-          if (blob.size < 100) return;
+          if (blob.size < 100) {
+            toast({ title: "Слишком короткая запись", description: "Удерживайте кнопку микрофона дольше.", variant: "destructive" });
+            return;
+          }
           const durationSec = Math.max(
             1,
             Math.round((Date.now() - voiceStartedRef.current) / 1000),
@@ -385,9 +389,9 @@ export default function MessageComposer({
           ) : musicTracks.length === 0 ? (
             <p className="text-xs text-muted-foreground px-1 py-3">
               Добавьте треки в{" "}
-              <a href="/profile/music" className="text-ait-purple hover:underline">
+              <Link href="/profile/music" className="text-ait-purple hover:underline">
                 Моя музыка
-              </a>
+              </Link>
             </p>
           ) : (
             <div className="max-h-48 overflow-y-auto space-y-1">

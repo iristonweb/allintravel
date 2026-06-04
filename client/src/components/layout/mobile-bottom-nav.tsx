@@ -12,6 +12,7 @@ import {
   User,
   Wallet,
   MessageSquare,
+  Music,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -36,6 +37,7 @@ const iconByHref: Record<string, LucideIcon> = {
   "/social-feed": Users,
   "/friends": Users,
   "/chat": MessageSquare,
+  "/profile/music": Music,
   "/profile": User,
 };
 

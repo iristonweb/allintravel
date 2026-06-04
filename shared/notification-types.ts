@@ -8,6 +8,7 @@ export const NOTIFICATION_TYPES = [
   "group_invite",
   "group_join",
   "request_accepted",
+  "message_pinned",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

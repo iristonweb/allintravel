@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearch } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
@@ -54,6 +54,11 @@ function tripMatchesSearch(trip: Trip, query: string): boolean {
   );
 }
 
+const optionalBudgetField = z.preprocess(
+  (v) => (v === "" || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+  z.number().int().min(0).optional(),
+);
+
 const createTripSchema = insertTripSchema
   .omit({ userId: true })
   .extend({
@@ -63,16 +68,32 @@ const createTripSchema = insertTripSchema
     endDate: z.string().min(1, "Укажите дату окончания"),
     description: z.string().optional(),
     maxParticipants: z.coerce.number().min(2).max(50).default(5),
-    budgetMin: z.coerce.number().optional(),
-    budgetMax: z.coerce.number().optional(),
+    budgetMin: optionalBudgetField,
+    budgetMax: optionalBudgetField,
+  })
+  .refine((data) => !data.startDate || !data.endDate || data.endDate >= data.startDate, {
+    message: "Дата окончания должна быть не раньше даты начала",
+    path: ["endDate"],
   });
 
 type CreateTripForm = z.infer<typeof createTripSchema>;
+
+function parseApiError(err: unknown): string {
+  if (!(err instanceof Error)) return "Не удалось создать поездку.";
+  const raw = err.message.replace(/^\d+:\s*/, "");
+  try {
+    const json = JSON.parse(raw) as { message?: string };
+    return json.message ?? raw;
+  } catch {
+    return raw || "Не удалось создать поездку.";
+  }
+}
 
 export function Trips() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const searchString = useSearch();
   const [search, setSearch] = useState(() => new URLSearchParams(searchString).get("search") ?? "");
   const [availability, setAvailability] = useState("");
@@ -106,23 +127,30 @@ export function Trips() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateTripForm) => {
-      const res = await apiRequest("POST", "/api/trips", {
-        ...data,
-        imageUrl: tripCoverUrl || undefined,
+      const payload: Record<string, unknown> = {
+        title: data.title,
+        destination: data.destination,
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
-      });
+        description: data.description || undefined,
+        maxParticipants: data.maxParticipants,
+        imageUrl: tripCoverUrl || undefined,
+      };
+      if (data.budgetMin != null) payload.budgetMin = data.budgetMin;
+      if (data.budgetMax != null) payload.budgetMax = data.budgetMax;
+      const res = await apiRequest("POST", "/api/trips", payload);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
       setOpen(false);
       setTripCoverUrl("");
       form.reset();
       toast({ title: "Поездка создана!", description: "Ваша поездка добавлена в список." });
     },
-    onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось создать поездку.", variant: "destructive" });
+    onError: (err) => {
+      toast({ title: "Ошибка", description: parseApiError(err), variant: "destructive" });
     },
   });
 
@@ -155,7 +183,14 @@ export function Trips() {
     return true;
   });
 
-  const openCreateDialog = () => setOpen(true);
+  const openCreateDialog = () => {
+    if (!isAuthenticated) {
+      toast({ title: "Войдите в аккаунт", description: "Чтобы создать поездку, нужна авторизация." });
+      setLocation("/login");
+      return;
+    }
+    setOpen(true);
+  };
 
   return (
     <>

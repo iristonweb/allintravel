@@ -394,6 +394,9 @@ export class PgStorage implements IStorage {
       .insert(trips)
       .values({ ...trip, currentParticipants: 1 })
       .returning();
+    await this.db
+      .insert(tripParticipants)
+      .values({ tripId: row.id, userId: trip.userId, status: "confirmed" });
     return row;
   }
 
@@ -1153,6 +1156,26 @@ export class PgStorage implements IStorage {
 
   async deleteUserTrack(id: string) {
     return features.deleteUserTrackDb(this.db, id);
+  }
+
+  async createAdminBroadcast(data: import("@shared/schema").InsertAdminBroadcast) {
+    return features.createAdminBroadcastDb(this.db, data);
+  }
+
+  async getAdminBroadcasts() {
+    return features.getAdminBroadcastsDb(this.db);
+  }
+
+  async getPendingAdminBroadcast(userId: string) {
+    return features.getPendingAdminBroadcastDb(this.db, userId);
+  }
+
+  async dismissAdminBroadcast(broadcastId: string, userId: string, action: string) {
+    return features.dismissAdminBroadcastDb(this.db, broadcastId, userId, action);
+  }
+
+  async getAllUserIds() {
+    return features.getAllUserIdsDb(this.db);
   }
 
   async exportUserData(userId: string): Promise<Record<string, unknown>> {
