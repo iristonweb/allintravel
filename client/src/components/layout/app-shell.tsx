@@ -44,7 +44,7 @@ export default function AppShell({
   }, [isAuthenticated, pushSupported, vapidReady, subscribePush]);
 
   return (
-    <AmbientBackground showOrbs={!effectiveImmersive}>
+    <AmbientBackground showOrbs={!effectiveImmersive} showNoise={!effectiveImmersive}>
       <div className="min-h-screen flex flex-col">
         <AppTopNav minimalChrome={minimalChrome} />
         {isAuthenticated && <AppIconSidebar minimalChrome={minimalChrome} />}

@@ -4,10 +4,8 @@ import NextAdventureCard from "@/components/home/next-adventure-card";
 import GlobalSearchPanel from "@/components/search/GlobalSearchPanel";
 import HeroStats from "@/components/home/hero-stats";
 import type { Trip } from "@shared/schema";
+import { HERO_CINEMATIC_SRC } from "@/lib/site-meta";
 import { useRef } from "react";
-
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=2400&q=90";
 
 const ANCHOR_PILLS = [
   { href: "#explore", label: "Исследуй" },
@@ -37,19 +35,19 @@ export default function CinematicHero({
   const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
 
   return (
-    <section ref={ref} className="relative min-h-[100svh] flex flex-col isolate overflow-hidden">
-      <motion.div className="absolute inset-0 -z-10" style={{ y: imageY }}>
+    <section ref={ref} className="relative min-h-[100svh] flex flex-col overflow-hidden">
+      <motion.div className="absolute inset-0 z-0" style={{ y: imageY }}>
         <img
-          src={HERO_IMAGE}
+          src={HERO_CINEMATIC_SRC}
           alt="Путешествия — воздушные шары над горами"
-          className="h-full w-full object-cover object-[center_40%] scale-[1.02]"
+          className="h-full w-full object-cover object-[center_35%] scale-105"
+          referrerPolicy="no-referrer"
         />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050816]/70 via-[#050816]/35 to-transparent" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-[#8b5cf6]/20 blur-[120px] ait-ambient-orb" />
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(105deg, rgba(5,8,22,0.42) 0%, rgba(5,8,22,0.18) 38%, transparent 58%), linear-gradient(to top, rgba(5,8,22,0.55) 0%, transparent 45%)",
-          }}
+          className="absolute bottom-1/3 left-1/4 w-80 h-80 rounded-full bg-[#ff7a18]/15 blur-[100px] ait-ambient-orb"
+          style={{ animationDelay: "-4s" }}
         />
       </motion.div>
 
