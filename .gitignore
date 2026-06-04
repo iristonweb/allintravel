@@ -1,5 +1,7 @@
 node_modules
 dist
+api/index.js
+api/health.js
 uploads
 .DS_Store
 .env

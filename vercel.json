@@ -23,15 +23,13 @@
     }
   ],
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 60,
-      "memory": 1024,
-      "includeFiles": "{server/**,shared/**}"
+      "memory": 1024
     },
-    "api/health.ts": {
+    "api/health.js": {
       "maxDuration": 30,
-      "memory": 512,
-      "includeFiles": "{server/**,shared/**}"
+      "memory": 512
     }
   }
 }

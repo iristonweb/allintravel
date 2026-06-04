@@ -1,10 +1,10 @@
 import type { Express, Request, Response } from "express";
+import { createApp } from "../createApp";
 
 let appPromise: Promise<Express> | null = null;
 
 async function getApp(): Promise<Express> {
   if (!appPromise) {
-    const { createApp } = await import("../server/createApp");
     const { app } = await createApp();
     appPromise = Promise.resolve(app);
   }
@@ -15,7 +15,6 @@ export const config = {
   maxDuration: 60,
 };
 
-/** Wait until Express finishes the response (required on Vercel serverless). */
 function runExpress(app: Express, req: Request, res: Response): Promise<void> {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -50,15 +49,13 @@ function runExpress(app: Express, req: Request, res: Response): Promise<void> {
   });
 }
 
-/** Vercel serverless entry — only /api and /uploads are rewritten here. */
 export default async function handler(req: Request, res: Response) {
   try {
     const app = await getApp();
     await runExpress(app, req, res);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : undefined;
-    console.error("[api] unhandled error:", detail, stack);
+    console.error("[api] unhandled error:", detail);
     if (!res.headersSent) {
       res.status(500).json({
         message: "Internal Server Error",
