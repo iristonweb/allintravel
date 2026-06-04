@@ -75,7 +75,14 @@ export class PgStorage implements IStorage {
     this.db = instance;
   }
 
+  async ensureSchema(): Promise<void> {
+    await this.db.execute(
+      sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar`,
+    );
+  }
+
   async ensureSeeded(): Promise<void> {
+    await this.ensureSchema();
     const [{ value }] = await this.db.select({ value: count() }).from(places);
     if (Number(value) > 0) return;
 

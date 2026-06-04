@@ -19,16 +19,22 @@ export function getSession() {
   if (sessionMiddleware) return sessionMiddleware;
 
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
   const pgPool = getSessionPool();
 
-  const store = pgPool
-    ? new PgSession({
-        pool: pgPool,
-        tableName: "sessions",
-        createTableIfMissing: true,
-      })
-    : new MemoryStore({ checkPeriod: 86_400_000 });
+  let store: session.Store;
+  try {
+    store = pgPool
+      ? new PgSession({
+          pool: pgPool,
+          tableName: "sessions",
+          createTableIfMissing: true,
+        })
+      : new MemoryStore({ checkPeriod: 86_400_000 });
+  } catch (err) {
+    console.error("[auth] session store init failed, using memory:", err);
+    store = new MemoryStore({ checkPeriod: 86_400_000 });
+  }
 
   sessionMiddleware = session({
     secret: SESSION_SECRET,
@@ -40,6 +46,7 @@ export function getSession() {
       secure: isProduction,
       sameSite: "lax",
       maxAge: sessionTtl,
+      path: "/",
     },
   });
 

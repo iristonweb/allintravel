@@ -1,87 +1,71 @@
 import "dotenv/config";
 import { drizzle as drizzleNodePg } from "drizzle-orm/node-postgres";
 import { Pool as NodePgPool } from "pg";
-import { Pool as NeonPool, neonConfig } from "@neondatabase/serverless";
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-serverless";
-import ws from "ws";
 import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
 
 type AppDb = ReturnType<typeof drizzleNodePg<typeof schema>>;
 
-let poolInstance: NodePgPool | NeonPool | null = null;
+let poolInstance: NodePgPool | null = null;
 let sessionPoolInstance: NodePgPool | null = null;
 let dbInstance: AppDb | null = null;
 
-/** node-postgres pool for express-session (connect-pg-simple); not Neon serverless. */
+function databaseUrl(): string | null {
+  return process.env.DATABASE_URL?.trim() || null;
+}
+
+function needsSsl(url: string): boolean {
+  return (
+    url.includes("neon.tech") ||
+    url.includes("sslmode=require") ||
+    url.includes("ssl=true")
+  );
+}
+
+function pgPoolOptions(url: string, max: number) {
+  return {
+    connectionString: url,
+    max,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 15_000,
+    ...(needsSsl(url) ? { ssl: { rejectUnauthorized: false } } : {}),
+  };
+}
+
+/** node-postgres pool for express-session (connect-pg-simple). */
 export function getSessionPool(): NodePgPool | null {
-  if (!process.env.DATABASE_URL) return null;
+  const url = databaseUrl();
+  if (!url) return null;
   if (sessionPoolInstance) return sessionPoolInstance;
 
-  const databaseUrl = process.env.DATABASE_URL;
-  const needsSsl =
-    databaseUrl.includes("neon.tech") ||
-    databaseUrl.includes("sslmode=require") ||
-    databaseUrl.includes("ssl=true");
-
-  sessionPoolInstance = new NodePgPool({
-    connectionString: databaseUrl,
-    max: process.env.VERCEL ? 1 : 5,
-    idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 10_000,
-    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-  });
-
+  sessionPoolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 1 : 5));
   return sessionPoolInstance;
 }
 
 export function isDatabaseConfigured(): boolean {
-  return Boolean(process.env.DATABASE_URL);
+  return Boolean(databaseUrl());
 }
 
-export function getPool(): NodePgPool | NeonPool | null {
-  if (!process.env.DATABASE_URL) return null;
+/**
+ * Use node-postgres everywhere (including Vercel) — avoids Neon WebSocket driver
+ * which can crash serverless cold starts.
+ */
+export function getPool(): NodePgPool | null {
+  const url = databaseUrl();
+  if (!url) return null;
   if (poolInstance) return poolInstance;
 
-  const databaseUrl = process.env.DATABASE_URL;
-  const host = (() => {
-    try {
-      return new URL(databaseUrl).hostname;
-    } catch {
-      return "";
-    }
-  })();
-
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  poolInstance = isLocal
-    ? new NodePgPool({ connectionString: databaseUrl })
-    : new NeonPool({ connectionString: databaseUrl });
-
+  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 2 : 10));
   return poolInstance;
 }
 
 export function getDb(): AppDb | null {
-  if (!process.env.DATABASE_URL) return null;
+  if (!databaseUrl()) return null;
   if (dbInstance) return dbInstance;
 
   const pool = getPool();
   if (!pool) return null;
 
-  const databaseUrl = process.env.DATABASE_URL;
-  const host = (() => {
-    try {
-      return new URL(databaseUrl).hostname;
-    } catch {
-      return "";
-    }
-  })();
-
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  dbInstance = isLocal
-    ? drizzleNodePg(pool as NodePgPool, { schema })
-    : (drizzleNeon({ client: pool as NeonPool, schema }) as unknown as AppDb);
-
+  dbInstance = drizzleNodePg(pool, { schema });
   return dbInstance;
 }
 
