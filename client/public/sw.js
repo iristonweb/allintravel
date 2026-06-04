@@ -35,11 +35,30 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  const data = event.data?.json() ?? { title: "All In Travel", body: "Новое уведомление" };
+  const data = event.data?.json() ?? { title: "All In Travel", body: "Новое уведомление", url: "/" };
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/favicon.ico",
+      badge: "/favicon.ico",
+      tag: data.tag || "ait-notification",
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
     }),
   );
 });

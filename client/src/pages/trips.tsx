@@ -192,6 +192,7 @@ export function Trips() {
                         onChange={(v) => field.onChange(v)}
                         onBlur={field.onBlur}
                         name={field.name}
+                        dropdownPortal
                       />
                     </FormControl>
                     <FormMessage />

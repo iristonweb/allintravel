@@ -1,55 +1,75 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link, useLocation } from "wouter";
 import AppLayout from "@/components/app-layout";
-import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
+import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
+import ChatMessageRow from "@/components/chat/ChatMessageRow";
 import { Button } from "@/components/ui/button";
 import MessageComposer from "@/components/chat/MessageComposer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Send,
   MessageCircle,
   Users,
-  MapPin,
-  Route,
-  Globe,
   Hash,
-  Sparkles,
+  Plus,
+  Lock,
+  Globe,
+  Info,
+  Link2,
+  Pin,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { ChatMessage } from "@shared/schema";
+import type { ChatMessage, ChatRoom, MessageReactionMeta } from "@shared/schema";
+import { mergeChronologicalMessages } from "@/lib/chat-thread";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import type { UserLabelFields } from "@shared/user-display";
+import { useToast } from "@/hooks/use-toast";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
-const CHAT_ROOMS = [
-  { id: "general", label: "Общий", icon: Globe, group: "groups" as const },
-  { id: "europe", label: "Европа", icon: MapPin, group: "groups" as const },
-  { id: "asia", label: "Азия", icon: MapPin, group: "groups" as const },
-  { id: "america", label: "Америка", icon: MapPin, group: "groups" as const },
-  { id: "tips", label: "Советы", icon: Sparkles, group: "groups" as const },
-  { id: "iceland-2024", label: "Исландия 2024", icon: Route, group: "trips" as const },
-];
+type ChatTab = "all" | "personal" | "mine";
 
-type ChatTab = "all" | "personal" | "groups";
+type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null };
 
-type ChatMessageWithSender = ChatMessage & {
-  sender?: (UserLabelFields & { id?: string; profileImageUrl?: string | null }) | null;
-};
+type ChatMessageWithSender = ChatMessage &
+  MessageReactionMeta & {
+    sender?: (UserLabelFields & { id?: string; profileImageUrl?: string | null }) | null;
+  };
 
 const isVercelHost =
   typeof window !== "undefined" &&
   (window.location.hostname.includes("vercel.app") || import.meta.env.PROD);
 
+type ChatHistoryPayload = {
+  messages?: ChatMessageWithSender[];
+  pinnedMessageIds?: string[];
+  room?: ChatRoom;
+};
+
 export function Chat() {
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [location] = useLocation();
   const [chatTab, setChatTab] = useState<ChatTab>("all");
   const [activeRoom, setActiveRoom] = useState("general");
+  const [showRoomInfo, setShowRoomInfo] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newRoom, setNewRoom] = useState({ title: "", description: "", visibility: "public" as "public" | "private" });
   const [messageText, setMessageText] = useState("");
   const [wsMessages, setWsMessages] = useState<Record<string, ChatMessageWithSender[]>>({});
   const [wsConnected, setWsConnected] = useState(false);
@@ -58,18 +78,74 @@ export function Chat() {
   const wsFailCount = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const filteredRooms = CHAT_ROOMS.filter((r) => {
-    if (chatTab === "groups") return r.group === "groups";
+  const { data: rooms = [] } = useQuery<RoomListItem[]>({
+    queryKey: ["/api/chat/rooms"],
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    const joinMatch = location.match(/^\/chat\/join\/([^/]+)/);
+    if (joinMatch && isAuthenticated) {
+      apiRequest("POST", `/api/chat/join/${joinMatch[1]}`)
+        .then((r) => r.json())
+        .then((room: ChatRoom) => {
+          setActiveRoom(room.slug);
+          queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
+          toast({ title: `Вы вступили в «${room.title}»` });
+        })
+        .catch(() => toast({ title: "Не удалось вступить", variant: "destructive" }));
+    }
+  }, [location, isAuthenticated, queryClient, toast]);
+
+  const filteredRooms = rooms.filter((r) => {
+    if (chatTab === "mine") return r.myRole != null;
     if (chatTab === "personal") return false;
     return true;
   });
 
   const historyKey = [`/api/chat/${activeRoom}`] as const;
 
-  const { data: history = [] } = useQuery<ChatMessageWithSender[]>({
+  const { data: historyPayload } = useQuery<ChatHistoryPayload | ChatMessageWithSender[]>({
     queryKey: historyKey,
     enabled: isAuthenticated,
     refetchInterval: useHttpMode ? 4000 : false,
+  });
+
+  const history: ChatMessageWithSender[] = Array.isArray(historyPayload)
+    ? historyPayload
+    : (historyPayload?.messages ?? []);
+  const activeRoomMeta = Array.isArray(historyPayload)
+    ? rooms.find((r) => r.slug === activeRoom)
+    : historyPayload?.room ?? rooms.find((r) => r.slug === activeRoom);
+  const pinnedIds = Array.isArray(historyPayload)
+    ? []
+    : (historyPayload?.pinnedMessageIds ?? []);
+
+  const createRoomMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/chat/rooms", newRoom);
+      return (await res.json()) as ChatRoom;
+    },
+    onSuccess: (room) => {
+      toast({ title: "Комната создана" });
+      setCreateOpen(false);
+      setNewRoom({ title: "", description: "", visibility: "public" });
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
+      setActiveRoom(room.slug);
+    },
+    onError: () => toast({ title: "Не удалось создать", variant: "destructive" }),
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async (roomId: string) => {
+      const res = await apiRequest("POST", `/api/chat/rooms/${roomId}/invite`);
+      return (await res.json()) as { inviteUrl: string; token: string };
+    },
+    onSuccess: (data) => {
+      const full = `${window.location.origin}${data.inviteUrl}`;
+      void navigator.clipboard.writeText(full);
+      toast({ title: "Ссылка приглашения скопирована" });
+    },
   });
 
   const postMessage = useMutation({
@@ -80,6 +156,53 @@ export function Chat() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: historyKey });
     },
+  });
+
+  const roomId = activeRoomMeta?.id;
+
+  const invalidateThread = () => {
+    queryClient.invalidateQueries({ queryKey: historyKey });
+    setWsMessages((prev) => ({ ...prev, [activeRoom]: [] }));
+  };
+
+  const likeMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      if (!roomId) throw new Error("no room");
+      const res = await apiRequest("POST", `/api/chat/rooms/${roomId}/messages/${messageId}/like`);
+      return res.json();
+    },
+    onSuccess: invalidateThread,
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: async ({ messageId, pin }: { messageId: string; pin: boolean }) => {
+      if (!roomId) throw new Error("no room");
+      if (pin) {
+        await apiRequest("POST", `/api/chat/rooms/${roomId}/messages/${messageId}/pin`);
+      } else {
+        await apiRequest("DELETE", `/api/chat/rooms/${roomId}/messages/${messageId}/pin`);
+      }
+    },
+    onSuccess: invalidateThread,
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
+      if (!roomId) throw new Error("no room");
+      const res = await apiRequest("PATCH", `/api/chat/rooms/${roomId}/messages/${messageId}`, {
+        content,
+      });
+      return res.json();
+    },
+    onSuccess: invalidateThread,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      if (!roomId) throw new Error("no room");
+      await apiRequest("DELETE", `/api/chat/rooms/${roomId}/messages/${messageId}`);
+    },
+    onSuccess: invalidateThread,
   });
 
   const connect = useCallback(() => {
@@ -139,11 +262,19 @@ export function Chat() {
   }, [connect, useHttpMode]);
 
   useEffect(() => {
+    setWsMessages((prev) => ({ ...prev, [activeRoom]: [] }));
+  }, [activeRoom]);
+
+  useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, wsMessages, activeRoom]);
 
   const currentWsMessages = wsMessages[activeRoom] || [];
-  const allMessages = [...history, ...currentWsMessages];
+  const allMessages = mergeChronologicalMessages(history, currentWsMessages);
+  const pinnedMessages = allMessages.filter((m) => m.id && pinnedIds.includes(m.id));
+  const threadMessages = allMessages.filter((m) => !m.id || !pinnedIds.includes(m.id));
+  const myRole = (activeRoomMeta as RoomListItem | undefined)?.myRole;
+  const isRoomAdmin = myRole === "admin" || myRole === "owner";
   const canSend = useHttpMode ? !postMessage.isPending : wsConnected;
 
   const handleSend = async (contentOverride?: string) => {
@@ -190,8 +321,6 @@ export function Chat() {
       ? "Онлайн"
       : "Подключение…";
 
-  const activeRoomMeta = CHAT_ROOMS.find((r) => r.id === activeRoom);
-
   return (
     <AppLayout fullWidth contentClassName="p-0 md:p-4">
       <div className="max-w-6xl mx-auto px-4 py-6 md:py-8">
@@ -202,31 +331,21 @@ export function Chat() {
         >
           <h1 className="ait-section-title">Чаты</h1>
           <p className="text-muted-foreground mt-1">
-            Telegram + Discord — личные, групповые поездки и планирование маршрутов
+            Открытые и закрытые комнаты — как супергруппы в Telegram
           </p>
         </motion.div>
 
-        <div className="flex gap-2 mb-4 ait-nav-pill rounded-full p-1 w-fit">
-          {(
-            [
-              { id: "all", label: "Все" },
-              { id: "personal", label: "Личные" },
-              { id: "groups", label: "Группы" },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setChatTab(t.id)}
-              className={cn(
-                "px-5 py-2 rounded-full text-sm font-medium transition-all",
-                chatTab === t.id ? "ait-nav-active text-white" : "text-slate-400 hover:text-white",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <ChatFilterTabs
+          layoutId="chat-page-filter"
+          tabs={[
+            { id: "all", label: "Все" },
+            { id: "personal", label: "Личные" },
+            { id: "mine", label: "Мои" },
+          ]}
+          value={chatTab}
+          onChange={setChatTab}
+          className="mb-4"
+        />
 
         <div
           className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4"
@@ -239,9 +358,64 @@ export function Chat() {
                   <Hash className="h-4 w-4 text-ait-purple" />
                   Комнаты
                 </span>
-                <Badge variant="secondary" className="text-[10px] ait-glass">
-                  {statusLabel}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Создать комнату</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Название</Label>
+                          <Input
+                            value={newRoom.title}
+                            onChange={(e) => setNewRoom({ ...newRoom, title: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Описание</Label>
+                          <Textarea
+                            value={newRoom.description}
+                            onChange={(e) => setNewRoom({ ...newRoom, description: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={newRoom.visibility === "public" ? "default" : "outline"}
+                            onClick={() => setNewRoom({ ...newRoom, visibility: "public" })}
+                          >
+                            <Globe className="h-4 w-4 mr-1" />
+                            Открытая
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={newRoom.visibility === "private" ? "default" : "outline"}
+                            onClick={() => setNewRoom({ ...newRoom, visibility: "private" })}
+                          >
+                            <Lock className="h-4 w-4 mr-1" />
+                            Закрытая
+                          </Button>
+                        </div>
+                        <Button
+                          className="w-full"
+                          onClick={() => createRoomMutation.mutate()}
+                          disabled={!newRoom.title.trim() || createRoomMutation.isPending}
+                        >
+                          Создать
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Badge variant="secondary" className="text-[10px] ait-glass">
+                    {statusLabel}
+                  </Badge>
+                </div>
               </div>
             </div>
             <ScrollArea className="flex-1">
@@ -255,49 +429,83 @@ export function Chat() {
                     </a>
                   </div>
                 ) : (
-                  filteredRooms.map((room) => {
-                    const Icon = room.icon;
-                    return (
+                  filteredRooms.map((room) => (
                       <button
                         key={room.id}
                         type="button"
-                        onClick={() => setActiveRoom(room.id)}
+                        onClick={() => setActiveRoom(room.slug)}
                         className={cn(
-                          "ait-chat-room-item",
-                          activeRoom === room.id
+                          "ait-chat-room-item w-full text-left",
+                          activeRoom === room.slug
                             ? "ait-chat-room-item--active"
                             : "text-slate-400",
                         )}
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span className="text-sm font-medium">{room.label}</span>
+                        {room.avatarUrl ? (
+                          <img
+                            src={resolveMediaUrl(room.avatarUrl)}
+                            alt=""
+                            className="h-8 w-8 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <Hash className="h-4 w-4 shrink-0" />
+                        )}
+                        <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
+                        {room.visibility === "private" && <Lock className="h-3 w-3 shrink-0 opacity-60" />}
+                        {room.isLegacy && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0">
+                            Офиц.
+                          </Badge>
+                        )}
                       </button>
-                    );
-                  })
+                    ))
                 )}
               </div>
             </ScrollArea>
-            <div className="ait-chat-panel-header p-3 text-[10px] text-muted-foreground flex gap-3 border-t border-b-0">
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> Геолокация
-              </span>
-              <span className="flex items-center gap-1">
-                <Route className="h-3 w-3" /> Маршруты
-              </span>
-            </div>
           </div>
 
           <div className="ait-chat-panel flex flex-col overflow-hidden min-h-0">
             <div className="ait-chat-panel-header p-4 flex items-center gap-3">
-              {activeRoomMeta && (() => {
-                const RoomIcon = activeRoomMeta.icon;
-                return <RoomIcon className="h-5 w-5 text-ait-orange" />;
-              })()}
-              <div>
-                <h2 className="font-semibold">{activeRoomMeta?.label ?? activeRoom}</h2>
-                <p className="text-xs text-muted-foreground">Чат путешествия · совместное планирование</p>
+              {activeRoomMeta?.avatarUrl ? (
+                <img
+                  src={resolveMediaUrl(activeRoomMeta.avatarUrl)}
+                  alt=""
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              ) : (
+                <Hash className="h-5 w-5 text-ait-orange" />
+              )}
+              <div className="flex-1 min-w-0">
+                <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
+                <p className="text-xs text-muted-foreground truncate">
+                  {activeRoomMeta?.description ?? "Групповое обсуждение"}
+                </p>
               </div>
+              <Button size="icon" variant="ghost" onClick={() => setShowRoomInfo((v) => !v)}>
+                <Info className="h-4 w-4" />
+              </Button>
             </div>
+            {showRoomInfo && activeRoomMeta && (
+              <div className="px-4 pb-3 border-b border-border/40 text-sm space-y-2">
+                <p>{activeRoomMeta.description || "Без описания"}</p>
+                <p className="text-muted-foreground">
+                  Участников: {(activeRoomMeta as RoomListItem).memberCount ?? "—"} ·{" "}
+                  {activeRoomMeta.visibility === "private" ? "Закрытая" : "Открытая"}
+                </p>
+                {activeRoomMeta.visibility === "private" &&
+                  (activeRoomMeta as RoomListItem).myRole &&
+                  ["owner", "admin"].includes((activeRoomMeta as RoomListItem).myRole!) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => inviteMutation.mutate(activeRoomMeta.id)}
+                    >
+                      <Link2 className="h-4 w-4 mr-1" />
+                      Пригласить
+                    </Button>
+                  )}
+              </div>
+            )}
 
             <ScrollArea className="flex-1 p-4 ait-chat-thread">
               {allMessages.length === 0 ? (
@@ -306,8 +514,39 @@ export function Chat() {
                   <p className="text-sm">Начните разговор о следующей поездке</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {allMessages.map((msg, i) => {
+                <div className="ait-chat-thread-inner space-y-4">
+                  {pinnedMessages.length > 0 && (
+                    <div className="mb-2 p-3 rounded-xl border border-ait-orange/25 bg-ait-orange/5 space-y-3">
+                      <p className="text-xs font-semibold text-ait-orange flex items-center gap-1.5">
+                        <Pin className="h-3.5 w-3.5" />
+                        Закреплённые
+                      </p>
+                      {pinnedMessages.map((msg) => {
+                        const isOwn = msg.userId === user?.id;
+                        return (
+                          <ChatMessageRow
+                            key={`pin-${msg.id}`}
+                            messageId={msg.id!}
+                            content={msg.content}
+                            isOwn={isOwn}
+                            isPinned
+                            createdAt={msg.createdAt}
+                            updatedAt={msg.updatedAt}
+                            meta={{ likeCount: msg.likeCount ?? 0, likedByMe: msg.likedByMe ?? false }}
+                            canPin={isOwn || isRoomAdmin}
+                            canDelete={isOwn || isRoomAdmin}
+                            canEdit={isOwn}
+                            onLike={() => likeMutation.mutate(msg.id!)}
+                            onUnpin={() => pinMutation.mutate({ messageId: msg.id!, pin: false })}
+                            onDelete={() => deleteMutation.mutate(msg.id!)}
+                            onEdit={(c) => editMutation.mutate({ messageId: msg.id!, content: c })}
+                            liking={likeMutation.isPending}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                  {threadMessages.map((msg) => {
                     const isOwn = msg.userId === user?.id;
                     const senderName = isOwn
                       ? (user ? getUserDisplayLabel(user) : "Я")
@@ -321,34 +560,33 @@ export function Chat() {
                         : "?";
 
                     return (
-                      <div
-                        key={msg.id || `msg-${i}`}
-                        className={cn("flex gap-2", isOwn && "flex-row-reverse")}
-                      >
-                        <div className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
-                          {senderInitial}
-                        </div>
-                        <div className={cn("flex flex-col max-w-[82%] min-w-0", isOwn && "items-end")}>
-                          <ChatMessageBubble
-                            content={msg.content}
-                            isOwn={isOwn}
-                            senderLabel={
-                              !isOwn ? (
-                                <span className="text-xs text-muted-foreground px-1">{senderName}</span>
-                              ) : undefined
-                            }
-                            timestamp={
-                              <span className="text-[10px] text-muted-foreground px-1">
-                                {msg.createdAt
-                                  ? format(new Date(msg.createdAt as unknown as string), "HH:mm", {
-                                      locale: ru,
-                                    })
-                                  : ""}
-                              </span>
-                            }
-                          />
-                        </div>
-                      </div>
+                      <ChatMessageRow
+                        key={msg.id || `msg-${msg.content.slice(0, 8)}`}
+                        messageId={msg.id ?? `tmp-${msg.createdAt}`}
+                        content={msg.content}
+                        isOwn={isOwn}
+                        senderLabel={!isOwn ? senderName : undefined}
+                        senderInitial={senderInitial}
+                        createdAt={msg.createdAt}
+                        updatedAt={msg.updatedAt}
+                        meta={{ likeCount: msg.likeCount ?? 0, likedByMe: msg.likedByMe ?? false }}
+                        canPin={Boolean(roomId && (isOwn || isRoomAdmin))}
+                        canDelete={isOwn || isRoomAdmin}
+                        canEdit={isOwn}
+                        onLike={msg.id ? () => likeMutation.mutate(msg.id!) : undefined}
+                        onPin={
+                          msg.id && roomId
+                            ? () => pinMutation.mutate({ messageId: msg.id!, pin: true })
+                            : undefined
+                        }
+                        onDelete={msg.id ? () => deleteMutation.mutate(msg.id!) : undefined}
+                        onEdit={
+                          msg.id
+                            ? (c) => editMutation.mutate({ messageId: msg.id!, content: c })
+                            : undefined
+                        }
+                        liking={likeMutation.isPending}
+                      />
                     );
                   })}
                   <div ref={scrollRef} />

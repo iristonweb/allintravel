@@ -12,7 +12,10 @@ import { Home } from "@/pages/home";
 import { RequireLogin } from "@/pages/require-login";
 import PlaceDetails from "@/pages/place-details";
 import { Profile } from "@/pages/profile";
+import { ProfileEdit } from "@/pages/profile-edit";
+import { ProfileSettings } from "@/pages/profile-settings";
 import { Friends } from "@/pages/friends";
+import { UserPublicProfile } from "@/pages/user-public";
 import { Messages } from "@/pages/messages";
 import { SocialFeed } from "@/pages/social-feed";
 import { Trips } from "@/pages/trips";
@@ -82,6 +85,10 @@ function Router() {
           {isAuthenticated && <Route path="/place/:id" component={PlaceDetails} />}
           {isAuthenticated && <Route path="/places" component={Places} />}
           {isAuthenticated && <Route path="/profile" component={Profile} />}
+          {isAuthenticated && <Route path="/profile/edit" component={ProfileEdit} />}
+          {isAuthenticated && <Route path="/profile/settings" component={ProfileSettings} />}
+          {isAuthenticated && <Route path="/profile/friends" component={Friends} />}
+          {isAuthenticated && <Route path="/u/:username" component={UserPublicProfile} />}
           {isAuthenticated && <Route path="/friends" component={Friends} />}
           {isAuthenticated && <Route path="/messages" component={Messages} />}
           {isAuthenticated && <Route path="/social-feed" component={SocialFeed} />}
@@ -89,6 +96,7 @@ function Router() {
           {isAuthenticated && <Route path="/trips/:id" component={TripDetail} />}
           {isAuthenticated && <Route path="/events" component={Events} />}
           {isAuthenticated && <Route path="/chat" component={Chat} />}
+          {isAuthenticated && <Route path="/chat/join/:token" component={Chat} />}
           {isAuthenticated && <Route path="/wallet" component={Wallet} />}
           {isAuthenticated && <Route path="/privacy" component={Privacy} />}
           {isAuthenticated && <Route component={NotFound} />}

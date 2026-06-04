@@ -66,8 +66,10 @@ import { getDb } from "./db";
 import { buildSeedData } from "./seed-data";
 import { resolveIsAdmin } from "./admin";
 import type { IStorage } from "./storage";
-
-type Db = NonNullable<ReturnType<typeof getDb>>;
+import type { UserPrivacySettings } from "@shared/privacy";
+import type { ChatRoom, ChatRoomInvite, ChatRoomMember, UserPresence } from "@shared/schema";
+import * as features from "./pg-storage-features";
+import type { Db } from "./pg-storage-types";
 
 export class PgStorage implements IStorage {
   private db: Db;
@@ -79,6 +81,7 @@ export class PgStorage implements IStorage {
   }
 
   async ensureSchema(): Promise<void> {
+    await features.ensureExtendedSchema(this.db);
     await this.db.execute(
       sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar`,
     );
@@ -108,6 +111,7 @@ export class PgStorage implements IStorage {
 
   async ensureSeeded(): Promise<void> {
     await this.ensureSchema();
+    await features.ensureLegacyChatRoomsDb(this.db);
     const [{ value }] = await this.db.select({ value: count() }).from(places);
     if (Number(value) > 0) return;
 
@@ -617,29 +621,44 @@ export class PgStorage implements IStorage {
     return row;
   }
 
-  async sendFriendRequest(requesterId: string, addresseeId: string): Promise<Friendship> {
+  async areFriends(userId1: string, userId2: string): Promise<boolean> {
+    return features.areFriendsDb(this.db, userId1, userId2);
+  }
+
+  async sendFriendRequest(requesterId: string, addresseeId: string, direction?: string): Promise<Friendship> {
     const [row] = await this.db
       .insert(friendships)
-      .values({ requesterId, addresseeId, status: "pending" })
+      .values({ requesterId, addresseeId, status: "pending", direction: direction ?? null })
       .returning();
     return row;
   }
 
-  async respondToFriendRequest(friendshipId: string, status: "accepted" | "rejected"): Promise<Friendship> {
+  async respondToFriendRequest(
+    friendshipId: string,
+    status: "accepted" | "rejected",
+    direction?: string,
+  ): Promise<Friendship> {
+    const patch: { status: string; updatedAt: Date; direction?: string | null } = {
+      status,
+      updatedAt: new Date(),
+    };
+    if (direction && status === "accepted") patch.direction = direction;
     const [row] = await this.db
       .update(friendships)
-      .set({ status, updatedAt: new Date() })
+      .set(patch)
       .where(eq(friendships.id, friendshipId))
       .returning();
     if (!row) throw new Error("Friendship not found");
     return row;
   }
 
-  async getFriends(userId: string): Promise<User[]> {
-    const accepted = await this.db
-      .select()
-      .from(friendships)
-      .where(and(eq(friendships.status, "accepted"), or(eq(friendships.requesterId, userId), eq(friendships.addresseeId, userId))!));
+  async getFriends(userId: string, direction?: string): Promise<User[]> {
+    const conditions = [
+      eq(friendships.status, "accepted"),
+      or(eq(friendships.requesterId, userId), eq(friendships.addresseeId, userId))!,
+    ];
+    if (direction) conditions.push(eq(friendships.direction, direction));
+    const accepted = await this.db.select().from(friendships).where(and(...conditions)!);
     const friendIds = accepted.map((f) => (f.requesterId === userId ? f.addresseeId : f.requesterId));
     if (!friendIds.length) return [];
     return this.db.select().from(users).where(inArray(users.id, friendIds));
@@ -857,22 +876,187 @@ export class PgStorage implements IStorage {
     await this.db.delete(postComments).where(eq(postComments.id, id));
   }
 
-  async searchUsers(query: string, limit = 10): Promise<User[]> {
-    const term = query.trim().replace(/^@/, "");
-    const q = `%${term}%`;
-    return this.db
-      .select()
-      .from(users)
-      .where(
-        or(
-          ilike(users.username, q),
-          ilike(users.displayName, q),
-          ilike(users.firstName, q),
-          ilike(users.lastName, q),
-          ilike(users.email, q),
-        )!,
-      )
-      .limit(limit);
+  async searchUsers(
+    query: string,
+    limit = 10,
+    options?: {
+      viewerId?: string;
+      exact?: boolean;
+      direction?: string;
+      travelStyle?: string;
+    },
+  ): Promise<User[]> {
+    return features.searchUsersDb(this.db, query, limit, options, (a, b) => this.areFriends(a, b));
+  }
+
+  async getPrivacySettings(userId: string): Promise<UserPrivacySettings> {
+    return features.getPrivacySettingsDb(this.db, userId);
+  }
+
+  async updatePrivacySettings(
+    userId: string,
+    patch: Partial<Omit<UserPrivacySettings, "userId" | "createdAt" | "updatedAt">>,
+  ): Promise<UserPrivacySettings> {
+    return features.updatePrivacySettingsDb(this.db, userId, patch);
+  }
+
+  async touchPresence(userId: string, isOnline: boolean): Promise<UserPresence> {
+    return features.touchPresenceDb(this.db, userId, isOnline);
+  }
+
+  async getPresence(userId: string): Promise<UserPresence | undefined> {
+    return features.getPresenceDb(this.db, userId);
+  }
+
+  async ensureLegacyChatRooms(): Promise<void> {
+    return features.ensureLegacyChatRoomsDb(this.db);
+  }
+
+  async getChatRoomBySlug(slug: string): Promise<ChatRoom | undefined> {
+    return features.getChatRoomBySlugDb(this.db, slug);
+  }
+
+  async getChatRoom(id: string): Promise<ChatRoom | undefined> {
+    return features.getChatRoomDb(this.db, id);
+  }
+
+  async listChatRoomsForUser(userId: string) {
+    return features.listChatRoomsForUserDb(this.db, userId);
+  }
+
+  async createChatRoom(data: Parameters<typeof features.createChatRoomDb>[1]) {
+    return features.createChatRoomDb(this.db, data);
+  }
+
+  async updateChatRoom(id: string, patch: Parameters<typeof features.updateChatRoomDb>[2]) {
+    return features.updateChatRoomDb(this.db, id, patch);
+  }
+
+  async getChatRoomMember(roomId: string, userId: string) {
+    return features.getChatRoomMemberDb(this.db, roomId, userId);
+  }
+
+  async joinChatRoom(roomId: string, userId: string, role?: string) {
+    return features.joinChatRoomDb(this.db, roomId, userId, role);
+  }
+
+  async leaveChatRoom(roomId: string, userId: string) {
+    return features.leaveChatRoomDb(this.db, roomId, userId);
+  }
+
+  async getChatRoomMembers(roomId: string) {
+    return features.getChatRoomMembersDb(this.db, roomId);
+  }
+
+  async setChatRoomMemberRole(roomId: string, userId: string, role: string) {
+    return features.setChatRoomMemberRoleDb(this.db, roomId, userId, role);
+  }
+
+  async banChatRoomMember(roomId: string, userId: string) {
+    return features.banChatRoomMemberDb(this.db, roomId, userId);
+  }
+
+  async createChatRoomInvite(roomId: string, createdBy: string, opts?: { expiresAt?: Date; maxUses?: number }) {
+    return features.createChatRoomInviteDb(this.db, roomId, createdBy, opts);
+  }
+
+  async joinChatRoomByToken(token: string, userId: string) {
+    return features.joinChatRoomByTokenDb(this.db, token, userId);
+  }
+
+  async getChatMessage(messageId: string) {
+    return features.getChatMessageDb(this.db, messageId);
+  }
+
+  async updateChatMessage(messageId: string, content: string) {
+    return features.updateChatMessageDb(this.db, messageId, content);
+  }
+
+  async getChatMessageLikeMeta(messageIds: string[], viewerId: string) {
+    return features.getChatMessageLikeMetaDb(this.db, messageIds, viewerId);
+  }
+
+  async toggleChatMessageLike(messageId: string, userId: string) {
+    return features.toggleChatMessageLikeDb(this.db, messageId, userId);
+  }
+
+  async pinChatMessage(roomId: string, messageId: string, pinnedBy: string) {
+    return features.pinChatMessageDb(this.db, roomId, messageId, pinnedBy);
+  }
+
+  async unpinChatMessage(roomId: string, messageId: string) {
+    return features.unpinChatMessageDb(this.db, roomId, messageId);
+  }
+
+  async getPinnedMessageIds(roomId: string) {
+    return features.getPinnedMessageIdsDb(this.db, roomId);
+  }
+
+  async deleteChatMessage(messageId: string) {
+    return features.deleteChatMessageDb(this.db, messageId);
+  }
+
+  async getPrivateMessage(messageId: string) {
+    return features.getPrivateMessageDb(this.db, messageId);
+  }
+
+  async updatePrivateMessage(messageId: string, content: string) {
+    return features.updatePrivateMessageDb(this.db, messageId, content);
+  }
+
+  async deletePrivateMessage(messageId: string) {
+    return features.deletePrivateMessageDb(this.db, messageId);
+  }
+
+  async getPrivateMessageLikeMeta(messageIds: string[], viewerId: string) {
+    return features.getPrivateMessageLikeMetaDb(this.db, messageIds, viewerId);
+  }
+
+  async togglePrivateMessageLike(messageId: string, userId: string) {
+    return features.togglePrivateMessageLikeDb(this.db, messageId, userId);
+  }
+
+  async createNotification(data: Parameters<typeof import("./notification-storage").createNotificationDb>[1]) {
+    const { createNotificationDb } = await import("./notification-storage");
+    return createNotificationDb(this.db, data);
+  }
+
+  async getNotifications(userId: string, limit = 50) {
+    const { getNotificationsDb } = await import("./notification-storage");
+    return getNotificationsDb(this.db, userId, limit);
+  }
+
+  async getUnreadNotificationCount(userId: string) {
+    const { getUnreadNotificationCountDb } = await import("./notification-storage");
+    return getUnreadNotificationCountDb(this.db, userId);
+  }
+
+  async markNotificationRead(userId: string, id: string) {
+    const { markNotificationReadDb } = await import("./notification-storage");
+    return markNotificationReadDb(this.db, userId, id);
+  }
+
+  async markAllNotificationsRead(userId: string) {
+    const { markAllNotificationsReadDb } = await import("./notification-storage");
+    return markAllNotificationsReadDb(this.db, userId);
+  }
+
+  async upsertPushSubscription(
+    userId: string,
+    sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+  ) {
+    const { upsertPushSubscriptionDb } = await import("./notification-storage");
+    return upsertPushSubscriptionDb(this.db, userId, sub);
+  }
+
+  async getPushSubscriptionsForUser(userId: string) {
+    const { getPushSubscriptionsForUserDb } = await import("./notification-storage");
+    return getPushSubscriptionsForUserDb(this.db, userId);
+  }
+
+  async deletePushSubscription(endpoint: string) {
+    const { deletePushSubscriptionDb } = await import("./notification-storage");
+    return deletePushSubscriptionDb(this.db, endpoint);
   }
 
   async getPostLikesCount(postId: string): Promise<number> {

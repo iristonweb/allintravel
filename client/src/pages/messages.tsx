@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import AppLayout from "@/components/app-layout";
-import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
+import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
+import ChatMessageRow from "@/components/chat/ChatMessageRow";
 import MessageContent from "@/components/chat/MessageContent";
 import { Button } from "@/components/ui/button";
 import MessageComposer from "@/components/chat/MessageComposer";
@@ -15,7 +16,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import type { PrivateMessage, User } from "@shared/schema";
+import type { PrivateMessage, PrivateMessageWithMeta, User } from "@shared/schema";
+import { Hash } from "lucide-react";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 
 interface Conversation {
@@ -31,6 +33,7 @@ export function Messages() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [msgTab, setMsgTab] = useState<"all" | "personal" | "groups">("all");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const withUserId =
     location === "/messages" && typeof window !== "undefined"
@@ -64,10 +67,45 @@ export function Messages() {
     }
   }, [withUserId, userToOpen, user?.id, conversations]);
 
-  const { data: messages = [] } = useQuery<PrivateMessage[]>({
-    queryKey: ["/api/messages", selectedConversation?.user.id],
+  const messagesKey = ["/api/messages", selectedConversation?.user.id] as const;
+
+  const { data: messages = [] } = useQuery<PrivateMessageWithMeta[]>({
+    queryKey: messagesKey,
     enabled: !!selectedConversation?.user?.id,
   });
+
+  const likeMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      const res = await apiRequest("POST", `/api/messages/${messageId}/like`);
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: messagesKey }),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
+      const res = await apiRequest("PATCH", `/api/messages/${messageId}`, { content });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: messagesKey });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      await apiRequest("DELETE", `/api/messages/${messageId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: messagesKey });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    },
+  });
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, selectedConversation?.user.id]);
 
   const sendMessageMutation = useMutation({
     mutationFn: (messageData: { receiverId: string; content: string }) =>
@@ -112,6 +150,11 @@ export function Messages() {
     return format(new Date(date), "d MMM", { locale: ru });
   };
 
+  const visibleConversations =
+    msgTab === "groups"
+      ? []
+      : conversations;
+
   if (!isAuthenticated) {
     return (
       <AppLayout>
@@ -129,27 +172,17 @@ export function Messages() {
         <h1 className="ait-section-title">Сообщения</h1>
         <p className="text-muted-foreground mt-1 mb-4">Личные чаты и групповые поездки</p>
 
-        <div className="flex gap-2 mb-6 ait-nav-pill rounded-full p-1 w-fit">
-          {(
-            [
-              { id: "all", label: "Все" },
-              { id: "personal", label: "Личные" },
-              { id: "groups", label: "Группы" },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setMsgTab(t.id)}
-              className={cn(
-                "px-5 py-2 rounded-full text-sm font-medium transition-all",
-                msgTab === t.id ? "ait-nav-active text-white" : "text-slate-400 hover:text-white",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <ChatFilterTabs
+          layoutId="messages-page-filter"
+          tabs={[
+            { id: "all", label: "Все" },
+            { id: "personal", label: "Личные" },
+            { id: "groups", label: "Группы" },
+          ]}
+          value={msgTab}
+          onChange={setMsgTab}
+          className="mb-6"
+        />
 
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-4 h-[calc(100vh-200px)] min-h-[520px]">
             <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
@@ -161,7 +194,15 @@ export function Messages() {
               </div>
               <div className="p-0">
                 <ScrollArea className="h-[calc(100vh-300px)] md:h-[calc(100vh-280px)]">
-                  {conversations.length === 0 ? (
+                  {msgTab === "groups" ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      Групповые чаты — в разделе{" "}
+                      <Link href="/chat" className="text-ait-purple hover:underline">
+                        Чаты
+                      </Link>
+                    </div>
+                  ) : visibleConversations.length === 0 ? (
                     <div className="p-4 text-center">
                       <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                       <h3 className="font-semibold mb-2">Нет сообщений</h3>
@@ -171,7 +212,7 @@ export function Messages() {
                     </div>
                   ) : (
                     <div className="py-2">
-                      {conversations.map((conversation) => (
+                      {visibleConversations.map((conversation) => (
                         <div
                           key={conversation.user.id}
                           role="button"
@@ -260,41 +301,34 @@ export function Messages() {
 
                   <div className="flex flex-col flex-1 min-h-0">
                     <ScrollArea className="flex-1 p-4 md:p-6 ait-chat-thread">
-                      <div className="space-y-5">
+                      <div className="ait-chat-thread-inner space-y-5">
                         {messages.map((message) => {
                           const isOwn = message.senderId === user?.id;
                           return (
-                            <div
+                            <ChatMessageRow
                               key={message.id}
-                              className={cn("flex gap-2", isOwn ? "flex-row-reverse" : "flex-row")}
-                            >
-                              {!isOwn && (
-                                <Avatar className="h-8 w-8 shrink-0 border border-white/15">
-                                  <AvatarImage
-                                    src={selectedConversation.user.profileImageUrl ?? undefined}
-                                  />
-                                  <AvatarFallback className="text-xs">
-                                    {getUserInitial(selectedConversation.user)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              )}
-                              <ChatMessageBubble
-                                content={message.content}
-                                isOwn={isOwn}
-                                timestamp={
-                                  <span
-                                    className={cn(
-                                      "text-[10px] px-1",
-                                      isOwn ? "text-muted-foreground" : "text-muted-foreground",
-                                    )}
-                                  >
-                                    {formatTime(message.createdAt as unknown as string)}
-                                  </span>
-                                }
-                              />
-                            </div>
+                              messageId={message.id}
+                              content={message.content}
+                              isOwn={isOwn}
+                              senderInitial={
+                                !isOwn ? getUserInitial(selectedConversation.user) : undefined
+                              }
+                              createdAt={message.createdAt}
+                              updatedAt={message.updatedAt}
+                              meta={{
+                                likeCount: message.likeCount ?? 0,
+                                likedByMe: message.likedByMe ?? false,
+                              }}
+                              canEdit={isOwn}
+                              canDelete={isOwn}
+                              onLike={() => likeMutation.mutate(message.id)}
+                              onEdit={(c) => editMutation.mutate({ messageId: message.id, content: c })}
+                              onDelete={() => deleteMutation.mutate(message.id)}
+                              liking={likeMutation.isPending}
+                            />
                           );
                         })}
+                        <div ref={scrollRef} />
                       </div>
                     </ScrollArea>
 

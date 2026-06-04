@@ -184,7 +184,22 @@ export const chatMessages = pgTable("chat_messages", {
   content: text("content").notNull(),
   chatRoom: varchar("chat_room", { length: 100 }).notNull(), // e.g., "general", "rome", "paris"
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
 });
+
+export const chatMessageLikes = pgTable(
+  "chat_message_likes",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => chatMessages.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [index("IDX_chat_message_likes_msg").on(t.messageId)],
+);
 
 // User favorites table
 export const userFavorites = pgTable("user_favorites", {
@@ -200,9 +215,124 @@ export const friendships = pgTable("friendships", {
   requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   addresseeId: varchar("addressee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 20 }).default("pending"), // pending, accepted, blocked
+  direction: varchar("direction", { length: 32 }), // travel direction tag when accepted
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Privacy settings (1:1 with user)
+export const userPrivacySettings = pgTable("user_privacy_settings", {
+  userId: varchar("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  isPrivateAccount: boolean("is_private_account").default(false).notNull(),
+  showOnlineStatus: varchar("show_online_status", { length: 20 }).default("friends").notNull(),
+  showLastSeen: boolean("show_last_seen").default(true).notNull(),
+  allowDmFrom: varchar("allow_dm_from", { length: 20 }).default("friends").notNull(),
+  allowFriendRequestsFrom: varchar("allow_friend_requests_from", { length: 20 }).default("everyone").notNull(),
+  showProfileTo: varchar("show_profile_to", { length: 20 }).default("everyone").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Online presence
+export const userPresence = pgTable("user_presence", {
+  userId: varchar("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  isOnline: boolean("is_online").default(false).notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+});
+
+// Chat rooms (supergroups)
+export const chatRooms = pgTable(
+  "chat_rooms",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    slug: varchar("slug", { length: 100 }).notNull().unique(),
+    title: varchar("title", { length: 120 }).notNull(),
+    description: text("description"),
+    avatarUrl: varchar("avatar_url"),
+    visibility: varchar("visibility", { length: 20 }).default("public").notNull(), // public | private
+    createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+    settings: jsonb("settings").$type<{
+      slowModeSeconds?: number;
+      whoCanInvite?: "everyone" | "admins";
+      whoCanPost?: "everyone" | "members";
+      autoJoinOnPost?: boolean;
+    }>(),
+    isLegacy: boolean("is_legacy").default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [index("IDX_chat_rooms_visibility").on(t.visibility)],
+);
+
+export const chatRoomMembers = pgTable(
+  "chat_room_members",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    roomId: uuid("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 20 }).default("member").notNull(), // owner | admin | member
+    status: varchar("status", { length: 20 }).default("active").notNull(), // active | banned
+    joinedAt: timestamp("joined_at").defaultNow(),
+  },
+  (t) => [
+    index("IDX_chat_room_members_room").on(t.roomId),
+    index("IDX_chat_room_members_user").on(t.userId),
+  ],
+);
+
+export const chatRoomInvites = pgTable("chat_room_invites", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: uuid("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at"),
+  maxUses: integer("max_uses"),
+  useCount: integer("use_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const chatPinnedMessages = pgTable("chat_pinned_messages", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  roomId: uuid("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+  messageId: uuid("message_id").notNull().references(() => chatMessages.id, { onDelete: "cascade" }),
+  pinnedBy: varchar("pinned_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pinnedAt: timestamp("pinned_at").defaultNow(),
+});
+
+// In-app notifications
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 40 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    link: varchar("link", { length: 500 }),
+    actorId: varchar("actor_id").references(() => users.id, { onDelete: "set null" }),
+    entityId: varchar("entity_id", { length: 100 }),
+    isRead: boolean("is_read").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    index("IDX_notifications_user").on(t.userId),
+    index("IDX_notifications_user_unread").on(t.userId, t.isRead),
+  ],
+);
+
+// Web Push subscriptions (per device)
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [index("IDX_push_subscriptions_user").on(t.userId)],
+);
 
 // User follows table
 export const userFollows = pgTable("user_follows", {
@@ -220,7 +350,22 @@ export const privateMessages = pgTable("private_messages", {
   content: text("content").notNull(),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
 });
+
+export const privateMessageLikes = pgTable(
+  "private_message_likes",
+  {
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => privateMessages.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [index("IDX_private_message_likes_msg").on(t.messageId)],
+);
 
 // Travel posts/journal entries
 export const travelPosts = pgTable("travel_posts", {
@@ -280,6 +425,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   chatMessages: many(chatMessages),
   favorites: many(userFavorites),
   profile: one(userProfiles),
+  privacySettings: one(userPrivacySettings),
+  presence: one(userPresence),
   sentFriendRequests: many(friendships, { relationName: "requester" }),
   receivedFriendRequests: many(friendships, { relationName: "addressee" }),
   followers: many(userFollows, { relationName: "following" }),
@@ -323,6 +470,21 @@ export const eventsRelations = relations(events, ({ one }) => ({
 
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   user: one(users, { fields: [chatMessages.userId], references: [users.id] }),
+}));
+
+export const chatRoomsRelations = relations(chatRooms, ({ one, many }) => ({
+  creator: one(users, { fields: [chatRooms.createdBy], references: [users.id] }),
+  members: many(chatRoomMembers),
+  invites: many(chatRoomInvites),
+}));
+
+export const chatRoomMembersRelations = relations(chatRoomMembers, ({ one }) => ({
+  room: one(chatRooms, { fields: [chatRoomMembers.roomId], references: [chatRooms.id] }),
+  user: one(users, { fields: [chatRoomMembers.userId], references: [users.id] }),
+}));
+
+export const userPrivacySettingsRelations = relations(userPrivacySettings, ({ one }) => ({
+  user: one(users, { fields: [userPrivacySettings.userId], references: [users.id] }),
 }));
 
 export const userFavoritesRelations = relations(userFavorites, ({ one }) => ({
@@ -401,6 +563,11 @@ export const insertEventSchema = createInsertSchema(events).omit({
 export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+});
+
+export const updateChatMessageSchema = z.object({
+  content: z.string().min(1).max(8000),
 });
 
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
@@ -423,6 +590,11 @@ export const insertUserFollowSchema = createInsertSchema(userFollows).omit({
 export const insertPrivateMessageSchema = createInsertSchema(privateMessages).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+});
+
+export const updatePrivateMessageSchema = z.object({
+  content: z.string().min(1).max(8000),
 });
 
 export const insertTravelPostSchema = createInsertSchema(travelPosts).omit({
@@ -487,6 +659,14 @@ export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type EventRegistration = typeof eventRegistrations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+
+/** Enriched on list endpoints */
+export type MessageReactionMeta = {
+  likeCount: number;
+  likedByMe: boolean;
+};
+
+export type ChatMessageWithMeta = ChatMessage & MessageReactionMeta;
 export type UserFavorite = typeof userFavorites.$inferSelect;
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
@@ -530,6 +710,7 @@ export interface ReviewWithPlace extends Review {
 }
 export type PrivateMessage = typeof privateMessages.$inferSelect;
 export type InsertPrivateMessage = z.infer<typeof insertPrivateMessageSchema>;
+export type PrivateMessageWithMeta = PrivateMessage & MessageReactionMeta;
 export type TravelPost = typeof travelPosts.$inferSelect;
 export type InsertTravelPost = z.infer<typeof insertTravelPostSchema>;
 export type PostLike = typeof postLikes.$inferSelect;
@@ -539,3 +720,16 @@ export type InsertPostComment = z.infer<typeof insertPostCommentSchema>;
 
 export type Country = typeof countries.$inferSelect;
 export type City = typeof cities.$inferSelect;
+export type UserPrivacySettingsRow = typeof userPrivacySettings.$inferSelect;
+export type ChatRoom = typeof chatRooms.$inferSelect;
+export type ChatRoomMember = typeof chatRoomMembers.$inferSelect;
+export type ChatRoomInvite = typeof chatRoomInvites.$inferSelect;
+export type UserPresence = typeof userPresence.$inferSelect;
+
+export type ChatRoomWithMeta = ChatRoom & {
+  memberCount?: number;
+  myRole?: string | null;
+  isMember?: boolean;
+};
+export type NotificationRow = typeof notifications.$inferSelect;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

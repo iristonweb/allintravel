@@ -3,8 +3,11 @@ import AppIconSidebar from "@/components/layout/app-icon-sidebar";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import AmbientBackground from "@/components/premium/AmbientBackground";
 import { useAuth } from "@/hooks/useAuth";
+import { usePresenceHeartbeat } from "@/hooks/usePresence";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 type AppShellProps = {
   children: ReactNode;
@@ -22,6 +25,16 @@ export default function AppShell({
   contentClassName,
 }: AppShellProps) {
   const { isAuthenticated } = useAuth();
+  usePresenceHeartbeat();
+  useRealtimeNotifications();
+  const { supported: pushSupported, vapidReady, subscribe: subscribePush } = usePushNotifications();
+
+  useEffect(() => {
+    if (!isAuthenticated || !pushSupported || !vapidReady) return;
+    if (Notification.permission === "granted") {
+      subscribePush().catch(() => undefined);
+    }
+  }, [isAuthenticated, pushSupported, vapidReady, subscribePush]);
 
   return (
     <AmbientBackground showOrbs={!immersive}>

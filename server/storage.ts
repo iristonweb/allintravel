@@ -30,7 +30,15 @@ import {
   type InsertPostLike,
   type PostComment,
   type InsertPostComment,
+  type ChatRoom,
+  type ChatRoomMember,
+  type ChatRoomInvite,
+  type UserPresence,
 } from "@shared/schema";
+// ChatRoom used in MemStorage in-memory maps
+import type { UserPrivacySettings } from "@shared/privacy";
+import { DEFAULT_PRIVACY_SETTINGS } from "@shared/privacy";
+import { LEGACY_CHAT_ROOM_SEEDS } from "./legacy-chat-rooms";
 import { getDb, isDatabaseConfigured } from "./db";
 import { PgStorage } from "./pg-storage";
 
@@ -116,9 +124,14 @@ export interface IStorage {
   updateUserProfile(userId: string, profile: Partial<InsertUserProfile>): Promise<UserProfile>;
 
   getFriendshipById(friendshipId: string): Promise<Friendship | undefined>;
-  sendFriendRequest(requesterId: string, addresseeId: string): Promise<Friendship>;
-  respondToFriendRequest(friendshipId: string, status: 'accepted' | 'rejected'): Promise<Friendship>;
-  getFriends(userId: string): Promise<User[]>;
+  areFriends(userId1: string, userId2: string): Promise<boolean>;
+  sendFriendRequest(requesterId: string, addresseeId: string, direction?: string): Promise<Friendship>;
+  respondToFriendRequest(
+    friendshipId: string,
+    status: "accepted" | "rejected",
+    direction?: string,
+  ): Promise<Friendship>;
+  getFriends(userId: string, direction?: string): Promise<User[]>;
   getFriendRequests(userId: string, type: 'sent' | 'received'): Promise<Friendship[]>;
   removeFriend(userId: string, friendId: string): Promise<void>;
 
@@ -153,7 +166,86 @@ export interface IStorage {
   getPostComment(id: string): Promise<PostComment | undefined>;
   deletePostComment(id: string): Promise<void>;
 
-  searchUsers(query: string, limit?: number): Promise<User[]>;
+  searchUsers(
+    query: string,
+    limit?: number,
+    options?: {
+      viewerId?: string;
+      exact?: boolean;
+      direction?: string;
+      travelStyle?: string;
+    },
+  ): Promise<User[]>;
+
+  getPrivacySettings(userId: string): Promise<UserPrivacySettings>;
+  updatePrivacySettings(
+    userId: string,
+    patch: Partial<Omit<UserPrivacySettings, "userId" | "createdAt" | "updatedAt">>,
+  ): Promise<UserPrivacySettings>;
+  touchPresence(userId: string, isOnline: boolean): Promise<UserPresence>;
+  getPresence(userId: string): Promise<UserPresence | undefined>;
+
+  ensureLegacyChatRooms(): Promise<void>;
+  getChatRoomBySlug(slug: string): Promise<ChatRoom | undefined>;
+  getChatRoom(id: string): Promise<ChatRoom | undefined>;
+  listChatRoomsForUser(userId: string): Promise<(ChatRoom & { memberCount: number; myRole: string | null })[]>;
+  createChatRoom(data: {
+    slug?: string;
+    title: string;
+    description?: string;
+    avatarUrl?: string;
+    visibility: "public" | "private";
+    createdBy: string;
+    settings?: ChatRoom["settings"];
+  }): Promise<ChatRoom>;
+  updateChatRoom(id: string, patch: Partial<Pick<ChatRoom, "title" | "description" | "avatarUrl" | "visibility" | "settings">>): Promise<ChatRoom>;
+  getChatRoomMember(roomId: string, userId: string): Promise<ChatRoomMember | undefined>;
+  joinChatRoom(roomId: string, userId: string, role?: string): Promise<ChatRoomMember>;
+  leaveChatRoom(roomId: string, userId: string): Promise<void>;
+  getChatRoomMembers(roomId: string): Promise<(ChatRoomMember & { user: User })[]>;
+  setChatRoomMemberRole(roomId: string, userId: string, role: string): Promise<ChatRoomMember>;
+  banChatRoomMember(roomId: string, userId: string): Promise<void>;
+  createChatRoomInvite(roomId: string, createdBy: string, opts?: { expiresAt?: Date; maxUses?: number }): Promise<ChatRoomInvite & { inviteUrl: string }>;
+  joinChatRoomByToken(token: string, userId: string): Promise<ChatRoom>;
+  getChatMessage(messageId: string): Promise<import("@shared/schema").ChatMessage | undefined>;
+  updateChatMessage(messageId: string, content: string): Promise<import("@shared/schema").ChatMessage | undefined>;
+  getChatMessageLikeMeta(
+    messageIds: string[],
+    viewerId: string,
+  ): Promise<Record<string, { likeCount: number; likedByMe: boolean }>>;
+  toggleChatMessageLike(messageId: string, userId: string): Promise<{ likeCount: number; likedByMe: boolean }>;
+  pinChatMessage(roomId: string, messageId: string, pinnedBy: string): Promise<void>;
+  unpinChatMessage(roomId: string, messageId: string): Promise<void>;
+  getPinnedMessageIds(roomId: string): Promise<string[]>;
+  deleteChatMessage(messageId: string): Promise<void>;
+  getPrivateMessage(messageId: string): Promise<import("@shared/schema").PrivateMessage | undefined>;
+  updatePrivateMessage(messageId: string, content: string): Promise<import("@shared/schema").PrivateMessage | undefined>;
+  deletePrivateMessage(messageId: string): Promise<void>;
+  getPrivateMessageLikeMeta(
+    messageIds: string[],
+    viewerId: string,
+  ): Promise<Record<string, { likeCount: number; likedByMe: boolean }>>;
+  togglePrivateMessageLike(messageId: string, userId: string): Promise<{ likeCount: number; likedByMe: boolean }>;
+
+  createNotification(data: {
+    userId: string;
+    type: string;
+    title: string;
+    body: string;
+    link?: string | null;
+    actorId?: string | null;
+    entityId?: string | null;
+  }): Promise<import("@shared/schema").NotificationRow>;
+  getNotifications(userId: string, limit?: number): Promise<import("@shared/schema").NotificationRow[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationRead(userId: string, id: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  upsertPushSubscription(
+    userId: string,
+    sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+  ): Promise<void>;
+  getPushSubscriptionsForUser(userId: string): Promise<{ endpoint: string; p256dh: string; auth: string }[]>;
+  deletePushSubscription(endpoint: string): Promise<void>;
 
   getPostLikesCount(postId: string): Promise<number>;
   isPostLikedByUser(userId: string, postId: string): Promise<boolean>;
@@ -186,6 +278,18 @@ export class MemStorage implements IStorage {
   private travelPosts: Map<string, TravelPost> = new Map();
   private postLikes: Map<string, PostLike> = new Map();
   private postComments: Map<string, PostComment> = new Map();
+  private privacyByUser: Map<string, UserPrivacySettings> = new Map();
+  private presenceByUser: Map<string, UserPresence> = new Map();
+  private memChatRooms: Map<string, ChatRoom> = new Map();
+  private memChatMembers: Map<string, ChatRoomMember> = new Map();
+  private memChatInvites: Map<string, ChatRoomInvite> = new Map();
+  private memPinnedMessages: Map<string, { roomId: string; messageId: string }> = new Map();
+  private memChatLikes = new Set<string>();
+  private memPrivateLikes = new Set<string>();
+  private memLegacyRoomsReady = false;
+  private memNotifications: Map<string, import("@shared/schema").NotificationRow> = new Map();
+  private memPushSubs: Map<string, { userId: string; endpoint: string; p256dh: string; auth: string }> =
+    new Map();
 
   constructor() {
     this.seedData();
@@ -899,13 +1003,24 @@ export class MemStorage implements IStorage {
   }
 
   // Friend operations
-  async sendFriendRequest(requesterId: string, addresseeId: string): Promise<Friendship> {
+  async areFriends(userId1: string, userId2: string): Promise<boolean> {
+    if (userId1 === userId2) return true;
+    return Array.from(this.friendships.values()).some(
+      (f) =>
+        f.status === "accepted" &&
+        ((f.requesterId === userId1 && f.addresseeId === userId2) ||
+          (f.requesterId === userId2 && f.addresseeId === userId1)),
+    );
+  }
+
+  async sendFriendRequest(requesterId: string, addresseeId: string, direction?: string): Promise<Friendship> {
     const id = genId();
     const friendship: Friendship = {
       id,
       requesterId,
       addresseeId,
       status: "pending",
+      direction: direction ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     } as Friendship;
@@ -913,23 +1028,33 @@ export class MemStorage implements IStorage {
     return friendship;
   }
 
-  async respondToFriendRequest(friendshipId: string, status: 'accepted' | 'rejected'): Promise<Friendship> {
+  async respondToFriendRequest(
+    friendshipId: string,
+    status: "accepted" | "rejected",
+    direction?: string,
+  ): Promise<Friendship> {
     const friendship = this.friendships.get(friendshipId);
     if (!friendship) throw new Error("Friendship not found");
-    const updated: Friendship = { ...friendship, status, updatedAt: new Date() };
+    const updated: Friendship = {
+      ...friendship,
+      status,
+      direction: direction && status === "accepted" ? direction : friendship.direction,
+      updatedAt: new Date(),
+    };
     this.friendships.set(friendshipId, updated);
     return updated;
   }
 
-  async getFriends(userId: string): Promise<User[]> {
+  async getFriends(userId: string, direction?: string): Promise<User[]> {
     const friendIds: string[] = [];
     for (const f of Array.from(this.friendships.values())) {
       if (f.status === "accepted") {
+        if (direction && f.direction !== direction) continue;
         if (f.requesterId === userId) friendIds.push(f.addresseeId);
         else if (f.addresseeId === userId) friendIds.push(f.requesterId);
       }
     }
-    return friendIds.map(id => this.users.get(id)).filter(Boolean) as User[];
+    return friendIds.map((id) => this.users.get(id)).filter(Boolean) as User[];
   }
 
   async getFriendRequests(userId: string, type: 'sent' | 'received'): Promise<Friendship[]> {
@@ -1139,17 +1264,378 @@ export class MemStorage implements IStorage {
   }
 
   // Search operations
-  async searchUsers(query: string, limit = 10): Promise<User[]> {
+  async searchUsers(
+    query: string,
+    limit = 10,
+    options?: { viewerId?: string; exact?: boolean; direction?: string; travelStyle?: string },
+  ): Promise<User[]> {
     const q = query.toLowerCase().replace(/^@/, "");
-    return Array.from(this.users.values())
-      .filter(u =>
-        u.username?.toLowerCase().includes(q) ||
-        u.displayName?.toLowerCase().includes(q) ||
-        u.firstName?.toLowerCase().includes(q) ||
-        u.lastName?.toLowerCase().includes(q) ||
-        u.email?.toLowerCase().includes(q)
-      )
+    let list = Array.from(this.users.values());
+    if (options?.exact) {
+      list = list.filter((u) => u.username?.toLowerCase() === q);
+    } else {
+      list = list.filter(
+        (u) =>
+          u.username?.toLowerCase().includes(q) ||
+          u.displayName?.toLowerCase().includes(q) ||
+          u.firstName?.toLowerCase().includes(q) ||
+          u.lastName?.toLowerCase().includes(q),
+      );
+    }
+    return list.slice(0, limit);
+  }
+
+  async getPrivacySettings(userId: string): Promise<UserPrivacySettings> {
+    return (
+      this.privacyByUser.get(userId) ?? {
+        userId,
+        ...DEFAULT_PRIVACY_SETTINGS,
+        createdAt: null,
+        updatedAt: null,
+      }
+    );
+  }
+
+  async updatePrivacySettings(
+    userId: string,
+    patch: Partial<Omit<UserPrivacySettings, "userId" | "createdAt" | "updatedAt">>,
+  ): Promise<UserPrivacySettings> {
+    const current = await this.getPrivacySettings(userId);
+    const merged = { ...current, ...patch, updatedAt: new Date() };
+    this.privacyByUser.set(userId, merged);
+    return merged;
+  }
+
+  async touchPresence(userId: string, isOnline: boolean): Promise<UserPresence> {
+    const row: UserPresence = { userId, isOnline, lastSeenAt: new Date() };
+    this.presenceByUser.set(userId, row);
+    return row;
+  }
+
+  async getPresence(userId: string): Promise<UserPresence | undefined> {
+    return this.presenceByUser.get(userId);
+  }
+
+  private ensureMemLegacyRooms(): void {
+    if (this.memLegacyRoomsReady) return;
+    for (const seed of LEGACY_CHAT_ROOM_SEEDS) {
+      const id = genId();
+      const room: ChatRoom = {
+        id,
+        slug: seed.slug,
+        title: seed.title,
+        description: seed.description,
+        avatarUrl: null,
+        visibility: "public",
+        createdBy: null,
+        settings: { autoJoinOnPost: true },
+        isLegacy: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as ChatRoom;
+      this.memChatRooms.set(id, room);
+    }
+    this.memLegacyRoomsReady = true;
+  }
+
+  async ensureLegacyChatRooms(): Promise<void> {
+    this.ensureMemLegacyRooms();
+  }
+
+  async getChatRoomBySlug(slug: string): Promise<ChatRoom | undefined> {
+    this.ensureMemLegacyRooms();
+    return Array.from(this.memChatRooms.values()).find((r) => r.slug === slug);
+  }
+
+  async getChatRoom(id: string): Promise<ChatRoom | undefined> {
+    return this.memChatRooms.get(id);
+  }
+
+  async listChatRoomsForUser(userId: string) {
+    this.ensureMemLegacyRooms();
+    return Array.from(this.memChatRooms.values()).map((room) => ({
+      ...room,
+      memberCount: Array.from(this.memChatMembers.values()).filter(
+        (m) => m.roomId === room.id && m.status === "active",
+      ).length,
+      myRole:
+        Array.from(this.memChatMembers.values()).find((m) => m.roomId === room.id && m.userId === userId)
+          ?.role ?? null,
+    }));
+  }
+
+  async createChatRoom(data: {
+    slug?: string;
+    title: string;
+    description?: string;
+    avatarUrl?: string;
+    visibility: "public" | "private";
+    createdBy: string;
+    settings?: ChatRoom["settings"];
+  }): Promise<ChatRoom> {
+    const id = genId();
+    const slug =
+      data.slug ??
+      data.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 80);
+    const room = {
+      id,
+      slug,
+      title: data.title,
+      description: data.description ?? null,
+      avatarUrl: data.avatarUrl ?? null,
+      visibility: data.visibility,
+      createdBy: data.createdBy,
+      settings: data.settings ?? {},
+      isLegacy: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as ChatRoom;
+    this.memChatRooms.set(id, room);
+    await this.joinChatRoom(id, data.createdBy, "owner");
+    return room;
+  }
+
+  async updateChatRoom(
+    id: string,
+    patch: Partial<Pick<ChatRoom, "title" | "description" | "avatarUrl" | "visibility" | "settings">>,
+  ): Promise<ChatRoom> {
+    const room = this.memChatRooms.get(id);
+    if (!room) throw new Error("Room not found");
+    const updated = { ...room, ...patch, updatedAt: new Date() };
+    this.memChatRooms.set(id, updated);
+    return updated;
+  }
+
+  async getChatRoomMember(roomId: string, userId: string): Promise<ChatRoomMember | undefined> {
+    return Array.from(this.memChatMembers.values()).find((m) => m.roomId === roomId && m.userId === userId);
+  }
+
+  async joinChatRoom(roomId: string, userId: string, role = "member"): Promise<ChatRoomMember> {
+    const existing = await this.getChatRoomMember(roomId, userId);
+    if (existing) return { ...existing, status: "active" };
+    const id = genId();
+    const m = { id, roomId, userId, role, status: "active", joinedAt: new Date() } as ChatRoomMember;
+    this.memChatMembers.set(id, m);
+    return m;
+  }
+
+  async leaveChatRoom(roomId: string, userId: string): Promise<void> {
+    for (const [id, m] of Array.from(this.memChatMembers.entries())) {
+      if (m.roomId === roomId && m.userId === userId) this.memChatMembers.delete(id);
+    }
+  }
+
+  async getChatRoomMembers(roomId: string) {
+    const members = Array.from(this.memChatMembers.values()).filter(
+      (m) => m.roomId === roomId && m.status === "active",
+    );
+    return members
+      .map((m) => ({ ...m, user: this.users.get(m.userId)! }))
+      .filter((x) => x.user);
+  }
+
+  async setChatRoomMemberRole(roomId: string, userId: string, role: string): Promise<ChatRoomMember> {
+    const m = await this.getChatRoomMember(roomId, userId);
+    if (!m) throw new Error("Member not found");
+    const updated = { ...m, role };
+    this.memChatMembers.set(m.id, updated);
+    return updated;
+  }
+
+  async banChatRoomMember(roomId: string, userId: string): Promise<void> {
+    const m = await this.getChatRoomMember(roomId, userId);
+    if (m) this.memChatMembers.set(m.id, { ...m, status: "banned" });
+  }
+
+  async createChatRoomInvite(roomId: string, createdBy: string, opts?: { expiresAt?: Date; maxUses?: number }) {
+    const token = genId();
+    const id = genId();
+    const row = {
+      id,
+      roomId,
+      token,
+      createdBy,
+      expiresAt: opts?.expiresAt ?? null,
+      maxUses: opts?.maxUses ?? null,
+      useCount: 0,
+      createdAt: new Date(),
+    } as ChatRoomInvite;
+    this.memChatInvites.set(id, row);
+    return { ...row, inviteUrl: `/chat/join/${token}` };
+  }
+
+  async joinChatRoomByToken(token: string, userId: string): Promise<ChatRoom> {
+    const invite = Array.from(this.memChatInvites.values()).find((i) => i.token === token);
+    if (!invite) throw new Error("Invalid invite");
+    const room = this.memChatRooms.get(invite.roomId);
+    if (!room) throw new Error("Room not found");
+    await this.joinChatRoom(room.id, userId);
+    return room;
+  }
+
+  async getChatMessage(messageId: string): Promise<ChatMessage | undefined> {
+    return this.chatMessages.get(messageId);
+  }
+
+  async updateChatMessage(messageId: string, content: string): Promise<ChatMessage | undefined> {
+    const msg = this.chatMessages.get(messageId);
+    if (!msg) return undefined;
+    const updated = { ...msg, content, updatedAt: new Date() };
+    this.chatMessages.set(messageId, updated);
+    return updated;
+  }
+
+  async getChatMessageLikeMeta(messageIds: string[], viewerId: string) {
+    const out: Record<string, { likeCount: number; likedByMe: boolean }> = {};
+    for (const id of messageIds) {
+      const likes = Array.from(this.memChatLikes).filter((k) => k.startsWith(`${id}:`));
+      out[id] = {
+        likeCount: likes.length,
+        likedByMe: this.memChatLikes.has(`${id}:${viewerId}`),
+      };
+    }
+    return out;
+  }
+
+  async toggleChatMessageLike(messageId: string, userId: string) {
+    const key = `${messageId}:${userId}`;
+    if (this.memChatLikes.has(key)) this.memChatLikes.delete(key);
+    else this.memChatLikes.add(key);
+    const meta = await this.getChatMessageLikeMeta([messageId], userId);
+    return meta[messageId] ?? { likeCount: 0, likedByMe: false };
+  }
+
+  async pinChatMessage(roomId: string, messageId: string, _pinnedBy: string): Promise<void> {
+    this.memPinnedMessages.set(`${roomId}:${messageId}`, { roomId, messageId });
+  }
+
+  async unpinChatMessage(roomId: string, messageId: string): Promise<void> {
+    this.memPinnedMessages.delete(`${roomId}:${messageId}`);
+  }
+
+  async getPinnedMessageIds(roomId: string): Promise<string[]> {
+    return Array.from(this.memPinnedMessages.values())
+      .filter((p) => p.roomId === roomId)
+      .map((p) => p.messageId);
+  }
+
+  async deleteChatMessage(messageId: string): Promise<void> {
+    this.chatMessages.delete(messageId);
+    for (const key of Array.from(this.memChatLikes)) {
+      if (key.startsWith(`${messageId}:`)) this.memChatLikes.delete(key);
+    }
+  }
+
+  async getPrivateMessage(messageId: string): Promise<PrivateMessage | undefined> {
+    return this.privateMessages.get(messageId);
+  }
+
+  async updatePrivateMessage(messageId: string, content: string): Promise<PrivateMessage | undefined> {
+    const msg = this.privateMessages.get(messageId);
+    if (!msg) return undefined;
+    const updated = { ...msg, content, updatedAt: new Date() };
+    this.privateMessages.set(messageId, updated);
+    return updated;
+  }
+
+  async deletePrivateMessage(messageId: string): Promise<void> {
+    this.privateMessages.delete(messageId);
+    for (const key of Array.from(this.memPrivateLikes)) {
+      if (key.startsWith(`${messageId}:`)) this.memPrivateLikes.delete(key);
+    }
+  }
+
+  async getPrivateMessageLikeMeta(messageIds: string[], viewerId: string) {
+    const out: Record<string, { likeCount: number; likedByMe: boolean }> = {};
+    for (const id of messageIds) {
+      const likes = Array.from(this.memPrivateLikes).filter((k) => k.startsWith(`${id}:`));
+      out[id] = {
+        likeCount: likes.length,
+        likedByMe: this.memPrivateLikes.has(`${id}:${viewerId}`),
+      };
+    }
+    return out;
+  }
+
+  async togglePrivateMessageLike(messageId: string, userId: string) {
+    const key = `${messageId}:${userId}`;
+    if (this.memPrivateLikes.has(key)) this.memPrivateLikes.delete(key);
+    else this.memPrivateLikes.add(key);
+    const meta = await this.getPrivateMessageLikeMeta([messageId], userId);
+    return meta[messageId] ?? { likeCount: 0, likedByMe: false };
+  }
+
+  async createNotification(data: {
+    userId: string;
+    type: string;
+    title: string;
+    body: string;
+    link?: string | null;
+    actorId?: string | null;
+    entityId?: string | null;
+  }): Promise<import("@shared/schema").NotificationRow> {
+    const id = genId();
+    const row = {
+      id,
+      userId: data.userId,
+      type: data.type,
+      title: data.title,
+      body: data.body,
+      link: data.link ?? null,
+      actorId: data.actorId ?? null,
+      entityId: data.entityId ?? null,
+      isRead: false,
+      createdAt: new Date(),
+    } as import("@shared/schema").NotificationRow;
+    this.memNotifications.set(id, row);
+    return row;
+  }
+
+  async getNotifications(userId: string, limit = 50) {
+    return Array.from(this.memNotifications.values())
+      .filter((n) => n.userId === userId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
       .slice(0, limit);
+  }
+
+  async getUnreadNotificationCount(userId: string) {
+    return Array.from(this.memNotifications.values()).filter(
+      (n) => n.userId === userId && !n.isRead,
+    ).length;
+  }
+
+  async markNotificationRead(userId: string, id: string) {
+    const n = this.memNotifications.get(id);
+    if (n && n.userId === userId) this.memNotifications.set(id, { ...n, isRead: true });
+  }
+
+  async markAllNotificationsRead(userId: string) {
+    for (const [id, n] of Array.from(this.memNotifications.entries())) {
+      if (n.userId === userId) this.memNotifications.set(id, { ...n, isRead: true });
+    }
+  }
+
+  async upsertPushSubscription(
+    userId: string,
+    sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+  ) {
+    this.memPushSubs.set(sub.endpoint, {
+      userId,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth,
+    });
+  }
+
+  async getPushSubscriptionsForUser(userId: string) {
+    return Array.from(this.memPushSubs.values()).filter((s) => s.userId === userId);
+  }
+
+  async deletePushSubscription(endpoint: string) {
+    this.memPushSubs.delete(endpoint);
   }
 
   async getPostLikesCount(postId: string): Promise<number> {
@@ -1226,6 +1712,8 @@ export class MemStorage implements IStorage {
 }
 
 export async function initAppStorage(): Promise<void> {
+  const { setNotificationStorage } = await import("./notification-service");
+  setNotificationStorage(storage);
   try {
     if (storage instanceof PgStorage) {
       await storage.ensureSchema();

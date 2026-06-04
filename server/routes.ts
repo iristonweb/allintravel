@@ -15,6 +15,8 @@ import {
   insertFriendshipSchema,
   insertUserFollowSchema,
   insertPrivateMessageSchema,
+  updateChatMessageSchema,
+  updatePrivateMessageSchema,
   insertTravelPostSchema,
   insertPostLikeSchema,
   insertPostCommentSchema,
@@ -23,8 +25,26 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { validateUsername } from "@shared/username";
+import { updatePrivacySettingsSchema } from "@shared/privacy";
+import { isTravelDirectionId } from "@shared/travel-directions";
 import { toPublicUser, toSelfUser } from "./user-utils";
-import { canAccessChatRoom, userCanManageTrip } from "./security";
+import { userCanManageTrip } from "./security";
+import { resolveChatRoomAccess, ensureMemberForPost } from "./chat-access";
+import {
+  canViewProfile,
+  canSendDm,
+  canSendFriendRequest,
+  canSeeOnlineStatus,
+} from "./privacy-helpers";
+import {
+  notifyFriendRequest,
+  notifyFriendAccepted,
+  notifyNewMessage,
+  notifyTripJoin,
+  notifyEventRegistration,
+  notifyGroupJoin,
+} from "./notification-service";
+import { registerUserSocket, unregisterUserSocket } from "./realtime-hub";
 
 const updateUserMeSchema = z.object({
   displayName: z.string().max(64).nullable().optional(),
@@ -302,6 +322,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/users/by-username/:username", async (req, res) => {
+    try {
+      const parsed = validateUsername(req.params.username);
+      if (!parsed.ok) return res.status(400).json({ message: parsed.message });
+      const user = await storage.getUserByUsername(parsed.value);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const viewerId = req.isAuthenticated() ? (req.user as SessionUser).claims.sub : undefined;
+      const settings = await storage.getPrivacySettings(user.id);
+      const isFriend = viewerId ? await storage.areFriends(viewerId, user.id) : false;
+      if (!canViewProfile(settings, viewerId, user.id, isFriend)) {
+        return res.status(403).json({ message: "Profile is private" });
+      }
+      if (viewerId === user.id) return res.json(toSelfUser(user));
+      const presence = await storage.getPresence(user.id);
+      const showOnline = canSeeOnlineStatus(settings, viewerId, user.id, isFriend);
+      res.json({
+        ...toPublicUser(user),
+        isOnline: showOnline ? presence?.isOnline ?? false : undefined,
+        lastSeenAt: showOnline && settings.showLastSeen ? presence?.lastSeenAt : undefined,
+        isFriend,
+      });
+    } catch (error) {
+      console.error("Error fetching user by username:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   app.get('/api/users/:id', async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
@@ -311,10 +358,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (viewerId === user.id) {
         return res.json(toSelfUser(user));
       }
+      const settings = await storage.getPrivacySettings(user.id);
+      const isFriend = viewerId ? await storage.areFriends(viewerId, user.id) : false;
+      if (!canViewProfile(settings, viewerId, user.id, isFriend)) {
+        return res.status(403).json({ message: "Profile is private" });
+      }
       res.json(toPublicUser(user));
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.get("/api/settings/privacy", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.getPrivacySettings(userId);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching privacy settings:", error);
+      res.status(500).json({ message: "Failed to fetch privacy settings" });
+    }
+  });
+
+  app.put("/api/settings/privacy", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = updatePrivacySettingsSchema.parse(req.body);
+      const settings = await storage.updatePrivacySettings(userId, body);
+      res.json(settings);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid privacy settings", errors: error.errors });
+      }
+      console.error("Error updating privacy settings:", error);
+      res.status(500).json({ message: "Failed to update privacy settings" });
+    }
+  });
+
+  app.post("/api/presence/heartbeat", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const isOnline = req.body?.isOnline !== false;
+      const presence = await storage.touchPresence(userId, isOnline);
+      res.json(presence);
+    } catch (error) {
+      console.error("Error updating presence:", error);
+      res.status(500).json({ message: "Failed to update presence" });
     }
   });
 
@@ -649,7 +739,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/trips/:id/join', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const trip = await storage.getTrip(req.params.id);
       const participant = await storage.joinTrip(req.params.id, userId);
+      if (trip) {
+        const joiner = await storage.getUser(userId);
+        if (joiner) void notifyTripJoin(trip.userId, joiner, trip.id, trip.title);
+      }
       res.status(201).json(participant);
     } catch (error) {
       console.error("Error joining trip:", error);
@@ -720,6 +815,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.getEvent(req.params.id);
       if (!event) return res.status(404).json({ message: "Event not found" });
       const registration = await storage.registerForEvent(req.params.id, userId);
+      const registrant = await storage.getUser(userId);
+      if (registrant) {
+        void notifyEventRegistration(event.organizerId, registrant, event.id, event.title);
+      }
       res.status(201).json(registration);
     } catch (error) {
       console.error("Error registering for event:", error);
@@ -775,28 +874,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const [receivedRequests, conversations] = await Promise.all([
+      const [receivedRequests, conversations, dbItems, unreadNotifs] = await Promise.all([
         storage.getFriendRequests(userId, "received"),
         storage.getConversations(userId),
+        storage.getNotifications(userId, 40),
+        storage.getUnreadNotificationCount(userId),
       ]);
       const unreadMessages = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
       res.json({
         friendRequests: receivedRequests.length,
         unreadMessages,
-        items: [
-          ...receivedRequests.map((r) => ({
-            type: "friend_request" as const,
-            id: r.id,
-            message: "Новый запрос в друзья",
-          })),
-          ...conversations
-            .filter((c) => c.unreadCount > 0)
-            .map((c) => ({
-              type: "message" as const,
-              id: c.user.id,
-              message: `Непрочитанных: ${c.unreadCount} от ${c.user.firstName || "пользователя"}`,
-            })),
-        ],
+        totalUnread: unreadNotifs + receivedRequests.length + unreadMessages,
+        items: dbItems.map((n) => ({
+          id: n.id,
+          userId: n.userId,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          link: n.link,
+          actorId: n.actorId,
+          entityId: n.entityId,
+          isRead: n.isRead,
+          createdAt: n.createdAt?.toISOString() ?? null,
+        })),
       });
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -804,28 +904,303 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markNotificationRead(userId, req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error marking notification read:", error);
+      res.status(500).json({ message: "Failed to update notification" });
+    }
+  });
+
+  app.put("/api/notifications/read-all", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsRead(userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error marking all read:", error);
+      res.status(500).json({ message: "Failed to update notifications" });
+    }
+  });
+
+  const createRoomSchema = z.object({
+    title: z.string().min(1).max(120),
+    description: z.string().max(2000).optional(),
+    avatarUrl: z.string().max(500).optional(),
+    visibility: z.enum(["public", "private"]),
+    slug: z.string().max(100).optional(),
+  });
+
+  const isRoomAdmin = async (roomId: string, userId: string) => {
+    const m = await storage.getChatRoomMember(roomId, userId);
+    return m?.status === "active" && (m.role === "admin" || m.role === "owner");
+  };
+
+  app.get("/api/chat/rooms", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.ensureLegacyChatRooms();
+      const rooms = await storage.listChatRoomsForUser(userId);
+      res.json(rooms);
+    } catch (error) {
+      console.error("Error listing chat rooms:", error);
+      res.status(500).json({ message: "Failed to list rooms" });
+    }
+  });
+
+  app.post("/api/chat/rooms", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = createRoomSchema.parse(req.body);
+      const room = await storage.createChatRoom({
+        title: body.title,
+        description: body.description,
+        avatarUrl: body.avatarUrl,
+        visibility: body.visibility,
+        ...(body.slug ? { slug: body.slug } : {}),
+        createdBy: userId,
+      });
+      res.status(201).json(room);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid room data", errors: error.errors });
+      }
+      console.error("Error creating chat room:", error);
+      res.status(500).json({ message: "Failed to create room" });
+    }
+  });
+
+  app.get("/api/chat/rooms/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const room = await storage.getChatRoom(req.params.id);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      const access = await resolveChatRoomAccess(storage, room.slug, userId);
+      if (!access.allowed) return res.status(403).json({ message: access.reason });
+      const members = await storage.getChatRoomMembers(room.id);
+      const pinnedIds = await storage.getPinnedMessageIds(room.id);
+      res.json({ ...room, memberCount: members.length, members, pinnedMessageIds: pinnedIds, myRole: (await storage.getChatRoomMember(room.id, userId))?.role ?? null });
+    } catch (error) {
+      console.error("Error fetching chat room:", error);
+      res.status(500).json({ message: "Failed to fetch room" });
+    }
+  });
+
+  app.patch("/api/chat/rooms/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await isRoomAdmin(req.params.id, userId))) {
+        return res.status(403).json({ message: "Admin only" });
+      }
+      const patch = createRoomSchema.partial().parse(req.body);
+      const room = await storage.updateChatRoom(req.params.id, patch);
+      res.json(room);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating room:", error);
+      res.status(500).json({ message: "Failed to update room" });
+    }
+  });
+
+  app.post("/api/chat/rooms/:id/join", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const room = await storage.getChatRoom(req.params.id);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      if (room.visibility === "private") {
+        return res.status(403).json({ message: "Use invite link for private rooms" });
+      }
+      const member = await storage.joinChatRoom(room.id, userId);
+      res.json(member);
+    } catch (error) {
+      console.error("Error joining room:", error);
+      res.status(500).json({ message: "Failed to join room" });
+    }
+  });
+
+  app.post("/api/chat/rooms/:id/leave", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.leaveChatRoom(req.params.id, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error leaving room:", error);
+      res.status(500).json({ message: "Failed to leave room" });
+    }
+  });
+
+  app.post("/api/chat/rooms/:id/invite", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await isRoomAdmin(req.params.id, userId))) {
+        return res.status(403).json({ message: "Admin only" });
+      }
+      const invite = await storage.createChatRoomInvite(req.params.id, userId);
+      res.status(201).json(invite);
+    } catch (error) {
+      console.error("Error creating invite:", error);
+      res.status(500).json({ message: "Failed to create invite" });
+    }
+  });
+
+  app.post("/api/chat/join/:token", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const room = await storage.joinChatRoomByToken(req.params.token, userId);
+      const joiner = await storage.getUser(userId);
+      if (joiner) {
+        const members = await storage.getChatRoomMembers(room.id);
+        const adminIds = members
+          .filter((m) => m.role === "owner" || m.role === "admin")
+          .map((m) => m.userId);
+        void notifyGroupJoin(adminIds, joiner, room.title, room.slug);
+      }
+      res.json(room);
+    } catch (error) {
+      console.error("Error joining by token:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to join" });
+    }
+  });
+
+  app.get("/api/chat/rooms/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const room = await storage.getChatRoom(req.params.id);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      const access = await resolveChatRoomAccess(storage, room.slug, userId);
+      if (!access.allowed) return res.status(403).json({ message: access.reason });
+      const members = await storage.getChatRoomMembers(room.id);
+      res.json(members.map((m) => ({ ...m, user: toPublicUser(m.user) })));
+    } catch (error) {
+      console.error("Error listing members:", error);
+      res.status(500).json({ message: "Failed to list members" });
+    }
+  });
+
+  const canManageChatMessage = async (roomId: string, messageId: string, userId: string) => {
+    const msg = await storage.getChatMessage(messageId);
+    if (!msg) return { ok: false as const, status: 404, message: "Message not found" };
+    if (msg.userId === userId) return { ok: true as const, msg };
+    if (await isRoomAdmin(roomId, userId)) return { ok: true as const, msg };
+    return { ok: false as const, status: 403, message: "Forbidden" };
+  };
+
+  app.post("/api/chat/rooms/:roomId/messages/:messageId/pin", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
+      await storage.pinChatMessage(req.params.roomId, req.params.messageId, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error pinning message:", error);
+      res.status(500).json({ message: "Failed to pin" });
+    }
+  });
+
+  app.delete("/api/chat/rooms/:roomId/messages/:messageId/pin", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
+      await storage.unpinChatMessage(req.params.roomId, req.params.messageId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error unpinning message:", error);
+      res.status(500).json({ message: "Failed to unpin" });
+    }
+  });
+
+  app.delete("/api/chat/rooms/:roomId/messages/:messageId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
+      if (!access.ok) return res.status(access.status).json({ message: access.message });
+      await storage.deleteChatMessage(req.params.messageId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      res.status(500).json({ message: "Failed to delete" });
+    }
+  });
+
+  app.patch("/api/chat/rooms/:roomId/messages/:messageId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getChatMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      if (msg.userId !== userId) return res.status(403).json({ message: "Only author can edit" });
+      const { content } = updateChatMessageSchema.parse(req.body);
+      const updated = await storage.updateChatMessage(req.params.messageId, content);
+      const sender = await storage.getUser(userId);
+      const likeMeta = await storage.getChatMessageLikeMeta([req.params.messageId], userId);
+      const meta = likeMeta[req.params.messageId] ?? { likeCount: 0, likedByMe: false };
+      res.json({
+        ...updated,
+        ...meta,
+        sender: sender ? toPublicUser(sender) : null,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid content", errors: error.errors });
+      }
+      console.error("Error editing message:", error);
+      res.status(500).json({ message: "Failed to edit" });
+    }
+  });
+
+  app.post("/api/chat/rooms/:roomId/messages/:messageId/like", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getChatMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      const meta = await storage.toggleChatMessageLike(req.params.messageId, userId);
+      res.json(meta);
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      res.status(500).json({ message: "Failed to toggle like" });
+    }
+  });
+
   // Chat routes (HTTP fallback for Vercel — WebSocket is not available on serverless)
-  const enrichChatMessages = async (messages: Awaited<ReturnType<typeof storage.getChatMessages>>) =>
-    Promise.all(
+  const enrichChatMessages = async (
+    messages: Awaited<ReturnType<typeof storage.getChatMessages>>,
+    viewerId: string,
+  ) => {
+    const ids = messages.map((m) => m.id).filter(Boolean) as string[];
+    const likeMeta = await storage.getChatMessageLikeMeta(ids, viewerId);
+    return Promise.all(
       messages.map(async (msg) => {
         const sender = msg.userId ? await storage.getUser(msg.userId) : null;
+        const meta = likeMeta[msg.id] ?? { likeCount: 0, likedByMe: false };
         return {
           ...msg,
+          ...meta,
           sender: sender ? toPublicUser(sender) : null,
         };
       }),
     );
+  };
 
   app.get("/api/chat/:room", isAuthenticated, async (req: any, res) => {
     try {
       const { room } = req.params;
-      if (!canAccessChatRoom(room)) {
-        return res.status(403).json({ message: "Forbidden" });
+      const userId = req.user.claims.sub;
+      await storage.ensureLegacyChatRooms();
+      const access = await resolveChatRoomAccess(storage, room, userId);
+      if (!access.allowed) {
+        return res.status(403).json({ message: access.reason });
       }
       const { limit = 50 } = req.query;
       const messages = await storage.getChatMessages(room, Number(limit));
-      const withSenders = await enrichChatMessages(messages);
-      res.json(withSenders.reverse());
+      const withSenders = await enrichChatMessages(messages, userId);
+      const pinnedIds = access.room ? await storage.getPinnedMessageIds(access.room.id) : [];
+      res.json({ messages: withSenders, pinnedMessageIds: pinnedIds, room: access.room });
     } catch (error) {
       console.error("Error fetching chat messages:", error);
       res.status(500).json({ message: "Failed to fetch chat messages" });
@@ -835,10 +1210,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat/:room", isAuthenticated, async (req: any, res) => {
     try {
       const { room } = req.params;
-      if (!canAccessChatRoom(room)) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
       const userId = req.user.claims.sub;
+      await storage.ensureLegacyChatRooms();
+      const access = await resolveChatRoomAccess(storage, room, userId);
+      if (!access.allowed) {
+        return res.status(403).json({ message: access.reason });
+      }
+      if (!access.canPost) {
+        return res.status(403).json({ message: "Cannot post in this room" });
+      }
+      await ensureMemberForPost(storage, access.room, userId);
       const content = String(req.body?.content ?? "").trim();
       if (!content) {
         return res.status(400).json({ message: "Content is required" });
@@ -925,6 +1306,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/profile/:userId', async (req, res) => {
     try {
       const userId = req.params.userId;
+      const viewerId = req.isAuthenticated() ? (req.user as SessionUser).claims.sub : undefined;
+      const settings = await storage.getPrivacySettings(userId);
+      const isFriend = viewerId ? await storage.areFriends(viewerId, userId) : false;
+      if (!canViewProfile(settings, viewerId, userId, isFriend)) {
+        return res.status(403).json({ message: "Profile is private" });
+      }
       const profile = await storage.getUserProfile(userId);
       if (!profile) {
         return res.json({
@@ -932,7 +1319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bio: null,
           location: null,
           travelStyle: null,
-          isPublic: true,
+          isPublic: !settings.isPrivateAccount,
           createdAt: null,
           updatedAt: null,
         });
@@ -979,7 +1366,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const requesterId = req.user.claims.sub;
       const addresseeId = req.params.userId;
-      const friendship = await storage.sendFriendRequest(requesterId, addresseeId);
+      const targetSettings = await storage.getPrivacySettings(addresseeId);
+      const isFriend = await storage.areFriends(requesterId, addresseeId);
+      if (!canSendFriendRequest(targetSettings, requesterId, addresseeId, isFriend)) {
+        return res.status(403).json({ message: "User does not accept friend requests" });
+      }
+      const direction =
+        typeof req.body?.direction === "string" && isTravelDirectionId(req.body.direction)
+          ? req.body.direction
+          : undefined;
+      const friendship = await storage.sendFriendRequest(requesterId, addresseeId, direction);
+      const requester = await storage.getUser(requesterId);
+      if (requester) {
+        void notifyFriendRequest(storage, addresseeId, requester, friendship.id);
+      }
       res.status(201).json(friendship);
     } catch (error) {
       console.error("Error sending friend request:", error);
@@ -1001,7 +1401,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existing.status !== "pending") {
         return res.status(400).json({ message: "Request already handled" });
       }
-      const friendship = await storage.respondToFriendRequest(req.params.friendshipId, status);
+      const direction =
+        typeof req.body?.direction === "string" && isTravelDirectionId(req.body.direction)
+          ? req.body.direction
+          : undefined;
+      const friendship = await storage.respondToFriendRequest(req.params.friendshipId, status, direction);
+      if (status === "accepted") {
+        const accepter = await storage.getUser(userId);
+        if (accepter) {
+          void notifyFriendAccepted(storage, friendship.requesterId, accepter, friendship.id);
+        }
+      }
       res.json(friendship);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1015,7 +1425,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/friends', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const friends = await storage.getFriends(userId);
+      const direction =
+        typeof req.query.direction === "string" && isTravelDirectionId(req.query.direction)
+          ? req.query.direction
+          : undefined;
+      const friends = await storage.getFriends(userId, direction);
       res.json(friends.map(toPublicUser));
     } catch (error) {
       console.error("Error fetching friends:", error);
@@ -1101,7 +1515,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const senderId = req.user.claims.sub;
       const messageData = insertPrivateMessageSchema.parse({ ...req.body, senderId });
+      const receiverId = messageData.receiverId;
+      if (!receiverId) return res.status(400).json({ message: "receiverId required" });
+      const targetSettings = await storage.getPrivacySettings(receiverId);
+      const isFriend = await storage.areFriends(senderId, receiverId);
+      if (!canSendDm(targetSettings, senderId, receiverId, isFriend)) {
+        return res.status(403).json({ message: "User does not accept messages from you" });
+      }
       const message = await storage.sendPrivateMessage(messageData);
+      const sender = await storage.getUser(senderId);
+      if (sender) {
+        void notifyNewMessage(receiverId, sender, message.content);
+      }
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1118,10 +1543,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const otherUserId = req.params.userId;
       const { limit = 50 } = req.query;
       const messages = await storage.getPrivateMessages(currentUserId, otherUserId, Number(limit));
-      res.json(messages.reverse());
+      const ids = messages.map((m) => m.id).filter(Boolean) as string[];
+      const likeMeta = await storage.getPrivateMessageLikeMeta(ids, currentUserId);
+      res.json(
+        messages.map((m) => ({
+          ...m,
+          ...(likeMeta[m.id] ?? { likeCount: 0, likedByMe: false }),
+        })),
+      );
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.patch('/api/messages/:messageId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getPrivateMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      if (msg.senderId !== userId) return res.status(403).json({ message: "Only author can edit" });
+      const { content } = updatePrivateMessageSchema.parse(req.body);
+      const updated = await storage.updatePrivateMessage(req.params.messageId, content);
+      const likeMeta = await storage.getPrivateMessageLikeMeta([req.params.messageId], userId);
+      res.json({
+        ...updated,
+        ...(likeMeta[req.params.messageId] ?? { likeCount: 0, likedByMe: false }),
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid content", errors: error.errors });
+      }
+      console.error("Error editing private message:", error);
+      res.status(500).json({ message: "Failed to edit" });
+    }
+  });
+
+  app.delete('/api/messages/:messageId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getPrivateMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      if (msg.senderId !== userId) return res.status(403).json({ message: "Only author can delete" });
+      await storage.deletePrivateMessage(req.params.messageId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting private message:", error);
+      res.status(500).json({ message: "Failed to delete" });
+    }
+  });
+
+  app.post('/api/messages/:messageId/like', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const msg = await storage.getPrivateMessage(req.params.messageId);
+      if (!msg) return res.status(404).json({ message: "Message not found" });
+      const meta = await storage.togglePrivateMessageLike(req.params.messageId, userId);
+      res.json(meta);
+    } catch (error) {
+      console.error("Error toggling private like:", error);
+      res.status(500).json({ message: "Failed to toggle like" });
     }
   });
 
@@ -1364,11 +1845,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Search routes
   app.get('/api/search/users', async (req, res) => {
     try {
-      const { q, limit = 20 } = req.query;
+      const { q, limit = 20, exact, direction, travelStyle } = req.query;
       if (!q) {
         return res.status(400).json({ message: "Search query is required" });
       }
-      const users = await storage.searchUsers(q as string, Number(limit));
+      const viewerId = req.isAuthenticated() ? (req.user as SessionUser).claims.sub : undefined;
+      const users = await storage.searchUsers(q as string, Number(limit), {
+        viewerId,
+        exact: exact === "1" || exact === "true",
+        direction:
+          typeof direction === "string" && isTravelDirectionId(direction) ? direction : undefined,
+        travelStyle: typeof travelStyle === "string" ? travelStyle : undefined,
+      });
       res.json(users.map(toPublicUser));
     } catch (error) {
       console.error("Error searching users:", error);
@@ -1403,6 +1891,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     runSession(() => {
       const user = (req as Request).user as SessionUser | undefined;
       authenticatedUserId = user?.claims?.sub ?? null;
+      if (authenticatedUserId) {
+        registerUserSocket(authenticatedUserId, ws);
+        storage.touchPresence(authenticatedUserId, true).catch(() => {});
+      }
+    });
+
+    ws.on('close', () => {
+      if (authenticatedUserId) {
+        unregisterUserSocket(authenticatedUserId, ws);
+        storage.touchPresence(authenticatedUserId, false).catch(() => {});
+      }
     });
 
     ws.on('message', async (message: string) => {
@@ -1416,10 +1915,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return;
           }
           const chatRoom = String(data.chatRoom ?? "");
-          if (!canAccessChatRoom(chatRoom)) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Forbidden chat room' }));
+          await storage.ensureLegacyChatRooms();
+          const access = await resolveChatRoomAccess(storage, chatRoom, userId);
+          if (!access.allowed) {
+            ws.send(JSON.stringify({ type: 'error', message: access.reason }));
             return;
           }
+          if (!access.canPost) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Cannot post' }));
+            return;
+          }
+          await ensureMemberForPost(storage, access.room, userId);
           const messageData = insertChatMessageSchema.parse({
             userId,
             content: data.content,
@@ -1427,6 +1933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           const savedMessage = await storage.createChatMessage(messageData);
+          if (userId) await storage.touchPresence(userId, true);
           const sender = await storage.getUser(savedMessage.userId);
 
           wss.clients.forEach((client) => {
@@ -1448,9 +1955,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
 
-    ws.on('close', () => {
-      console.log('Client disconnected from WebSocket');
-    });
   });
   }
 

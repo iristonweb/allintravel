@@ -63,6 +63,7 @@ export default function AddStopSearch({
         scope="full"
         limit={12}
         debounceMs={280}
+        dropdownPortal
       />
 
       {canAddGeo && (

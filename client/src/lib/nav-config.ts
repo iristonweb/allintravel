@@ -19,8 +19,6 @@ export const sidebarPrimaryNav: NavItem[] = [
   { href: "/", label: "Главная" },
   { href: "/map", label: "Карта" },
   { href: "/trips", label: "Поездки" },
-  { href: "/social-feed", label: "Сообщество" },
-  { href: "/friends", label: "Друзья" },
   { href: "/messages", label: "Сообщения" },
   { href: "/profile", label: "Профиль" },
 ];
@@ -30,13 +28,12 @@ export const sidebarDiscoverNav: NavItem[] = [
   { href: "/places", label: "Места" },
   { href: "/events", label: "События" },
   { href: "/blog", label: "Блог" },
+  { href: "/social-feed", label: "Сообщество" },
+  { href: "/chat", label: "Комнаты" },
 ];
 
 /** Sidebar: доп. инструменты */
-export const sidebarExtraNav: NavItem[] = [
-  { href: "/wallet", label: "Кошелёк" },
-  { href: "/chat", label: "Комнаты" },
-];
+export const sidebarExtraNav: NavItem[] = [];
 
 /** Полное меню для мобильного drawer в шапке (< md, когда сайдбар скрыт) */
 export const authenticatedMenuNav: NavItem[] = [
@@ -73,13 +70,10 @@ export const mobileMainNav: NavItem[] = [
 ];
 
 export const mobileEcosystemNav: NavItem[] = [
-  { href: "/social-feed", label: "Сообщество" },
-  { href: "/friends", label: "Друзья" },
   { href: "/places", label: "Места" },
   { href: "/events", label: "События" },
-  { href: "/blog", label: "Блог" },
+  { href: "/social-feed", label: "Сообщество" },
   { href: "/chat", label: "Комнаты" },
-  { href: "/wallet", label: "Кошелёк" },
   { href: "/profile", label: "Профиль" },
 ];
 

@@ -165,6 +165,7 @@ export function Events() {
                   placeholder="Место проведения"
                   value={newEvent.location}
                   onChange={(v) => setNewEvent({ ...newEvent, location: v })}
+                  dropdownPortal
                 />
                 <Input
                   type="datetime-local"

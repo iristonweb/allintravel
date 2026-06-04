@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
+import { TRAVEL_DIRECTIONS } from "@shared/travel-directions";
+import type { TravelDirectionId } from "@shared/travel-directions";
 import AppLayout from "@/components/app-layout";
 import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +23,15 @@ export function Friends() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const searchString = useSearch();
+  const urlDirection = new URLSearchParams(searchString).get("direction") as TravelDirectionId | null;
+  const [friendDirection, setFriendDirection] = useState<TravelDirectionId | "">(urlDirection ?? "");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [discoverDirection, setDiscoverDirection] = useState<TravelDirectionId | "">(urlDirection ?? "");
 
   const { data: friends = [] } = useQuery<User[]>({
-    queryKey: ["/api/friends"],
+    queryKey: ["/api/friends", friendDirection ? { direction: friendDirection } : {}],
     enabled: isAuthenticated,
   });
 
@@ -40,7 +46,13 @@ export function Friends() {
   });
 
   const { data: searchResults = [], isLoading: isSearching } = useQuery<User[]>({
-    queryKey: ["/api/search/users", { q: activeSearch }],
+    queryKey: [
+      "/api/search/users",
+      {
+        q: activeSearch,
+        ...(discoverDirection ? { direction: discoverDirection } : {}),
+      },
+    ],
     enabled: !!activeSearch && activeSearch.length > 1,
   });
 
@@ -94,7 +106,11 @@ export function Friends() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto">
-        <PageHeader title="Друзья" description="Управляйте друзьями и находите новых попутчиков" />
+        <PageHeader
+          title="Друзья"
+          description="Управляйте друзьями и находите попутчиков по направлению"
+          backHref="/profile"
+        />
 
           <Tabs defaultValue="friends" className="w-full mt-8">
             <TabsList className="grid w-full grid-cols-4">
@@ -117,6 +133,25 @@ export function Friends() {
 
             {/* Friends tab */}
             <TabsContent value="friends" className="space-y-4 mt-4">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant={friendDirection === "" ? "default" : "outline"}
+                  onClick={() => setFriendDirection("")}
+                >
+                  Все
+                </Button>
+                {TRAVEL_DIRECTIONS.map((d) => (
+                  <Button
+                    key={d.id}
+                    size="sm"
+                    variant={friendDirection === d.id ? "default" : "outline"}
+                    onClick={() => setFriendDirection(d.id)}
+                  >
+                    {d.label}
+                  </Button>
+                ))}
+              </div>
               {friends.length === 0 ? (
                 <Card>
                   <CardContent className="py-10 text-center">
@@ -170,6 +205,26 @@ export function Friends() {
 
             {/* Search tab */}
             <TabsContent value="search" className="space-y-4 mt-4">
+              <div className="flex flex-wrap gap-2">
+                <span className="text-sm text-muted-foreground w-full">Направление:</span>
+                <Button
+                  size="sm"
+                  variant={discoverDirection === "" ? "default" : "outline"}
+                  onClick={() => setDiscoverDirection("")}
+                >
+                  Любое
+                </Button>
+                {TRAVEL_DIRECTIONS.map((d) => (
+                  <Button
+                    key={d.id}
+                    size="sm"
+                    variant={discoverDirection === d.id ? "default" : "outline"}
+                    onClick={() => setDiscoverDirection(d.id)}
+                  >
+                    {d.label}
+                  </Button>
+                ))}
+              </div>
               <Card>
                 <CardHeader>
                   <CardTitle>Поиск пользователей</CardTitle>
@@ -214,7 +269,15 @@ export function Friends() {
                                   <AvatarFallback>{getUserInitial(result)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <h3 className="font-semibold">{getUserDisplayLabel(result)}</h3>
+                                  {result.username ? (
+                                    <Link href={`/u/${result.username}`}>
+                                      <h3 className="font-semibold hover:underline">
+                                        {getUserDisplayLabel(result)}
+                                      </h3>
+                                    </Link>
+                                  ) : (
+                                    <h3 className="font-semibold">{getUserDisplayLabel(result)}</h3>
+                                  )}
                                   {getUserHandle(result) && (
                                     <p className="text-sm text-ait-purple">{getUserHandle(result)}</p>
                                   )}

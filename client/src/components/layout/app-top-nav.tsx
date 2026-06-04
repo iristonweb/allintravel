@@ -19,7 +19,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { ru } from "date-fns/locale";
+import type { AppNotification } from "@shared/notification-types";
 import { apiRequest } from "@/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrandLogo from "@/components/brand/brand-logo";
@@ -59,18 +63,35 @@ export default function AppTopNav() {
   const [location] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const queryClient = useQueryClient();
+
   const { data: notifications } = useQuery<{
     friendRequests: number;
     unreadMessages: number;
+    totalUnread?: number;
+    items: AppNotification[];
   }>({
     queryKey: ["/api/notifications"],
     enabled: isAuthenticated,
-    refetchInterval: 60000,
+    refetchInterval: 5000,
   });
 
-  const notifCount = (notifications?.friendRequests ?? 0) + (notifications?.unreadMessages ?? 0);
+  const unreadItems = (notifications?.items ?? []).filter((n) => !n.isRead);
+  const notifCount =
+    notifications?.totalUnread ??
+    unreadItems.length + (notifications?.friendRequests ?? 0) + (notifications?.unreadMessages ?? 0);
   const friendRequestCount = notifications?.friendRequests ?? 0;
   const unreadMessageCount = notifications?.unreadMessages ?? 0;
+
+  const markReadAndGo = async (item: AppNotification) => {
+    try {
+      await apiRequest("PUT", `/api/notifications/${item.id}/read`);
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    } catch {
+      /* ignore */
+    }
+    if (item.link) window.location.href = item.link;
+  };
 
   const logout = async () => {
     await apiRequest("POST", "/api/logout");
@@ -168,8 +189,28 @@ export default function AppTopNav() {
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="ait-glass-strong border-white/10 min-w-[220px]">
-              <Link href="/friends">
+            <DropdownMenuContent align="end" className="ait-glass-strong border-white/10 min-w-[300px] max-h-[70vh] overflow-y-auto">
+              {unreadItems.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-muted-foreground">Нет новых уведомлений</p>
+              ) : (
+                unreadItems.slice(0, 12).map((item) => (
+                  <DropdownMenuItem
+                    key={item.id}
+                    className="cursor-pointer flex flex-col items-start gap-0.5 py-2"
+                    onClick={() => void markReadAndGo(item)}
+                  >
+                    <span className="font-medium text-sm">{item.title}</span>
+                    <span className="text-xs text-muted-foreground line-clamp-2">{item.body}</span>
+                    {item.createdAt && (
+                      <span className="text-[10px] text-muted-foreground/80">
+                        {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: ru })}
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuSeparator className="bg-white/10" />
+              <Link href="/profile/friends">
                 <DropdownMenuItem className="cursor-pointer">
                   Заявки в друзья
                   {friendRequestCount > 0 && (
@@ -179,15 +220,11 @@ export default function AppTopNav() {
               </Link>
               <Link href="/messages">
                 <DropdownMenuItem className="cursor-pointer">
-                  Непрочитанные сообщения
+                  Сообщения
                   {unreadMessageCount > 0 && (
                     <span className="ml-auto text-xs font-bold text-ait-orange">{unreadMessageCount}</span>
                   )}
                 </DropdownMenuItem>
-              </Link>
-              <DropdownMenuSeparator className="bg-white/10" />
-              <Link href="/messages">
-                <DropdownMenuItem className="cursor-pointer">Все чаты</DropdownMenuItem>
               </Link>
             </DropdownMenuContent>
           </DropdownMenu>

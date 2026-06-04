@@ -1,6 +1,6 @@
 import type { IStorage } from "./storage";
 
-/** Public group chat rooms (must match client CHAT_ROOMS ids). */
+/** @deprecated Legacy slugs — rooms live in chat_rooms table */
 export const PUBLIC_CHAT_ROOMS = new Set([
   "general",
   "europe",
@@ -9,6 +9,13 @@ export const PUBLIC_CHAT_ROOMS = new Set([
   "tips",
   "iceland-2024",
 ]);
+
+/** Sync check for legacy code paths; prefer resolveChatRoomAccess */
+export function canAccessChatRoom(room: string): boolean {
+  const normalized = room.trim().slice(0, 100);
+  if (!normalized || normalized.includes("..")) return false;
+  return PUBLIC_CHAT_ROOMS.has(normalized);
+}
 
 export function isProductionEnv(): boolean {
   return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
@@ -25,12 +32,6 @@ export function resolveSessionSecret(): string {
     return secret;
   }
   return secret || "dev-secret-change-in-production";
-}
-
-export function canAccessChatRoom(room: string): boolean {
-  const normalized = room.trim().slice(0, 100);
-  if (!normalized || normalized.includes("..")) return false;
-  return PUBLIC_CHAT_ROOMS.has(normalized);
 }
 
 export async function userCanManageTrip(
