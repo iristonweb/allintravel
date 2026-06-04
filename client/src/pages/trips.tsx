@@ -29,10 +29,26 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Search, MapPin, Filter } from "lucide-react";
+import { Plus, Search, MapPin } from "lucide-react";
+import StatPill from "@/components/brand/stat-pill";
+import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTripSchema, type Trip } from "@shared/schema";
+
+function destinationKeywords(destination: string): string[] {
+  const full = destination.trim().toLowerCase();
+  const city = full.split(",")[0]?.trim() ?? full;
+  return Array.from(new Set([full, city].filter(Boolean)));
+}
+
+function tripMatchesSearch(trip: Trip, query: string): boolean {
+  const q = query.toLowerCase();
+  if (trip.title.toLowerCase().includes(q)) return true;
+  return destinationKeywords(trip.destination).some((kw) =>
+    kw.includes(q) || q.includes(kw),
+  );
+}
 
 const createTripSchema = insertTripSchema
   .omit({ userId: true })
@@ -116,11 +132,8 @@ export function Trips() {
     createMutation.mutate(data);
   };
 
-  const filtered = trips.filter(t =>
-    !search ||
-    t.title.toLowerCase().includes(search.toLowerCase()) ||
-    t.destination.toLowerCase().includes(search.toLowerCase())
-  );
+  const q = search.trim();
+  const filtered = trips.filter((t) => !q || tripMatchesSearch(t, q));
 
   return (
     <AppLayout>
@@ -130,17 +143,17 @@ export function Trips() {
         rightSlot={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
+              <Button variant="premium">
                 <Plus className="mr-2 h-4 w-4" />
                 Создать поездку
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg ait-glass-strong ait-gradient-border border-white/10">
               <DialogHeader>
                 <DialogTitle>Новая поездка</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                   <FormField
                     control={form.control}
                     name="title"
@@ -222,7 +235,7 @@ export function Trips() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
                       name="maxParticipants"
@@ -275,7 +288,8 @@ export function Trips() {
                     </Button>
                     <Button
                       type="submit"
-                      className="flex-1 bg-primary hover:bg-primary/90"
+                      variant="premium"
+                      className="flex-1"
                       disabled={createMutation.isPending}
                     >
                       {createMutation.isPending ? "Создание..." : "Создать поездку"}
@@ -288,37 +302,52 @@ export function Trips() {
         }
       />
 
-      <div className="flex gap-3 mb-8 mt-8">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="mb-6 mt-8 max-w-xl">
+        <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Поиск по направлению или названию..."
-            className="pl-9"
+            className="pl-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <MapPin className="h-8 w-8 text-primary" />
-              <div>
-                <p className="font-semibold">{trips.length} поездок</p>
-                <p className="text-sm text-muted-foreground">доступно прямо сейчас</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-accent/5 border-accent/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Filter className="h-8 w-8 text-accent" />
-              <div>
-                <p className="font-semibold">Найди своих</p>
-                <p className="text-sm text-muted-foreground">присоединяйся к группе</p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex flex-wrap gap-3 mb-6">
+          <StatPill
+            value={
+              q
+                ? `${filtered.length} из ${trips.length}`
+                : String(trips.length)
+            }
+            label={q ? "найдено по запросу" : "поездок доступно"}
+          />
+          {q && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-2xl ait-glass border border-white/10",
+                "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors",
+              )}
+            >
+              Сбросить «{q}»
+            </button>
+          )}
+          {!q && trips.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-2xl ait-glass border border-primary/20",
+                "px-4 py-3 text-sm font-medium text-primary hover:bg-primary/10 transition-colors",
+              )}
+            >
+              <Plus className="h-4 w-4" />
+              Создать группу
+            </button>
+          )}
         </div>
 
         {isLoading ? (
@@ -330,14 +359,14 @@ export function Trips() {
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={MapPin}
-            title={search ? "Поездки не найдены" : "Пока нет поездок"}
+            title={q ? "Поездки не найдены" : "Пока нет поездок"}
             description={
-              search
-                ? "Попробуйте другой запрос или создайте свою поездку"
+              q
+                ? `По запросу «${q}» ничего не найдено среди ${trips.length} поездок. Попробуйте другой город или создайте свою поездку.`
                 : "Будьте первым — создайте поездку и найдите попутчиков!"
             }
             action={
-              <Button className="bg-primary hover:bg-primary/90" onClick={() => setOpen(true)}>
+              <Button variant="premium" onClick={() => setOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Создать поездку
               </Button>
@@ -345,16 +374,20 @@ export function Trips() {
           />
         ) : (
           <>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm text-muted-foreground">
-                Найдено: {filtered.length}
-              </span>
-              {search && (
-                <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearch("")}>
-                  {search} ✕
+            {q && (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm text-muted-foreground">
+                  Найдено: {filtered.length}
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="cursor-pointer"
+                  onClick={() => setSearch("")}
+                >
+                  {q} ✕
                 </Badge>
-              )}
-            </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filtered.map(trip => (
                 <TravelCompanionCard

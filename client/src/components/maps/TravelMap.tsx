@@ -12,6 +12,7 @@ type TravelMapProps = {
   showDemoMarkers?: boolean;
   onPlaceClick?: (place: TravelMapPlace) => void;
   mapFocus?: MapFocus | null;
+  showDestinationPin?: boolean;
   routeGeometry?: [number, number][];
 };
 

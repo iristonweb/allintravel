@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import AppLayout from "@/components/app-layout";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import MessageComposer from "@/components/chat/MessageComposer";
+import MessageContent from "@/components/chat/MessageContent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -146,11 +147,12 @@ export function Chat() {
   const allMessages = [...history, ...currentWsMessages];
   const canSend = useHttpMode ? !postMessage.isPending : wsConnected;
 
-  const handleSend = async () => {
-    if (!messageText.trim() || !canSend) return;
+  const handleSend = async (contentOverride?: string) => {
+    const body = (contentOverride ?? messageText).trim();
+    if (!body || !canSend) return;
 
     if (useHttpMode) {
-      await postMessage.mutateAsync(messageText.trim());
+      await postMessage.mutateAsync(body);
       setMessageText("");
       return;
     }
@@ -164,7 +166,7 @@ export function Chat() {
       JSON.stringify({
         type: "chat_message",
         userId: user?.id,
-        content: messageText.trim(),
+        content: body,
         chatRoom: activeRoom,
       }),
     );
@@ -339,7 +341,7 @@ export function Chat() {
                                 : "ait-chat-bubble-other rounded-tl-md",
                             )}
                           >
-                            {msg.content}
+                            <MessageContent content={msg.content} />
                           </div>
                           <span className="text-[10px] text-muted-foreground px-1">
                             {msg.createdAt
@@ -358,19 +360,14 @@ export function Chat() {
             </ScrollArea>
 
             <div className="p-4 border-t border-white/10">
-              <div className="flex gap-2">
-                <Input
+              <div className="flex gap-2 items-center">
+                <MessageComposer
                   value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
+                  onChange={setMessageText}
+                  onSend={handleSend}
                   placeholder={canSend ? "Сообщение…" : "Подключение…"}
                   disabled={!canSend}
-                  className="ait-input-glass flex-1 border-0 bg-transparent"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSend();
-                    }
-                  }}
+                  className="flex-1"
                 />
                 <Button
                   variant="premium"

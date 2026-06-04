@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { loadYandexMaps } from "@/lib/yandexMapsLoader";
 import type { MapPlace } from "@/components/PlaceMap";
 import PlaceMap from "@/components/PlaceMap";
+import type { MapFocus } from "@/components/maps/MapboxMap";
 import { cn } from "@/lib/utils";
 
 export type YandexPlace = MapPlace;
@@ -12,8 +13,40 @@ type YandexMapProps = {
   height?: string;
   showRoute?: boolean;
   showDemoMarkers?: boolean;
+  mapFocus?: MapFocus | null;
+  showDestinationPin?: boolean;
   onPlaceClick?: (place: YandexPlace) => void;
 };
+
+function resolveInitialView(
+  mapFocus: MapFocus | null | undefined,
+  validPlaces: YandexPlace[],
+  showDemoMarkers?: boolean,
+): { center: [number, number]; zoom: number } {
+  if (
+    mapFocus &&
+    Number.isFinite(mapFocus.lat) &&
+    Number.isFinite(mapFocus.lon)
+  ) {
+    return {
+      center: [mapFocus.lat, mapFocus.lon],
+      zoom: mapFocus.zoom ?? 10,
+    };
+  }
+  if (validPlaces.length > 0) {
+    return {
+      center: [
+        Number(validPlaces[0].latitude),
+        Number(validPlaces[0].longitude),
+      ],
+      zoom: validPlaces.length === 1 ? 10 : 4,
+    };
+  }
+  if (showDemoMarkers) {
+    return { center: [30, 10], zoom: 2 };
+  }
+  return { center: [30, 10], zoom: 4 };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type YMap = any;
@@ -59,12 +92,15 @@ export default function YandexMap({
   height = "100%",
   showRoute,
   showDemoMarkers,
+  mapFocus,
+  showDestinationPin,
   onPlaceClick,
 }: YandexMapProps) {
   const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY as string | undefined;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<YMap | null>(null);
   const dynamicObjectsRef = useRef<YMap[]>([]);
+  const demoRoutesRef = useRef<YMap[]>([]);
 
   const validPlaces = places.filter((p) => {
     const lat = Number(p.latitude);
@@ -82,16 +118,17 @@ export default function YandexMap({
         if (destroyed || !containerRef.current || !window.ymaps) return;
 
         const ymaps = window.ymaps;
-        const center: [number, number] =
-          validPlaces.length > 0
-            ? [Number(validPlaces[0].latitude), Number(validPlaces[0].longitude)]
-            : [30, 10];
+        const { center, zoom } = resolveInitialView(
+          mapFocus,
+          validPlaces,
+          showDemoMarkers,
+        );
 
         const map = new ymaps.Map(
           containerRef.current,
           {
             center,
-            zoom: validPlaces.length === 1 ? 10 : 2,
+            zoom,
             controls: ["zoomControl", "fullscreenControl"],
             type: "yandex#satellite",
           },
@@ -102,26 +139,13 @@ export default function YandexMap({
         );
 
         mapRef.current = map;
-
-        DEMO_ROUTES.forEach((coords, i) => {
-          const line = new ymaps.Polyline(
-            coords,
-            {},
-            {
-              strokeColor: i === 0 ? "#8B5CF6" : "#FF7A18",
-              strokeWidth: 3,
-              strokeOpacity: 0.75,
-              strokeStyle: "shortdash",
-            },
-          );
-          map.geoObjects.add(line);
-        });
       })
       .catch((err) => console.error("Yandex Maps init error:", err));
 
     return () => {
       destroyed = true;
       dynamicObjectsRef.current = [];
+      demoRoutesRef.current = [];
       try {
         mapRef.current?.destroy?.();
       } catch {
@@ -133,8 +157,42 @@ export default function YandexMap({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || !mapFocus) return;
+    const { lat, lon, zoom = 10 } = mapFocus;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    map.setCenter([lat, lon], zoom, { duration: 300 });
+  }, [mapFocus, apiKey]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     const ymaps = window.ymaps;
     if (!map || !ymaps || !apiKey) return;
+
+    demoRoutesRef.current.forEach((obj) => {
+      try {
+        map.geoObjects.remove(obj);
+      } catch {
+        /* ignore */
+      }
+    });
+    demoRoutesRef.current = [];
+
+    if (showDemoMarkers) {
+      DEMO_ROUTES.forEach((coords, i) => {
+        const line = new ymaps.Polyline(
+          coords,
+          {},
+          {
+            strokeColor: i === 0 ? "#8B5CF6" : "#FF7A18",
+            strokeWidth: 3,
+            strokeOpacity: 0.75,
+            strokeStyle: "shortdash",
+          },
+        );
+        map.geoObjects.add(line);
+        demoRoutesRef.current.push(line);
+      });
+    }
 
     dynamicObjectsRef.current.forEach((obj) => {
       try {
@@ -182,6 +240,26 @@ export default function YandexMap({
       DEMO_MARKERS.forEach((m) => addPlacemark(m.lat, m.lon, m.label, m.variant));
     }
 
+    if (
+      showDestinationPin &&
+      mapFocus &&
+      Number.isFinite(mapFocus.lat) &&
+      Number.isFinite(mapFocus.lon)
+    ) {
+      const focusPlacemark = new ymaps.Placemark(
+        [mapFocus.lat, mapFocus.lon],
+        {
+          balloonContentHeader: mapFocus.label ?? "Направление",
+          hintContent: mapFocus.label ?? "Выбранное место",
+        },
+        {
+          preset: "islands#violetDotIcon",
+        },
+      );
+      map.geoObjects.add(focusPlacemark);
+      dynamicObjectsRef.current.push(focusPlacemark);
+    }
+
     validPlaces.forEach((place, index) => {
       const lat = Number(place.latitude);
       const lon = Number(place.longitude);
@@ -204,15 +282,40 @@ export default function YandexMap({
       dynamicObjectsRef.current.push(polyline);
     }
 
-    if (validPlaces.length > 1 && map.geoObjects.getBounds) {
+    if (
+      mapFocus &&
+      Number.isFinite(mapFocus.lat) &&
+      Number.isFinite(mapFocus.lon)
+    ) {
+      map.setCenter(
+        [mapFocus.lat, mapFocus.lon],
+        mapFocus.zoom ?? 10,
+        { duration: 300 },
+      );
+    } else if (validPlaces.length > 1 && map.geoObjects.getBounds) {
       const bounds = map.geoObjects.getBounds();
       if (bounds) {
         map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 50 });
       }
+    } else if (validPlaces.length === 1) {
+      const p = validPlaces[0];
+      map.setCenter(
+        [Number(p.latitude), Number(p.longitude)],
+        10,
+        { duration: 300 },
+      );
     } else if (showDemoMarkers && validPlaces.length === 0) {
       map.setCenter([30, 10], 2);
     }
-  }, [validPlaces, showRoute, showDemoMarkers, onPlaceClick, apiKey]);
+  }, [
+    validPlaces,
+    showRoute,
+    showDemoMarkers,
+    mapFocus,
+    showDestinationPin,
+    onPlaceClick,
+    apiKey,
+  ]);
 
   if (!apiKey) {
     return (

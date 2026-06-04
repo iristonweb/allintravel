@@ -215,7 +215,7 @@ export class PgStorage implements IStorage {
 
   async ensureAdminUsers(): Promise<void> {
     const { getAdminEmails } = await import("./admin");
-    for (const email of getAdminEmails()) {
+    for (const email of Array.from(getAdminEmails())) {
       const user = await this.getUserByEmail(email);
       if (user && !user.isAdmin) {
         await this.setUserAdmin(user.id, true);
@@ -730,10 +730,12 @@ export class PgStorage implements IStorage {
     userId?: string;
     following?: string;
     tag?: string;
+    publicOnly?: boolean;
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]> {
     const conditions = [];
+    if (filters?.publicOnly) conditions.push(eq(travelPosts.isPublic, true));
     if (filters?.userId) conditions.push(eq(travelPosts.userId, filters.userId));
     if (filters?.following) {
       const followingRows = await this.db

@@ -135,6 +135,7 @@ export interface IStorage {
     userId?: string;
     following?: string;
     tag?: string;
+    publicOnly?: boolean;
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]>;
@@ -516,7 +517,7 @@ export class MemStorage implements IStorage {
 
   async ensureAdminUsers(): Promise<void> {
     const { getAdminEmails } = await import("./admin");
-    for (const email of getAdminEmails()) {
+    for (const email of Array.from(getAdminEmails())) {
       const user = await this.getUserByEmail(email);
       if (user && !user.isAdmin) {
         await this.setUserAdmin(user.id, true);
@@ -1038,10 +1039,14 @@ export class MemStorage implements IStorage {
     userId?: string;
     following?: string;
     tag?: string;
+    publicOnly?: boolean;
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]> {
     let results = Array.from(this.travelPosts.values());
+    if (filters?.publicOnly) {
+      results = results.filter((p) => p.isPublic !== false);
+    }
     if (filters?.userId) {
       results = results.filter(p => p.userId === filters.userId);
     }

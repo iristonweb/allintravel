@@ -225,10 +225,10 @@ function mapPlacesFromPlaces(places: Place[]): MapPlace[] {
       id: p.id,
       name: p.name,
       type: p.type ?? undefined,
-      latitude: p.latitude,
-      longitude: p.longitude,
-      averageRating: p.averageRating,
-      priceRange: p.priceRange,
+      latitude: Number(p.latitude),
+      longitude: Number(p.longitude),
+      averageRating: p.averageRating != null ? Number(p.averageRating) : undefined,
+      priceRange: p.priceRange ?? undefined,
       address: p.address,
     }));
 }

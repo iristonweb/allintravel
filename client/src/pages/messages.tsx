@@ -4,7 +4,8 @@ import { useLocation } from "wouter";
 import AppLayout from "@/components/app-layout";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import MessageComposer from "@/components/chat/MessageComposer";
+import MessageContent from "@/components/chat/MessageContent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -86,12 +87,13 @@ export function Messages() {
     },
   });
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+  const handleSendMessage = (contentOverride?: string) => {
+    const content = (contentOverride ?? newMessage).trim();
+    if (!content || !selectedConversation) return;
 
     sendMessageMutation.mutate({
       receiverId: selectedConversation.user.id,
-      content: newMessage,
+      content,
     });
   };
 
@@ -265,7 +267,7 @@ export function Messages() {
                                     : "ait-chat-bubble-other rounded-tl-md",
                                 )}
                               >
-                                <p>{message.content}</p>
+                                <MessageContent content={message.content} />
                                 <p
                                   className={cn(
                                     "text-[10px] mt-1",
@@ -282,23 +284,19 @@ export function Messages() {
                     </ScrollArea>
 
                     <div className="border-t border-white/10 p-4 mt-auto">
-                      <div className="flex gap-2">
-                        <Input
+                      <div className="flex gap-2 items-center">
+                        <MessageComposer
                           value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
+                          onChange={setNewMessage}
+                          onSend={handleSendMessage}
                           placeholder="Введите сообщение..."
-                          className="ait-input-glass border-0"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault();
-                              handleSendMessage();
-                            }
-                          }}
+                          disabled={sendMessageMutation.isPending}
+                          className="flex-1"
                         />
                         <Button
                           variant="premium"
                           size="icon"
-                          onClick={handleSendMessage}
+                          onClick={() => handleSendMessage()}
                           disabled={!newMessage.trim() || sendMessageMutation.isPending}
                           className="rounded-2xl shrink-0"
                         >

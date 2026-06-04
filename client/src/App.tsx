@@ -22,6 +22,7 @@ import { Chat } from "@/pages/chat";
 import { Places } from "@/pages/places";
 import MapPage from "@/pages/map";
 import Blog from "@/pages/blog";
+import BlogPostPage from "@/pages/blog-post";
 import { Wallet } from "@/pages/wallet";
 import NotFound from "@/pages/not-found";
 import PremiumBackground from "@/components/premium/PremiumBackground";
@@ -74,6 +75,7 @@ function Router() {
           {isAuthenticated && <Route path="/" component={Home} />}
           {isAuthenticated && <Route path="/map" component={MapPage} />}
           {isAuthenticated && <Route path="/blog" component={Blog} />}
+          {isAuthenticated && <Route path="/blog/:id" component={BlogPostPage} />}
           {isAuthenticated && <Route path="/place/:id" component={PlaceDetails} />}
           {isAuthenticated && <Route path="/places" component={Places} />}
           {isAuthenticated && <Route path="/profile" component={Profile} />}

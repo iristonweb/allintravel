@@ -88,7 +88,7 @@ function apiPostToDemo(post: TravelPostWithAuthor): DemoCommunityPost {
     authorAvatar: post.author?.profileImageUrl ?? "https://i.pravatar.cc/120?img=1",
     location: post.location ?? "В пути",
     imageUrl:
-      post.imageUrl ??
+      post.images?.[0] ??
       "https://images.unsplash.com/photo-1469854523086-cc02afe5c88?w=1200&q=85",
     excerpt: post.content?.slice(0, 160) ?? post.title ?? "",
     likesCount: post.likesCount ?? 0,

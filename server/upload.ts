@@ -44,10 +44,15 @@ function createUploadMiddleware() {
 
   return multer({
     storage: diskStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      if (file.mimetype.startsWith("image/")) cb(null, true);
-      else cb(new Error("Only images allowed"));
+      const ok =
+        file.mimetype.startsWith("image/") ||
+        file.mimetype === "video/mp4" ||
+        file.mimetype === "video/webm" ||
+        file.mimetype === "video/quicktime";
+      if (ok) cb(null, true);
+      else cb(new Error("Only images and videos (mp4, webm) allowed"));
     },
   });
 }

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export type MapboxPlace = MapPlace;
 
-export type MapFocus = { lat: number; lon: number; zoom?: number };
+export type MapFocus = { lat: number; lon: number; zoom?: number; label?: string };
 
 type MapboxMapProps = {
   places?: MapboxPlace[];
@@ -16,6 +16,7 @@ type MapboxMapProps = {
   showDemoMarkers?: boolean;
   onPlaceClick?: (place: MapboxPlace) => void;
   mapFocus?: MapFocus | null;
+  showDestinationPin?: boolean;
   /** Road geometry from Yandex Router [lng, lat] */
   routeGeometry?: [number, number][];
 };
@@ -59,6 +60,7 @@ export default function MapboxMap({
   showDemoMarkers,
   onPlaceClick,
   mapFocus,
+  showDestinationPin,
   routeGeometry,
 }: MapboxMapProps) {
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
@@ -156,6 +158,25 @@ export default function MapboxMap({
       });
     }
 
+    if (
+      showDestinationPin &&
+      mapFocus &&
+      Number.isFinite(mapFocus.lat) &&
+      Number.isFinite(mapFocus.lon)
+    ) {
+      const el = createMarkerElement("●", "purple");
+      const label = mapFocus.label ?? "Направление";
+      const popup = new mapboxgl.Popup({ offset: 20, closeButton: false }).setHTML(
+        `<div style="padding:6px 2px;font-weight:600">${label}</div>`,
+      );
+      markers.push(
+        new mapboxgl.Marker({ element: el })
+          .setLngLat([mapFocus.lon, mapFocus.lat])
+          .setPopup(popup)
+          .addTo(map),
+      );
+    }
+
     validPlaces.forEach((place, index) => {
       const lat = Number(place.latitude);
       const lng = Number(place.longitude);
@@ -213,7 +234,7 @@ export default function MapboxMap({
     }
 
     return () => markers.forEach((m) => m.remove());
-  }, [validPlaces, ready, onPlaceClick, showRoute, showDemoMarkers, token, routeGeometry]);
+  }, [validPlaces, ready, onPlaceClick, showRoute, showDemoMarkers, token, routeGeometry, mapFocus, showDestinationPin]);
 
   useEffect(() => {
     const map = mapRef.current;

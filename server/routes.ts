@@ -977,12 +977,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/posts', async (req: any, res) => {
     try {
-      const { userId, following, tag, limit = 20, offset = 0 } = req.query;
+      const { userId, following, tag, public: publicFilter, limit = 20, offset = 0 } = req.query;
       const currentUserId: string | null = req.user?.claims?.sub || null;
       const posts = await storage.getTravelPosts({
         userId: userId as string,
         following: following as string,
         tag: tag as string,
+        publicOnly: publicFilter === "1" || publicFilter === "true",
         limit: Number(limit),
         offset: Number(offset),
       });
@@ -1006,13 +1007,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts/:id', async (req, res) => {
+  app.get('/api/posts/:id', async (req: any, res) => {
     try {
       const post = await storage.getTravelPost(req.params.id);
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
-      res.json(post);
+      const currentUserId: string | null = req.user?.claims?.sub || null;
+      if (!post.isPublic && post.userId !== currentUserId) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      const author = post.userId ? await storage.getUser(post.userId) : null;
+      res.json({
+        ...post,
+        author: author
+          ? {
+              id: author.id,
+              firstName: author.firstName,
+              lastName: author.lastName,
+              profileImageUrl: author.profileImageUrl,
+            }
+          : null,
+      });
     } catch (error) {
       console.error("Error fetching post:", error);
       res.status(500).json({ message: "Failed to fetch post" });

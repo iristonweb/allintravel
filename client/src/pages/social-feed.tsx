@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { feedModeFromQuery, filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -8,7 +8,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Heart, MessageCircle, Share2, MapPin, Plus, Compass, Send, Bookmark, Film, BookMarked, Sparkles } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  MapPin,
+  Plus,
+  Compass,
+  Send,
+  Bookmark,
+  Film,
+  BookMarked,
+  Sparkles,
+  ImagePlus,
+  Loader2,
+  X,
+} from "lucide-react";
 import GlassCard from "@/components/brand/glass-card";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +35,9 @@ import type { TravelPostWithAuthor } from "@shared/schema";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import PostComments from "@/components/social/PostComments";
 import { shareUrl } from "@/lib/share";
+import { uploadMediaFile, isVideoUrl } from "@/lib/upload-media";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
@@ -53,7 +71,10 @@ export function SocialFeed() {
     tags: [] as string[],
     tagInput: "",
     isPublic: true,
+    images: [] as string[],
   });
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
@@ -69,12 +90,26 @@ export function SocialFeed() {
   const displayedPosts = useMemo(() => filterPostsForFeedMode(posts, feedMode), [posts, feedMode]);
 
   const createPostMutation = useMutation({
-    mutationFn: (postData: { title: string; content: string; location: string; tags: string[]; isPublic: boolean }) =>
-      apiRequest("POST", "/api/posts", postData),
+    mutationFn: (postData: {
+      title: string;
+      content: string;
+      location: string;
+      tags: string[];
+      isPublic: boolean;
+      images?: string[];
+    }) => apiRequest("POST", "/api/posts", postData),
     onSuccess: () => {
       toast({ title: "Пост опубликован!" });
       setIsCreating(false);
-      setNewPost({ title: "", content: "", location: "", tags: [], tagInput: "", isPublic: true });
+      setNewPost({
+        title: "",
+        content: "",
+        location: "",
+        tags: [],
+        tagInput: "",
+        isPublic: true,
+        images: [],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error: Error) => {
@@ -124,8 +159,29 @@ export function SocialFeed() {
       toast({ title: "Заполните заголовок и текст поста", variant: "destructive" });
       return;
     }
-    const { tagInput, ...postData } = newPost;
-    createPostMutation.mutate(postData);
+    const { tagInput, images, ...postData } = newPost;
+    createPostMutation.mutate({
+      ...postData,
+      images: images.length > 0 ? images : undefined,
+    });
+  };
+
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length) return;
+    setUploadingMedia(true);
+    try {
+      const urls: string[] = [];
+      for (const file of files) {
+        urls.push(await uploadMediaFile(file));
+      }
+      setNewPost((prev) => ({ ...prev, images: [...prev.images, ...urls] }));
+    } catch {
+      toast({ title: "Не удалось загрузить файл", variant: "destructive" });
+    } finally {
+      setUploadingMedia(false);
+    }
   };
 
   const handleAddTag = () => {
@@ -280,6 +336,67 @@ export function SocialFeed() {
                           ))}
                         </div>
                       )}
+                      <input
+                        ref={mediaInputRef}
+                        type="file"
+                        accept="image/*,video/mp4,video/webm"
+                        multiple
+                        className="hidden"
+                        onChange={handleMediaSelect}
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={uploadingMedia}
+                          onClick={() => mediaInputRef.current?.click()}
+                        >
+                          {uploadingMedia ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <ImagePlus className="h-4 w-4 mr-1" />
+                          )}
+                          Фото / видео
+                        </Button>
+                        <div className="flex items-center gap-2 ml-auto">
+                          <Switch
+                            id="post-public"
+                            checked={newPost.isPublic}
+                            onCheckedChange={(checked) =>
+                              setNewPost((prev) => ({ ...prev, isPublic: checked }))
+                            }
+                          />
+                          <Label htmlFor="post-public" className="text-sm text-muted-foreground">
+                            Публично (в блоге)
+                          </Label>
+                        </div>
+                      </div>
+                      {newPost.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {newPost.images.map((url) => (
+                            <div key={url} className="relative">
+                              {isVideoUrl(url) ? (
+                                <video src={url} className="h-20 w-28 rounded-lg object-cover" muted />
+                              ) : (
+                                <img src={url} alt="" className="h-20 w-28 rounded-lg object-cover" />
+                              )}
+                              <button
+                                type="button"
+                                className="absolute -top-1 -right-1 rounded-full bg-destructive text-white p-0.5"
+                                onClick={() =>
+                                  setNewPost((prev) => ({
+                                    ...prev,
+                                    images: prev.images.filter((u) => u !== url),
+                                  }))
+                                }
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <Button
                           onClick={handleCreatePost}
@@ -356,11 +473,20 @@ export function SocialFeed() {
 
                     {post.images && post.images.length > 0 ? (
                       <div className="rounded-2xl overflow-hidden mx-1">
-                        <img
-                          src={post.images[0]}
-                          alt={post.title}
-                          className="w-full h-64 md:h-[420px] object-cover"
-                        />
+                        {isVideoUrl(post.images[0]) ? (
+                          <video
+                            src={post.images[0]}
+                            className="w-full h-64 md:h-[420px] object-cover"
+                            controls
+                            playsInline
+                          />
+                        ) : (
+                          <img
+                            src={post.images[0]}
+                            alt={post.title}
+                            className="w-full h-64 md:h-[420px] object-cover"
+                          />
+                        )}
                       </div>
                     ) : (
                       <div

@@ -126,6 +126,8 @@ var init_schema = __esm({
     users = pgTable("users", {
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
       email: varchar("email").unique(),
+      username: varchar("username", { length: 30 }).unique(),
+      displayName: varchar("display_name", { length: 64 }),
       firstName: varchar("first_name"),
       lastName: varchar("last_name"),
       profileImageUrl: varchar("profile_image_url"),
@@ -555,11 +557,363 @@ var init_admin = __esm({
   }
 });
 
-// server/geo/db-autocomplete.ts
-var db_autocomplete_exports = {};
-__export(db_autocomplete_exports, {
-  dbGeoAutocomplete: () => dbGeoAutocomplete
+// shared/username.ts
+function normalizeUsername(raw) {
+  return raw.trim().toLowerCase().replace(/^@/, "");
+}
+function validateUsername(raw) {
+  const value = normalizeUsername(raw);
+  if (value.length < USERNAME_MIN) {
+    return { ok: false, message: `\u041D\u0438\u043A \u0434\u043E\u043B\u0436\u0435\u043D \u0431\u044B\u0442\u044C \u043D\u0435 \u043A\u043E\u0440\u043E\u0447\u0435 ${USERNAME_MIN} \u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432` };
+  }
+  if (value.length > USERNAME_MAX) {
+    return { ok: false, message: `\u041D\u0438\u043A \u043D\u0435 \u0434\u043B\u0438\u043D\u043D\u0435\u0435 ${USERNAME_MAX} \u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432` };
+  }
+  if (!USERNAME_REGEX.test(value)) {
+    return { ok: false, message: "\u0422\u043E\u043B\u044C\u043A\u043E \u043B\u0430\u0442\u0438\u043D\u0438\u0446\u0430 (a\u2013z), \u0446\u0438\u0444\u0440\u044B \u0438 _" };
+  }
+  return { ok: true, value };
+}
+function usernameBaseFromEmail(email) {
+  const local = email.split("@")[0]?.toLowerCase() ?? "user";
+  let base = local.replace(/[^a-z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  if (base.length < USERNAME_MIN) base = `user_${base}`.replace(/_+/g, "_");
+  return base.slice(0, USERNAME_MAX);
+}
+var USERNAME_MIN, USERNAME_MAX, USERNAME_REGEX;
+var init_username = __esm({
+  "shared/username.ts"() {
+    "use strict";
+    USERNAME_MIN = 3;
+    USERNAME_MAX = 30;
+    USERNAME_REGEX = /^[a-z0-9_]{3,30}$/;
+  }
 });
+
+// server/user-utils.ts
+var user_utils_exports = {};
+__export(user_utils_exports, {
+  generateUniqueUsername: () => generateUniqueUsername,
+  toPublicUser: () => toPublicUser,
+  toSelfUser: () => toSelfUser
+});
+function toPublicUser(user) {
+  return {
+    id: user.id,
+    username: user.username ?? null,
+    displayName: user.displayName ?? null,
+    firstName: user.firstName ?? null,
+    lastName: user.lastName ?? null,
+    profileImageUrl: user.profileImageUrl ?? null
+  };
+}
+function toSelfUser(user) {
+  const { passwordHash: _pw, ...rest } = user;
+  return rest;
+}
+async function generateUniqueUsername(storage2, email) {
+  const base = usernameBaseFromEmail(email).slice(0, USERNAME_MAX - 4) || "user";
+  let candidate = base.slice(0, USERNAME_MAX);
+  let n = 0;
+  while (await storage2.getUserByUsername(candidate)) {
+    n += 1;
+    const suffix = String(n);
+    candidate = `${base.slice(0, USERNAME_MAX - suffix.length)}${suffix}`;
+  }
+  return candidate;
+}
+var init_user_utils = __esm({
+  "server/user-utils.ts"() {
+    "use strict";
+    init_username();
+  }
+});
+
+// server/geo/nominatim.ts
+function nowMs() {
+  return Date.now();
+}
+function cacheGet(key) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= nowMs()) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+function cacheSet(key, data, ttlMs) {
+  cache.set(key, { data, expiresAt: nowMs() + ttlMs });
+}
+function allowGeoRequest(key, ratePerSec = 2, burst = 5) {
+  const t = nowMs();
+  const b = buckets.get(key) ?? { tokens: burst, lastRefillMs: t };
+  const elapsedSec = Math.max(0, (t - b.lastRefillMs) / 1e3);
+  const refill = elapsedSec * ratePerSec;
+  b.tokens = Math.min(burst, b.tokens + refill);
+  b.lastRefillMs = t;
+  if (b.tokens < 1) {
+    buckets.set(key, b);
+    return false;
+  }
+  b.tokens -= 1;
+  buckets.set(key, b);
+  return true;
+}
+function pickCity(a) {
+  if (!a) return null;
+  return a.city ?? a.town ?? a.village ?? a.municipality ?? a.state ?? null;
+}
+function toNumberOrNull(v) {
+  if (!v) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+async function nominatimAutocomplete(params) {
+  const q = params.q.trim();
+  const limit = Math.max(1, Math.min(10, Math.floor(params.limit)));
+  const lang = (params.acceptLanguage ?? "").trim();
+  const cacheKey = `nominatim:v1:q=${q.toLowerCase()}:limit=${limit}:lang=${lang.toLowerCase()}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+  const url = new URL(BASE_URL);
+  url.searchParams.set("q", q);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("dedupe", "1");
+  const res = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": USER_AGENT,
+      ...lang ? { "Accept-Language": lang } : {}
+    }
+  });
+  if (!res.ok) {
+    throw new Error(`Nominatim error: ${res.status}`);
+  }
+  const json = await res.json();
+  const items = (Array.isArray(json) ? json : []).map((it) => ({
+    label: it.display_name ?? "",
+    city: pickCity(it.address),
+    country: it.address?.country ?? null,
+    lat: toNumberOrNull(it.lat),
+    lon: toNumberOrNull(it.lon),
+    osmId: typeof it.osm_id === "number" ? it.osm_id : null,
+    osmType: it.osm_type ?? null
+  })).filter((x) => x.label);
+  cacheSet(cacheKey, items, 6 * 60 * 60 * 1e3);
+  return items;
+}
+var BASE_URL, USER_AGENT, cache, buckets;
+var init_nominatim = __esm({
+  "server/geo/nominatim.ts"() {
+    "use strict";
+    BASE_URL = "https://nominatim.openstreetmap.org/search";
+    USER_AGENT = "All-in-travel/1.0 (geocoding autocomplete)";
+    cache = /* @__PURE__ */ new Map();
+    buckets = /* @__PURE__ */ new Map();
+  }
+});
+
+// server/geo/yandex-config.ts
+var yandex_config_exports = {};
+__export(yandex_config_exports, {
+  getYandexGeocoderKey: () => getYandexGeocoderKey,
+  getYandexGeosuggestKey: () => getYandexGeosuggestKey,
+  getYandexRouterKey: () => getYandexRouterKey,
+  isAnyYandexGeoConfigured: () => isAnyYandexGeoConfigured,
+  isYandexGeocoderConfigured: () => isYandexGeocoderConfigured,
+  isYandexGeosuggestConfigured: () => isYandexGeosuggestConfigured,
+  isYandexRouterConfigured: () => isYandexRouterConfigured
+});
+function getYandexGeosuggestKey() {
+  return process.env.YANDEX_GEOSUGGEST_API_KEY?.trim() || LEGACY() || void 0;
+}
+function getYandexGeocoderKey() {
+  return process.env.YANDEX_GEOCODER_API_KEY?.trim() || LEGACY() || void 0;
+}
+function getYandexRouterKey() {
+  return process.env.YANDEX_ROUTER_API_KEY?.trim() || void 0;
+}
+function isYandexGeosuggestConfigured() {
+  return !!getYandexGeosuggestKey();
+}
+function isYandexGeocoderConfigured() {
+  return !!getYandexGeocoderKey();
+}
+function isYandexRouterConfigured() {
+  return !!getYandexRouterKey();
+}
+function isAnyYandexGeoConfigured() {
+  return isYandexGeosuggestConfigured() || isYandexGeocoderConfigured();
+}
+var LEGACY;
+var init_yandex_config = __esm({
+  "server/geo/yandex-config.ts"() {
+    "use strict";
+    LEGACY = () => process.env.YANDEX_GEOCODER_API_KEY?.trim();
+  }
+});
+
+// server/geo/yandex.ts
+var yandex_exports = {};
+__export(yandex_exports, {
+  isAnyYandexGeoConfigured: () => isAnyYandexGeoConfigured,
+  isYandexGeocoderConfigured: () => isYandexGeocoderConfigured,
+  isYandexGeosuggestConfigured: () => isYandexGeosuggestConfigured,
+  yandexAutocomplete: () => yandexAutocomplete,
+  yandexForwardGeocode: () => yandexForwardGeocode
+});
+function cacheGet2(key) {
+  const entry = cache2.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    cache2.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+function cacheSet2(key, data, ttlMs = 1e3 * 60 * 10) {
+  cache2.set(key, { expiresAt: Date.now() + ttlMs, data });
+}
+function parsePos(pos) {
+  if (!pos) return null;
+  const [lonStr, latStr] = pos.trim().split(/\s+/);
+  const lat = Number(latStr);
+  const lon = Number(lonStr);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon };
+}
+function memberToItem(member) {
+  const obj = member?.GeoObject;
+  if (!obj) return null;
+  const meta = obj.metaDataProperty?.GeocoderMetaData;
+  const label = meta?.text || [obj.name, obj.description].filter(Boolean).join(", ");
+  if (!label) return null;
+  const coords = parsePos(obj.Point?.pos);
+  const components = meta?.Address?.Components ?? [];
+  const city = components.find((c) => c.kind === "locality")?.name ?? components.find((c) => c.kind === "area")?.name ?? null;
+  const country = components.find((c) => c.kind === "country")?.name ?? null;
+  return {
+    label,
+    kind: "city",
+    city,
+    country,
+    lat: coords?.lat ?? null,
+    lon: coords?.lon ?? null
+  };
+}
+async function yandexGeocodeSuggest(params) {
+  const apikey = getYandexGeocoderKey();
+  if (!apikey) return [];
+  const { q, limit } = params;
+  const lang = params.lang ?? "ru_RU";
+  const cacheKey = `yandex:geocode:${lang}:${q.toLowerCase()}:${limit}`;
+  const cached = cacheGet2(cacheKey);
+  if (cached) return cached;
+  const url = new URL(GEOCODE_URL);
+  url.searchParams.set("apikey", apikey);
+  url.searchParams.set("geocode", q);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("lang", lang);
+  url.searchParams.set("results", String(limit));
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text2 = await res.text();
+    throw new Error(`Yandex Geocoder ${res.status}: ${text2.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const members = data.response?.GeoObjectCollection?.featureMember ?? [];
+  const items = members.map(memberToItem).filter((x) => !!x);
+  cacheSet2(cacheKey, items);
+  return items;
+}
+async function yandexSuggest(params) {
+  const apikey = getYandexGeosuggestKey();
+  if (!apikey) return [];
+  const { q, limit } = params;
+  const lang = params.lang ?? "ru_RU";
+  const cacheKey = `yandex:suggest:${lang}:${q.toLowerCase()}:${limit}`;
+  const cached = cacheGet2(cacheKey);
+  if (cached) return cached;
+  const url = new URL(SUGGEST_URL);
+  url.searchParams.set("apikey", apikey);
+  url.searchParams.set("text", q);
+  url.searchParams.set("results", String(limit));
+  url.searchParams.set("lang", lang);
+  url.searchParams.set("types", "geo");
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    return yandexGeocodeSuggest(params);
+  }
+  const data = await res.json();
+  const items = [];
+  for (const r of data.results ?? []) {
+    const title = r.title?.text?.trim();
+    if (!title) continue;
+    const subtitle = r.subtitle?.text?.trim();
+    items.push({
+      label: subtitle ? `${title}, ${subtitle}` : title,
+      kind: "city",
+      city: title,
+      country: subtitle ?? null
+    });
+  }
+  if (items.length === 0) {
+    return yandexGeocodeSuggest(params);
+  }
+  if (isYandexGeocoderConfigured()) {
+    const enrich = items.slice(0, Math.min(5, items.length));
+    await Promise.all(
+      enrich.map(async (item) => {
+        if (item.lat != null && item.lon != null) return;
+        const geo = await yandexGeocodeSuggest({ q: item.label, limit: 1, lang });
+        const first = geo[0];
+        if (first?.lat != null && first.lon != null) {
+          item.lat = first.lat;
+          item.lon = first.lon;
+        }
+      })
+    );
+  }
+  cacheSet2(cacheKey, items);
+  return items;
+}
+async function yandexAutocomplete(params) {
+  if (!isAnyYandexGeoConfigured()) return [];
+  const lang = params.acceptLanguage?.toLowerCase().startsWith("en") ? "en_US" : "ru_RU";
+  if (isYandexGeosuggestConfigured()) {
+    try {
+      const items = await yandexSuggest({ q: params.q, limit: params.limit, lang });
+      if (items.length > 0) return items;
+    } catch (e) {
+      console.warn("Yandex geosuggest failed, trying geocoder:", e);
+    }
+  }
+  if (isYandexGeocoderConfigured()) {
+    return yandexGeocodeSuggest({ q: params.q, limit: params.limit, lang });
+  }
+  return [];
+}
+async function yandexForwardGeocode(address, lang = "ru_RU") {
+  const items = await yandexGeocodeSuggest({ q: address, limit: 1, lang });
+  const first = items[0];
+  if (!first || first.lat == null || first.lon == null) return null;
+  return { lat: first.lat, lon: first.lon, label: first.label };
+}
+var GEOCODE_URL, SUGGEST_URL, cache2;
+var init_yandex = __esm({
+  "server/geo/yandex.ts"() {
+    "use strict";
+    init_yandex_config();
+    init_yandex_config();
+    GEOCODE_URL = "https://geocode-maps.yandex.ru/v1/";
+    SUGGEST_URL = "https://suggest-maps.yandex.ru/v1/suggest";
+    cache2 = /* @__PURE__ */ new Map();
+  }
+});
+
+// server/geo/db-autocomplete.ts
 import { and as and2, desc as desc2, eq as eq2, ilike as ilike2, or as or2 } from "drizzle-orm";
 function clampLimit(limit) {
   return Math.max(1, Math.min(10, Math.floor(limit)));
@@ -632,6 +986,187 @@ var init_db_autocomplete = __esm({
   }
 });
 
+// server/geo/resolve-autocomplete.ts
+var resolve_autocomplete_exports = {};
+__export(resolve_autocomplete_exports, {
+  resolveGeoAutocomplete: () => resolveGeoAutocomplete
+});
+function clampLimit2(limit) {
+  return Math.max(1, Math.min(12, Math.floor(limit)));
+}
+function labelKey(item) {
+  return item.label.trim().toLowerCase();
+}
+function mergeUnique(target, incoming, max) {
+  const seen = new Set(target.map(labelKey));
+  for (const item of incoming) {
+    if (target.length >= max) break;
+    const key = labelKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    target.push(item);
+  }
+}
+function dbItemToGeo(item) {
+  if (item.kind === "country") {
+    return {
+      kind: "country",
+      label: item.label,
+      countryCode: item.countryCode,
+      country: item.label
+    };
+  }
+  return {
+    kind: "city",
+    label: item.label,
+    geonameId: item.geonameId,
+    countryCode: item.countryCode,
+    lat: item.lat,
+    lon: item.lon,
+    city: item.city,
+    country: item.country,
+    population: item.population
+  };
+}
+async function resolveGeoAutocomplete(params) {
+  const q = params.q.trim();
+  const limit = clampLimit2(params.limit ?? 8);
+  const scope = params.scope ?? "all";
+  const results = [];
+  if (process.env.DATABASE_URL) {
+    try {
+      const dbItems = await dbGeoAutocomplete({ q, limit, scope });
+      mergeUnique(results, dbItems.map(dbItemToGeo), limit);
+    } catch (e) {
+      console.warn("DB geo autocomplete failed; using external providers.", e);
+    }
+  }
+  const remaining = () => Math.max(0, limit - results.length);
+  if (remaining() > 0 && isAnyYandexGeoConfigured()) {
+    try {
+      const ya = await yandexAutocomplete({
+        q,
+        limit: remaining(),
+        acceptLanguage: params.acceptLanguage ?? null
+      });
+      mergeUnique(results, ya, limit);
+    } catch (e) {
+      console.warn("Yandex autocomplete failed; trying Nominatim.", e);
+    }
+  }
+  if (remaining() > 0) {
+    const nom = await nominatimAutocomplete({
+      q,
+      limit: remaining(),
+      acceptLanguage: params.acceptLanguage ?? null
+    });
+    mergeUnique(results, nom, limit);
+  }
+  return results;
+}
+var init_resolve_autocomplete = __esm({
+  "server/geo/resolve-autocomplete.ts"() {
+    "use strict";
+    init_nominatim();
+    init_yandex_config();
+    init_yandex();
+    init_db_autocomplete();
+  }
+});
+
+// server/geo/yandex-router.ts
+var yandex_router_exports = {};
+__export(yandex_router_exports, {
+  yandexBuildRoute: () => yandexBuildRoute
+});
+function parseGeometry(geometry) {
+  if (!geometry) return [];
+  if (typeof geometry === "string") {
+    return decodePolyline6(geometry);
+  }
+  if (Array.isArray(geometry)) {
+    const out = [];
+    for (const pt of geometry) {
+      if (Array.isArray(pt) && pt.length >= 2) {
+        const a = Number(pt[0]);
+        const b = Number(pt[1]);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+        if (Math.abs(a) <= 90 && Math.abs(b) > 90) {
+          out.push([b, a]);
+        } else {
+          out.push([a, b]);
+        }
+      }
+    }
+    return out;
+  }
+  return [];
+}
+function decodePolyline6(encoded) {
+  const coordinates = [];
+  let index2 = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index2 < encoded.length) {
+    let shift = 0;
+    let result = 0;
+    let byte;
+    do {
+      byte = encoded.charCodeAt(index2++) - 63;
+      result |= (byte & 31) << shift;
+      shift += 5;
+    } while (byte >= 32);
+    const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+    shift = 0;
+    result = 0;
+    do {
+      byte = encoded.charCodeAt(index2++) - 63;
+      result |= (byte & 31) << shift;
+      shift += 5;
+    } while (byte >= 32);
+    const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
+    lng += deltaLng;
+    coordinates.push([lng / 1e6, lat / 1e6]);
+  }
+  return coordinates;
+}
+async function yandexBuildRoute(points, mode = "driving") {
+  const apikey = getYandexRouterKey();
+  if (!apikey || points.length < 2) return null;
+  const waypoints = points.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon)).map((p) => `${p.lat},${p.lon}`).join("|");
+  if (!waypoints) return null;
+  const url = new URL(ROUTE_URL);
+  url.searchParams.set("apikey", apikey);
+  url.searchParams.set("waypoints", waypoints);
+  url.searchParams.set("mode", mode);
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    const text2 = await res.text();
+    throw new Error(`Yandex Router ${res.status}: ${text2.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const route = data.route ?? data.routes?.[0];
+  if (!route) return null;
+  const legs = route.legs ?? [];
+  const distanceM = legs.reduce((s, l) => s + (l.length ?? 0), 0);
+  const durationS = legs.reduce((s, l) => s + (l.duration ?? 0), 0);
+  const geometry = parseGeometry(route.geometry);
+  return {
+    distanceM,
+    durationS,
+    geometry: geometry.length > 0 ? geometry : points.map((p) => [p.lon, p.lat])
+  };
+}
+var ROUTE_URL;
+var init_yandex_router = __esm({
+  "server/geo/yandex-router.ts"() {
+    "use strict";
+    init_yandex_config();
+    ROUTE_URL = "https://api.routing.yandex.net/v2/route";
+  }
+});
+
 // server/vite-stub.ts
 var vite_stub_exports = {};
 __export(vite_stub_exports, {
@@ -674,6 +1209,7 @@ import {
   ilike,
   inArray,
   lte,
+  isNull,
   or,
   sql as sql2
 } from "drizzle-orm";
@@ -949,6 +1485,25 @@ var PgStorage = class {
     const [row] = await this.db.select().from(users).where(sql2`lower(${users.email}) = ${lower}`).limit(1);
     return row;
   }
+  async getUserByUsername(username) {
+    const lower = username.trim().toLowerCase().replace(/^@/, "");
+    const [row] = await this.db.select().from(users).where(sql2`lower(${users.username}) = ${lower}`).limit(1);
+    return row;
+  }
+  async updateUserMe(userId, data) {
+    const [updated] = await this.db.update(users).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, userId)).returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
+  }
+  async ensureUsernames() {
+    const { generateUniqueUsername: generateUniqueUsername2 } = await Promise.resolve().then(() => (init_user_utils(), user_utils_exports));
+    const rows = await this.db.select().from(users).where(isNull(users.username));
+    for (const row of rows) {
+      if (!row.email) continue;
+      const username = await generateUniqueUsername2(this, row.email);
+      await this.db.update(users).set({ username, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, row.id));
+    }
+  }
   async upsertUser(userData) {
     const id = userData.id;
     const adminFlag = resolveIsAdmin(userData.email ?? void 0);
@@ -989,10 +1544,22 @@ var PgStorage = class {
     const conditions = [];
     if (filters?.type) conditions.push(eq(places.type, filters.type));
     if (filters?.search) {
-      const q = `%${filters.search}%`;
-      conditions.push(
-        or(ilike(places.name, q), ilike(places.address, q), ilike(places.description, q))
+      const term = filters.search.trim();
+      const q = `%${term}%`;
+      const placeMatch = or(
+        ilike(places.name, q),
+        ilike(places.address, q),
+        ilike(places.description, q)
       );
+      const cityRows = await this.db.select({ name: cities.name }).from(cities).where(or(ilike(cities.name, q), ilike(cities.asciiName, q))).orderBy(desc(cities.population)).limit(5);
+      if (cityRows.length > 0) {
+        const cityAddressMatch = or(
+          ...cityRows.map((c) => ilike(places.address, `%${c.name}%`))
+        );
+        conditions.push(or(placeMatch, cityAddressMatch));
+      } else {
+        conditions.push(placeMatch);
+      }
     }
     if (filters?.minRating != null) {
       conditions.push(gte(places.averageRating, String(filters.minRating)));
@@ -1270,6 +1837,7 @@ var PgStorage = class {
   }
   async getTravelPosts(filters) {
     const conditions = [];
+    if (filters?.publicOnly) conditions.push(eq(travelPosts.isPublic, true));
     if (filters?.userId) conditions.push(eq(travelPosts.userId, filters.userId));
     if (filters?.following) {
       const followingRows = await this.db.select({ id: userFollows.followingId }).from(userFollows).where(eq(userFollows.followerId, filters.following));
@@ -1322,8 +1890,17 @@ var PgStorage = class {
     await this.db.delete(postComments).where(eq(postComments.id, id));
   }
   async searchUsers(query, limit = 10) {
-    const q = `%${query}%`;
-    return this.db.select().from(users).where(or(ilike(users.firstName, q), ilike(users.lastName, q), ilike(users.email, q))).limit(limit);
+    const term = query.trim().replace(/^@/, "");
+    const q = `%${term}%`;
+    return this.db.select().from(users).where(
+      or(
+        ilike(users.username, q),
+        ilike(users.displayName, q),
+        ilike(users.firstName, q),
+        ilike(users.lastName, q),
+        ilike(users.email, q)
+      )
+    ).limit(limit);
   }
   async getPostLikesCount(postId) {
     const [{ value }] = await this.db.select({ value: count() }).from(postLikes).where(eq(postLikes.postId, postId));
@@ -1632,6 +2209,27 @@ var MemStorage = class {
     return Array.from(this.users.values()).find(
       (u) => u.email?.toLowerCase() === lower
     );
+  }
+  async getUserByUsername(username) {
+    const lower = username.trim().toLowerCase().replace(/^@/, "");
+    return Array.from(this.users.values()).find(
+      (u) => u.username?.toLowerCase() === lower
+    );
+  }
+  async updateUserMe(userId, data) {
+    const existing = this.users.get(userId);
+    if (!existing) throw new Error("User not found");
+    const user = { ...existing, ...data, updatedAt: /* @__PURE__ */ new Date() };
+    this.users.set(userId, user);
+    return user;
+  }
+  async ensureUsernames() {
+    const { generateUniqueUsername: generateUniqueUsername2 } = await Promise.resolve().then(() => (init_user_utils(), user_utils_exports));
+    for (const user of Array.from(this.users.values())) {
+      if (user.username || !user.email) continue;
+      const username = await generateUniqueUsername2(this, user.email);
+      await this.updateUserMe(user.id, { username });
+    }
   }
   async upsertUser(userData) {
     const { resolveIsAdmin: resolveIsAdmin2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
@@ -2082,6 +2680,9 @@ var MemStorage = class {
   }
   async getTravelPosts(filters) {
     let results = Array.from(this.travelPosts.values());
+    if (filters?.publicOnly) {
+      results = results.filter((p) => p.isPublic !== false);
+    }
     if (filters?.userId) {
       results = results.filter((p) => p.userId === filters.userId);
     }
@@ -2147,9 +2748,9 @@ var MemStorage = class {
   }
   // Search operations
   async searchUsers(query, limit = 10) {
-    const q = query.toLowerCase();
+    const q = query.toLowerCase().replace(/^@/, "");
     return Array.from(this.users.values()).filter(
-      (u) => u.firstName?.toLowerCase().includes(q) || u.lastName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+      (u) => u.username?.toLowerCase().includes(q) || u.displayName?.toLowerCase().includes(q) || u.firstName?.toLowerCase().includes(q) || u.lastName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
     ).slice(0, limit);
   }
   async getPostLikesCount(postId) {
@@ -2173,6 +2774,9 @@ async function initAppStorage() {
     }
     if (storage.ensureAdminUsers) {
       await storage.ensureAdminUsers();
+    }
+    if (storage.ensureUsernames) {
+      await storage.ensureUsernames();
     }
   } catch (error) {
     console.error("initAppStorage failed (app will continue):", error);
@@ -2261,9 +2865,12 @@ async function setupGoogleAuth(app) {
       }
       let user = await storage.getUserByEmail(email);
       if (!user) {
+        const { generateUniqueUsername: generateUniqueUsername2 } = await Promise.resolve().then(() => (init_user_utils(), user_utils_exports));
+        const username = await generateUniqueUsername2(storage, email);
         user = await storage.upsertUser({
           id: crypto.randomUUID(),
           email,
+          username,
           firstName: claims?.given_name ?? null,
           lastName: claims?.family_name ?? null,
           profileImageUrl: claims?.picture ?? null
@@ -2403,9 +3010,12 @@ async function setupAuth(app) {
           if (!user) {
             const id = crypto.randomUUID();
             const passwordHash = await hashPassword(password);
+            const { generateUniqueUsername: generateUniqueUsername2 } = await Promise.resolve().then(() => (init_user_utils(), user_utils_exports));
+            const username = await generateUniqueUsername2(storage, trimmed);
             user = await storage.upsertUser({
               id,
               email: trimmed,
+              username,
               firstName: null,
               lastName: null,
               profileImageUrl: null,
@@ -2490,210 +3100,18 @@ var isAuthenticated = async (req, res, next) => {
 };
 
 // server/routes.ts
-import passport2 from "passport";
-
-// server/geo/nominatim.ts
-var BASE_URL = "https://nominatim.openstreetmap.org/search";
-var USER_AGENT = "All-in-travel/1.0 (geocoding autocomplete)";
-var cache = /* @__PURE__ */ new Map();
-var buckets = /* @__PURE__ */ new Map();
-function nowMs() {
-  return Date.now();
-}
-function cacheGet(key) {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (entry.expiresAt <= nowMs()) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.data;
-}
-function cacheSet(key, data, ttlMs) {
-  cache.set(key, { data, expiresAt: nowMs() + ttlMs });
-}
-function allowGeoRequest(key, ratePerSec = 2, burst = 5) {
-  const t = nowMs();
-  const b = buckets.get(key) ?? { tokens: burst, lastRefillMs: t };
-  const elapsedSec = Math.max(0, (t - b.lastRefillMs) / 1e3);
-  const refill = elapsedSec * ratePerSec;
-  b.tokens = Math.min(burst, b.tokens + refill);
-  b.lastRefillMs = t;
-  if (b.tokens < 1) {
-    buckets.set(key, b);
-    return false;
-  }
-  b.tokens -= 1;
-  buckets.set(key, b);
-  return true;
-}
-function pickCity(a) {
-  if (!a) return null;
-  return a.city ?? a.town ?? a.village ?? a.municipality ?? a.state ?? null;
-}
-function toNumberOrNull(v) {
-  if (!v) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-async function nominatimAutocomplete(params) {
-  const q = params.q.trim();
-  const limit = Math.max(1, Math.min(10, Math.floor(params.limit)));
-  const lang = (params.acceptLanguage ?? "").trim();
-  const cacheKey = `nominatim:v1:q=${q.toLowerCase()}:limit=${limit}:lang=${lang.toLowerCase()}`;
-  const cached = cacheGet(cacheKey);
-  if (cached) return cached;
-  const url = new URL(BASE_URL);
-  url.searchParams.set("q", q);
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("addressdetails", "1");
-  url.searchParams.set("limit", String(limit));
-  url.searchParams.set("dedupe", "1");
-  const res = await fetch(url.toString(), {
-    headers: {
-      "User-Agent": USER_AGENT,
-      ...lang ? { "Accept-Language": lang } : {}
-    }
-  });
-  if (!res.ok) {
-    throw new Error(`Nominatim error: ${res.status}`);
-  }
-  const json = await res.json();
-  const items = (Array.isArray(json) ? json : []).map((it) => ({
-    label: it.display_name ?? "",
-    city: pickCity(it.address),
-    country: it.address?.country ?? null,
-    lat: toNumberOrNull(it.lat),
-    lon: toNumberOrNull(it.lon),
-    osmId: typeof it.osm_id === "number" ? it.osm_id : null,
-    osmType: it.osm_type ?? null
-  })).filter((x) => x.label);
-  cacheSet(cacheKey, items, 6 * 60 * 60 * 1e3);
-  return items;
-}
-
-// server/geo/yandex.ts
-var GEOCODE_URL = "https://geocode-maps.yandex.ru/v1/";
-var SUGGEST_URL = "https://suggest-maps.yandex.ru/v1/suggest";
-var cache2 = /* @__PURE__ */ new Map();
-function cacheGet2(key) {
-  const entry = cache2.get(key);
-  if (!entry) return null;
-  if (entry.expiresAt <= Date.now()) {
-    cache2.delete(key);
-    return null;
-  }
-  return entry.data;
-}
-function cacheSet2(key, data, ttlMs = 1e3 * 60 * 10) {
-  cache2.set(key, { expiresAt: Date.now() + ttlMs, data });
-}
-function getApiKey() {
-  return process.env.YANDEX_GEOCODER_API_KEY?.trim() || void 0;
-}
-function parsePos(pos) {
-  if (!pos) return null;
-  const [lonStr, latStr] = pos.trim().split(/\s+/);
-  const lat = Number(latStr);
-  const lon = Number(lonStr);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  return { lat, lon };
-}
-function memberToItem(member) {
-  const obj = member?.GeoObject;
-  if (!obj) return null;
-  const meta = obj.metaDataProperty?.GeocoderMetaData;
-  const label = meta?.text || [obj.name, obj.description].filter(Boolean).join(", ");
-  if (!label) return null;
-  const coords = parsePos(obj.Point?.pos);
-  const components = meta?.Address?.Components ?? [];
-  const city = components.find((c) => c.kind === "locality")?.name ?? components.find((c) => c.kind === "area")?.name ?? null;
-  const country = components.find((c) => c.kind === "country")?.name ?? null;
-  return {
-    label,
-    city,
-    country,
-    lat: coords?.lat ?? null,
-    lon: coords?.lon ?? null
-  };
-}
-async function yandexGeocodeSuggest(params) {
-  const apikey = getApiKey();
-  if (!apikey) return [];
-  const { q, limit } = params;
-  const lang = params.lang ?? "ru_RU";
-  const cacheKey = `yandex:geocode:${lang}:${q.toLowerCase()}:${limit}`;
-  const cached = cacheGet2(cacheKey);
-  if (cached) return cached;
-  const url = new URL(GEOCODE_URL);
-  url.searchParams.set("apikey", apikey);
-  url.searchParams.set("geocode", q);
-  url.searchParams.set("format", "json");
-  url.searchParams.set("lang", lang);
-  url.searchParams.set("results", String(limit));
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    const text2 = await res.text();
-    throw new Error(`Yandex Geocoder ${res.status}: ${text2.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  const members = data.response?.GeoObjectCollection?.featureMember ?? [];
-  const items = members.map(memberToItem).filter((x) => !!x);
-  cacheSet2(cacheKey, items);
-  return items;
-}
-async function yandexSuggest(params) {
-  const apikey = getApiKey();
-  if (!apikey) return [];
-  const { q, limit } = params;
-  const lang = params.lang ?? "ru_RU";
-  const cacheKey = `yandex:suggest:${lang}:${q.toLowerCase()}:${limit}`;
-  const cached = cacheGet2(cacheKey);
-  if (cached) return cached;
-  const url = new URL(SUGGEST_URL);
-  url.searchParams.set("apikey", apikey);
-  url.searchParams.set("text", q);
-  url.searchParams.set("results", String(limit));
-  url.searchParams.set("lang", lang);
-  url.searchParams.set("types", "geo");
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    return yandexGeocodeSuggest(params);
-  }
-  const data = await res.json();
-  const items = [];
-  for (const r of data.results ?? []) {
-    const title = r.title?.text?.trim();
-    if (!title) continue;
-    const subtitle = r.subtitle?.text?.trim();
-    items.push({
-      label: subtitle ? `${title}, ${subtitle}` : title,
-      city: title,
-      country: subtitle ?? null
-    });
-  }
-  if (items.length === 0) {
-    return yandexGeocodeSuggest(params);
-  }
-  cacheSet2(cacheKey, items);
-  return items;
-}
-async function yandexAutocomplete(params) {
-  const lang = params.acceptLanguage?.toLowerCase().startsWith("en") ? "en_US" : "ru_RU";
-  try {
-    return await yandexSuggest({ q: params.q, limit: params.limit, lang });
-  } catch (e) {
-    console.warn("Yandex suggest failed, trying geocoder:", e);
-    return yandexGeocodeSuggest({ q: params.q, limit: params.limit, lang });
-  }
-}
-function isYandexGeocoderConfigured() {
-  return !!getApiKey();
-}
-
-// server/routes.ts
+init_nominatim();
 init_schema();
+init_username();
+init_user_utils();
+import passport2 from "passport";
 import { z } from "zod";
+var updateUserMeSchema = z.object({
+  displayName: z.string().max(64).nullable().optional(),
+  firstName: z.string().max(100).nullable().optional(),
+  lastName: z.string().max(100).nullable().optional(),
+  username: z.string().optional()
+});
 async function registerRoutes(app) {
   await setupAuth(app);
   app.get("/api/geo/autocomplete", async (req, res) => {
@@ -2710,29 +3128,79 @@ async function registerRoutes(app) {
       if (!allowGeoRequest(`geo:${ip}`)) {
         return res.status(429).json({ message: "Too many requests" });
       }
-      if (process.env.DATABASE_URL) {
-        try {
-          const mod = await Promise.resolve().then(() => (init_db_autocomplete(), db_autocomplete_exports));
-          const items2 = await mod.dbGeoAutocomplete({ q, limit, scope });
-          return res.json(items2);
-        } catch (e) {
-          console.warn("DB geo autocomplete failed; falling back to Nominatim.", e);
-        }
-      }
       const acceptLanguage = req.headers["accept-language"] ?? (typeof req.query.lang === "string" ? req.query.lang : void 0);
-      if (isYandexGeocoderConfigured()) {
-        try {
-          const items2 = await yandexAutocomplete({ q, limit, acceptLanguage: acceptLanguage ?? null });
-          if (items2.length > 0) return res.json(items2);
-        } catch (e) {
-          console.warn("Yandex geocoder autocomplete failed; falling back.", e);
-        }
-      }
-      const items = await nominatimAutocomplete({ q, limit, acceptLanguage: acceptLanguage ?? null });
+      const { resolveGeoAutocomplete: resolveGeoAutocomplete2 } = await Promise.resolve().then(() => (init_resolve_autocomplete(), resolve_autocomplete_exports));
+      const items = await resolveGeoAutocomplete2({ q, limit, scope, acceptLanguage });
       return res.json(items);
     } catch (error) {
       console.error("Error fetching geo autocomplete:", error);
       res.status(500).json({ message: "Failed to fetch geo autocomplete" });
+    }
+  });
+  app.get("/api/search/destinations", async (req, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      const limitRaw = req.query.limit != null ? Number(req.query.limit) : 10;
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(15, Math.floor(limitRaw))) : 10;
+      const type = typeof req.query.type === "string" ? req.query.type : void 0;
+      if (q.length < 2) {
+        return res.json({ locations: [], places: [] });
+      }
+      const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+      if (!allowGeoRequest(`search:${ip}`)) {
+        return res.status(429).json({ message: "Too many requests" });
+      }
+      const acceptLanguage = req.headers["accept-language"] ?? (typeof req.query.lang === "string" ? req.query.lang : void 0);
+      const { resolveGeoAutocomplete: resolveGeoAutocomplete2 } = await Promise.resolve().then(() => (init_resolve_autocomplete(), resolve_autocomplete_exports));
+      const geoLimit = Math.min(8, limit);
+      const [locations, places2] = await Promise.all([
+        resolveGeoAutocomplete2({ q, limit: geoLimit, scope: "all", acceptLanguage }),
+        storage.getPlaces({
+          search: q,
+          type: type && type !== "all" ? type : void 0,
+          limit: Math.min(10, limit)
+        })
+      ]);
+      res.json({ locations, places: places2 });
+    } catch (error) {
+      console.error("Error searching destinations:", error);
+      res.status(500).json({ message: "Failed to search destinations" });
+    }
+  });
+  app.get("/api/geo/status", async (_req, res) => {
+    try {
+      let countries2 = 0;
+      let cities2 = 0;
+      const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      const db2 = getDb2();
+      if (db2) {
+        const { countries: countriesTable, cities: citiesTable } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+        const { count: count2 } = await import("drizzle-orm");
+        const [c1] = await db2.select({ value: count2() }).from(countriesTable);
+        const [c2] = await db2.select({ value: count2() }).from(citiesTable);
+        countries2 = Number(c1?.value ?? 0);
+        cities2 = Number(c2?.value ?? 0);
+      }
+      const {
+        isAnyYandexGeoConfigured: isAnyYandexGeoConfigured2,
+        isYandexGeocoderConfigured: isYandexGeocoderConfigured2,
+        isYandexGeosuggestConfigured: isYandexGeosuggestConfigured2,
+        isYandexRouterConfigured: isYandexRouterConfigured2
+      } = await Promise.resolve().then(() => (init_yandex_config(), yandex_config_exports));
+      res.json({
+        database: Boolean(process.env.DATABASE_URL),
+        geoImported: countries2 > 0 && cities2 > 0,
+        countries: countries2,
+        cities: cities2,
+        yandexGeosuggest: isYandexGeosuggestConfigured2(),
+        yandexGeocoder: isYandexGeocoderConfigured2(),
+        yandexRouter: isYandexRouterConfigured2(),
+        yandex: isAnyYandexGeoConfigured2(),
+        nominatimFallback: true
+      });
+    } catch (error) {
+      console.error("geo status error:", error);
+      res.status(500).json({ message: "Failed to read geo status" });
     }
   });
   app.get("/api/auth/config", (_req, res) => {
@@ -2756,17 +3224,51 @@ async function registerRoutes(app) {
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      res.json(user);
+      res.json(toSelfUser(user));
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(401).json({ message: "Unauthorized" });
+    }
+  });
+  app.put("/api/users/me", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = updateUserMeSchema.parse(req.body);
+      const patch = {};
+      if (body.displayName !== void 0) patch.displayName = body.displayName;
+      if (body.firstName !== void 0) patch.firstName = body.firstName;
+      if (body.lastName !== void 0) patch.lastName = body.lastName;
+      if (body.username !== void 0) {
+        const parsed = validateUsername(body.username);
+        if (!parsed.ok) {
+          return res.status(400).json({ message: parsed.message });
+        }
+        const taken = await storage.getUserByUsername(parsed.value);
+        if (taken && taken.id !== userId) {
+          return res.status(409).json({ message: "\u042D\u0442\u043E\u0442 \u043D\u0438\u043A \u0443\u0436\u0435 \u0437\u0430\u043D\u044F\u0442" });
+        }
+        patch.username = parsed.value;
+      }
+      const updated = await storage.updateUserMe(userId, patch);
+      res.json(toSelfUser(updated));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      }
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
   app.get("/api/users/:id", async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      res.json(user);
+      const sessionUser = req.isAuthenticated() ? req.user : void 0;
+      const viewerId = sessionUser?.claims?.sub;
+      if (viewerId === user.id) {
+        return res.json(toSelfUser(user));
+      }
+      res.json(toPublicUser(user));
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -2889,6 +3391,51 @@ async function registerRoutes(app) {
     } catch (error) {
       console.error("Error fetching trip waypoints:", error);
       res.status(500).json({ message: "Failed to fetch waypoints" });
+    }
+  });
+  app.get("/api/trips/:id/yandex-route", async (req, res) => {
+    try {
+      const { isYandexRouterConfigured: isYandexRouterConfigured2 } = await Promise.resolve().then(() => (init_yandex_config(), yandex_config_exports));
+      if (!isYandexRouterConfigured2()) {
+        return res.status(503).json({ message: "Yandex Router API key not configured" });
+      }
+      const waypoints = await storage.getTripWaypoints(req.params.id);
+      const points = waypoints.filter((w) => w.place?.latitude != null && w.place?.longitude != null).map((w) => ({
+        lat: Number(w.place.latitude),
+        lon: Number(w.place.longitude)
+      }));
+      if (points.length < 2) {
+        return res.json({ configured: true, route: null, message: "Need at least 2 stops" });
+      }
+      const mode = req.query.mode === "walking" || req.query.mode === "driving" ? req.query.mode : "driving";
+      const { yandexBuildRoute: yandexBuildRoute2 } = await Promise.resolve().then(() => (init_yandex_router(), yandex_router_exports));
+      const route = await yandexBuildRoute2(points, mode);
+      if (!route) {
+        return res.json({ configured: true, route: null });
+      }
+      res.json({
+        configured: true,
+        route: {
+          distanceKm: Math.round(route.distanceM / 1e3 * 10) / 10,
+          durationMin: Math.round(route.durationS / 60),
+          geometry: route.geometry
+        }
+      });
+    } catch (error) {
+      console.error("Error building Yandex route:", error);
+      res.status(500).json({ message: "Failed to build route" });
+    }
+  });
+  app.get("/api/geo/geocode", async (req, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      if (q.length < 2) return res.json(null);
+      const { yandexForwardGeocode: yandexForwardGeocode2 } = await Promise.resolve().then(() => (init_yandex(), yandex_exports));
+      const result = await yandexForwardGeocode2(q);
+      res.json(result);
+    } catch (error) {
+      console.error("Error geocoding:", error);
+      res.status(500).json({ message: "Failed to geocode" });
     }
   });
   app.post("/api/trips/:id/waypoints", isAuthenticated, async (req, res) => {
@@ -3103,12 +3650,7 @@ async function registerRoutes(app) {
       const sender = msg.userId ? await storage.getUser(msg.userId) : null;
       return {
         ...msg,
-        sender: sender ? {
-          id: sender.id,
-          firstName: sender.firstName,
-          lastName: sender.lastName,
-          profileImageUrl: sender.profileImageUrl
-        } : null
+        sender: sender ? toPublicUser(sender) : null
       };
     })
   );
@@ -3262,7 +3804,7 @@ async function registerRoutes(app) {
     try {
       const userId = req.user.claims.sub;
       const friends = await storage.getFriends(userId);
-      res.json(friends);
+      res.json(friends.map(toPublicUser));
     } catch (error) {
       console.error("Error fetching friends:", error);
       res.status(500).json({ message: "Failed to fetch friends" });
@@ -3276,7 +3818,7 @@ async function registerRoutes(app) {
       const enriched = await Promise.all(requests.map(async (friendship) => {
         const otherUserId = type === "sent" ? friendship.addresseeId : friendship.requesterId;
         const user = await storage.getUser(otherUserId);
-        return { ...friendship, user: user || null };
+        return { ...friendship, user: user ? toPublicUser(user) : null };
       }));
       res.json(enriched);
     } catch (error) {
@@ -3364,7 +3906,12 @@ async function registerRoutes(app) {
     try {
       const userId = req.user.claims.sub;
       const conversations = await storage.getConversations(userId);
-      res.json(conversations);
+      res.json(
+        conversations.map((c) => ({
+          ...c,
+          user: toPublicUser(c.user)
+        }))
+      );
     } catch (error) {
       console.error("Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -3397,12 +3944,13 @@ async function registerRoutes(app) {
   });
   app.get("/api/posts", async (req, res) => {
     try {
-      const { userId, following, tag, limit = 20, offset = 0 } = req.query;
+      const { userId, following, tag, public: publicFilter, limit = 20, offset = 0 } = req.query;
       const currentUserId = req.user?.claims?.sub || null;
       const posts = await storage.getTravelPosts({
         userId,
         following,
         tag,
+        publicOnly: publicFilter === "1" || publicFilter === "true",
         limit: Number(limit),
         offset: Number(offset)
       });
@@ -3431,7 +3979,15 @@ async function registerRoutes(app) {
       if (!post) {
         return res.status(404).json({ message: "Post not found" });
       }
-      res.json(post);
+      const currentUserId = req.user?.claims?.sub || null;
+      if (!post.isPublic && post.userId !== currentUserId) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      const author = post.userId ? await storage.getUser(post.userId) : null;
+      res.json({
+        ...post,
+        author: author ? { id: author.id, firstName: author.firstName, lastName: author.lastName, profileImageUrl: author.profileImageUrl } : null
+      });
     } catch (error) {
       console.error("Error fetching post:", error);
       res.status(500).json({ message: "Failed to fetch post" });
@@ -3533,7 +4089,7 @@ async function registerRoutes(app) {
         return res.status(400).json({ message: "Search query is required" });
       }
       const users2 = await storage.searchUsers(q, Number(limit));
-      res.json(users2);
+      res.json(users2.map(toPublicUser));
     } catch (error) {
       console.error("Error searching users:", error);
       res.status(500).json({ message: "Failed to search users" });
@@ -3581,7 +4137,7 @@ async function registerRoutes(app) {
                 client2.send(JSON.stringify({
                   type: "new_message",
                   message: savedMessage,
-                  sender: sender ? { id: sender.id, firstName: sender.firstName, lastName: sender.lastName, profileImageUrl: sender.profileImageUrl } : null
+                  sender: sender ? toPublicUser(sender) : null
                 }));
               }
             });
@@ -3640,10 +4196,15 @@ function createUploadMiddleware() {
   });
   return multer({
     storage: diskStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      if (file.mimetype.startsWith("image/")) cb(null, true);
-      else cb(new Error("Only images allowed"));
+      const ok =
+        file.mimetype.startsWith("image/") ||
+        file.mimetype === "video/mp4" ||
+        file.mimetype === "video/webm" ||
+        file.mimetype === "video/quicktime";
+      if (ok) cb(null, true);
+      else cb(new Error("Only images and videos (mp4, webm) allowed"));
     }
   });
 }
