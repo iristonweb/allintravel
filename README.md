@@ -31,10 +31,35 @@ npm run db:seed
 
 ## Деплой на Vercel
 
-1. Подключить репозиторий на [Vercel](https://vercel.com)
-2. **Не указывать** Output Directory вручную — используется `vercel.json`
-3. Добавить переменные окружения: `SESSION_SECRET`, `DATABASE_URL`, `APP_ACCESS_CODE`
-4. Для Google OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`
+1. Подключить репозиторий [iristonweb/allintravel](https://github.com/iristonweb/allintravel) на [Vercel](https://vercel.com)
+2. **Settings → Build:** Output Directory оставить **пустым** (используется `vercel.json`)
+3. **Settings → Environment Variables** — см. таблицу ниже (можно **Import .env** и вставить содержимое локального `.env` без коммита в git)
+4. После первого `DATABASE_URL` один раз локально: `npm run db:push` и `npm run db:seed`
+5. Redeploy
+
+### Переменные для Vercel (Production)
+
+| Переменная | Обязательно | Значение |
+|------------|-------------|----------|
+| `DATABASE_URL` | да | Connection string из Neon (Dashboard → Connect) |
+| `SESSION_SECRET` | да | Случайная длинная строка (hex 64 символа) |
+| `APP_ACCESS_CODE` | да | Общий код входа на `/login`, например `demo` |
+| `APP_URL` | да для Google | `https://allintravel.vercel.app` |
+| `GOOGLE_CLIENT_ID` | нет | Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | нет | Google Cloud Console |
+| `VAPID_PUBLIC_KEY` | нет | `npx web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | нет | то же |
+| `VAPID_SUBJECT` | нет | `mailto:you@example.com` |
+
+`NODE_ENV` и `VERCEL` Vercel выставляет сам. **Не коммитьте** `.env` в репозиторий.
+
+### Neon
+
+В Neon **не нужны** переменные приложения — только база:
+
+1. Создать проект → скопировать **Connection string** (pooler, `sslmode=require`)
+2. Вставить в `DATABASE_URL` на Vercel (и в локальный `.env` для `db:push` / `db:seed`)
+3. При утечке пароля: Neon → **Reset password** → обновить URL везде
 
 > WebSocket-чат на Vercel не поддерживается (ограничение serverless). Остальной функционал работает.
 
