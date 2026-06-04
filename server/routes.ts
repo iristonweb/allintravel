@@ -969,6 +969,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  if (process.env.VERCEL) {
+    return app as unknown as Server;
+  }
+
   const httpServer = createServer(app);
 
   // WebSocket only for local/long-running Node server (not Vercel serverless)

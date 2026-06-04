@@ -73,17 +73,6 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
     next();
   });
 
-  try {
-    await Promise.race([
-      initAppStorage(),
-      new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error("initAppStorage timeout")), INIT_TIMEOUT_MS),
-      ),
-    ]);
-  } catch (error) {
-    console.error("[createApp] initAppStorage failed (continuing):", error);
-  }
-
   setupUploadRoutes(app);
   setupPushRoutes(app);
 
@@ -93,6 +82,27 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
   } catch (error) {
     console.error("[createApp] registerRoutes failed:", error);
     server = createServer(app);
+  }
+
+  const runStorageInit = () => {
+    initAppStorage().catch((error) => {
+      console.error("[createApp] initAppStorage failed (continuing):", error);
+    });
+  };
+
+  if (process.env.VERCEL) {
+    runStorageInit();
+  } else {
+    try {
+      await Promise.race([
+        initAppStorage(),
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("initAppStorage timeout")), INIT_TIMEOUT_MS),
+        ),
+      ]);
+    } catch (error) {
+      console.error("[createApp] initAppStorage failed (continuing):", error);
+    }
   }
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

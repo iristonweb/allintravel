@@ -608,136 +608,28 @@ var init_db_autocomplete = __esm({
   }
 });
 
-// vite.config.ts
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path2 from "path";
-var vite_config_default;
-var init_vite_config = __esm({
-  "vite.config.ts"() {
-    "use strict";
-    vite_config_default = defineConfig({
-      plugins: [react()],
-      resolve: {
-        alias: {
-          "@": path2.resolve(import.meta.dirname, "client", "src"),
-          "@shared": path2.resolve(import.meta.dirname, "shared"),
-          "@assets": path2.resolve(import.meta.dirname, "attached_assets")
-        }
-      },
-      root: path2.resolve(import.meta.dirname, "client"),
-      build: {
-        outDir: path2.resolve(import.meta.dirname, "dist/public"),
-        emptyOutDir: true
-      },
-      server: {
-        fs: {
-          strict: true,
-          deny: ["**/.*"]
-        },
-        proxy: {
-          "/api": {
-            target: "http://localhost:5000",
-            changeOrigin: true
-          },
-          "/ws": {
-            target: "ws://localhost:5000",
-            ws: true
-          }
-        }
-      }
-    });
-  }
-});
-
-// server/vite.ts
-var vite_exports = {};
-__export(vite_exports, {
+// server/vite-stub.ts
+var vite_stub_exports = {};
+__export(vite_stub_exports, {
   log: () => log,
   serveStatic: () => serveStatic,
   setupVite: () => setupVite
 });
-import express2 from "express";
-import fs2 from "fs";
-import path3 from "path";
-import { createServer as createViteServer, createLogger } from "vite";
-import { nanoid } from "nanoid";
-function log(message, source = "express") {
-  const formattedTime = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
+function log() {
 }
-async function setupVite(app, server) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-    allowedHosts: true
-  };
-  const vite = await createViteServer({
-    ...vite_config_default,
-    configFile: false,
-    customLogger: {
-      ...viteLogger,
-      error: (msg, options) => {
-        viteLogger.error(msg, options);
-        process.exit(1);
-      }
-    },
-    server: serverOptions,
-    appType: "custom"
-  });
-  app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
-    try {
-      const clientTemplate = path3.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html"
-      );
-      let template = await fs2.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
-    } catch (e) {
-      vite.ssrFixStacktrace(e);
-      next(e);
-    }
-  });
+async function setupVite(_app, _server) {
 }
-function serveStatic(app) {
-  const distPath = path3.resolve(process.cwd(), "dist", "public");
-  if (!fs2.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to run "npm run build" first`
-    );
-  }
-  app.use(express2.static(distPath));
-  app.use("*", (_req, res) => {
-    res.sendFile(path3.resolve(distPath, "index.html"));
-  });
+function serveStatic(_app) {
 }
-var viteLogger;
-var init_vite = __esm({
-  "server/vite.ts"() {
-    "use strict";
-    init_vite_config();
-    viteLogger = createLogger();
+var init_vite_stub = __esm({
+  "server/vite-stub.ts"() {
   }
 });
 
 // server/createApp.ts
 import "dotenv/config";
 import { createServer as createServer2 } from "http";
-import express3 from "express";
+import express2 from "express";
 
 // server/routes.ts
 import { createServer } from "http";
@@ -2403,11 +2295,12 @@ async function setupAuth(app) {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+  const googleTimeoutMs = process.env.VERCEL ? 2e3 : 1e4;
   try {
     await Promise.race([
       setupGoogleAuth(app),
       new Promise(
-        (_, reject) => setTimeout(() => reject(new Error("Google OAuth setup timeout")), 1e4)
+        (_, reject) => setTimeout(() => reject(new Error("Google OAuth setup timeout")), googleTimeoutMs)
       )
     ]);
   } catch (err) {
@@ -3563,6 +3456,9 @@ async function registerRoutes(app) {
       res.status(500).json({ message: "Failed to search users" });
     }
   });
+  if (process.env.VERCEL) {
+    return app;
+  }
   const httpServer = createServer(app);
   if (!process.env.VERCEL) {
     const { WebSocketServer, WebSocket } = await import("ws");
@@ -3739,9 +3635,9 @@ function setupPushRoutes(app) {
 // server/createApp.ts
 var INIT_TIMEOUT_MS = 12e3;
 async function createApp() {
-  const app = express3();
-  app.use(express3.json());
-  app.use(express3.urlencoded({ extended: false }));
+  const app = express2();
+  app.use(express2.json());
+  app.use(express2.urlencoded({ extended: false }));
   app.get("/api/health", async (_req, res) => {
     let dbOk = false;
     let dbError;
@@ -3772,7 +3668,7 @@ async function createApp() {
   });
   app.use((req, res, next) => {
     const start = Date.now();
-    const path4 = req.path;
+    const path2 = req.path;
     let capturedJsonResponse;
     const originalResJson = res.json;
     res.json = function(bodyJson, ...args) {
@@ -3781,8 +3677,8 @@ async function createApp() {
     };
     res.on("finish", () => {
       const duration = Date.now() - start;
-      if (path4.startsWith("/api")) {
-        let logLine = `${req.method} ${path4} ${res.statusCode} in ${duration}ms`;
+      if (path2.startsWith("/api")) {
+        let logLine = `${req.method} ${path2} ${res.statusCode} in ${duration}ms`;
         if (capturedJsonResponse) {
           logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
         }
@@ -3794,16 +3690,6 @@ async function createApp() {
     });
     next();
   });
-  try {
-    await Promise.race([
-      initAppStorage(),
-      new Promise(
-        (_, reject) => setTimeout(() => reject(new Error("initAppStorage timeout")), INIT_TIMEOUT_MS)
-      )
-    ]);
-  } catch (error) {
-    console.error("[createApp] initAppStorage failed (continuing):", error);
-  }
   setupUploadRoutes(app);
   setupPushRoutes(app);
   let server;
@@ -3812,6 +3698,25 @@ async function createApp() {
   } catch (error) {
     console.error("[createApp] registerRoutes failed:", error);
     server = createServer2(app);
+  }
+  const runStorageInit = () => {
+    initAppStorage().catch((error) => {
+      console.error("[createApp] initAppStorage failed (continuing):", error);
+    });
+  };
+  if (process.env.VERCEL) {
+    runStorageInit();
+  } else {
+    try {
+      await Promise.race([
+        initAppStorage(),
+        new Promise(
+          (_, reject) => setTimeout(() => reject(new Error("initAppStorage timeout")), INIT_TIMEOUT_MS)
+        )
+      ]);
+    } catch (error) {
+      console.error("[createApp] initAppStorage failed (continuing):", error);
+    }
   }
   app.use((err, _req, res, _next) => {
     const e = err;
@@ -3824,10 +3729,10 @@ async function createApp() {
   const isVercel = Boolean(process.env.VERCEL);
   const isDev = process.env.NODE_ENV !== "production" && !isVercel;
   if (isDev) {
-    const { setupVite: setupVite2 } = await Promise.resolve().then(() => (init_vite(), vite_exports));
+    const { setupVite: setupVite2 } = await Promise.resolve().then(() => (init_vite_stub(), vite_stub_exports));
     await setupVite2(app, server);
   } else if (!isVercel) {
-    const { serveStatic: serveStatic2 } = await Promise.resolve().then(() => (init_vite(), vite_exports));
+    const { serveStatic: serveStatic2 } = await Promise.resolve().then(() => (init_vite_stub(), vite_stub_exports));
     serveStatic2(app);
   }
   return { app, server };
@@ -3843,7 +3748,8 @@ async function getApp() {
   return appPromise;
 }
 var config = {
-  maxDuration: 60
+  maxDuration: 60,
+  memory: 1024
 };
 function runExpress(app, req, res) {
   return new Promise((resolve, reject) => {

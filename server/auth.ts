@@ -87,11 +87,12 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  const googleTimeoutMs = process.env.VERCEL ? 2_000 : 10_000;
   try {
     await Promise.race([
       setupGoogleAuth(app),
       new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error("Google OAuth setup timeout")), 10_000),
+        setTimeout(() => reject(new Error("Google OAuth setup timeout")), googleTimeoutMs),
       ),
     ]);
   } catch (err) {
