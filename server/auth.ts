@@ -111,6 +111,10 @@ export async function setupAuth(app: Express) {
       { usernameField: "email", passwordField: "password" },
       async (email, _password, done) => {
         try {
+          if (storage.ensureSchema) {
+            await storage.ensureSchema();
+          }
+
           const trimmed = (email || "").trim().toLowerCase();
           const password = String(_password ?? "");
 

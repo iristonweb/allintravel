@@ -1441,6 +1441,15 @@ var PgStorage = class {
     await this.db.execute(
       sql2`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false`
     );
+    await this.db.execute(
+      sql2`ALTER TABLE users ADD COLUMN IF NOT EXISTS username varchar(30)`
+    );
+    await this.db.execute(
+      sql2`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar(64)`
+    );
+    await this.db.execute(
+      sql2`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (username) WHERE username IS NOT NULL`
+    );
   }
   async ensureSeeded() {
     await this.ensureSchema();
@@ -1527,7 +1536,7 @@ var PgStorage = class {
   }
   async ensureAdminUsers() {
     const { getAdminEmails: getAdminEmails2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
-    for (const email of getAdminEmails2()) {
+    for (const email of Array.from(getAdminEmails2())) {
       const user = await this.getUserByEmail(email);
       if (user && !user.isAdmin) {
         await this.setUserAdmin(user.id, true);
@@ -2253,7 +2262,7 @@ var MemStorage = class {
   }
   async ensureAdminUsers() {
     const { getAdminEmails: getAdminEmails2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
-    for (const email of getAdminEmails2()) {
+    for (const email of Array.from(getAdminEmails2())) {
       const user = await this.getUserByEmail(email);
       if (user && !user.isAdmin) {
         await this.setUserAdmin(user.id, true);
@@ -2913,7 +2922,7 @@ function isGoogleAuthEnabled() {
 
 // server/password.ts
 import bcrypt from "bcryptjs";
-var SALT_ROUNDS = 12;
+var SALT_ROUNDS = 10;
 var MIN_PASSWORD_LENGTH = 8;
 async function hashPassword(plain) {
   return bcrypt.hash(plain, SALT_ROUNDS);
@@ -2998,6 +3007,9 @@ async function setupAuth(app) {
       { usernameField: "email", passwordField: "password" },
       async (email, _password, done) => {
         try {
+          if (storage.ensureSchema) {
+            await storage.ensureSchema();
+          }
           const trimmed = (email || "").trim().toLowerCase();
           const password = String(_password ?? "");
           if (!trimmed) {
@@ -3986,7 +3998,12 @@ async function registerRoutes(app) {
       const author = post.userId ? await storage.getUser(post.userId) : null;
       res.json({
         ...post,
-        author: author ? { id: author.id, firstName: author.firstName, lastName: author.lastName, profileImageUrl: author.profileImageUrl } : null
+        author: author ? {
+          id: author.id,
+          firstName: author.firstName,
+          lastName: author.lastName,
+          profileImageUrl: author.profileImageUrl
+        } : null
       });
     } catch (error) {
       console.error("Error fetching post:", error);
@@ -4198,11 +4215,7 @@ function createUploadMiddleware() {
     storage: diskStorage,
     limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      const ok =
-        file.mimetype.startsWith("image/") ||
-        file.mimetype === "video/mp4" ||
-        file.mimetype === "video/webm" ||
-        file.mimetype === "video/quicktime";
+      const ok = file.mimetype.startsWith("image/") || file.mimetype === "video/mp4" || file.mimetype === "video/webm" || file.mimetype === "video/quicktime";
       if (ok) cb(null, true);
       else cb(new Error("Only images and videos (mp4, webm) allowed"));
     }

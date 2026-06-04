@@ -85,6 +85,15 @@ export class PgStorage implements IStorage {
     await this.db.execute(
       sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false`,
     );
+    await this.db.execute(
+      sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS username varchar(30)`,
+    );
+    await this.db.execute(
+      sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar(64)`,
+    );
+    await this.db.execute(
+      sql`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (username) WHERE username IS NOT NULL`,
+    );
   }
 
   async ensureSeeded(): Promise<void> {

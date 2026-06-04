@@ -52,6 +52,7 @@ export interface IStorage {
   setUserAdmin(userId: string, isAdmin: boolean): Promise<User>;
   ensureAdminUsers?(): Promise<void>;
   ensureUsernames?(): Promise<void>;
+  ensureSchema?(): Promise<void>;
 
   getPlaces(filters?: {
     type?: string;

@@ -26,6 +26,7 @@ import BlogPostPage from "@/pages/blog-post";
 import { Wallet } from "@/pages/wallet";
 import NotFound from "@/pages/not-found";
 import PremiumBackground from "@/components/premium/PremiumBackground";
+import ErrorBoundary from "@/components/error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
 
 function Router() {
@@ -99,7 +100,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <ErrorBoundary>
+          <Router />
+        </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );

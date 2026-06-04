@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -5,36 +6,103 @@ import { Label } from "@/components/ui/label";
 import AmbientBackground from "@/components/premium/AmbientBackground";
 import BrandLogo from "@/components/brand/brand-logo";
 import { SITE_DESCRIPTION_SHORT, SITE_TAGLINE } from "@/lib/site-meta";
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { Loader2 } from "lucide-react";
 
 type AuthConfig = {
   googleOAuth: boolean;
   emailSignup: boolean;
 };
 
+async function fetchAuthConfig(): Promise<AuthConfig> {
+  try {
+    const res = await fetch("/api/auth/config", { credentials: "include" });
+    if (!res.ok) {
+      return { googleOAuth: false, emailSignup: true };
+    }
+    return (await res.json()) as AuthConfig;
+  } catch {
+    return { googleOAuth: false, emailSignup: true };
+  }
+}
+
 export function Login() {
+  const [, navigate] = useLocation();
   const search = typeof window !== "undefined" ? window.location.search : "";
   const params = new URLSearchParams(search);
-  const error = params.get("error");
-  const showInvalid = error === "invalid";
-  const showServer = error === "server";
+  const urlError = params.get("error");
   const redirect = params.get("redirect") || "/";
 
-  const { data: authConfig } = useQuery<AuthConfig>({
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<"invalid" | "server" | null>(
+    urlError === "invalid" ? "invalid" : urlError === "server" ? "server" : null,
+  );
+
+  const { data: authConfig } = useQuery({
     queryKey: ["/api/auth/config"],
+    queryFn: fetchAuthConfig,
     staleTime: Infinity,
   });
 
-  const formAction = useMemo(() => {
-    const q = new URLSearchParams();
-    if (redirect && redirect !== "/") q.set("redirect", redirect);
-    const qs = q.toString();
-    return qs ? `/api/login?${qs}` : "/api/login";
-  }, [redirect]);
-
   const googleEnabled = authConfig?.googleOAuth ?? false;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setSubmitting(true);
+
+    const body = new URLSearchParams();
+    body.set("email", email.trim());
+    body.set("password", password);
+
+    const qs =
+      redirect && redirect !== "/"
+        ? `?redirect=${encodeURIComponent(redirect)}`
+        : "";
+
+    try {
+      const res = await fetch(`/api/login${qs}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+        credentials: "include",
+        redirect: "manual",
+      });
+
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("Location") || redirect;
+        const target = location.startsWith("http")
+          ? new URL(location).pathname + new URL(location).search
+          : location;
+        if (target.includes("/login") && target.includes("error=invalid")) {
+          setFormError("invalid");
+          setSubmitting(false);
+          return;
+        }
+        if (target.includes("/login") && target.includes("error=server")) {
+          setFormError("server");
+          setSubmitting(false);
+          return;
+        }
+        window.location.assign(target);
+        return;
+      }
+
+      if (res.ok) {
+        window.location.assign(redirect);
+        return;
+      }
+
+      setFormError("server");
+    } catch {
+      setFormError("server");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <AmbientBackground className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
@@ -61,11 +129,11 @@ export function Login() {
           </div>
         </CardHeader>
         <CardContent>
-          <form action={formAction} method="post" className="space-y-4">
-            {showInvalid && (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {formError === "invalid" && (
               <p className="text-sm text-destructive">Неверный email или пароль.</p>
             )}
-            {showServer && (
+            {formError === "server" && (
               <p className="text-sm text-destructive">
                 Ошибка сервера при входе. Проверьте DATABASE_URL на Vercel и выполните{" "}
                 <code className="text-ait-purple">npm run db:push</code> для обновления схемы БД.
@@ -80,6 +148,9 @@ export function Login() {
                 placeholder="например@mail.ru"
                 required
                 autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={submitting}
               />
             </div>
             <div className="space-y-2">
@@ -89,17 +160,27 @@ export function Login() {
                 name="password"
                 type="password"
                 placeholder="Минимум 8 символов"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 minLength={8}
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={submitting}
               />
               <p className="text-xs text-muted-foreground">
                 При первом входе аккаунт создаётся автоматически — откроется личный кабинет со всеми
                 функциями.
               </p>
             </div>
-            <Button type="submit" variant="premium" className="w-full">
-              Войти / зарегистрироваться
+            <Button type="submit" variant="premium" className="w-full" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Входим…
+                </>
+              ) : (
+                "Войти / зарегистрироваться"
+              )}
             </Button>
           </form>
           {googleEnabled && (
@@ -116,6 +197,7 @@ export function Login() {
                 type="button"
                 variant="outline"
                 className="w-full"
+                disabled={submitting}
                 onClick={() => {
                   const q =
                     redirect && redirect !== "/" ? `?state=${encodeURIComponent(redirect)}` : "";
@@ -126,6 +208,16 @@ export function Login() {
               </Button>
             </>
           )}
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Уже есть аккаунт?{" "}
+            <button
+              type="button"
+              className="text-ait-purple hover:underline"
+              onClick={() => navigate("/login")}
+            >
+              Обновить страницу
+            </button>
+          </p>
         </CardContent>
       </Card>
     </AmbientBackground>

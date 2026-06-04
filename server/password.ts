@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 
-const SALT_ROUNDS = 12;
+/** 10 — баланс безопасности и скорости регистрации на serverless */
+const SALT_ROUNDS = 10;
 export const MIN_PASSWORD_LENGTH = 8;
 
 export async function hashPassword(plain: string): Promise<string> {
