@@ -43,15 +43,29 @@ export function Profile() {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch("/api/users/avatar", { method: "POST", body: form, credentials: "include" });
-      if (!res.ok) throw new Error("Upload failed");
-      return res.json();
+      const text = await res.text();
+      if (!res.ok) {
+        let message = "Не удалось загрузить";
+        try {
+          const json = JSON.parse(text) as { message?: string };
+          if (json.message) message = json.message;
+        } catch {
+          if (text) message = text.slice(0, 200);
+        }
+        throw new Error(message);
+      }
+      return JSON.parse(text) as { url: string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Аватар обновлён" });
     },
-    onError: () => {
-      toast({ title: "Не удалось загрузить фото", variant: "destructive" });
+    onError: (err: Error) => {
+      toast({
+        title: "Не удалось загрузить аватар",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -214,7 +228,12 @@ export function Profile() {
                     >
                       <label className="cursor-pointer">
                         <Camera className="h-4 w-4" />
-                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif,.gif"
+                          className="hidden"
+                          onChange={handleAvatarChange}
+                        />
                       </label>
                     </Button>
                   </div>

@@ -1,85 +1,114 @@
-import fs from "fs";
-import path from "path";
-import express, { type Express, type Request, type Response } from "express";
-import multer from "multer";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import multer, { MulterError } from "multer";
 import { isAuthenticated } from "./auth";
 import { storage } from "./storage";
+import { getUploadsStaticDir, persistUploadedFile } from "./media-storage";
 
-/** Vercel serverless FS is read-only except /tmp */
-function resolveUploadsDir(): string {
-  if (process.env.VERCEL) {
-    return path.join("/tmp", "ait-uploads");
-  }
-  return path.resolve(process.cwd(), "uploads");
-}
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
 
-let uploadsDir: string | null = null;
-
-function getUploadsDir(): string {
-  if (uploadsDir) return uploadsDir;
-
-  uploadsDir = resolveUploadsDir();
-  try {
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-  } catch (err) {
-    console.error("[upload] failed to create uploads dir, using /tmp:", err);
-    uploadsDir = path.join("/tmp", "ait-uploads-fallback");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-  }
-  return uploadsDir;
+function isAllowedMime(mime: string, originalName: string): boolean {
+  if (ALLOWED_MIME.has(mime)) return true;
+  if (mime.startsWith("image/")) return true;
+  const lower = originalName.toLowerCase();
+  if (lower.endsWith(".gif")) return true;
+  if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
+  return false;
 }
 
 function createUploadMiddleware() {
-  const diskStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, getUploadsDir()),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname) || ".jpg";
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-    },
-  });
-
   return multer({
-    storage: diskStorage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      const ok =
-        file.mimetype.startsWith("image/") ||
-        file.mimetype === "video/mp4" ||
-        file.mimetype === "video/webm" ||
-        file.mimetype === "video/quicktime";
-      if (ok) cb(null, true);
-      else cb(new Error("Only images and videos (mp4, webm) allowed"));
+      if (isAllowedMime(file.mimetype, file.originalname)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Допустимы фото (JPG, PNG, WebP, GIF) и видео MP4/WebM"));
+      }
     },
+  });
+}
+
+function handleMulter(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  middleware: ReturnType<ReturnType<typeof createUploadMiddleware>["single"]>,
+) {
+  middleware(req, res, (err: unknown) => {
+    if (!err) return next();
+    if (err instanceof MulterError) {
+      const msg =
+        err.code === "LIMIT_FILE_SIZE"
+          ? "Файл слишком большой (макс. 50 МБ)"
+          : err.message;
+      return res.status(400).json({ message: msg });
+    }
+    const message = err instanceof Error ? err.message : "Ошибка загрузки";
+    return res.status(400).json({ message });
   });
 }
 
 export function setupUploadRoutes(app: Express): void {
-  const dir = getUploadsDir();
   const upload = createUploadMiddleware();
+  const dir = getUploadsStaticDir();
 
   app.use("/uploads", express.static(dir));
 
-  app.post("/api/upload", isAuthenticated, upload.single("file"), (req: Request, res: Response) => {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-    res.json({ url: `/uploads/${req.file.filename}` });
-  });
+  app.post(
+    "/api/upload",
+    isAuthenticated,
+    (req, res, next) => handleMulter(req, res, next, upload.single("file")),
+    async (req: Request, res: Response) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Файл не выбран" });
+        }
+        const url = await persistUploadedFile(req.file);
+        res.json({ url });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Не удалось сохранить файл";
+        console.error("[upload]", message);
+        res.status(500).json({ message });
+      }
+    },
+  );
 
-  app.post("/api/users/avatar", isAuthenticated, upload.single("file"), async (req: any, res: Response) => {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-    const userId = req.user.claims.sub;
-    const url = `/uploads/${req.file.filename}`;
-    const existing = await storage.getUser(userId);
-    if (existing) {
-      await storage.upsertUser({ ...existing, profileImageUrl: url });
-    }
-    res.json({ url });
-  });
+  app.post(
+    "/api/users/avatar",
+    isAuthenticated,
+    (req, res, next) => handleMulter(req, res, next, upload.single("file")),
+    async (req: any, res: Response) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "Файл не выбран" });
+        }
+        const mime = req.file.mimetype || "";
+        if (!mime.startsWith("image/")) {
+          return res.status(400).json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
+        }
+        const userId = req.user.claims.sub;
+        const url = await persistUploadedFile(req.file);
+        const existing = await storage.getUser(userId);
+        if (existing) {
+          await storage.upsertUser({ ...existing, profileImageUrl: url });
+        }
+        res.json({ url });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Не удалось загрузить аватар";
+        console.error("[avatar]", message);
+        res.status(500).json({ message });
+      }
+    },
+  );
 }

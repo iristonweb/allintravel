@@ -4340,10 +4340,13 @@ async function registerRoutes(app) {
 }
 
 // server/upload.ts
+import express from "express";
+import multer, { MulterError } from "multer";
+
+// server/media-storage.ts
 import fs from "fs";
 import path from "path";
-import express from "express";
-import multer from "multer";
+var MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024;
 function resolveUploadsDir() {
   if (process.env.VERCEL) {
     return path.join("/tmp", "ait-uploads");
@@ -4354,59 +4357,153 @@ var uploadsDir = null;
 function getUploadsDir() {
   if (uploadsDir) return uploadsDir;
   uploadsDir = resolveUploadsDir();
-  try {
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-  } catch (err) {
-    console.error("[upload] failed to create uploads dir, using /tmp:", err);
-    uploadsDir = path.join("/tmp", "ait-uploads-fallback");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
   }
   return uploadsDir;
 }
+function guessExtension(mime, originalName) {
+  const fromName = originalName ? path.extname(originalName) : "";
+  if (fromName) return fromName.toLowerCase();
+  const map = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov"
+  };
+  return map[mime] ?? ".bin";
+}
+function fileBuffer(file) {
+  if (file.buffer?.length) return file.buffer;
+  if (file.path && fs.existsSync(file.path)) return fs.readFileSync(file.path);
+  throw new Error("Empty upload");
+}
+async function persistUploadedFile(file) {
+  const buffer = fileBuffer(file);
+  const mime = file.mimetype || "application/octet-stream";
+  const ext = guessExtension(mime, file.originalname);
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import("@vercel/blob");
+    const key = `media/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const blob = await put(key, buffer, {
+      access: "public",
+      contentType: mime,
+      addRandomSuffix: false
+    });
+    return blob.url;
+  }
+  if (!process.env.VERCEL) {
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    fs.writeFileSync(path.join(getUploadsDir(), filename), buffer);
+    return `/uploads/${filename}`;
+  }
+  if (mime.startsWith("image/") && buffer.length <= MAX_INLINE_IMAGE_BYTES) {
+    return `data:${mime};base64,${buffer.toString("base64")}`;
+  }
+  throw new Error(
+    "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0444\u0430\u0439\u043B\u043E\u0432 \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430: \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0435 Vercel Blob (Storage) \u0432 \u043F\u0440\u043E\u0435\u043A\u0442\u0435 \u0438\u043B\u0438 \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0439\u0442\u0435 \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435 \u0434\u043E 2 \u041C\u0411."
+  );
+}
+function getUploadsStaticDir() {
+  return getUploadsDir();
+}
+
+// server/upload.ts
+var ALLOWED_MIME = /* @__PURE__ */ new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime"
+]);
+function isAllowedMime(mime, originalName) {
+  if (ALLOWED_MIME.has(mime)) return true;
+  if (mime.startsWith("image/")) return true;
+  const lower = originalName.toLowerCase();
+  if (lower.endsWith(".gif")) return true;
+  if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
+  return false;
+}
 function createUploadMiddleware() {
-  const diskStorage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, getUploadsDir()),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname) || ".jpg";
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-    }
-  });
   return multer({
-    storage: diskStorage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      const ok = file.mimetype.startsWith("image/") || file.mimetype === "video/mp4" || file.mimetype === "video/webm" || file.mimetype === "video/quicktime";
-      if (ok) cb(null, true);
-      else cb(new Error("Only images and videos (mp4, webm) allowed"));
+      if (isAllowedMime(file.mimetype, file.originalname)) {
+        cb(null, true);
+      } else {
+        cb(new Error("\u0414\u043E\u043F\u0443\u0441\u0442\u0438\u043C\u044B \u0444\u043E\u0442\u043E (JPG, PNG, WebP, GIF) \u0438 \u0432\u0438\u0434\u0435\u043E MP4/WebM"));
+      }
     }
   });
 }
+function handleMulter(req, res, next, middleware) {
+  middleware(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof MulterError) {
+      const msg = err.code === "LIMIT_FILE_SIZE" ? "\u0424\u0430\u0439\u043B \u0441\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0439 (\u043C\u0430\u043A\u0441. 50 \u041C\u0411)" : err.message;
+      return res.status(400).json({ message: msg });
+    }
+    const message = err instanceof Error ? err.message : "\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438";
+    return res.status(400).json({ message });
+  });
+}
 function setupUploadRoutes(app) {
-  const dir = getUploadsDir();
   const upload = createUploadMiddleware();
+  const dir = getUploadsStaticDir();
   app.use("/uploads", express.static(dir));
-  app.post("/api/upload", isAuthenticated, upload.single("file"), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+  app.post(
+    "/api/upload",
+    isAuthenticated,
+    (req, res, next) => handleMulter(req, res, next, upload.single("file")),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "\u0424\u0430\u0439\u043B \u043D\u0435 \u0432\u044B\u0431\u0440\u0430\u043D" });
+        }
+        const url = await persistUploadedFile(req.file);
+        res.json({ url });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0444\u0430\u0439\u043B";
+        console.error("[upload]", message);
+        res.status(500).json({ message });
+      }
     }
-    res.json({ url: `/uploads/${req.file.filename}` });
-  });
-  app.post("/api/users/avatar", isAuthenticated, upload.single("file"), async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+  );
+  app.post(
+    "/api/users/avatar",
+    isAuthenticated,
+    (req, res, next) => handleMulter(req, res, next, upload.single("file")),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ message: "\u0424\u0430\u0439\u043B \u043D\u0435 \u0432\u044B\u0431\u0440\u0430\u043D" });
+        }
+        const mime = req.file.mimetype || "";
+        if (!mime.startsWith("image/")) {
+          return res.status(400).json({ message: "\u0410\u0432\u0430\u0442\u0430\u0440 \u0434\u043E\u043B\u0436\u0435\u043D \u0431\u044B\u0442\u044C \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435\u043C (JPG, PNG, WebP, GIF)" });
+        }
+        const userId = req.user.claims.sub;
+        const url = await persistUploadedFile(req.file);
+        const existing = await storage.getUser(userId);
+        if (existing) {
+          await storage.upsertUser({ ...existing, profileImageUrl: url });
+        }
+        res.json({ url });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440";
+        console.error("[avatar]", message);
+        res.status(500).json({ message });
+      }
     }
-    const userId = req.user.claims.sub;
-    const url = `/uploads/${req.file.filename}`;
-    const existing = await storage.getUser(userId);
-    if (existing) {
-      await storage.upsertUser({ ...existing, profileImageUrl: url });
-    }
-    res.json({ url });
-  });
+  );
 }
 
 // server/push.ts

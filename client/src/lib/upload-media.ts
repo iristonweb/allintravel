@@ -6,11 +6,19 @@ export async function uploadMediaFile(file: File): Promise<string> {
     body: form,
     credentials: "include",
   });
+  const text = await res.text();
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Upload failed");
+    let message = "Не удалось загрузить файл";
+    try {
+      const json = JSON.parse(text) as { message?: string };
+      if (json.message) message = json.message;
+    } catch {
+      if (text) message = text.slice(0, 200);
+    }
+    throw new Error(message);
   }
-  const data = (await res.json()) as { url: string };
+  const data = JSON.parse(text) as { url: string };
+  if (!data.url) throw new Error("Сервер не вернул URL файла");
   return data.url;
 }
 

@@ -23,6 +23,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import FilterChipRow from "@/components/filters/FilterChipRow";
 import { EVENT_TYPE_FILTERS, EVENT_TIME_FILTERS } from "@/lib/filter-config";
+import MediaUploadField from "@/components/media/MediaUploadField";
 import type { Event } from "@shared/schema";
 
 export function Events() {
@@ -45,6 +46,7 @@ export function Events() {
     startDate: "",
     endDate: "",
     price: "",
+    imageUrl: "",
   });
 
   const { data: events = [], isLoading } = useQuery<Event[]>({
@@ -78,12 +80,22 @@ export function Events() {
         startDate: new Date(newEvent.startDate).toISOString(),
         endDate: newEvent.endDate ? new Date(newEvent.endDate).toISOString() : undefined,
         price: newEvent.price ? Math.round(Number(newEvent.price) * 100) : null,
+        imageUrl: newEvent.imageUrl || undefined,
         isActive: true,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       setCreateOpen(false);
-      setNewEvent({ title: "", description: "", type: "festival", location: "", startDate: "", endDate: "", price: "" });
+      setNewEvent({
+        title: "",
+        description: "",
+        type: "festival",
+        location: "",
+        startDate: "",
+        endDate: "",
+        price: "",
+        imageUrl: "",
+      });
       toast({ title: "Событие создано" });
     },
     onError: () => {
@@ -170,6 +182,14 @@ export function Events() {
                   placeholder="Цена (₽), необязательно"
                   value={newEvent.price}
                   onChange={(e) => setNewEvent({ ...newEvent, price: e.target.value })}
+                />
+                <MediaUploadField
+                  label="Обложка события"
+                  accept="image/jpeg,image/png,image/webp,image/gif,.gif"
+                  multiple={false}
+                  maxFiles={1}
+                  value={newEvent.imageUrl ? [newEvent.imageUrl] : []}
+                  onChange={(urls) => setNewEvent({ ...newEvent, imageUrl: urls[0] ?? "" })}
                 />
                 <Button
                   className="w-full bg-primary hover:bg-primary/90"

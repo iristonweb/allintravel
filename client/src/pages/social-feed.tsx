@@ -177,8 +177,12 @@ export function SocialFeed() {
         urls.push(await uploadMediaFile(file));
       }
       setNewPost((prev) => ({ ...prev, images: [...prev.images, ...urls] }));
-    } catch {
-      toast({ title: "Не удалось загрузить файл", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "Не удалось загрузить файл",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
     } finally {
       setUploadingMedia(false);
     }
@@ -339,7 +343,7 @@ export function SocialFeed() {
                       <input
                         ref={mediaInputRef}
                         type="file"
-                        accept="image/*,video/mp4,video/webm"
+                        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.gif"
                         multiple
                         className="hidden"
                         onChange={handleMediaSelect}

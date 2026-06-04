@@ -28,6 +28,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePlaceFavorites } from "@/hooks/usePlaceFavorites";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import MediaUploadField from "@/components/media/MediaUploadField";
 import type { Place } from "@shared/schema";
 
 export function Places() {
@@ -44,6 +45,7 @@ export function Places() {
     longitude: "",
     address: "",
     priceRange: "$$",
+    imageUrl: "",
   });
 
   const urlParams = new URLSearchParams(searchString);
@@ -96,11 +98,21 @@ export function Places() {
         ...newPlace,
         latitude: newPlace.latitude || "0",
         longitude: newPlace.longitude || "0",
+        imageUrl: newPlace.imageUrl || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/places"] });
       setCreateOpen(false);
-      setNewPlace({ name: "", description: "", type: "attraction", latitude: "", longitude: "", address: "", priceRange: "$$" });
+      setNewPlace({
+        name: "",
+        description: "",
+        type: "attraction",
+        latitude: "",
+        longitude: "",
+        address: "",
+        priceRange: "$$",
+        imageUrl: "",
+      });
       toast({ title: "Место добавлено" });
     },
     onError: () => {
@@ -148,6 +160,14 @@ export function Places() {
                   <Input placeholder="Широта" value={newPlace.latitude} onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })} />
                   <Input placeholder="Долгота" value={newPlace.longitude} onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })} />
                 </div>
+                <MediaUploadField
+                  label="Фото места"
+                  accept="image/jpeg,image/png,image/webp,image/gif,.gif"
+                  multiple={false}
+                  maxFiles={1}
+                  value={newPlace.imageUrl ? [newPlace.imageUrl] : []}
+                  onChange={(urls) => setNewPlace({ ...newPlace, imageUrl: urls[0] ?? "" })}
+                />
                 <Button className="w-full bg-primary hover:bg-primary/90" disabled={!newPlace.name || createPlaceMutation.isPending} onClick={() => createPlaceMutation.mutate()}>
                   Сохранить
                 </Button>
