@@ -971,9 +971,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+
+  // WebSocket only for local/long-running Node server (not Vercel serverless)
+  if (!process.env.VERCEL) {
   const sessionParser = getSession();
 
-  // WebSocket setup for chat
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   wss.on('connection', (ws: WebSocket, req) => {
@@ -1034,6 +1036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Client disconnected from WebSocket');
     });
   });
+  }
 
   return httpServer;
 }

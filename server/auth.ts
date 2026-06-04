@@ -126,6 +126,7 @@ export async function setupAuth(app: Express) {
 
           return done(null, toSessionUser(user));
         } catch (err) {
+          console.error("[auth] local strategy error:", err);
           return done(err);
         }
       },
@@ -149,7 +150,12 @@ export async function setupAuth(app: Express) {
           : "/";
 
       passport.authenticate("local", (err: unknown, user: Express.User | false | null) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("[auth] POST /api/login authenticate:", err);
+          const q = new URLSearchParams({ error: "server" });
+          if (safeRedirect !== "/") q.set("redirect", safeRedirect);
+          return res.redirect(`/login?${q.toString()}`);
+        }
         if (!user) {
           const q = new URLSearchParams({ error: "invalid" });
           if (safeRedirect !== "/") q.set("redirect", safeRedirect);
@@ -157,7 +163,12 @@ export async function setupAuth(app: Express) {
         }
 
         req.logIn(user, (loginErr) => {
-          if (loginErr) return next(loginErr);
+          if (loginErr) {
+            console.error("[auth] session save failed:", loginErr);
+            const q = new URLSearchParams({ error: "server" });
+            if (safeRedirect !== "/") q.set("redirect", safeRedirect);
+            return res.redirect(`/login?${q.toString()}`);
+          }
           return res.redirect(safeRedirect);
         });
       })(req, res, next);

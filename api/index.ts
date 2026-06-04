@@ -13,6 +13,16 @@ async function getApp(): Promise<Express> {
 
 /** Vercel serverless entry — only /api and /uploads are rewritten here. */
 export default async function handler(req: Request, res: Response) {
-  const app = await getApp();
-  return app(req, res);
+  try {
+    const app = await getApp();
+    return app(req, res);
+  } catch (error) {
+    console.error("[api] unhandled error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        message: "Internal Server Error",
+        hint: "Check Vercel logs, DATABASE_URL, and run npm run db:push for schema updates.",
+      });
+    }
+  }
 }

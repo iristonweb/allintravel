@@ -114,6 +114,22 @@ npm run geo:import
 
 Отдельной страницы «Регистрация» нет: на `/login` вводятся **email + пароль** (минимум 8 символов). При первом успешном входе пользователь **создаётся в БД** с хешем пароля. Повторный вход — тем же email и паролем. Общий код доступа не используется.
 
+### Ошибка 500 на `/api/login` (Vercel)
+
+**Второй проект Vercel не нужен** — фронт и API в одном репозитории (`/api` → serverless function) — это нормальная схема.
+
+Чаще всего после обновления auth:
+
+1. В Neon/production не применена колонка `password_hash` — локально выполните:
+   ```bash
+   npm run db:push
+   ```
+   с production `DATABASE_URL` в `.env`.
+2. На Vercel нет `DATABASE_URL` или `SESSION_SECRET` — добавьте в Environment Variables и redeploy.
+3. Удалите устаревший `APP_ACCESS_CODE` — он больше не используется.
+
+Логи: Vercel → Project → Deployments → Functions → `/api`.
+
 ### Что работает после входа (нужен `DATABASE_URL`)
 
 | Функция | Статус на Vercel |

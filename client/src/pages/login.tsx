@@ -15,7 +15,9 @@ type AuthConfig = {
 export function Login() {
   const search = typeof window !== "undefined" ? window.location.search : "";
   const params = new URLSearchParams(search);
-  const error = params.get("error") === "invalid";
+  const error = params.get("error");
+  const showInvalid = error === "invalid";
+  const showServer = error === "server";
   const redirect = params.get("redirect") || "/";
 
   const { data: authConfig } = useQuery<AuthConfig>({
@@ -46,8 +48,14 @@ export function Login() {
         </CardHeader>
         <CardContent>
           <form action={formAction} method="post" className="space-y-4">
-            {error && (
+            {showInvalid && (
               <p className="text-sm text-destructive">Неверный email или пароль.</p>
+            )}
+            {showServer && (
+              <p className="text-sm text-destructive">
+                Ошибка сервера при входе. Проверьте DATABASE_URL на Vercel и выполните{" "}
+                <code className="text-ait-purple">npm run db:push</code> для обновления схемы БД.
+              </p>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
