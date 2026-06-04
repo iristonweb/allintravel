@@ -1,15 +1,19 @@
 import type { Express, Request, Response } from "express";
-import { createApp } from "../server/createApp";
 
 let appPromise: Promise<Express> | null = null;
 
 async function getApp(): Promise<Express> {
   if (!appPromise) {
+    const { createApp } = await import("../server/createApp");
     const { app } = await createApp();
     appPromise = Promise.resolve(app);
   }
   return appPromise;
 }
+
+export const config = {
+  maxDuration: 60,
+};
 
 /** Wait until Express finishes the response (required on Vercel serverless). */
 function runExpress(app: Express, req: Request, res: Response): Promise<void> {

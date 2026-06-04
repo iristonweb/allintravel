@@ -5,12 +5,45 @@ import { registerRoutes } from "./routes";
 import { initAppStorage } from "./storage";
 import { setupUploadRoutes } from "./upload";
 import { setupPushRoutes } from "./push";
-import { setupVite, serveStatic } from "./vite";
+
+const INIT_TIMEOUT_MS = 12_000;
 
 export async function createApp(): Promise<{ app: Express; server: Server }> {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+
+  // Health check before heavy init (must respond even if DB is slow)
+  app.get("/api/health", async (_req, res) => {
+    let dbOk = false;
+    let dbError: string | undefined;
+
+    if (process.env.DATABASE_URL) {
+      try {
+        const { getDb } = await import("./db");
+        const db = getDb();
+        if (db) {
+          const { sql } = await import("drizzle-orm");
+          await Promise.race([
+            db.execute(sql`SELECT 1`),
+            new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 5000)),
+          ]);
+          dbOk = true;
+        }
+      } catch (e) {
+        dbError = e instanceof Error ? e.message : String(e);
+      }
+    }
+
+    res.json({
+      ok: true,
+      vercel: Boolean(process.env.VERCEL),
+      databaseUrl: Boolean(process.env.DATABASE_URL),
+      database: dbOk,
+      dbError,
+      sessionSecret: Boolean(process.env.SESSION_SECRET),
+    });
+  });
 
   app.use((req, res, next) => {
     const start = Date.now();
@@ -40,7 +73,17 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
     next();
   });
 
-  await initAppStorage();
+  try {
+    await Promise.race([
+      initAppStorage(),
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("initAppStorage timeout")), INIT_TIMEOUT_MS),
+      ),
+    ]);
+  } catch (error) {
+    console.error("[createApp] initAppStorage failed (continuing):", error);
+  }
+
   setupUploadRoutes(app);
   setupPushRoutes(app);
   const server = await registerRoutes(app);
@@ -49,15 +92,18 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
     const e = err as { status?: number; statusCode?: number; message?: string };
     const status = e.status || e.statusCode || 500;
     const message = e.message || "Internal Server Error";
-    res.status(status).json({ message });
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
   });
 
   const isVercel = Boolean(process.env.VERCEL);
   const isDev = process.env.NODE_ENV !== "production" && !isVercel;
   if (isDev) {
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else if (!isVercel) {
-    // On Vercel, dist/public is served by the CDN (outputDirectory); API only in /api
+    const { serveStatic } = await import("./vite");
     serveStatic(app);
   }
 

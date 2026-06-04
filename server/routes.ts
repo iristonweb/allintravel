@@ -81,14 +81,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/health", (_req, res) => {
-    res.json({
-      ok: true,
-      database: Boolean(process.env.DATABASE_URL),
-      vercel: Boolean(process.env.VERCEL),
-    });
-  });
-
   app.get("/api/auth/config", (_req, res) => {
     res.json({
       googleOAuth: isGoogleAuthEnabled(),

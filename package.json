@@ -9,6 +9,7 @@
     "start": "cross-env NODE_ENV=production node dist/server/index.js",
     "check": "tsc",
     "db:push": "drizzle-kit push",
+    "db:check": "tsx server/scripts/check-db-health.ts",
     "db:seed": "tsx server/scripts/seed-app.ts",
     "db:reset-geo": "tsx server/scripts/reset-geo-schema.ts",
     "db:inspect-geo": "tsx server/scripts/inspect-geo-schema.ts",

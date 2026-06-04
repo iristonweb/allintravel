@@ -5,31 +5,58 @@ import multer from "multer";
 import { isAuthenticated } from "./auth";
 import { storage } from "./storage";
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+/** Vercel serverless FS is read-only except /tmp */
+function resolveUploadsDir(): string {
+  if (process.env.VERCEL) {
+    return path.join("/tmp", "ait-uploads");
+  }
+  return path.resolve(process.cwd(), "uploads");
 }
 
-const diskStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || ".jpg";
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-  },
-});
+let uploadsDir: string | null = null;
 
-export const upload = multer({
-  storage: diskStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Only images allowed"));
-  },
-});
+function getUploadsDir(): string {
+  if (uploadsDir) return uploadsDir;
+
+  uploadsDir = resolveUploadsDir();
+  try {
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  } catch (err) {
+    console.error("[upload] failed to create uploads dir, using /tmp:", err);
+    uploadsDir = path.join("/tmp", "ait-uploads-fallback");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  }
+  return uploadsDir;
+}
+
+function createUploadMiddleware() {
+  const diskStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, getUploadsDir()),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname) || ".jpg";
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  });
+
+  return multer({
+    storage: diskStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith("image/")) cb(null, true);
+      else cb(new Error("Only images allowed"));
+    },
+  });
+}
 
 export function setupUploadRoutes(app: Express): void {
-  app.use("/uploads", express.static(uploadsDir));
+  const dir = getUploadsDir();
+  const upload = createUploadMiddleware();
+
+  app.use("/uploads", express.static(dir));
 
   app.post("/api/upload", isAuthenticated, upload.single("file"), (req: Request, res: Response) => {
     if (!req.file) {
