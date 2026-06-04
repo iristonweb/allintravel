@@ -32,7 +32,7 @@ npm run db:seed
 ## Деплой на Vercel
 
 1. Подключить репозиторий [iristonweb/allintravel](https://github.com/iristonweb/allintravel) на [Vercel](https://vercel.com)
-2. **Settings → Build:** Output Directory оставить **пустым** (используется `vercel.json`)
+2. **Settings → Build:** Output Directory = **`dist/public`** (или пусто — подхватит `vercel.json`). **Не** ставьте `dist` — иначе откроется сырой `index.js` сервера вместо сайта
 3. **Settings → Environment Variables** — см. таблицу ниже (можно **Import .env** и вставить содержимое локального `.env` без коммита в git)
 4. После первого `DATABASE_URL` один раз локально: `npm run db:push` и `npm run db:seed`
 5. Redeploy

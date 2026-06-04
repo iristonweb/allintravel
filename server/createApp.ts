@@ -52,10 +52,12 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
     res.status(status).json({ message });
   });
 
-  const isDev = process.env.NODE_ENV !== "production" && !process.env.VERCEL;
+  const isVercel = Boolean(process.env.VERCEL);
+  const isDev = process.env.NODE_ENV !== "production" && !isVercel;
   if (isDev) {
     await setupVite(app, server);
-  } else {
+  } else if (!isVercel) {
+    // On Vercel, dist/public is served by the CDN (outputDirectory); API only in /api
     serveStatic(app);
   }
 
