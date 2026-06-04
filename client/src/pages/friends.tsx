@@ -17,6 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User, FriendshipWithUser } from "@shared/schema";
 import FollowButton from "@/components/social/FollowButton";
+import UserPreviewCell, { friendProfileHref } from "@/components/social/UserPreviewCell";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 
 export function Friends() {
@@ -161,43 +162,35 @@ export function Friends() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {friends.map((friend) => (
-                    <Card key={friend.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarImage src={friend.profileImageUrl ?? undefined} />
-                              <AvatarFallback>{getUserInitial(friend)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <h3 className="font-semibold">{getUserDisplayLabel(friend)}</h3>
-                              {getUserHandle(friend) && (
-                                <p className="text-sm text-ait-purple">{getUserHandle(friend)}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Link href={`/messages?with=${friend.id}`}>
-                              <Button size="sm" variant="outline">
-                                <MessageCircle className="mr-2 h-4 w-4" />
-                                Сообщение
-                              </Button>
+                    <div key={friend.id} className="flex flex-col gap-2">
+                      <UserPreviewCell user={friend} />
+                      <div className="flex gap-1 justify-center">
+                        <Link href={`/messages?with=${friend.id}`}>
+                          <Button size="sm" variant="outline" className="h-8 px-2" title="Сообщение">
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        {friendProfileHref(friend) ? (
+                          <Button size="sm" variant="outline" className="h-8 px-2" asChild title="Профиль">
+                            <Link href={friendProfileHref(friend)!}>
+                              <UserCheck className="h-4 w-4" />
                             </Link>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => removeFriendMutation.mutate(friend.id)}
-                              disabled={removeFriendMutation.isPending}
-                            >
-                              <UserX className="mr-2 h-4 w-4" />
-                              Удалить
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                          title="Удалить"
+                          onClick={() => removeFriendMutation.mutate(friend.id)}
+                          disabled={removeFriendMutation.isPending}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

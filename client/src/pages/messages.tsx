@@ -26,6 +26,10 @@ interface Conversation {
   unreadCount: number;
 }
 
+const isVercelHost =
+  typeof window !== "undefined" &&
+  (window.location.hostname.includes("vercel.app") || import.meta.env.PROD);
+
 export function Messages() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
@@ -72,6 +76,7 @@ export function Messages() {
   const { data: messages = [] } = useQuery<PrivateMessageWithMeta[]>({
     queryKey: messagesKey,
     enabled: !!selectedConversation?.user?.id,
+    refetchInterval: isVercelHost && !!selectedConversation?.user?.id ? 3000 : false,
   });
 
   const likeMutation = useMutation({
@@ -108,12 +113,41 @@ export function Messages() {
   }, [messages, selectedConversation?.user.id]);
 
   const sendMessageMutation = useMutation({
-    mutationFn: (messageData: { receiverId: string; content: string }) =>
-      apiRequest("POST", "/api/messages", messageData),
-    onSuccess: () => {
+    mutationFn: async (messageData: { receiverId: string; content: string }) => {
+      const res = await apiRequest("POST", "/api/messages", messageData);
+      return (await res.json()) as PrivateMessageWithMeta;
+    },
+    onMutate: async (messageData) => {
+      const key = ["/api/messages", messageData.receiverId] as const;
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<PrivateMessageWithMeta[]>(key) ?? [];
+      const optimistic: PrivateMessageWithMeta = {
+        id: `temp-${Date.now()}`,
+        senderId: user!.id,
+        receiverId: messageData.receiverId,
+        content: messageData.content,
+        isRead: false,
+        createdAt: new Date(),
+        updatedAt: null,
+        likeCount: 0,
+        likedByMe: false,
+      };
+      queryClient.setQueryData(key, [...previous, optimistic]);
       setNewMessage("");
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      return { previous, key, content: messageData.content };
+    },
+    onSuccess: (saved, _vars, context) => {
+      if (!context) return;
+      const current = queryClient.getQueryData<PrivateMessageWithMeta[]>(context.key) ?? [];
+      const withoutTemp = current.filter((m) => !String(m.id).startsWith("temp-"));
+      queryClient.setQueryData(context.key, [...withoutTemp, saved]);
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    },
+    onError: (_err, _vars, context) => {
+      if (context) {
+        queryClient.setQueryData(context.key, context.previous);
+        setNewMessage(context.content);
+      }
     },
   });
 

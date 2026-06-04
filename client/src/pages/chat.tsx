@@ -5,6 +5,7 @@ import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import ChatMessageRow from "@/components/chat/ChatMessageRow";
 import { Button } from "@/components/ui/button";
 import MessageComposer from "@/components/chat/MessageComposer";
+import RoomSettingsPanel from "@/components/chat/RoomSettingsPanel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -26,15 +27,16 @@ import {
   Lock,
   Globe,
   Info,
-  Link2,
   Pin,
+  Camera,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import type { ChatMessage, ChatRoom, MessageReactionMeta } from "@shared/schema";
+import { uploadMediaFile } from "@/lib/upload-media";
+import type { ChatMessage, ChatRoom, MessageReactionMeta, User } from "@shared/schema";
 import { mergeChronologicalMessages } from "@/lib/chat-thread";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import type { UserLabelFields } from "@shared/user-display";
@@ -69,7 +71,14 @@ export function Chat() {
   const [activeRoom, setActiveRoom] = useState("general");
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [newRoom, setNewRoom] = useState({ title: "", description: "", visibility: "public" as "public" | "private" });
+  const [newRoom, setNewRoom] = useState({
+    title: "",
+    description: "",
+    visibility: "public" as "public" | "private",
+    avatarUrl: "" as string | undefined,
+  });
+  const [newRoomAvatarUploading, setNewRoomAvatarUploading] = useState(false);
+  const createAvatarInputRef = useRef<HTMLInputElement>(null);
   const [messageText, setMessageText] = useState("");
   const [wsMessages, setWsMessages] = useState<Record<string, ChatMessageWithSender[]>>({});
   const [wsConnected, setWsConnected] = useState(false);
@@ -108,7 +117,7 @@ export function Chat() {
   const { data: historyPayload } = useQuery<ChatHistoryPayload | ChatMessageWithSender[]>({
     queryKey: historyKey,
     enabled: isAuthenticated,
-    refetchInterval: useHttpMode ? 4000 : false,
+    refetchInterval: useHttpMode ? 2000 : false,
   });
 
   const history: ChatMessageWithSender[] = Array.isArray(historyPayload)
@@ -123,42 +132,63 @@ export function Chat() {
 
   const createRoomMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/chat/rooms", newRoom);
+      const payload = {
+        title: newRoom.title,
+        description: newRoom.description || undefined,
+        visibility: newRoom.visibility,
+        ...(newRoom.avatarUrl ? { avatarUrl: newRoom.avatarUrl } : {}),
+      };
+      const res = await apiRequest("POST", "/api/chat/rooms", payload);
       return (await res.json()) as ChatRoom;
     },
     onSuccess: (room) => {
       toast({ title: "Комната создана" });
       setCreateOpen(false);
-      setNewRoom({ title: "", description: "", visibility: "public" });
+      setNewRoom({ title: "", description: "", visibility: "public", avatarUrl: undefined });
       queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
       setActiveRoom(room.slug);
     },
     onError: () => toast({ title: "Не удалось создать", variant: "destructive" }),
   });
 
-  const inviteMutation = useMutation({
-    mutationFn: async (roomId: string) => {
-      const res = await apiRequest("POST", `/api/chat/rooms/${roomId}/invite`);
-      return (await res.json()) as { inviteUrl: string; token: string };
+  const appendMessageToHistory = useCallback(
+    (saved: ChatMessageWithSender) => {
+      queryClient.setQueryData<ChatHistoryPayload | ChatMessageWithSender[]>(
+        historyKey,
+        (old) => {
+          const messages = Array.isArray(old) ? old : (old?.messages ?? []);
+          if (messages.some((m) => m.id === saved.id)) return old;
+          const next = [...messages, saved];
+          if (Array.isArray(old)) return next;
+          return { ...old, messages: next };
+        },
+      );
     },
-    onSuccess: (data) => {
-      const full = `${window.location.origin}${data.inviteUrl}`;
-      void navigator.clipboard.writeText(full);
-      toast({ title: "Ссылка приглашения скопирована" });
-    },
-  });
+    [queryClient, historyKey],
+  );
 
   const postMessage = useMutation({
     mutationFn: async (content: string) => {
       const res = await apiRequest("POST", `/api/chat/${activeRoom}`, { content });
       return (await res.json()) as ChatMessageWithSender;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: historyKey });
+    onSuccess: (saved) => {
+      appendMessageToHistory(saved);
     },
   });
 
   const roomId = activeRoomMeta?.id;
+
+  const { data: roomMembers = [] } = useQuery<
+    { userId: string; user?: User | null }[]
+  >({
+    queryKey: [`/api/chat/rooms/${roomId}/members`],
+    enabled: Boolean(roomId && isAuthenticated),
+  });
+
+  const mentionSuggestUsers = roomMembers
+    .map((m) => m.user)
+    .filter((u): u is User => Boolean(u?.username));
 
   const invalidateThread = () => {
     queryClient.invalidateQueries({ queryKey: historyKey });
@@ -238,10 +268,19 @@ export function Chat() {
         if (data.type === "new_message" && data.message) {
           const room: string = data.message.chatRoom;
           const messageWithSender = { ...data.message, sender: data.sender ?? null };
-          setWsMessages((prev) => ({
-            ...prev,
-            [room]: [...(prev[room] || []), messageWithSender],
-          }));
+          setWsMessages((prev) => {
+            const roomMsgs = prev[room] || [];
+            const withoutTemp = roomMsgs.filter(
+              (m) =>
+                !(
+                  String(m.id).startsWith("temp-") &&
+                  m.userId === messageWithSender.userId &&
+                  m.content === messageWithSender.content
+                ),
+            );
+            if (withoutTemp.some((m) => m.id === messageWithSender.id)) return prev;
+            return { ...prev, [room]: [...withoutTemp, messageWithSender] };
+          });
         }
       } catch {
         /* ignore */
@@ -292,6 +331,32 @@ export function Chat() {
       return;
     }
 
+    const optimistic: ChatMessageWithSender = {
+      id: `temp-${Date.now()}`,
+      userId: user!.id,
+      content: body,
+      chatRoom: activeRoom,
+      createdAt: new Date(),
+      updatedAt: null,
+      sender: user
+        ? {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            displayName: user.displayName,
+            username: user.username,
+            profileImageUrl: user.profileImageUrl,
+          }
+        : null,
+      likeCount: 0,
+      likedByMe: false,
+    };
+    setWsMessages((prev) => ({
+      ...prev,
+      [activeRoom]: [...(prev[activeRoom] || []), optimistic],
+    }));
+    setMessageText("");
+
     wsRef.current.send(
       JSON.stringify({
         type: "chat_message",
@@ -300,7 +365,6 @@ export function Chat() {
         chatRoom: activeRoom,
       }),
     );
-    setMessageText("");
   };
 
   if (!isAuthenticated) {
@@ -370,6 +434,49 @@ export function Chat() {
                         <DialogTitle>Создать комнату</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          {newRoom.avatarUrl ? (
+                            <img
+                              src={resolveMediaUrl(newRoom.avatarUrl)}
+                              alt=""
+                              className="h-14 w-14 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+                              {newRoom.title.slice(0, 1).toUpperCase() || "?"}
+                            </div>
+                          )}
+                          <div>
+                            <input
+                              ref={createAvatarInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setNewRoomAvatarUploading(true);
+                                void uploadMediaFile(file)
+                                  .then((url) => setNewRoom((r) => ({ ...r, avatarUrl: url })))
+                                  .catch(() =>
+                                    toast({ title: "Не удалось загрузить аватар", variant: "destructive" }),
+                                  )
+                                  .finally(() => setNewRoomAvatarUploading(false));
+                                e.target.value = "";
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={newRoomAvatarUploading}
+                              onClick={() => createAvatarInputRef.current?.click()}
+                            >
+                              <Camera className="h-4 w-4 mr-1" />
+                              {newRoomAvatarUploading ? "Загрузка…" : "Аватар"}
+                            </Button>
+                          </div>
+                        </div>
                         <div>
                           <Label>Название</Label>
                           <Input
@@ -486,25 +593,12 @@ export function Chat() {
               </Button>
             </div>
             {showRoomInfo && activeRoomMeta && (
-              <div className="px-4 pb-3 border-b border-border/40 text-sm space-y-2">
-                <p>{activeRoomMeta.description || "Без описания"}</p>
-                <p className="text-muted-foreground">
-                  Участников: {(activeRoomMeta as RoomListItem).memberCount ?? "—"} ·{" "}
-                  {activeRoomMeta.visibility === "private" ? "Закрытая" : "Открытая"}
-                </p>
-                {activeRoomMeta.visibility === "private" &&
-                  (activeRoomMeta as RoomListItem).myRole &&
-                  ["owner", "admin"].includes((activeRoomMeta as RoomListItem).myRole!) && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => inviteMutation.mutate(activeRoomMeta.id)}
-                    >
-                      <Link2 className="h-4 w-4 mr-1" />
-                      Пригласить
-                    </Button>
-                  )}
-              </div>
+              <RoomSettingsPanel
+                room={activeRoomMeta as RoomListItem}
+                currentUserId={user?.id}
+                onClose={() => setShowRoomInfo(false)}
+                onLeft={() => setActiveRoom("general")}
+              />
             )}
 
             <ScrollArea className="flex-1 p-4 ait-chat-thread">
@@ -603,6 +697,7 @@ export function Chat() {
                   placeholder={canSend ? "Сообщение…" : "Подключение…"}
                   disabled={!canSend}
                   className="flex-1"
+                  suggestUsers={mentionSuggestUsers}
                 />
                 <Button
                   variant="premium"

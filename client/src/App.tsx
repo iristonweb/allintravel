@@ -14,6 +14,7 @@ import PlaceDetails from "@/pages/place-details";
 import { Profile } from "@/pages/profile";
 import { ProfileEdit } from "@/pages/profile-edit";
 import { ProfileSettings } from "@/pages/profile-settings";
+import { ProfileMusic } from "@/pages/profile-music";
 import { Friends } from "@/pages/friends";
 import { UserPublicProfile } from "@/pages/user-public";
 import { Messages } from "@/pages/messages";
@@ -88,6 +89,7 @@ function Router() {
           {isAuthenticated && <Route path="/profile/edit" component={ProfileEdit} />}
           {isAuthenticated && <Route path="/profile/settings" component={ProfileSettings} />}
           {isAuthenticated && <Route path="/profile/friends" component={Friends} />}
+          {isAuthenticated && <Route path="/profile/music" component={ProfileMusic} />}
           {isAuthenticated && <Route path="/u/:username" component={UserPublicProfile} />}
           {isAuthenticated && <Route path="/friends" component={Friends} />}
           {isAuthenticated && <Route path="/messages" component={Messages} />}

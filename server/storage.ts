@@ -30,6 +30,8 @@ import {
   type InsertPostLike,
   type PostComment,
   type InsertPostComment,
+  type UserTrack,
+  type InsertUserTrack,
   type ChatRoom,
   type ChatRoomMember,
   type ChatRoomInvite,
@@ -151,6 +153,7 @@ export interface IStorage {
     userId?: string;
     following?: string;
     tag?: string;
+    format?: string;
     publicOnly?: boolean;
     limit?: number;
     offset?: number;
@@ -254,6 +257,11 @@ export interface IStorage {
 
   deleteUserAccount(userId: string): Promise<void>;
   exportUserData(userId: string): Promise<Record<string, unknown>>;
+
+  listUserTracks(userId: string): Promise<import("@shared/schema").UserTrack[]>;
+  getUserTrack(id: string): Promise<import("@shared/schema").UserTrack | undefined>;
+  createUserTrack(data: import("@shared/schema").InsertUserTrack): Promise<import("@shared/schema").UserTrack>;
+  deleteUserTrack(id: string): Promise<void>;
 }
 
 function genId(): string {
@@ -290,6 +298,7 @@ export class MemStorage implements IStorage {
   private memNotifications: Map<string, import("@shared/schema").NotificationRow> = new Map();
   private memPushSubs: Map<string, { userId: string; endpoint: string; p256dh: string; auth: string }> =
     new Map();
+  private userTracksMap: Map<string, UserTrack> = new Map();
 
   constructor() {
     this.seedData();
@@ -486,6 +495,7 @@ export class MemStorage implements IStorage {
         budgetMin: 2000,
         budgetMax: 4000,
         tags: ["islands", "Greece", "sailing", "culture"],
+        imageUrl: null,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -503,6 +513,7 @@ export class MemStorage implements IStorage {
         budgetMin: 3000,
         budgetMax: 6000,
         tags: ["Japan", "culture", "food", "temples"],
+        imageUrl: null,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -515,6 +526,8 @@ export class MemStorage implements IStorage {
       {
         id: "post1",
         userId: "demo-user",
+        format: "post",
+        expiresAt: null,
         title: "Bali Rice Terraces",
         content: "Just arrived in Bali and I'm absolutely speechless! The rice terraces of Tegalalang are even more beautiful in person. If you haven't put Bali on your travel list, you're missing out!",
         images: ["https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800"],
@@ -529,6 +542,8 @@ export class MemStorage implements IStorage {
       {
         id: "post2",
         userId: "demo-user",
+        format: "post",
+        expiresAt: null,
         title: "Sahara Sunrise",
         content: "Watching the sunrise over the Sahara Desert from our camel's back. Some moments in life are absolutely priceless. Morocco has stolen my heart forever.",
         images: ["https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800"],
@@ -543,6 +558,8 @@ export class MemStorage implements IStorage {
       {
         id: "post3",
         userId: "demo-user",
+        format: "post",
+        expiresAt: null,
         title: "Bangkok Street Food Tour",
         content: "Street food tour in Bangkok complete! Pad Thai, mango sticky rice, green curry and so much more. The food scene here is absolutely insane. Counting down the days until I can come back!",
         images: ["https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800"],
@@ -1178,13 +1195,25 @@ export class MemStorage implements IStorage {
     userId?: string;
     following?: string;
     tag?: string;
+    format?: string;
     publicOnly?: boolean;
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]> {
-    let results = Array.from(this.travelPosts.values());
+    const now = Date.now();
+    let results = Array.from(this.travelPosts.values()).filter((p) => {
+      if (p.format === "story" && p.expiresAt && new Date(p.expiresAt).getTime() <= now) {
+        return false;
+      }
+      return true;
+    });
+    if (filters?.format) {
+      results = results.filter((p) => (p.format ?? "post") === filters.format);
+    }
     if (filters?.publicOnly) {
-      results = results.filter((p) => p.isPublic !== false);
+      results = results.filter(
+        (p) => p.isPublic !== false && ["post", "journal"].includes(p.format ?? "post"),
+      );
     }
     if (filters?.userId) {
       results = results.filter(p => p.userId === filters.userId);
@@ -1693,6 +1722,36 @@ export class MemStorage implements IStorage {
     for (const [id, r] of Array.from(this.eventRegistrations.entries())) {
       if (r.userId === userId) this.eventRegistrations.delete(id);
     }
+  }
+
+  async listUserTracks(userId: string): Promise<UserTrack[]> {
+    return Array.from(this.userTracksMap.values())
+      .filter((t) => t.userId === userId)
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  async getUserTrack(id: string): Promise<UserTrack | undefined> {
+    return this.userTracksMap.get(id);
+  }
+
+  async createUserTrack(data: InsertUserTrack): Promise<UserTrack> {
+    const id = genId();
+    const track: UserTrack = {
+      id,
+      userId: data.userId,
+      title: data.title,
+      fileUrl: data.fileUrl,
+      mimeType: data.mimeType ?? null,
+      fileSizeBytes: data.fileSizeBytes ?? null,
+      durationSeconds: data.durationSeconds ?? null,
+      createdAt: new Date(),
+    };
+    this.userTracksMap.set(id, track);
+    return track;
+  }
+
+  async deleteUserTrack(id: string): Promise<void> {
+    this.userTracksMap.delete(id);
   }
 
   async exportUserData(userId: string): Promise<Record<string, unknown>> {

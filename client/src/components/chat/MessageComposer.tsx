@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { encodeGifMessage, encodeStickerMessage } from "@/lib/chat-message";
+import MentionAutocomplete, {
+  getMentionQuery,
+  type MentionAutocompleteHandle,
+} from "@/components/chat/MentionAutocomplete";
+import type { User } from "@shared/schema";
 
 const STICKERS = [
   { id: "plane", src: "/stickers/plane.svg", label: "Самолёт" },
@@ -18,8 +23,45 @@ const STICKERS = [
 
 type GiphyGif = { id: string; url: string; preview: string; title: string };
 
+type GiphyItem = {
+  id: string;
+  title: string;
+  images: {
+    downsized?: { url: string };
+    fixed_height: { url: string };
+    preview_gif: { url: string };
+  };
+};
+
+function mapGiphyItems(items: GiphyItem[]): GiphyGif[] {
+  return items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    url: item.images.downsized?.url ?? item.images.fixed_height.url,
+    preview: item.images.preview_gif.url,
+  }));
+}
+
+function getGiphyKey(): string | undefined {
+  return import.meta.env.VITE_GIPHY_API_KEY as string | undefined;
+}
+
+async function fetchGiphyTrending(): Promise<GiphyGif[]> {
+  const key = getGiphyKey();
+  if (!key) return [];
+  const params = new URLSearchParams({
+    api_key: key,
+    limit: "12",
+    rating: "g",
+  });
+  const res = await fetch(`https://api.giphy.com/v1/gifs/trending?${params}`);
+  if (!res.ok) return [];
+  const json = await res.json();
+  return mapGiphyItems(json.data ?? []);
+}
+
 async function searchGiphy(query: string): Promise<GiphyGif[]> {
-  const key = import.meta.env.VITE_GIPHY_API_KEY as string | undefined;
+  const key = getGiphyKey();
   if (!key || query.trim().length < 2) return [];
   const params = new URLSearchParams({
     api_key: key,
@@ -31,22 +73,7 @@ async function searchGiphy(query: string): Promise<GiphyGif[]> {
   const res = await fetch(`https://api.giphy.com/v1/gifs/search?${params}`);
   if (!res.ok) return [];
   const json = await res.json();
-  return (json.data ?? []).map(
-    (item: {
-      id: string;
-      title: string;
-      images: {
-        downsized?: { url: string };
-        fixed_height: { url: string };
-        preview_gif: { url: string };
-      };
-    }) => ({
-      id: item.id,
-      title: item.title,
-      url: item.images.downsized?.url ?? item.images.fixed_height.url,
-      preview: item.images.preview_gif.url,
-    }),
-  );
+  return mapGiphyItems(json.data ?? []);
 }
 
 type MessageComposerProps = {
@@ -57,6 +84,7 @@ type MessageComposerProps = {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  suggestUsers?: User[];
 };
 
 export default function MessageComposer({
@@ -66,20 +94,46 @@ export default function MessageComposer({
   placeholder = "Сообщение…",
   disabled,
   className,
+  suggestUsers,
 }: MessageComposerProps) {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [gifOpen, setGifOpen] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [gifQuery, setGifQuery] = useState("");
   const [gifResults, setGifResults] = useState<GiphyGif[]>([]);
+  const [gifTrending, setGifTrending] = useState<GiphyGif[]>([]);
   const [gifLoading, setGifLoading] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [cursorPos, setCursorPos] = useState(0);
   const gifSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const mentionRef = useRef<MentionAutocompleteHandle>(null);
 
-  const giphyEnabled = Boolean(import.meta.env.VITE_GIPHY_API_KEY);
+  const giphyEnabled = Boolean(getGiphyKey());
+  const mentionQuery = getMentionQuery(value, cursorPos);
+  const showMentions = mentionQuery !== null;
+  const displayedGifs = gifQuery.trim().length >= 2 ? gifResults : gifTrending;
+
+  const handleGifOpenChange = (open: boolean) => {
+    setGifOpen(open);
+    if (open) {
+      setGifLoading(true);
+      void fetchGiphyTrending()
+        .then(setGifTrending)
+        .finally(() => setGifLoading(false));
+    } else {
+      setGifQuery("");
+      setGifResults([]);
+    }
+  };
 
   const handleGifSearch = (q: string) => {
     setGifQuery(q);
     if (gifSearchRef.current) clearTimeout(gifSearchRef.current);
+    if (q.trim().length < 2) {
+      setGifResults([]);
+      return;
+    }
     gifSearchRef.current = setTimeout(async () => {
       setGifLoading(true);
       try {
@@ -99,6 +153,52 @@ export default function MessageComposer({
   const onEmojiClick = (data: EmojiClickData) => {
     onChange(value + data.emoji);
     setEmojiOpen(false);
+  };
+
+  const applyMention = (username: string) => {
+    const before = value.slice(0, cursorPos);
+    const after = value.slice(cursorPos);
+    const atIdx = before.lastIndexOf("@");
+    if (atIdx === -1) return;
+    const next = `${before.slice(0, atIdx)}@${username} ${after}`;
+    onChange(next);
+    const newPos = atIdx + username.length + 2;
+    requestAnimationFrame(() => {
+      inputRef.current?.setSelectionRange(newPos, newPos);
+      inputRef.current?.focus();
+    });
+    setMentionIndex(0);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showMentions && mentionQuery !== null) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => i + 1);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((i) => Math.max(0, i - 1));
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        return;
+      }
+    }
+    if (e.key === "Enter") {
+      if (showMentions) {
+        const username = mentionRef.current?.pickActive();
+        if (username) {
+          e.preventDefault();
+          applyMention(username);
+          return;
+        }
+      }
+      e.preventDefault();
+      onSend();
+    }
   };
 
   return (
@@ -139,7 +239,7 @@ export default function MessageComposer({
       </Popover>
 
       {giphyEnabled && (
-        <Popover open={gifOpen} onOpenChange={setGifOpen}>
+        <Popover open={gifOpen} onOpenChange={handleGifOpenChange}>
           <PopoverTrigger asChild>
             <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={disabled}>
               <ImageIcon className="h-5 w-5" />
@@ -158,9 +258,11 @@ export default function MessageComposer({
               onChange={(e) => handleGifSearch(e.target.value)}
               className="mb-2 h-8"
             />
-            {gifLoading && <p className="text-xs text-muted-foreground">Загрузка…</p>}
+            {gifLoading && displayedGifs.length === 0 && (
+              <p className="text-xs text-muted-foreground mb-2">Загрузка…</p>
+            )}
             <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {gifResults.map((g) => (
+              {displayedGifs.map((g) => (
                 <button
                   key={g.id}
                   type="button"
@@ -182,19 +284,38 @@ export default function MessageComposer({
         </Popover>
       )}
 
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onSend();
-          }
-        }}
-      />
+      <div className="relative flex-1 min-w-0">
+        {showMentions && mentionQuery !== null && (
+          <MentionAutocomplete
+            ref={mentionRef}
+            query={mentionQuery}
+            suggestUsers={suggestUsers}
+            activeIndex={mentionIndex}
+            onActiveIndexChange={setMentionIndex}
+            onSelect={applyMention}
+          />
+        )}
+        <Input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setCursorPos(e.target.selectionStart ?? e.target.value.length);
+          }}
+          onSelect={(e) => {
+            const target = e.target as HTMLInputElement;
+            setCursorPos(target.selectionStart ?? value.length);
+          }}
+          onClick={(e) => {
+            const target = e.target as HTMLInputElement;
+            setCursorPos(target.selectionStart ?? value.length);
+          }}
+          placeholder={placeholder}
+          disabled={disabled}
+          className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0"
+          onKeyDown={handleInputKeyDown}
+        />
+      </div>
     </div>
   );
 }

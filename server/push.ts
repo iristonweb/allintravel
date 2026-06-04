@@ -56,9 +56,11 @@ export function setupPushRoutes(app: Express): void {
   });
 }
 
+const DEFAULT_PUSH_SOUND = "/sounds/notify-short.wav";
+
 export async function sendPushToUser(
   userId: string,
-  payload: { title: string; body: string; url?: string; tag?: string },
+  payload: { title: string; body: string; url?: string; tag?: string; sound?: string },
 ): Promise<void> {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
@@ -72,6 +74,7 @@ export async function sendPushToUser(
     body: payload.body,
     url: payload.url ?? "/",
     tag: payload.tag,
+    sound: payload.sound ?? DEFAULT_PUSH_SOUND,
   });
 
   await Promise.all(

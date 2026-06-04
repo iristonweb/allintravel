@@ -797,12 +797,20 @@ export class PgStorage implements IStorage {
     userId?: string;
     following?: string;
     tag?: string;
+    format?: string;
     publicOnly?: boolean;
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]> {
     const conditions = [];
-    if (filters?.publicOnly) conditions.push(eq(travelPosts.isPublic, true));
+    if (filters?.format) conditions.push(eq(travelPosts.format, filters.format));
+    conditions.push(
+      sql`(${travelPosts.format} <> 'story' OR ${travelPosts.expiresAt} IS NULL OR ${travelPosts.expiresAt} > NOW())`,
+    );
+    if (filters?.publicOnly) {
+      conditions.push(eq(travelPosts.isPublic, true));
+      conditions.push(sql`${travelPosts.format} IN ('post', 'journal')`);
+    }
     if (filters?.userId) conditions.push(eq(travelPosts.userId, filters.userId));
     if (filters?.following) {
       const followingRows = await this.db
@@ -1090,6 +1098,22 @@ export class PgStorage implements IStorage {
 
   async deleteUserAccount(userId: string): Promise<void> {
     await this.db.delete(users).where(eq(users.id, userId));
+  }
+
+  async listUserTracks(userId: string) {
+    return features.listUserTracksDb(this.db, userId);
+  }
+
+  async getUserTrack(id: string) {
+    return features.getUserTrackDb(this.db, id);
+  }
+
+  async createUserTrack(data: import("@shared/schema").InsertUserTrack) {
+    return features.createUserTrackDb(this.db, data);
+  }
+
+  async deleteUserTrack(id: string) {
+    return features.deleteUserTrackDb(this.db, id);
   }
 
   async exportUserData(userId: string): Promise<Record<string, unknown>> {

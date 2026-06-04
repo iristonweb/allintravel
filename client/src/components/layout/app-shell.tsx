@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePresenceHeartbeat } from "@/hooks/usePresence";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
+import GlobalMusicBar from "@/components/music/GlobalMusicBar";
 import { cn } from "@/lib/utils";
 import { useEffect, type ReactNode } from "react";
 
@@ -37,34 +39,37 @@ export default function AppShell({
   }, [isAuthenticated, pushSupported, vapidReady, subscribePush]);
 
   return (
-    <AmbientBackground showOrbs={!immersive}>
-      <div className="min-h-screen flex flex-col">
-        <AppTopNav />
-        {isAuthenticated && <AppIconSidebar />}
-        <div
-          className={cn(
-            "flex-1",
-            !immersive && "pt-20",
-            immersive && "pt-0",
-            isAuthenticated && !immersive && "pb-24 md:pb-8",
-            isAuthenticated && immersive && "pb-24 md:pb-0",
-            isAuthenticated && "md:pl-[72px]",
-            className,
-          )}
-        >
-          <main
+    <MusicPlayerProvider>
+      <AmbientBackground showOrbs={!immersive}>
+        <div className="min-h-screen flex flex-col">
+          <AppTopNav />
+          {isAuthenticated && <AppIconSidebar />}
+          <div
             className={cn(
-              !fullWidth && !immersive && "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
-              (fullWidth || immersive) && "w-full",
-              isAuthenticated && immersive && "md:pl-0",
-              contentClassName,
+              "flex-1",
+              !immersive && "pt-20",
+              immersive && "pt-0",
+              isAuthenticated && !immersive && "pb-24 md:pb-8",
+              isAuthenticated && immersive && "pb-24 md:pb-0",
+              isAuthenticated && "md:pl-[72px]",
+              className,
             )}
           >
-            {children}
-          </main>
+            <main
+              className={cn(
+                !fullWidth && !immersive && "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
+                (fullWidth || immersive) && "w-full",
+                isAuthenticated && immersive && "md:pl-0",
+                contentClassName,
+              )}
+            >
+              {children}
+            </main>
+          </div>
+          {isAuthenticated && <MobileBottomNav />}
+          {isAuthenticated && <GlobalMusicBar />}
         </div>
-        {isAuthenticated && <MobileBottomNav />}
-      </div>
-    </AmbientBackground>
+      </AmbientBackground>
+    </MusicPlayerProvider>
   );
 }

@@ -19,6 +19,7 @@ export const sidebarPrimaryNav: NavItem[] = [
   { href: "/", label: "Главная" },
   { href: "/map", label: "Карта" },
   { href: "/trips", label: "Поездки" },
+  { href: "/profile/friends", label: "Друзья" },
   { href: "/messages", label: "Сообщения" },
   { href: "/profile", label: "Профиль" },
 ];

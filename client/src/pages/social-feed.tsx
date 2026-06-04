@@ -39,6 +39,19 @@ import { uploadMediaFile, isVideoUrl } from "@/lib/upload-media";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import type { PostFormat } from "@shared/post-formats";
+import StoryBar, { type StoryGroup } from "@/components/feed/StoryBar";
+import StoryViewer from "@/components/feed/StoryViewer";
+import ReelFeed from "@/components/feed/ReelFeed";
+import JournalCard from "@/components/feed/JournalCard";
+import { isVideoUrl as isVideoUrlShared } from "@shared/post-formats";
+
+function contentFormatToApi(format: "feed" | "stories" | "reels" | "journals"): PostFormat {
+  if (format === "stories") return "story";
+  if (format === "reels") return "reel";
+  if (format === "journals") return "journal";
+  return "post";
+}
 
 export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
@@ -78,13 +91,22 @@ export function SocialFeed() {
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [storyView, setStoryView] = useState<{
+    posts: TravelPostWithAuthor[];
+    index: number;
+  } | null>(null);
+
+  const apiFormat = contentFormatToApi(contentFormat);
+
+  const postsQueryParams = useMemo(() => {
+    const base: Record<string, string> = { format: apiFormat };
+    if (activeTag) base.tag = activeTag;
+    if (feedMode === "following" && user?.id) base.following = user.id;
+    return base;
+  }, [apiFormat, activeTag, feedMode, user?.id]);
 
   const { data: posts = [], isLoading } = useQuery<TravelPostWithAuthor[]>({
-    queryKey: activeTag
-      ? ["/api/posts", { tag: activeTag }]
-      : feedMode === "following"
-        ? ["/api/posts", { following: user?.id }]
-        : ["/api/posts"],
+    queryKey: ["/api/posts", postsQueryParams],
     enabled: isAuthenticated && (feedMode !== "following" || !!user?.id),
   });
 
@@ -92,6 +114,7 @@ export function SocialFeed() {
 
   const createPostMutation = useMutation({
     mutationFn: (postData: {
+      format: PostFormat;
       title: string;
       content: string;
       location: string;
@@ -156,16 +179,80 @@ export function SocialFeed() {
   };
 
   const handleCreatePost = () => {
+    const format = apiFormat;
+    const { tagInput, images, ...postData } = newPost;
+
+    if (format === "story") {
+      if (!images.length) {
+        toast({ title: "Добавьте фото или видео для Story", variant: "destructive" });
+        return;
+      }
+      createPostMutation.mutate({
+        format,
+        ...postData,
+        title: "",
+        content: postData.content.trim() || " ",
+        images,
+      });
+      return;
+    }
+
+    if (format === "reel") {
+      if (!images.some(isVideoUrlShared)) {
+        toast({ title: "Reel требует видеофайл", variant: "destructive" });
+        return;
+      }
+      createPostMutation.mutate({
+        format,
+        ...postData,
+        title: "",
+        content: postData.content.trim() || " ",
+        images,
+      });
+      return;
+    }
+
+    if (format === "journal") {
+      if (!newPost.title.trim()) {
+        toast({ title: "Укажите заголовок журнала", variant: "destructive" });
+        return;
+      }
+      if (newPost.content.trim().length < 80) {
+        toast({ title: "Текст журнала — минимум 80 символов", variant: "destructive" });
+        return;
+      }
+      createPostMutation.mutate({
+        format,
+        ...postData,
+        isPublic: true,
+        images: images.length > 0 ? images : undefined,
+      });
+      return;
+    }
+
     if (!newPost.title.trim() || !newPost.content.trim()) {
       toast({ title: "Заполните заголовок и текст поста", variant: "destructive" });
       return;
     }
-    const { tagInput, images, ...postData } = newPost;
     createPostMutation.mutate({
+      format: "post",
       ...postData,
       images: images.length > 0 ? images : undefined,
     });
   };
+
+  const openStoryGroup = (group: StoryGroup, startIndex: number) => {
+    setStoryView({ posts: group.posts, index: startIndex });
+  };
+
+  const composerPlaceholder =
+    contentFormat === "stories"
+      ? "Новая Story (24ч)..."
+      : contentFormat === "reels"
+        ? "Новый Reel..."
+        : contentFormat === "journals"
+          ? "Запись в журнал..."
+          : "Поделитесь впечатлениями от путешествия...";
 
   const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -254,7 +341,7 @@ export function SocialFeed() {
             className={feedMode === "all" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
             onClick={() => { setFeedModeWithUrl("all"); setActiveTag(null); }}
           >
-            Лента
+            Все
           </Button>
           <Button
             variant={feedMode === "following" ? "default" : "ghost"}
@@ -294,58 +381,81 @@ export function SocialFeed() {
                       className="w-full justify-start text-muted-foreground"
                       onClick={() => setIsCreating(true)}
                     >
-                      Поделитесь впечатлениями от путешествия...
+                      {composerPlaceholder}
                     </Button>
                   ) : (
                     <div className="space-y-3">
-                      <Input
-                        placeholder="Заголовок поста"
-                        value={newPost.title}
-                        onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                      />
-                      <Textarea
-                        placeholder="Расскажите о путешествии..."
-                        value={newPost.content}
-                        onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                        rows={4}
-                      />
-                      <LocationAutocompleteInput
-                        placeholder="Местоположение (необязательно)"
-                        value={newPost.location}
-                        onChange={(v) => setNewPost({ ...newPost, location: v })}
-                      />
-                      <div className="flex gap-2">
+                      {contentFormat !== "stories" && contentFormat !== "reels" && (
                         <Input
-                          placeholder="Добавить тег"
-                          value={newPost.tagInput}
-                          onChange={(e) => setNewPost({ ...newPost, tagInput: e.target.value })}
-                          onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+                          placeholder={
+                            contentFormat === "journals" ? "Заголовок журнала" : "Заголовок поста"
+                          }
+                          value={newPost.title}
+                          onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
                         />
-                        <Button variant="outline" size="sm" onClick={handleAddTag}>
-                          +
-                        </Button>
-                      </div>
-                      {newPost.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {newPost.tags.map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="cursor-pointer"
-                              onClick={() =>
-                                setNewPost((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }))
-                              }
-                            >
-                              #{tag} ×
-                            </Badge>
-                          ))}
-                        </div>
+                      )}
+                      {contentFormat !== "stories" && (
+                        <Textarea
+                          placeholder={
+                            contentFormat === "journals"
+                              ? "Длинная запись (мин. 80 символов)..."
+                              : contentFormat === "reels"
+                                ? "Подпись к Reel (необязательно)"
+                                : "Расскажите о путешествии..."
+                          }
+                          value={newPost.content}
+                          onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                          rows={contentFormat === "journals" ? 8 : 4}
+                        />
+                      )}
+                      {contentFormat === "feed" && (
+                        <>
+                          <LocationAutocompleteInput
+                            placeholder="Местоположение (необязательно)"
+                            value={newPost.location}
+                            onChange={(v) => setNewPost({ ...newPost, location: v })}
+                          />
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Добавить тег"
+                              value={newPost.tagInput}
+                              onChange={(e) => setNewPost({ ...newPost, tagInput: e.target.value })}
+                              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+                            />
+                            <Button variant="outline" size="sm" onClick={handleAddTag}>
+                              +
+                            </Button>
+                          </div>
+                          {newPost.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {newPost.tags.map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="cursor-pointer"
+                                  onClick={() =>
+                                    setNewPost((prev) => ({
+                                      ...prev,
+                                      tags: prev.tags.filter((t) => t !== tag),
+                                    }))
+                                  }
+                                >
+                                  #{tag} ×
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                       <input
                         ref={mediaInputRef}
                         type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.gif"
-                        multiple
+                        accept={
+                          contentFormat === "reels"
+                            ? "video/mp4,video/webm,video/quicktime"
+                            : "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.gif"
+                        }
+                        multiple={contentFormat !== "reels"}
                         className="hidden"
                         onChange={handleMediaSelect}
                       />
@@ -362,20 +472,31 @@ export function SocialFeed() {
                           ) : (
                             <ImagePlus className="h-4 w-4 mr-1" />
                           )}
-                          Фото / видео
+                          {contentFormat === "reels"
+                            ? "Видео"
+                            : contentFormat === "stories"
+                              ? "Фото / видео"
+                              : "Фото / видео"}
                         </Button>
-                        <div className="flex items-center gap-2 ml-auto">
-                          <Switch
-                            id="post-public"
-                            checked={newPost.isPublic}
-                            onCheckedChange={(checked) =>
-                              setNewPost((prev) => ({ ...prev, isPublic: checked }))
-                            }
-                          />
-                          <Label htmlFor="post-public" className="text-sm text-muted-foreground">
-                            Публично (в блоге)
-                          </Label>
-                        </div>
+                        {contentFormat === "feed" && (
+                          <div className="flex items-center gap-2 ml-auto">
+                            <Switch
+                              id="post-public"
+                              checked={newPost.isPublic}
+                              onCheckedChange={(checked) =>
+                                setNewPost((prev) => ({ ...prev, isPublic: checked }))
+                              }
+                            />
+                            <Label htmlFor="post-public" className="text-sm text-muted-foreground">
+                              Публично (в блоге)
+                            </Label>
+                          </div>
+                        )}
+                        {contentFormat === "stories" && (
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            Исчезнет через 24 часа
+                          </span>
+                        )}
                       </div>
                       {newPost.images.length > 0 && (
                         <div className="flex flex-wrap gap-2">
@@ -422,6 +543,15 @@ export function SocialFeed() {
             </div>
           </GlassCard>
 
+          {storyView && (
+            <StoryViewer
+              posts={storyView.posts}
+              index={storyView.index}
+              onClose={() => setStoryView(null)}
+              onIndexChange={(index) => setStoryView((s) => (s ? { ...s, index } : null))}
+            />
+          )}
+
           {/* Posts list */}
           <div className="space-y-6">
             {isLoading ? (
@@ -429,15 +559,28 @@ export function SocialFeed() {
                 <div className="loading-spinner mx-auto" />
                 <p className="text-muted-foreground mt-2">Загружаем посты...</p>
               </div>
+            ) : contentFormat === "stories" ? (
+              <StoryBar posts={displayedPosts} onOpenGroup={openStoryGroup} />
+            ) : contentFormat === "reels" ? (
+              <ReelFeed posts={displayedPosts} />
             ) : displayedPosts.length === 0 ? (
               <GlassCard className="py-16 text-center">
                 <Compass className="mx-auto h-12 w-12 text-ait-purple mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Пока нет постов</h3>
-                <p className="text-muted-foreground mb-4">Создайте первый пост о своём путешествии</p>
+                <h3 className="text-lg font-semibold mb-2">Пока нет публикаций</h3>
+                <p className="text-muted-foreground mb-4">Создайте первую запись в этом формате</p>
                 <Button variant="premium" onClick={() => setIsCreating(true)}>
-                  Создать пост
+                  Создать
                 </Button>
               </GlassCard>
+            ) : contentFormat === "journals" ? (
+              displayedPosts.map((post) => (
+                <JournalCard
+                  key={post.id}
+                  post={post}
+                  formatDate={formatDate}
+                  onTagClick={(tag) => setActiveTag(activeTag === tag ? null : tag)}
+                />
+              ))
             ) : (
               displayedPosts.map((post) => (
                 <GlassCard key={post.id} className="overflow-hidden">

@@ -14,6 +14,12 @@ const ALLOWED_MIME = new Set([
   "video/mp4",
   "video/webm",
   "video/quicktime",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "audio/x-m4a",
+  "audio/mp3",
 ]);
 
 function isAllowedMime(mime: string, originalName: string): boolean {
@@ -22,6 +28,8 @@ function isAllowedMime(mime: string, originalName: string): boolean {
   if (mime === "application/octet-stream") {
     if (lower.endsWith(".gif")) return true;
     if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
+    if (lower.endsWith(".mp3") || lower.endsWith(".m4a") || lower.endsWith(".ogg") || lower.endsWith(".wav"))
+      return true;
   }
   return false;
 }
@@ -34,7 +42,7 @@ function createUploadMiddleware() {
       if (isAllowedMime(file.mimetype, file.originalname)) {
         cb(null, true);
       } else {
-        cb(new Error("Допустимы фото (JPG, PNG, WebP, GIF) и видео MP4/WebM"));
+        cb(new Error("Допустимы фото, видео MP4/WebM и аудио MP3/M4A/OGG/WAV"));
       }
     },
   });

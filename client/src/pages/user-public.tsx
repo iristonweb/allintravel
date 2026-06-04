@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import type { UserProfile } from "@shared/schema";
-import { MessageCircle, UserPlus, MapPin } from "lucide-react";
+import { MessageCircle, UserPlus, MapPin, Compass } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import FollowButton from "@/components/social/FollowButton";
 
 type PublicUserView = {
@@ -102,6 +103,60 @@ export function UserPublicProfile() {
               <MapPin className="h-4 w-4" />
               {profile.location}
             </p>
+          )}
+          {profile?.travelStyle && (
+            <p className="mt-2 flex items-center gap-1 text-sm">
+              <Compass className="h-4 w-4 text-ait-purple" />
+              <span className="text-muted-foreground">Стиль:</span> {profile.travelStyle}
+            </p>
+          )}
+          {profile?.website && (
+            <p className="mt-2 text-sm">
+              <a
+                href={profile.website.startsWith("http") ? profile.website : `https://${profile.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-ait-purple hover:underline"
+              >
+                {profile.website}
+              </a>
+            </p>
+          )}
+          {(profile?.interests?.length ?? 0) > 0 && (
+            <div className="mt-4">
+              <p className="text-xs text-muted-foreground mb-2">Интересы</p>
+              <div className="flex flex-wrap gap-1">
+                {profile!.interests!.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {(profile?.languages?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <p className="text-xs text-muted-foreground mb-2">Языки</p>
+              <div className="flex flex-wrap gap-1">
+                {profile!.languages!.map((lang) => (
+                  <Badge key={lang} variant="outline" className="text-xs">
+                    {lang}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {(profile?.favoriteDestinations?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <p className="text-xs text-muted-foreground mb-2">Любимые направления</p>
+              <div className="flex flex-wrap gap-1">
+                {profile!.favoriteDestinations!.map((dest) => (
+                  <Badge key={dest} variant="outline" className="text-xs">
+                    {dest}
+                  </Badge>
+                ))}
+              </div>
+            </div>
           )}
           <div className="flex flex-wrap gap-2 mt-6">
             <Button asChild size="sm">

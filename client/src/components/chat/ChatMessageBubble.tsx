@@ -2,6 +2,39 @@ import { parseChatMessage } from "@/lib/chat-message";
 import { cn } from "@/lib/utils";
 import { Heart } from "lucide-react";
 import type { ReactNode } from "react";
+import { Link } from "wouter";
+
+const MENTION_LINK_RE = /@([a-zA-Z0-9_]{3,30})/g;
+
+function renderTextWithMentions(text: string, isOwn: boolean): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const re = new RegExp(MENTION_LINK_RE.source, "g");
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+    const username = match[1];
+    nodes.push(
+      <Link
+        key={`${match.index}-${username}`}
+        href={`/u/${username}`}
+        className={cn(
+          "font-medium hover:underline",
+          isOwn ? "text-white/95 underline-offset-2" : "text-ait-purple",
+        )}
+      >
+        @{username}
+      </Link>,
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+  return nodes.length > 0 ? nodes : [text];
+}
 
 type ChatMessageBubbleProps = {
   content: string;
@@ -71,7 +104,7 @@ export default function ChatMessageBubble({
               : "ait-chat-bubble-other text-foreground rounded-tl-md",
           )}
         >
-          {textContent}
+          {renderTextWithMentions(textContent, isOwn)}
         </div>
       ) : null}
 

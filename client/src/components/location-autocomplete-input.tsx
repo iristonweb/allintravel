@@ -153,6 +153,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
 
     const dropdownContent = showDropdown && portalReady ? (
       <div
+        data-geo-autocomplete
         className={cn(
           "rounded-md border bg-popover text-popover-foreground shadow-md overflow-hidden",
           dropdownPortal ? "fixed z-[200]" : "absolute left-0 right-0 top-[calc(100%+4px)] z-50",

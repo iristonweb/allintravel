@@ -137,7 +137,14 @@ export function Events() {
                 Создать событие
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent
+              className="max-w-md"
+              onInteractOutside={(e) => {
+                if ((e.target as HTMLElement).closest("[data-geo-autocomplete]")) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <DialogHeader>
                 <DialogTitle>Новое событие</DialogTitle>
               </DialogHeader>

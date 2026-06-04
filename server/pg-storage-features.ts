@@ -11,9 +11,11 @@ import type {
   ChatRoomInvite,
   ChatRoomMember,
   InsertChatMessage,
+  InsertUserTrack,
   PrivateMessage,
   User,
   UserPresence,
+  UserTrack,
 } from "@shared/schema";
 import {
   chatMessageLikes,
@@ -28,6 +30,7 @@ import {
   userPresence,
   userPrivacySettings,
   userProfiles,
+  userTracks,
   users,
 } from "@shared/schema";
 import { LEGACY_CHAT_ROOM_SEEDS } from "./legacy-chat-rooms";
@@ -134,6 +137,20 @@ export async function ensureExtendedSchema(db: PgFeaturesDb): Promise<void> {
       PRIMARY KEY (message_id, user_id)
     )
   `);
+  await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS image_url varchar(500)`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS user_tracks (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title varchar(200) NOT NULL,
+      file_url varchar(500) NOT NULL,
+      mime_type varchar(50),
+      file_size_bytes integer,
+      duration_seconds integer,
+      created_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS "IDX_user_tracks_user" ON user_tracks (user_id)`);
 }
 
 export type MessageLikeMeta = { likeCount: number; likedByMe: boolean };
@@ -671,4 +688,26 @@ export async function getPinnedMessageIdsDb(db: PgFeaturesDb, roomId: string): P
 
 export async function deleteChatMessageDb(db: PgFeaturesDb, messageId: string): Promise<void> {
   await db.delete(chatMessages).where(eq(chatMessages.id, messageId));
+}
+
+export async function listUserTracksDb(db: PgFeaturesDb, userId: string): Promise<UserTrack[]> {
+  return db
+    .select()
+    .from(userTracks)
+    .where(eq(userTracks.userId, userId))
+    .orderBy(desc(userTracks.createdAt));
+}
+
+export async function getUserTrackDb(db: PgFeaturesDb, id: string): Promise<UserTrack | undefined> {
+  const [row] = await db.select().from(userTracks).where(eq(userTracks.id, id)).limit(1);
+  return row;
+}
+
+export async function createUserTrackDb(db: PgFeaturesDb, data: InsertUserTrack): Promise<UserTrack> {
+  const [row] = await db.insert(userTracks).values(data).returning();
+  return row;
+}
+
+export async function deleteUserTrackDb(db: PgFeaturesDb, id: string): Promise<void> {
+  await db.delete(userTracks).where(eq(userTracks.id, id));
 }

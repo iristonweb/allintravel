@@ -22,12 +22,16 @@ import {
   insertPostCommentSchema,
   updateTravelPostSchema,
   updateUserProfileSchema,
+  insertUserTrackSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import path from "path";
+import fs from "fs";
 import { validateUsername } from "@shared/username";
 import { updatePrivacySettingsSchema } from "@shared/privacy";
 import { isTravelDirectionId } from "@shared/travel-directions";
 import { toPublicUser, toSelfUser } from "./user-utils";
+import { getUploadsStaticDir } from "./media-storage";
 import { userCanManageTrip } from "./security";
 import { resolveChatRoomAccess, ensureMemberForPost } from "./chat-access";
 import {
@@ -36,6 +40,7 @@ import {
   canSendFriendRequest,
   canSeeOnlineStatus,
 } from "./privacy-helpers";
+import { parseCreateTravelPostBody } from "./post-validation";
 import {
   notifyFriendRequest,
   notifyFriendAccepted,
@@ -860,6 +865,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/music/tracks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const tracks = await storage.listUserTracks(userId);
+      res.json(tracks);
+    } catch (error) {
+      console.error("Error listing music tracks:", error);
+      res.status(500).json({ message: "Failed to list tracks" });
+    }
+  });
+
+  app.post("/api/music/tracks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = insertUserTrackSchema.parse({ ...req.body, userId });
+      const track = await storage.createUserTrack(body);
+      res.status(201).json(track);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid track data", errors: error.errors });
+      }
+      console.error("Error creating music track:", error);
+      res.status(500).json({ message: "Failed to create track" });
+    }
+  });
+
+  app.delete("/api/music/tracks/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const track = await storage.getUserTrack(req.params.id);
+      if (!track) return res.status(404).json({ message: "Track not found" });
+      if (track.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+      await storage.deleteUserTrack(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting music track:", error);
+      res.status(500).json({ message: "Failed to delete track" });
+    }
+  });
+
+  app.get("/api/music/tracks/:id/download", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const track = await storage.getUserTrack(req.params.id);
+      if (!track) return res.status(404).json({ message: "Track not found" });
+      if (track.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+
+      const ext = path.extname(track.fileUrl) || ".mp3";
+      const safeTitle = track.title.replace(/[^\w\s.-]/g, "").trim() || "track";
+      const filename = `${safeTitle}${ext}`;
+
+      if (track.fileUrl.startsWith("/uploads/")) {
+        const localPath = path.join(getUploadsStaticDir(), path.basename(track.fileUrl));
+        if (!fs.existsSync(localPath)) {
+          return res.status(404).json({ message: "File not found" });
+        }
+        return res.download(localPath, filename);
+      }
+
+      const remote = await fetch(track.fileUrl);
+      if (!remote.ok) {
+        return res.status(502).json({ message: "Failed to fetch file" });
+      }
+      const buffer = Buffer.from(await remote.arrayBuffer());
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+      res.setHeader("Content-Type", track.mimeType || remote.headers.get("content-type") || "audio/mpeg");
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error downloading music track:", error);
+      res.status(500).json({ message: "Failed to download track" });
+    }
+  });
+
   app.get('/api/follow/:userId/check', isAuthenticated, async (req: any, res) => {
     try {
       const followerId = req.user.claims.sub;
@@ -1079,6 +1157,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error listing members:", error);
       res.status(500).json({ message: "Failed to list members" });
+    }
+  });
+
+  app.post("/api/chat/rooms/:id/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const roomId = req.params.id;
+      if (!(await isRoomAdmin(roomId, userId))) {
+        return res.status(403).json({ message: "Admin only" });
+      }
+      const body = z.object({ userId: z.string().min(1) }).parse(req.body);
+      const room = await storage.getChatRoom(roomId);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      const target = await storage.getUser(body.userId);
+      if (!target) return res.status(404).json({ message: "User not found" });
+      const member = await storage.joinChatRoom(roomId, body.userId);
+      res.status(201).json({ ...member, user: toPublicUser(target) });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error adding room member:", error);
+      res.status(500).json({ message: "Failed to add member" });
+    }
+  });
+
+  app.patch("/api/chat/rooms/:id/members/:memberUserId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const roomId = req.params.id;
+      const memberUserId = req.params.memberUserId;
+      const room = await storage.getChatRoom(roomId);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      const myMember = await storage.getChatRoomMember(roomId, userId);
+      if (myMember?.role !== "owner") {
+        return res.status(403).json({ message: "Owner only" });
+      }
+      const targetMember = await storage.getChatRoomMember(roomId, memberUserId);
+      if (!targetMember || targetMember.status !== "active") {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      if (targetMember.role === "owner") {
+        return res.status(400).json({ message: "Cannot change owner role" });
+      }
+      const body = z.object({ role: z.enum(["admin", "member"]) }).parse(req.body);
+      const updated = await storage.setChatRoomMemberRole(roomId, memberUserId, body.role);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating member role:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/chat/rooms/:id/members/:memberUserId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const roomId = req.params.id;
+      const memberUserId = req.params.memberUserId;
+      const room = await storage.getChatRoom(roomId);
+      if (!room) return res.status(404).json({ message: "Room not found" });
+      const targetMember = await storage.getChatRoomMember(roomId, memberUserId);
+      if (!targetMember) return res.status(404).json({ message: "Member not found" });
+      if (targetMember.role === "owner") {
+        return res.status(400).json({ message: "Cannot remove owner" });
+      }
+      const isSelf = memberUserId === userId;
+      if (!isSelf && !(await isRoomAdmin(roomId, userId))) {
+        return res.status(403).json({ message: "Admin only" });
+      }
+      await storage.banChatRoomMember(roomId, memberUserId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing room member:", error);
+      res.status(500).json({ message: "Failed to remove member" });
     }
   });
 
@@ -1638,7 +1793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/posts', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const postData = insertTravelPostSchema.parse({ ...req.body, userId });
+      const postData = parseCreateTravelPostBody(req.body, userId);
       const post = await storage.createTravelPost(postData);
       res.status(201).json(post);
     } catch (error) {
@@ -1652,12 +1807,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/posts', async (req: any, res) => {
     try {
-      const { userId, following, tag, public: publicFilter, limit = 20, offset = 0 } = req.query;
+      const { userId, following, tag, format, public: publicFilter, limit = 20, offset = 0 } = req.query;
       const currentUserId: string | null = req.user?.claims?.sub || null;
       const posts = await storage.getTravelPosts({
         userId: userId as string,
         following: following as string,
         tag: tag as string,
+        format: format as string | undefined,
         publicOnly: publicFilter === "1" || publicFilter === "true",
         limit: Number(limit),
         offset: Number(offset),

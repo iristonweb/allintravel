@@ -11,6 +11,7 @@ import {
   BookOpen,
   Sparkles,
   MessageSquare,
+  Music,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -30,6 +31,8 @@ const iconByHref: Record<string, LucideIcon> = {
   "/trips": Calendar,
   "/social-feed": Users,
   "/friends": Users,
+  "/profile/friends": Users,
+  "/profile/music": Music,
   "/messages": MessageCircle,
   "/profile": User,
   "/places": MapPin,

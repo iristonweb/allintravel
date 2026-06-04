@@ -6,42 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Settings,
-  Users,
-  MessageCircle,
-  Rss,
-  BookOpen,
-  Calendar,
-  Wallet,
-  Hash,
-  Search,
-  Edit,
-  MapPin,
-} from "lucide-react";
+import { Settings, Search, Edit } from "lucide-react";
+import { profileHubLinks, profileMapLink } from "@/lib/profile-hub-links";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { useLocation } from "wouter";
 import type { User } from "@shared/schema";
-
-const hubLinks = [
-  { href: "/social-feed", label: "Моя лента", icon: Rss, desc: "Посты и сообщество" },
-  { href: "/blog", label: "Блог", icon: BookOpen, desc: "Публичные статьи" },
-  { href: "/events", label: "События", icon: Calendar, desc: "Мои и ближайшие события" },
-  { href: "/wallet", label: "Криптокошелёк", icon: Wallet, desc: "Demo — без блокчейна", badge: "Demo" },
-  { href: "/profile/friends", label: "Друзья", icon: Users, desc: "По направлениям и поиск" },
-  { href: "/messages", label: "Сообщения", icon: MessageCircle, desc: "Личные чаты" },
-  { href: "/chat", label: "Мои комнаты", icon: Hash, desc: "Группы и обсуждения" },
-];
+import UserPreviewCell from "@/components/social/UserPreviewCell";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [nickSearch, setNickSearch] = useState("");
 
-  const { data: friends = [] } = useQuery({
+  const { data: friends = [] } = useQuery<User[]>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
   });
@@ -97,12 +77,27 @@ export function Profile() {
                   </Button>
                 </div>
                 <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
-                  <span>
-                    <strong className="text-foreground">{(friends as unknown[]).length}</strong> друзей
-                  </span>
+                  <Link href="/profile/friends" className="hover:text-ait-purple transition-colors">
+                    <strong className="text-foreground">{friends.length}</strong> друзей
+                  </Link>
                 </div>
               </div>
             </div>
+            {friends.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-border/40">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium">Друзья</p>
+                  <Link href="/profile/friends" className="text-xs text-ait-purple hover:underline">
+                    Все ({friends.length})
+                  </Link>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                  {friends.slice(0, 8).map((friend) => (
+                    <UserPreviewCell key={friend.id} user={friend} className="min-w-[100px] shrink-0" />
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -148,7 +143,7 @@ export function Profile() {
 
         <h2 className="text-lg font-semibold mb-3">Личный кабинет</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {hubLinks.map((item) => (
+          {profileHubLinks.map((item) => (
             <Link key={item.href} href={item.href}>
               <Card className="h-full hover:border-primary/40 transition-colors cursor-pointer border-border/60">
                 <CardContent className="p-4 flex gap-3 items-start">
@@ -170,15 +165,15 @@ export function Profile() {
               </Card>
             </Link>
           ))}
-          <Link href="/map">
+          <Link href={profileMapLink.href}>
             <Card className="h-full hover:border-primary/40 transition-colors cursor-pointer border-border/60">
               <CardContent className="p-4 flex gap-3 items-start">
                 <div className="rounded-lg bg-primary/10 p-2">
-                  <MapPin className="h-5 w-5 text-primary" />
+                  <profileMapLink.icon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <div className="font-medium">Карта</div>
-                  <p className="text-sm text-muted-foreground mt-0.5">Маршруты и места</p>
+                  <div className="font-medium">{profileMapLink.label}</div>
+                  <p className="text-sm text-muted-foreground mt-0.5">{profileMapLink.desc}</p>
                 </div>
               </CardContent>
             </Card>

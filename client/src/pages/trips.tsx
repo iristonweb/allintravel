@@ -31,6 +31,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Plus, Search, MapPin } from "lucide-react";
+import MediaUploadField from "@/components/media/MediaUploadField";
 import StatPill from "@/components/brand/stat-pill";
 import FilterChipRow from "@/components/filters/FilterChipRow";
 import { TRIP_AVAILABILITY_FILTERS } from "@/lib/filter-config";
@@ -76,6 +77,7 @@ export function Trips() {
   const [search, setSearch] = useState(() => new URLSearchParams(searchString).get("search") ?? "");
   const [availability, setAvailability] = useState("");
   const [open, setOpen] = useState(false);
+  const [tripCoverUrl, setTripCoverUrl] = useState("");
 
   useEffect(() => {
     setSearch(new URLSearchParams(searchString).get("search") ?? "");
@@ -106,6 +108,7 @@ export function Trips() {
     mutationFn: async (data: CreateTripForm) => {
       const res = await apiRequest("POST", "/api/trips", {
         ...data,
+        imageUrl: tripCoverUrl || undefined,
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
       });
@@ -114,6 +117,7 @@ export function Trips() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       setOpen(false);
+      setTripCoverUrl("");
       form.reset();
       toast({ title: "Поездка создана!", description: "Ваша поездка добавлена в список." });
     },
@@ -156,7 +160,14 @@ export function Trips() {
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="ait-glass-strong ait-gradient-border border-white/10 text-foreground sm:max-w-xl">
+        <DialogContent
+          className="ait-glass-strong ait-gradient-border border-white/10 text-foreground sm:max-w-xl"
+          onInteractOutside={(e) => {
+            if ((e.target as HTMLElement).closest("[data-geo-autocomplete]")) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Новая поездка</DialogTitle>
             <DialogDescription>
@@ -165,6 +176,15 @@ export function Trips() {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              <MediaUploadField
+                label="Обложка поездки"
+                multiple={false}
+                maxFiles={1}
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                value={tripCoverUrl ? [tripCoverUrl] : []}
+                onChange={(urls) => setTripCoverUrl(urls[0] ?? "")}
+              />
+
               <FormField
                 control={form.control}
                 name="title"
@@ -195,6 +215,9 @@ export function Trips() {
                         dropdownPortal
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Можно ввести вручную, минимум 2 символа
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

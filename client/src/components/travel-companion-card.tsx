@@ -2,11 +2,12 @@ import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, MapPin, Users, DollarSign, Route } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { Trip } from "@shared/schema";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { cn } from "@/lib/utils";
 
 interface TravelCompanionCardProps {
   trip: Trip;
@@ -17,7 +18,7 @@ interface TravelCompanionCardProps {
 export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCompanionCardProps) {
   const formatDate = (date: Date | string | null) => {
     if (!date) return "Не указано";
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const dateObj = typeof date === "string" ? new Date(date) : date;
     return format(dateObj, "d MMM yyyy", { locale: ru });
   };
 
@@ -32,41 +33,54 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
   const participantsCount = trip.currentParticipants || 1;
   const maxParticipants = trip.maxParticipants || 5;
   const spotsLeft = maxParticipants - participantsCount;
+  const coverUrl = trip.imageUrl ? resolveMediaUrl(trip.imageUrl) : null;
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-2">{trip.title}</CardTitle>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <MapPin className="h-4 w-4" />
-              <span>{trip.destination}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>
-                {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
-              </span>
-            </div>
+      <div
+        className={cn(
+          "relative aspect-[16/9] w-full overflow-hidden",
+          !coverUrl && "bg-gradient-to-br from-primary/20 via-ait-purple/15 to-ait-orange/10",
+        )}
+      >
+        {coverUrl ? (
+          <img src={coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <MapPin className="h-10 w-10 text-primary/40" />
           </div>
-          <Badge 
-            variant={trip.isActive ? "default" : "secondary"}
-            className={trip.isActive ? "bg-green-500" : ""}
-          >
-            {trip.isActive ? "Активна" : "Завершена"}
-          </Badge>
+        )}
+        <Badge
+          variant={trip.isActive ? "default" : "secondary"}
+          className={cn(
+            "absolute top-3 right-3",
+            trip.isActive ? "bg-green-500 hover:bg-green-500" : "",
+          )}
+        >
+          {trip.isActive ? "Активна" : "Завершена"}
+        </Badge>
+      </div>
+
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg mb-2">{trip.title}</CardTitle>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <MapPin className="h-4 w-4 shrink-0" />
+          <span>{trip.destination}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4 shrink-0" />
+          <span>
+            {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
+          </span>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         <div className="space-y-4">
           {trip.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {trip.description}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{trip.description}</p>
           )}
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -74,7 +88,7 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
                 {participantsCount} / {maxParticipants} участников
               </span>
             </div>
-            
+
             {formatBudget(trip.budgetMin, trip.budgetMax) && (
               <div className="flex items-center gap-1">
                 <DollarSign className="h-4 w-4 text-green-600" />
@@ -84,7 +98,7 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
               </div>
             )}
           </div>
-          
+
           {trip.tags && trip.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {trip.tags.slice(0, 3).map((tag, index) => (
@@ -99,12 +113,12 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
               )}
             </div>
           )}
-          
+
           <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
             <div className="text-sm text-muted-foreground">
               {spotsLeft > 0 ? (
                 <span className="text-green-600">
-                  Осталось {spotsLeft} {spotsLeft === 1 ? 'место' : 'мест'}
+                  Осталось {spotsLeft} {spotsLeft === 1 ? "место" : "мест"}
                 </span>
               ) : (
                 <span className="text-red-600">Мест нет</span>

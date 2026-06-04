@@ -1,33 +1,15 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Bell,
-  Search,
-  Menu,
-  X,
-  MessageCircle,
-  LogOut,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
 import type { AppNotification } from "@shared/notification-types";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrandLogo from "@/components/brand/brand-logo";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
 import {
   guestAnchors,
@@ -36,6 +18,7 @@ import {
   sidebarPrimaryNav,
   scrollToAnchor,
 } from "@/lib/nav-config";
+import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 
 const pageTitles: Record<string, string> = {
   "/": "Главная",
@@ -45,6 +28,7 @@ const pageTitles: Record<string, string> = {
   "/friends": "Друзья",
   "/messages": "Сообщения",
   "/profile": "Профиль",
+  "/profile/music": "Моя музыка",
   "/places": "Места",
   "/events": "События",
   "/blog": "Блог",
@@ -82,6 +66,7 @@ export default function AppTopNav() {
     unreadItems.length + (notifications?.friendRequests ?? 0) + (notifications?.unreadMessages ?? 0);
   const friendRequestCount = notifications?.friendRequests ?? 0;
   const unreadMessageCount = notifications?.unreadMessages ?? 0;
+  const hasUnreadBadge = notifCount > 0 || unreadMessageCount > 0;
 
   const markReadAndGo = async (item: AppNotification) => {
     try {
@@ -136,7 +121,7 @@ export default function AppTopNav() {
   ];
 
   return (
-    <header className="fixed top-0 z-50 w-full ait-glass-nav h-20">
+    <header className="fixed top-0 z-50 w-full ait-glass-nav h-20 overflow-visible">
       <div className="max-w-[1600px] mx-auto flex h-20 items-center gap-3 px-4 lg:px-8 md:pl-[calc(72px+1rem)]">
         <BrandLogo variant="nav" showText className="shrink-0" />
 
@@ -167,100 +152,18 @@ export default function AppTopNav() {
               Admin
             </span>
           )}
-          <Link href="/map" title="Карта и поиск мест">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-xl text-slate-300 hover:text-white hover:bg-white/8 h-11 w-11"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-          </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative rounded-xl text-slate-300 hover:text-white hover:bg-white/8 h-11 w-11"
-              >
-                <Bell className="h-5 w-5" />
-                {notifCount > 0 && (
-                  <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-[#ff7a18] ring-2 ring-[#050816]" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="ait-glass-strong border-white/10 min-w-[300px] max-h-[70vh] overflow-y-auto">
-              {unreadItems.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-muted-foreground">Нет новых уведомлений</p>
-              ) : (
-                unreadItems.slice(0, 12).map((item) => (
-                  <DropdownMenuItem
-                    key={item.id}
-                    className="cursor-pointer flex flex-col items-start gap-0.5 py-2"
-                    onClick={() => void markReadAndGo(item)}
-                  >
-                    <span className="font-medium text-sm">{item.title}</span>
-                    <span className="text-xs text-muted-foreground line-clamp-2">{item.body}</span>
-                    {item.createdAt && (
-                      <span className="text-[10px] text-muted-foreground/80">
-                        {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: ru })}
-                      </span>
-                    )}
-                  </DropdownMenuItem>
-                ))
-              )}
-              <DropdownMenuSeparator className="bg-white/10" />
-              <Link href="/profile/friends">
-                <DropdownMenuItem className="cursor-pointer">
-                  Заявки в друзья
-                  {friendRequestCount > 0 && (
-                    <span className="ml-auto text-xs font-bold text-ait-orange">{friendRequestCount}</span>
-                  )}
-                </DropdownMenuItem>
-              </Link>
-              <Link href="/messages">
-                <DropdownMenuItem className="cursor-pointer">
-                  Сообщения
-                  {unreadMessageCount > 0 && (
-                    <span className="ml-auto text-xs font-bold text-ait-orange">{unreadMessageCount}</span>
-                  )}
-                </DropdownMenuItem>
-              </Link>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Link href="/messages" title="Сообщения">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative rounded-xl text-slate-300 hover:text-white hover:bg-white/8 h-11 w-11"
-            >
-              <MessageCircle className="h-5 w-5" />
-              {unreadMessageCount > 0 && (
-                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-[#ff7a18] ring-2 ring-[#050816]" />
-              )}
-            </Button>
-          </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="rounded-2xl p-1 h-11 w-11 hover:bg-white/8">
-                <Avatar className="h-9 w-9 border-2 border-white/20 ait-neon-purple">
-                  <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
-                  <AvatarFallback className="bg-gradient-to-br from-[#8b5cf6] to-[#ff7a18] text-xs text-white">
-                    {user?.firstName?.[0] ?? "U"}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="ait-glass-strong border-white/10">
-              <Link href="/profile">
-                <DropdownMenuItem>Профиль</DropdownMenuItem>
-              </Link>
-              <DropdownMenuItem onClick={logout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Выйти
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+          <AvatarHubMenu
+            user={user ?? null}
+            unreadItems={unreadItems}
+            notifCount={notifCount}
+            friendRequestCount={friendRequestCount}
+            unreadMessageCount={unreadMessageCount}
+            hasUnreadBadge={hasUnreadBadge}
+            onMarkReadAndGo={markReadAndGo}
+            onLogout={logout}
+          />
+
           <Button
             variant="ghost"
             size="icon"

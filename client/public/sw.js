@@ -1,4 +1,6 @@
-const CACHE_NAME = "ait-v1";
+// Custom notification sound: supported mainly on installed mobile PWAs; desktop Chrome may ignore.
+const CACHE_NAME = "ait-v2";
+const DEFAULT_NOTIFICATION_SOUND = "/sounds/notify-short.wav";
 const OFFLINE_URLS = ["/", "/places", "/api/places?limit=20"];
 
 self.addEventListener("install", (event) => {
@@ -42,7 +44,8 @@ self.addEventListener("push", (event) => {
       icon: "/favicon.ico",
       badge: "/favicon.ico",
       tag: data.tag || "ait-notification",
-      data: { url: data.url || "/" },
+      sound: data.sound || DEFAULT_NOTIFICATION_SOUND,
+      data: { url: data.url || "/", sound: data.sound || DEFAULT_NOTIFICATION_SOUND },
     }),
   );
 });

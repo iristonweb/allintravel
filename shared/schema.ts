@@ -128,6 +128,7 @@ export const trips = pgTable("trips", {
   budgetMin: integer("budget_min"),
   budgetMax: integer("budget_max"),
   tags: text("tags").array(),
+  imageUrl: varchar("image_url"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -367,10 +368,11 @@ export const privateMessageLikes = pgTable(
   (t) => [index("IDX_private_message_likes_msg").on(t.messageId)],
 );
 
-// Travel posts/journal entries
+// Travel posts — format: post | story | reel | journal
 export const travelPosts = pgTable("travel_posts", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  format: varchar("format", { length: 16 }).notNull().default("post"),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(),
   images: text("images").array(),
@@ -379,6 +381,7 @@ export const travelPosts = pgTable("travel_posts", {
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   tags: text("tags").array(),
   isPublic: boolean("is_public").default(true),
+  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -417,6 +420,22 @@ export const userProfiles = pgTable("user_profiles", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User-uploaded music tracks (personal library)
+export const userTracks = pgTable(
+  "user_tracks",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    fileUrl: varchar("file_url", { length: 500 }).notNull(),
+    mimeType: varchar("mime_type", { length: 50 }),
+    fileSizeBytes: integer("file_size_bytes"),
+    durationSeconds: integer("duration_seconds"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [index("IDX_user_tracks_user").on(t.userId)],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   reviews: many(reviews),
@@ -436,6 +455,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   travelPosts: many(travelPosts),
   postLikes: many(postLikes),
   postComments: many(postComments),
+  tracks: many(userTracks),
 }));
 
 export const placesRelations = relations(places, ({ many }) => ({
@@ -527,6 +547,10 @@ export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
   user: one(users, { fields: [userProfiles.userId], references: [users.id] }),
 }));
 
+export const userTracksRelations = relations(userTracks, ({ one }) => ({
+  user: one(users, { fields: [userTracks.userId], references: [users.id] }),
+}));
+
 // Insert schemas
 export const insertPlaceSchema = createInsertSchema(places).omit({
   id: true,
@@ -614,6 +638,8 @@ export const updateTravelPostSchema = z
     longitude: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
     isPublic: z.boolean().optional(),
+    format: z.enum(["post", "story", "reel", "journal"]).optional(),
+    expiresAt: z.coerce.date().nullable().optional(),
   })
   .strict();
 
@@ -640,6 +666,11 @@ export const insertPostCommentSchema = createInsertSchema(postComments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertUserTrackSchema = createInsertSchema(userTracks).omit({
+  id: true,
+  createdAt: true,
 });
 
 // Types
@@ -717,6 +748,8 @@ export type PostLike = typeof postLikes.$inferSelect;
 export type InsertPostLike = z.infer<typeof insertPostLikeSchema>;
 export type PostComment = typeof postComments.$inferSelect;
 export type InsertPostComment = z.infer<typeof insertPostCommentSchema>;
+export type UserTrack = typeof userTracks.$inferSelect;
+export type InsertUserTrack = z.infer<typeof insertUserTrackSchema>;
 
 export type Country = typeof countries.$inferSelect;
 export type City = typeof cities.$inferSelect;

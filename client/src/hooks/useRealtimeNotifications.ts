@@ -39,6 +39,7 @@ export function useRealtimeNotifications() {
         if (data.type === "new_message") {
           queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
         }
       } catch {
         /* ignore */

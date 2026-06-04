@@ -154,7 +154,7 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
     >
       <HomeSectionHeader
         title="Сообщество путешественников"
-        description="Travel Stories, Reels и Journals — вдохновение как в Instagram"
+        description="Посты, Stories на 24ч, Reels и журналы путешественников"
         rightSlot={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1 ait-nav-pill rounded-full p-1">
