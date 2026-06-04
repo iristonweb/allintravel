@@ -19,6 +19,7 @@ import type { User, FriendshipWithUser } from "@shared/schema";
 import FollowButton from "@/components/social/FollowButton";
 import UserPreviewCell, { friendProfileHref } from "@/components/social/UserPreviewCell";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 export function Friends() {
   const { user, isAuthenticated } = useAuth();
@@ -258,8 +259,10 @@ export function Friends() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <Avatar>
-                                  <AvatarImage src={result.profileImageUrl ?? undefined} />
-                                  <AvatarFallback>{getUserInitial(result)}</AvatarFallback>
+                                  <AvatarImage src={resolveMediaUrl(result.profileImageUrl)} />
+                                  <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
+                                    {getUserInitial(result)}
+                                  </AvatarFallback>
                                 </Avatar>
                                 <div>
                                   {result.username ? (
@@ -330,8 +333,8 @@ export function Friends() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarImage src={request.user?.profileImageUrl ?? undefined} />
-                              <AvatarFallback>
+                              <AvatarImage src={resolveMediaUrl(request.user?.profileImageUrl)} />
+                              <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
                                 {request.user ? getUserInitial(request.user) : "?"}
                               </AvatarFallback>
                             </Avatar>
@@ -390,8 +393,8 @@ export function Friends() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar>
-                              <AvatarImage src={request.user?.profileImageUrl ?? undefined} />
-                              <AvatarFallback>
+                              <AvatarImage src={resolveMediaUrl(request.user?.profileImageUrl)} />
+                              <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
                                 {request.user ? getUserInitial(request.user) : "?"}
                               </AvatarFallback>
                             </Avatar>

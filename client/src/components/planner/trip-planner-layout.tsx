@@ -91,13 +91,18 @@ export default function TripPlannerLayout({
   const yandexRoute = yandexRouteData?.route ?? null;
   const km = yandexRoute?.distanceKm ?? kmStraight;
 
+  const invalidateRouteQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "yandex-route"] });
+  };
+
   const addWaypointMutation = useMutation({
     mutationFn: async (placeId: string) => {
       const res = await apiRequest("POST", `/api/trips/${tripId}/waypoints`, { placeId });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
+      invalidateRouteQueries();
       setAddOpen(false);
       toast({ title: "Остановка добавлена" });
     },
@@ -113,7 +118,7 @@ export default function TripPlannerLayout({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
+      invalidateRouteQueries();
       setAddOpen(false);
       toast({ title: "Остановка добавлена" });
     },
@@ -127,7 +132,7 @@ export default function TripPlannerLayout({
       await apiRequest("DELETE", `/api/trips/${tripId}/waypoints/${waypointId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
+      invalidateRouteQueries();
     },
   });
 
@@ -140,7 +145,7 @@ export default function TripPlannerLayout({
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
+      invalidateRouteQueries();
       toast({ title: "Маршрут оптимизирован" });
     },
     onError: () => {

@@ -30,7 +30,9 @@ export default function UserPreviewCell({
     <>
       <Avatar className="h-14 w-14 mx-auto ring-2 ring-ait-purple/30">
         <AvatarImage src={resolveMediaUrl(user.profileImageUrl)} />
-        <AvatarFallback>{getUserInitial(user)}</AvatarFallback>
+        <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
+          {getUserInitial(user)}
+        </AvatarFallback>
       </Avatar>
       <p className="mt-2 text-sm font-medium truncate w-full text-center">
         {getUserDisplayLabel(user)}

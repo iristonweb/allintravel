@@ -9,7 +9,9 @@ import AppLayout from "@/components/app-layout";
 import PageHeader from "@/components/page-header";
 import EmptyState from "@/components/empty-state";
 import TravelCompanionCard from "@/components/travel-companion-card";
-import LocationAutocompleteInput from "@/components/location-autocomplete-input";
+import LocationAutocompleteInput, {
+  type GeoAutocompleteItem,
+} from "@/components/location-autocomplete-input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +32,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Search, MapPin } from "lucide-react";
+import { Plus, Search, MapPin, Trash2 } from "lucide-react";
+import {
+  addTripStopsFromDrafts,
+  geoItemToDraft,
+  type TripRouteDraft,
+} from "@/lib/trip-waypoints";
 import MediaUploadField from "@/components/media/MediaUploadField";
 import StatPill from "@/components/brand/stat-pill";
 import FilterChipRow from "@/components/filters/FilterChipRow";
@@ -99,6 +106,9 @@ export function Trips() {
   const [availability, setAvailability] = useState("");
   const [open, setOpen] = useState(false);
   const [tripCoverUrl, setTripCoverUrl] = useState("");
+  const [routeDrafts, setRouteDrafts] = useState<TripRouteDraft[]>([]);
+  const [routeQuery, setRouteQuery] = useState("");
+  const [selectedRouteGeo, setSelectedRouteGeo] = useState<GeoAutocompleteItem | null>(null);
 
   useEffect(() => {
     setSearch(new URLSearchParams(searchString).get("search") ?? "");
@@ -125,6 +135,14 @@ export function Trips() {
     },
   });
 
+  const resetCreateDialog = () => {
+    setTripCoverUrl("");
+    setRouteDrafts([]);
+    setRouteQuery("");
+    setSelectedRouteGeo(null);
+    form.reset();
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: CreateTripForm) => {
       const payload: Record<string, unknown> = {
@@ -139,20 +157,52 @@ export function Trips() {
       if (data.budgetMin != null) payload.budgetMin = data.budgetMin;
       if (data.budgetMax != null) payload.budgetMax = data.budgetMax;
       const res = await apiRequest("POST", "/api/trips", payload);
-      return res.json();
+      const trip = (await res.json()) as Trip;
+      if (routeDrafts.length > 0 && trip.id) {
+        try {
+          await addTripStopsFromDrafts(trip.id, routeDrafts);
+        } catch {
+          toast({
+            title: "Поездка создана",
+            description: "Не все остановки маршрута удалось сохранить. Добавьте их на странице поездки.",
+            variant: "destructive",
+          });
+        }
+      }
+      return trip;
     },
-    onSuccess: () => {
+    onSuccess: (trip) => {
+      const stopCount = routeDrafts.length;
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
       setOpen(false);
-      setTripCoverUrl("");
-      form.reset();
-      toast({ title: "Поездка создана!", description: "Ваша поездка добавлена в список." });
+      resetCreateDialog();
+      toast({
+        title: "Поездка создана!",
+        description: stopCount > 0 ? "Маршрут сохранён." : "Ваша поездка добавлена в список.",
+      });
+      if (trip?.id) setLocation(`/trips/${trip.id}`);
     },
     onError: (err) => {
       toast({ title: "Ошибка", description: parseApiError(err), variant: "destructive" });
     },
   });
+
+  const addRouteDraft = () => {
+    if (!selectedRouteGeo) return;
+    const draft = geoItemToDraft(selectedRouteGeo);
+    if (!draft) {
+      toast({
+        title: "Укажите место на карте",
+        description: "Выберите пункт из подсказок с координатами.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setRouteDrafts((prev) => [...prev, draft]);
+    setRouteQuery("");
+    setSelectedRouteGeo(null);
+  };
 
   const joinMutation = useMutation({
     mutationFn: async (tripId: string) => {
@@ -194,7 +244,13 @@ export function Trips() {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) resetCreateDialog();
+        }}
+      >
         <DialogContent
           className="ait-glass-strong ait-gradient-border border-white/10 text-foreground sm:max-w-xl"
           onInteractOutside={(e) => {
@@ -347,12 +403,76 @@ export function Trips() {
                 />
               </div>
 
+              <div className="space-y-3 pt-2 border-t border-white/10">
+                <div>
+                  <FormLabel>Маршрут (места)</FormLabel>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Добавьте города и точки по порядку. Маршрут можно изменить позже на странице поездки.
+                  </p>
+                </div>
+                <LocationAutocompleteInput
+                  placeholder="Город, адрес или место…"
+                  value={routeQuery}
+                  onChange={(v) => {
+                    setRouteQuery(v);
+                    setSelectedRouteGeo(null);
+                  }}
+                  onSelectItem={(item) => {
+                    setRouteQuery(item.label);
+                    setSelectedRouteGeo(item);
+                  }}
+                  scope="full"
+                  limit={12}
+                  debounceMs={280}
+                  dropdownPortal
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  disabled={!selectedRouteGeo}
+                  onClick={addRouteDraft}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Добавить в маршрут
+                </Button>
+                {routeDrafts.length > 0 && (
+                  <ol className="space-y-2 list-none">
+                    {routeDrafts.map((stop, index) => (
+                      <li
+                        key={`${stop.label}-${index}`}
+                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                      >
+                        <span className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-semibold flex items-center justify-center">
+                          {index + 1}
+                        </span>
+                        <span className="flex-1 min-w-0 truncate">{stop.label}</span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() =>
+                            setRouteDrafts((prev) => prev.filter((_, i) => i !== index))
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2 border-t border-white/10">
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    resetCreateDialog();
+                  }}
                 >
                   Отмена
                 </Button>

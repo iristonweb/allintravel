@@ -44,7 +44,9 @@ export async function userCanManageTrip(
   if (trip.userId === userId) return true;
   const participants = await storage.getTripParticipants(tripId);
   return participants.some(
-    (p) => p.userId === userId && (p.status === "accepted" || p.status === "pending"),
+    (p) =>
+      p.userId === userId &&
+      (p.status === "accepted" || p.status === "pending" || p.status === "confirmed"),
   );
 }
 

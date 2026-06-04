@@ -55,6 +55,23 @@ function formatDuration(sec: number): string {
 
 export function ProfileMusic() {
   const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <AppLayout contentClassName="py-16">
+        <p className="text-center text-muted-foreground">Войдите в систему</p>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout contentClassName="py-6">
+      <ProfileMusicContent />
+    </AppLayout>
+  );
+}
+
+function ProfileMusicContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { playTrack, setQueue } = useMusicPlayer();
@@ -71,12 +88,11 @@ export function ProfileMusic() {
 
   const { data: tracks = [], isLoading, isError, error, refetch } = useQuery<UserTrack[]>({
     queryKey: ["/api/music/tracks"],
-    enabled: isAuthenticated,
   });
 
   const { data: searchResults, isFetching: searchLoading } = useQuery<MusicSearchResponse>({
     queryKey: ["/api/music/search", { q: searchQuery }],
-    enabled: isAuthenticated && searchQuery.length >= 2,
+    enabled: searchQuery.length >= 2,
   });
 
   const deleteMutation = useMutation({
@@ -149,19 +165,10 @@ export function ProfileMusic() {
     playTrack({ id: `preview-${url}`, title, fileUrl: url });
   };
 
-  if (!isAuthenticated) {
-    return (
-      <AppLayout contentClassName="py-16">
-        <p className="text-center text-muted-foreground">Войдите в систему</p>
-      </AppLayout>
-    );
-  }
-
   const jamendoResults = searchResults?.jamendo ?? [];
   const itunesResults = searchResults?.itunes ?? [];
 
   return (
-    <AppLayout contentClassName="py-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -432,7 +439,6 @@ export function ProfileMusic() {
           )}
         </div>
       </div>
-    </AppLayout>
   );
 }
 
