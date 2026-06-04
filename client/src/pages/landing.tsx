@@ -1,7 +1,9 @@
 import PublicLayout from "@/components/public-layout";
 import Hero from "@/components/marketing/Hero";
 import FeatureCard from "@/components/marketing/FeatureCard";
-import FloatingSearchBar from "@/components/search/FloatingSearchBar";
+import NextAdventureCard from "@/components/home/next-adventure-card";
+import HeroStats from "@/components/home/hero-stats";
+import GradientButton from "@/components/brand/gradient-button";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -12,43 +14,34 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 
 export function Landing() {
   const [, navigate] = useLocation();
 
   return (
-    <PublicLayout
-      navItems={[
-        { href: "#features", label: "Возможности" },
-        { href: "#how-it-works", label: "Как это работает" },
-        { href: "#testimonials", label: "Отзывы" },
-      ]}
-    >
+    <PublicLayout>
       <Hero
         title={
           <>
-            Путешествия, которые{" "}
-            <span className="bg-gradient-to-r from-[var(--ait-primary)] to-[var(--ait-accent)] bg-clip-text text-transparent">
-              хочется
-            </span>{" "}
-            планировать
+            Путешествуй. Исследуй.{" "}
+            <span className="ait-gradient-text">Делись.</span>
           </>
         }
-        subtitle="Находите места, собирайте маршруты, знакомьтесь с попутчиками и делитесь впечатлениями — в одном премиальном пространстве."
+        subtitle="Интерактивный гид для путешественников: карта, маршруты, сообщество и планирование в одном премиальном интерфейсе."
         actions={
-          <button
-            type="button"
-            onClick={() => navigate("/login")}
-            className="inline-flex items-center justify-center rounded-[var(--ait-radius-button)] bg-[linear-gradient(90deg,var(--ait-primary),var(--ait-accent),#7c3aed)] px-6 py-3 text-base font-semibold text-white shadow-[0_16px_60px_rgba(0,0,0,0.14)] transition-transform hover:translate-y-[-1px] active:translate-y-0 w-full sm:w-auto"
-          >
-            Начать путешествие
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </button>
+          <>
+            <GradientButton onClick={() => navigate("/login")}>
+              Планировать путешествие
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </GradientButton>
+            <Link href="/login">
+              <GradientButton outline>Исследовать</GradientButton>
+            </Link>
+          </>
         }
-        below={
-          <FloatingSearchBar className="mt-2" />
-        }
+        aside={<NextAdventureCard />}
+        stats={<HeroStats />}
         backgroundImageUrl="https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=2400&q=70"
       />
 

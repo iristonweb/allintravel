@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import AppLayout from "@/components/app-layout";
 import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -125,15 +126,15 @@ export function Messages() {
         <PageHeader title="Сообщения" description="Общайтесь с друзьями и попутчиками" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)] mt-8">
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5" />
-                  Диалоги
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[calc(100vh-300px)]">
+            <GlassCard className="lg:col-span-1 overflow-hidden">
+              <div className="p-4 border-b border-white/10">
+                <h2 className="font-semibold flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5 text-ait-purple" />
+                  Чаты
+                </h2>
+              </div>
+              <div className="p-0">
+                <ScrollArea className="h-[calc(100vh-300px)] md:h-[calc(100vh-280px)]">
                   {conversations.length === 0 ? (
                     <div className="p-4 text-center">
                       <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -147,9 +148,9 @@ export function Messages() {
                       {conversations.map((conversation) => (
                         <div
                           key={conversation.user.id}
-                          className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                          className={`p-4 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5 ${
                             selectedConversation?.user.id === conversation.user.id
-                              ? "bg-muted"
+                              ? "bg-ait-purple/15"
                               : ""
                           }`}
                           onClick={() => handleSelectConversation(conversation)}
@@ -168,9 +169,9 @@ export function Messages() {
                                 <h4 className="font-medium truncate">
                                   {conversation.user.firstName} {conversation.user.lastName}
                                 </h4>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-foreground shrink-0">
                                   {conversation.lastMessage
-                                    ? formatDate(conversation.lastMessage.createdAt as unknown as string)
+                                    ? formatTime(conversation.lastMessage.createdAt as unknown as string)
                                     : ""}
                                 </span>
                               </div>
@@ -189,10 +190,10 @@ export function Messages() {
                     </div>
                   )}
                 </ScrollArea>
-              </CardContent>
-            </Card>
+              </div>
+            </GlassCard>
 
-            <Card className="lg:col-span-2">
+            <GlassCard className="lg:col-span-2 overflow-hidden">
               {selectedConversation ? (
                 <>
                   <CardHeader className="border-b">
@@ -292,7 +293,7 @@ export function Messages() {
                   </div>
                 </CardContent>
               )}
-            </Card>
+            </GlassCard>
           </div>
       </div>
     </AppLayout>

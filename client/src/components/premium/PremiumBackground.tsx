@@ -107,7 +107,7 @@ function PremiumParallaxScene({
         className="pointer-events-none absolute -bottom-24 left-[-10%] right-[-10%] h-56 rounded-[999px] blur-2xl"
         style={{
           background:
-            "linear-gradient(90deg, transparent 0%, rgba(14,165,164,0.08) 20%, rgba(255,106,61,0.08) 55%, rgba(255,226,184,0.10) 80%, transparent 100%)",
+            "linear-gradient(90deg, transparent 0%, rgba(34,211,238,0.06) 20%, rgba(139,92,246,0.10) 55%, rgba(236,72,153,0.08) 80%, transparent 100%)",
         }}
         animate={{ x: p4.x, y: p4.y }}
         transition={{ type: "spring", stiffness: 60, damping: 34, mass: 1.0 }}

@@ -1,35 +1,40 @@
-import { Button } from "@/components/ui/button";
 import Hero from "@/components/marketing/Hero";
-import FloatingSearchBar from "@/components/search/FloatingSearchBar";
-import { ArrowRight, MapPin } from "lucide-react";
+import GradientButton from "@/components/brand/gradient-button";
+import NextAdventureCard from "@/components/home/next-adventure-card";
+import HeroStats from "@/components/home/hero-stats";
 import { Link } from "wouter";
+import type { Trip } from "@shared/schema";
 
-export function HeroSection() {
+type HeroSectionProps = {
+  trips?: Trip[];
+};
+
+export function HeroSection({ trips = [] }: HeroSectionProps) {
+  const nextTrip = trips[0] ?? null;
+
   return (
     <Hero
       title={
         <>
-          Откройте мир{" "}
-          <span className="bg-gradient-to-r from-[var(--ait-primary)] to-[var(--ait-accent)] bg-clip-text text-transparent">
-            вместе
-          </span>
+          Путешествуй. Исследуй.{" "}
+          <span className="ait-gradient-text">Делись.</span>
         </>
       }
-      subtitle="Исследуйте места, планируйте поездки и держите всё важное под рукой — без перегруженных интерфейсов."
+      subtitle="Интерактивный гид для путешественников: карта, маршруты, сообщество и планирование в одном тёмном премиальном интерфейсе."
       actions={
         <>
-          <Link href="/places">
-            <Button variant="premium" size="cta" className="w-full sm:w-auto">
-              <MapPin className="mr-1" />
-              Исследовать места
-              <ArrowRight className="ml-1" />
-            </Button>
+          <Link href="/trips">
+            <GradientButton>Планировать путешествие</GradientButton>
+          </Link>
+          <Link href="/map">
+            <GradientButton outline>Исследовать</GradientButton>
           </Link>
         </>
       }
-      below={<FloatingSearchBar className="mt-2" />}
-      backgroundImageUrl="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=70"
-      className="py-14 sm:py-16 lg:py-20"
+      aside={<NextAdventureCard trip={nextTrip} />}
+      stats={<HeroStats />}
+      backgroundImageUrl="https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=2400&q=70"
+      className="py-14 sm:py-16 lg:py-20 -mx-4 px-0 sm:mx-0"
     />
   );
 }

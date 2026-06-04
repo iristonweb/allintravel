@@ -71,6 +71,7 @@ export interface IStorage {
   getTripParticipationsByUser(userId: string): Promise<string[]>;
   getTripWaypoints(tripId: string): Promise<(TripWaypoint & { place: Place | null })[]>;
   addTripWaypoint(tripId: string, placeId: string, orderIndex?: number, dayNumber?: number): Promise<TripWaypoint>;
+  updateTripWaypoint(waypointId: string, data: { orderIndex?: number; dayNumber?: number }): Promise<TripWaypoint | undefined>;
   removeTripWaypoint(waypointId: string): Promise<void>;
 
   getEvents(filters?: {
@@ -645,6 +646,21 @@ export class MemStorage implements IStorage {
     } as TripWaypoint;
     this.tripWaypoints.set(id, waypoint);
     return waypoint;
+  }
+
+  async updateTripWaypoint(
+    waypointId: string,
+    data: { orderIndex?: number; dayNumber?: number },
+  ): Promise<TripWaypoint | undefined> {
+    const wp = this.tripWaypoints.get(waypointId);
+    if (!wp) return undefined;
+    const updated = {
+      ...wp,
+      ...(data.orderIndex != null ? { orderIndex: data.orderIndex } : {}),
+      ...(data.dayNumber != null ? { dayNumber: data.dayNumber } : {}),
+    };
+    this.tripWaypoints.set(waypointId, updated);
+    return updated;
   }
 
   async removeTripWaypoint(waypointId: string): Promise<void> {

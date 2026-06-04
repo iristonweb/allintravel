@@ -36,9 +36,28 @@ type PlaceMapProps = {
   zoom?: number;
   height?: string;
   showRoute?: boolean;
+  numberedMarkers?: boolean;
+  routeGlow?: boolean;
   onPlaceClick?: (place: MapPlace) => void;
   className?: string;
+  glowMarkers?: boolean;
 };
+
+const purpleIcon = L.divIcon({
+  className: "ait-map-marker",
+  html: `<div style="width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#ec4899);box-shadow:0 0 12px rgba(139,92,246,0.8);border:2px solid white;"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
+function numberedIcon(n: number) {
+  return L.divIcon({
+    className: "ait-map-marker-num",
+    html: `<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#6366f1);color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(34,211,238,0.5);border:2px solid rgba(34,211,238,0.6);">${n}</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+}
 
 function FitBounds({ places }: { places: MapPlace[] }) {
   const map = useMap();
@@ -73,8 +92,11 @@ export default function PlaceMap({
   zoom = 4,
   height = "24rem",
   showRoute = false,
+  numberedMarkers = false,
+  routeGlow = false,
   onPlaceClick,
   className = "",
+  glowMarkers = false,
 }: PlaceMapProps) {
   const validPlaces = useMemo(
     () =>
@@ -115,16 +137,28 @@ export default function PlaceMap({
         />
         {validPlaces.length > 1 && <FitBounds places={validPlaces} />}
         {showRoute && routeCoords.length > 1 && (
-          <Polyline positions={routeCoords} color="var(--ait-primary)" weight={3} opacity={0.8} />
+          <Polyline
+            positions={routeCoords}
+            color={routeGlow ? "#22d3ee" : "var(--ait-primary)"}
+            weight={routeGlow ? 4 : 3}
+            opacity={0.9}
+            className={routeGlow ? "ait-glow-route" : undefined}
+          />
         )}
-        {validPlaces.map((place) => {
+        {validPlaces.map((place, index) => {
           const lat = Number(place.latitude);
           const lng = Number(place.longitude);
           const rating = Number(place.averageRating ?? 0);
+          const icon = numberedMarkers
+            ? numberedIcon(index + 1)
+            : glowMarkers
+              ? purpleIcon
+              : defaultIcon;
           return (
             <Marker
               key={place.id}
               position={[lat, lng]}
+              icon={icon}
               eventHandlers={{
                 click: () => onPlaceClick?.(place),
               }}

@@ -1,21 +1,24 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import PlaceMap, { type MapPlace } from "@/components/PlaceMap";
+import { cn } from "@/lib/utils";
 
 interface InteractiveMapProps {
   places: MapPlace[];
   onPlaceClick?: (place: MapPlace) => void;
+  fullHeight?: boolean;
 }
 
-const placeTypes = ["all", "restaurant", "hotel", "attraction"];
+const placeTypes = ["all", "hotel", "restaurant", "attraction", "tour"];
 const typeLabels: Record<string, string> = {
   all: "Все",
-  restaurant: "Рестораны",
   hotel: "Отели",
-  attraction: "Достопримечательности",
+  restaurant: "Рестораны",
+  attraction: "Активности",
+  tour: "Туры",
 };
 
-export function InteractiveMap({ places = [], onPlaceClick }: InteractiveMapProps) {
+export function InteractiveMap({ places = [], onPlaceClick, fullHeight }: InteractiveMapProps) {
   const [filterType, setFilterType] = useState<string>("all");
 
   const filteredPlaces = places.filter(
@@ -23,15 +26,20 @@ export function InteractiveMap({ places = [], onPlaceClick }: InteractiveMapProp
   );
 
   return (
-    <div className="relative w-full">
-      <div className="absolute top-4 left-4 z-[1000] flex flex-wrap gap-2">
+    <div className={cn("relative w-full", fullHeight && "h-full")}>
+      <div className="absolute top-24 left-4 z-[1000] flex flex-wrap gap-2 max-w-[90%]">
         {placeTypes.map((type) => (
           <Button
             key={type}
             size="sm"
             variant={filterType === type ? "default" : "secondary"}
             onClick={() => setFilterType(type)}
-            className={filterType === type ? "bg-primary hover:bg-primary/90" : ""}
+            className={cn(
+              "rounded-full text-xs",
+              filterType === type
+                ? "bg-ait-gradient-cta text-white border-0 hover:opacity-90"
+                : "ait-glass border-white/10 bg-background/60",
+            )}
           >
             {typeLabels[type]}
           </Button>
@@ -39,8 +47,10 @@ export function InteractiveMap({ places = [], onPlaceClick }: InteractiveMapProp
       </div>
       <PlaceMap
         places={filteredPlaces}
-        height="24rem"
+        height={fullHeight ? "100%" : "24rem"}
         onPlaceClick={onPlaceClick}
+        className={cn(fullHeight && "rounded-none border-0 h-full")}
+        glowMarkers
       />
     </div>
   );

@@ -76,6 +76,10 @@ export default {
           ring: "var(--sidebar-ring)",
         },
         ait: {
+          navy: "var(--ait-navy)",
+          purple: "var(--ait-purple)",
+          pink: "var(--ait-pink)",
+          cyan: "var(--ait-cyan)",
           ocean: "var(--ait-ocean)",
           sunset: "var(--ait-sunset)",
           sand: "var(--ait-sand)",
@@ -86,10 +90,12 @@ export default {
       },
       backgroundImage: {
         "ait-overlay": "var(--ait-overlay-gradient)",
+        "ait-gradient-cta": "var(--ait-gradient-cta)",
       },
       boxShadow: {
         "ait-glow": "var(--ait-glow-cyan)",
         "ait-glow-strong": "var(--ait-glow-cyan-strong)",
+        "ait-glow-purple": "var(--ait-glow-purple)",
         "ait-glow-sunset": "var(--ait-glow-sunset)",
       },
       keyframes: {

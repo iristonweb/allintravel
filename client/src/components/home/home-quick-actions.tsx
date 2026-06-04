@@ -1,8 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapPin, Plus, Search } from "lucide-react";
+import {
+  Building2,
+  Car,
+  Search,
+  Shield,
+  Utensils,
+  Wallet,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import GlassCard from "@/components/brand/glass-card";
+
+const services = [
+  { label: "Отели", icon: Building2, href: "/places?type=hotel" },
+  { label: "Рестораны", icon: Utensils, href: "/places?type=restaurant" },
+  { label: "Криптокошелёк", icon: Wallet, soon: true },
+  { label: "Транспорт", icon: Car, soon: true },
+  { label: "Страховка", icon: Shield, soon: true },
+];
 
 type HomeQuickActionsProps = {
   defaultSearch?: string;
@@ -10,49 +27,73 @@ type HomeQuickActionsProps = {
 
 export default function HomeQuickActions({ defaultSearch = "" }: HomeQuickActionsProps) {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [search, setSearch] = useState(defaultSearch);
 
   const searchHref = useMemo(() => {
     const q = search.trim();
-    return q ? `/places?search=${encodeURIComponent(q)}` : "/places";
+    return q ? `/places?search=${encodeURIComponent(q)}` : "/map";
   }, [search]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Куда хотите поехать? (место, город, тип)"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") navigate(searchHref);
-              }}
-              className="pl-9"
-            />
-          </div>
-          <Button onClick={() => navigate(searchHref)} className="bg-primary hover:bg-primary/90">
-            Найти места
-          </Button>
+    <div className="space-y-6">
+      <div className="md:hidden">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Куда вы хотите?"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && navigate(searchHref)}
+            className="pl-9 ait-glass-strong"
+          />
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Совет: начните с каталога мест, а затем добавляйте остановки в поездки.
-        </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row lg:flex-col gap-2">
-        <Button variant="outline" onClick={() => navigate("/trips")} className="justify-start">
-          <Plus className="mr-2 h-4 w-4" />
-          Создать/найти поездку
-        </Button>
-        <Button variant="outline" onClick={() => navigate("/places")} className="justify-start">
-          <MapPin className="mr-2 h-4 w-4" />
-          Открыть карту и каталог
-        </Button>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        {services.map(({ label, icon: Icon, href, soon }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => {
+              if (soon) {
+                toast({ title: "Скоро", description: `${label} появится в следующем обновлении.` });
+                return;
+              }
+              navigate(href!);
+            }}
+            className="ait-glass rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-white/8 transition-colors"
+          >
+            <Icon className="h-6 w-6 text-ait-purple" />
+            <span className="text-xs text-center text-muted-foreground">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="hidden md:grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Куда вы хотите?"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && navigate(searchHref)}
+                className="pl-9 ait-glass-strong"
+              />
+            </div>
+            <Button variant="premium" onClick={() => navigate(searchHref)}>
+              Найти
+            </Button>
+          </div>
+        </div>
+        <GlassCard className="p-4 flex items-center justify-center">
+          <Button variant="outline" className="w-full" onClick={() => navigate("/map")}>
+            Открыть интерактивную карту
+          </Button>
+        </GlassCard>
       </div>
     </div>
   );
 }
-

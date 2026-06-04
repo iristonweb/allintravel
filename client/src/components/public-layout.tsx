@@ -1,20 +1,20 @@
-import PublicHeader from "@/components/public-header";
-import type { ReactNode } from "react";
+import AppTopNav from "@/components/layout/app-top-nav";
+import FeatureFooter from "@/components/marketing/feature-footer";
 import PremiumBackground from "@/components/premium/PremiumBackground";
+import type { ReactNode } from "react";
 
 type PublicLayoutProps = {
   children: ReactNode;
-  navItems?: Array<{ href: string; label: string }>;
 };
 
-export default function PublicLayout({ children, navItems }: PublicLayoutProps) {
+export default function PublicLayout({ children }: PublicLayoutProps) {
   return (
-    <PremiumBackground>
-      <div className="min-h-screen">
-        <PublicHeader navItems={navItems} />
-        {children}
+    <PremiumBackground enableVideo={false}>
+      <div className="min-h-screen flex flex-col">
+        <AppTopNav />
+        <div className="flex-1">{children}</div>
+        <FeatureFooter />
       </div>
     </PremiumBackground>
   );
 }
-

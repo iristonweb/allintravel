@@ -306,6 +306,21 @@ export class PgStorage implements IStorage {
     return row;
   }
 
+  async updateTripWaypoint(
+    waypointId: string,
+    data: { orderIndex?: number; dayNumber?: number },
+  ): Promise<TripWaypoint | undefined> {
+    const patch: Partial<{ orderIndex: number; dayNumber: number | null }> = {};
+    if (data.orderIndex != null) patch.orderIndex = data.orderIndex;
+    if (data.dayNumber != null) patch.dayNumber = data.dayNumber;
+    const [row] = await this.db
+      .update(tripWaypoints)
+      .set(patch)
+      .where(eq(tripWaypoints.id, waypointId))
+      .returning();
+    return row;
+  }
+
   async removeTripWaypoint(waypointId: string): Promise<void> {
     await this.db.delete(tripWaypoints).where(eq(tripWaypoints.id, waypointId));
   }

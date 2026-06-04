@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import AppLayout from "@/components/app-layout";
 import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Heart, MessageCircle, Share2, MapPin, Plus, Compass, Send } from "lucide-react";
+import { Heart, MessageCircle, Share2, MapPin, Plus, Compass, Send, Bookmark } from "lucide-react";
+import GlassCard from "@/components/brand/glass-card";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -24,7 +25,8 @@ export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [feedMode, setFeedMode] = useState<"all" | "following">("all");
+  const [feedMode, setFeedMode] = useState<"all" | "following" | "popular">("all");
+  const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newPost, setNewPost] = useState({
@@ -44,8 +46,13 @@ export function SocialFeed() {
       : feedMode === "following"
         ? ["/api/posts", { following: user?.id }]
         : ["/api/posts"],
-    enabled: isAuthenticated && (feedMode === "all" || !!user?.id),
+    enabled: isAuthenticated && (feedMode !== "following" || !!user?.id),
   });
+
+  const displayedPosts = useMemo(() => {
+    if (feedMode !== "popular") return posts;
+    return [...posts].sort((a, b) => (b.likesCount ?? 0) - (a.likesCount ?? 0));
+  }, [posts, feedMode]);
 
   const createPostMutation = useMutation({
     mutationFn: (postData: { title: string; content: string; location: string; tags: string[]; isPublic: boolean }) =>
@@ -133,26 +140,34 @@ export function SocialFeed() {
     <AppLayout>
       <div className="max-w-2xl mx-auto">
         <PageHeader
-          title="Лента"
-          description="Следите за путешествиями и делитесь своими приключениями"
+          title="Сообщество"
+          description="Лента путешественников — делитесь впечатлениями и вдохновляйтесь"
         />
 
-        <div className="flex gap-2 mt-6 mb-2">
+        <div className="flex gap-2 mt-6 mb-2 ait-glass rounded-full p-1 w-fit">
           <Button
-            variant={feedMode === "all" ? "default" : "outline"}
+            variant={feedMode === "all" ? "default" : "ghost"}
             size="sm"
-            className={feedMode === "all" ? "bg-primary hover:bg-primary/90" : ""}
-            onClick={() => setFeedMode("all")}
+            className={feedMode === "all" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
+            onClick={() => { setFeedMode("all"); setActiveTag(null); }}
           >
-            Все
+            Лента
           </Button>
           <Button
-            variant={feedMode === "following" ? "default" : "outline"}
+            variant={feedMode === "following" ? "default" : "ghost"}
             size="sm"
-            className={feedMode === "following" ? "bg-primary hover:bg-primary/90" : ""}
+            className={feedMode === "following" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
             onClick={() => { setFeedMode("following"); setActiveTag(null); }}
           >
             Подписки
+          </Button>
+          <Button
+            variant={feedMode === "popular" ? "default" : "ghost"}
+            size="sm"
+            className={feedMode === "popular" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
+            onClick={() => { setFeedMode("popular"); setActiveTag(null); }}
+          >
+            Популярное
           </Button>
           {activeTag && (
             <Badge variant="default" className="cursor-pointer" onClick={() => setActiveTag(null)}>
@@ -162,8 +177,8 @@ export function SocialFeed() {
         </div>
 
           {/* Create post card */}
-          <Card className="mb-6 mt-8">
-            <CardContent className="pt-4">
+          <GlassCard className="mb-6 mt-8 p-4">
+            <div className="pt-0">
               <div className="flex items-start gap-3">
                 <Avatar>
                   <AvatarImage src={user?.profileImageUrl ?? undefined} />
@@ -240,8 +255,8 @@ export function SocialFeed() {
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
           {/* Posts list */}
           <div className="space-y-6">
@@ -250,7 +265,7 @@ export function SocialFeed() {
                 <div className="loading-spinner mx-auto" />
                 <p className="text-muted-foreground mt-2">Загружаем посты...</p>
               </div>
-            ) : posts.length === 0 ? (
+            ) : displayedPosts.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <Compass className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -262,9 +277,9 @@ export function SocialFeed() {
                 </CardContent>
               </Card>
             ) : (
-              posts.map((post) => (
-                <Card key={post.id}>
-                  <CardHeader className="pb-3">
+              displayedPosts.map((post) => (
+                <GlassCard key={post.id} className="overflow-hidden">
+                  <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
                       <Avatar>
                         <AvatarImage src={post.author?.profileImageUrl ?? undefined} />
@@ -291,25 +306,30 @@ export function SocialFeed() {
                         )}
                       </div>
                     </div>
-                  </CardHeader>
+                  </div>
 
-                  <CardContent className="space-y-4">
+                  <div className="px-4 pb-4 space-y-4">
                     <div>
                       <h3 className="font-semibold text-lg mb-1">{post.title}</h3>
                       <p className="text-muted-foreground leading-relaxed">{post.content}</p>
                     </div>
 
-                    {post.images && post.images.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2">
-                        {post.images.slice(0, 4).map((image, index) => (
-                          <img
-                            key={index}
-                            src={image}
-                            alt={`Фото ${index + 1}`}
-                            className="w-full h-40 object-cover rounded-lg"
-                          />
-                        ))}
+                    {post.images && post.images.length > 0 ? (
+                      <div className="-mx-4">
+                        <img
+                          src={post.images[0]}
+                          alt={post.title}
+                          className="w-full h-64 md:h-80 object-cover"
+                        />
                       </div>
+                    ) : (
+                      <div
+                        className="-mx-4 h-48 bg-cover bg-center"
+                        style={{
+                          backgroundImage:
+                            "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80')",
+                        }}
+                      />
                     )}
 
                     {post.tags && post.tags.length > 0 && (
@@ -358,14 +378,26 @@ export function SocialFeed() {
                           {post.commentsCount > 0 ? post.commentsCount : "Комментарии"}
                         </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => shareUrl(window.location.href, post.title, post.content.slice(0, 100))}
-                        className="text-muted-foreground"
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => shareUrl(window.location.href, post.title, post.content.slice(0, 100))}
+                          className="text-muted-foreground"
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setBookmarked((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
+                          }
+                          className={bookmarked[post.id] ? "text-ait-purple" : "text-muted-foreground"}
+                        >
+                          <Bookmark className={`h-4 w-4 ${bookmarked[post.id] ? "fill-current" : ""}`} />
+                        </Button>
+                      </div>
                     </div>
 
                     {expandedComments[post.id] && (
@@ -402,8 +434,8 @@ export function SocialFeed() {
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </GlassCard>
               ))
             )}
           </div>

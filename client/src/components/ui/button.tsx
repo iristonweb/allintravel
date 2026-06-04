@@ -19,7 +19,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         premium:
-          "relative isolate rounded-[var(--ait-radius-button)] bg-gradient-to-r from-[var(--ait-primary)] to-[var(--ait-accent)] text-[#04121a] shadow-[var(--ait-glow-cyan)] transition-transform hover:shadow-[var(--ait-glow-cyan-strong)] hover:scale-[1.03] active:scale-[1.01]",
+          "relative isolate rounded-[var(--ait-radius-button)] bg-ait-gradient-cta text-white shadow-ait-glow-purple transition-transform hover:shadow-ait-glow-strong hover:scale-[1.02] active:scale-[1.0]",
         glass:
           "rounded-[var(--ait-radius-button)] border border-border bg-card/30 text-foreground backdrop-blur-[var(--ait-blur)] hover:bg-card/40 hover:border-border/80",
       },

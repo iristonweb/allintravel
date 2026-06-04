@@ -242,6 +242,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req, res) => {
+    try {
+      const { orderIndex, dayNumber } = req.body;
+      const waypoint = await storage.updateTripWaypoint(req.params.waypointId, {
+        orderIndex: orderIndex != null ? Number(orderIndex) : undefined,
+        dayNumber: dayNumber != null ? Number(dayNumber) : undefined,
+      });
+      if (!waypoint) {
+        return res.status(404).json({ message: "Waypoint not found" });
+      }
+      res.json(waypoint);
+    } catch (error) {
+      console.error("Error updating waypoint:", error);
+      res.status(500).json({ message: "Failed to update waypoint" });
+    }
+  });
+
   app.delete('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req, res) => {
     try {
       await storage.removeTripWaypoint(req.params.waypointId);
