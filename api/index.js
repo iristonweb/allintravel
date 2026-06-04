@@ -741,7 +741,6 @@ import express3 from "express";
 
 // server/routes.ts
 import { createServer } from "http";
-import { WebSocketServer, WebSocket } from "ws";
 
 // server/storage.ts
 init_db();
@@ -3566,6 +3565,7 @@ async function registerRoutes(app) {
   });
   const httpServer = createServer(app);
   if (!process.env.VERCEL) {
+    const { WebSocketServer, WebSocket } = await import("ws");
     const sessionParser = getSession();
     const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
     wss.on("connection", (ws, req) => {

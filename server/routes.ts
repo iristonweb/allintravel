@@ -1,6 +1,5 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, getSession, type SessionUser } from "./auth";
 import { isGoogleAuthEnabled } from "./google-auth";
@@ -974,11 +973,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WebSocket only for local/long-running Node server (not Vercel serverless)
   if (!process.env.VERCEL) {
+  const { WebSocketServer, WebSocket } = await import("ws");
   const sessionParser = getSession();
 
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  wss.on('connection', (ws: WebSocket, req) => {
+  wss.on('connection', (ws: InstanceType<typeof WebSocket>, req) => {
     let authenticatedUserId: string | null = null;
 
     const runSession = (cb: () => void) => {
