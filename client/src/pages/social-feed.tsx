@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import AppLayout from "@/components/app-layout";
-import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,10 +139,12 @@ export function SocialFeed() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
-        <PageHeader
-          title="Сообщество"
-          description="Лента путешественников — делитесь впечатлениями и вдохновляйтесь"
-        />
+        <div className="mb-2">
+          <h1 className="ait-section-title">Сообщество</h1>
+          <p className="text-muted-foreground mt-1">
+            Лента путешественников — Stories, Reels и Journals
+          </p>
+        </div>
 
         <div className="flex flex-wrap gap-2 mt-6 mb-4">
           {(
@@ -293,16 +294,14 @@ export function SocialFeed() {
                 <p className="text-muted-foreground mt-2">Загружаем посты...</p>
               </div>
             ) : displayedPosts.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Compass className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Пока нет постов</h3>
-                  <p className="text-muted-foreground mb-4">Создайте первый пост о своём путешествии</p>
-                  <Button onClick={() => setIsCreating(true)} className="bg-primary hover:bg-primary/90">
-                    Создать пост
-                  </Button>
-                </CardContent>
-              </Card>
+              <GlassCard className="py-16 text-center">
+                <Compass className="mx-auto h-12 w-12 text-ait-purple mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Пока нет постов</h3>
+                <p className="text-muted-foreground mb-4">Создайте первый пост о своём путешествии</p>
+                <Button variant="premium" onClick={() => setIsCreating(true)}>
+                  Создать пост
+                </Button>
+              </GlassCard>
             ) : (
               displayedPosts.map((post) => (
                 <GlassCard key={post.id} className="overflow-hidden">
@@ -342,19 +341,19 @@ export function SocialFeed() {
                     </div>
 
                     {post.images && post.images.length > 0 ? (
-                      <div className="-mx-4">
+                      <div className="rounded-2xl overflow-hidden mx-1">
                         <img
                           src={post.images[0]}
                           alt={post.title}
-                          className="w-full h-64 md:h-80 object-cover"
+                          className="w-full h-64 md:h-[420px] object-cover"
                         />
                       </div>
                     ) : (
                       <div
-                        className="-mx-4 h-48 bg-cover bg-center"
+                        className="rounded-2xl overflow-hidden mx-1 h-64 md:h-[420px] bg-cover bg-center"
                         style={{
                           backgroundImage:
-                            "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80')",
+                            "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=85')",
                         }}
                       />
                     )}

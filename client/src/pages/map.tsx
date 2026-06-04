@@ -87,6 +87,7 @@ export function MapPage() {
         <InteractiveMap
           places={mapPlaces}
           fullHeight
+          showDemoMarkers
           onPlaceClick={(place) => navigate(`/place/${place.id}`)}
         />
 

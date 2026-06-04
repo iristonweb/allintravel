@@ -17,7 +17,7 @@ export default function HomeSectionHeader({
   return (
     <div className={cn("flex items-start justify-between gap-4", className)}>
       <div>
-        <h2 className="text-2xl md:text-3xl font-bold leading-tight">{title}</h2>
+        <h2 className="ait-section-title">{title}</h2>
         {description ? <p className="text-muted-foreground mt-1">{description}</p> : null}
       </div>
       {rightSlot ? <div className="flex-shrink-0">{rightSlot}</div> : null}

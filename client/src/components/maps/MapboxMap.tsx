@@ -11,6 +11,7 @@ type MapboxMapProps = {
   className?: string;
   height?: string;
   showRoute?: boolean;
+  showDemoMarkers?: boolean;
   onPlaceClick?: (place: MapboxPlace) => void;
 };
 
@@ -19,19 +20,38 @@ const DEMO_ROUTES: [number, number][][] = [
     [-21.95, 64.15],
     [12.57, 55.68],
     [2.35, 48.86],
+    [139.69, 35.68],
   ],
   [
     [-118.24, 34.05],
     [-73.98, 40.71],
     [-0.12, 51.5],
+    [115.86, -31.95],
   ],
 ];
+
+const DEMO_MARKERS: { lng: number; lat: number; label: string; variant: "purple" | "orange" | "green" }[] = [
+  { lng: -21.95, lat: 64.15, label: "12", variant: "purple" },
+  { lng: 12.57, lat: 55.68, label: "8", variant: "green" },
+  { lng: 2.35, lat: 48.86, label: "24", variant: "orange" },
+  { lng: 139.69, lat: 35.68, label: "16", variant: "purple" },
+  { lng: -73.98, lat: 40.71, label: "5", variant: "orange" },
+  { lng: 115.86, lat: -31.95, label: "9", variant: "green" },
+];
+
+function createMarkerElement(label: string, variant: "purple" | "orange" | "green") {
+  const el = document.createElement("div");
+  el.className = `ait-map-marker ait-map-marker--${variant}`;
+  el.textContent = label;
+  return el;
+}
 
 export default function MapboxMap({
   places = [],
   className,
   height = "100%",
   showRoute,
+  showDemoMarkers,
   onPlaceClick,
 }: MapboxMapProps) {
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
@@ -51,11 +71,11 @@ export default function MapboxMap({
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: "mapbox://styles/mapbox/satellite-streets-v12",
       center: [10, 30],
-      zoom: 1.8,
-      pitch: 24,
-      bearing: -8,
+      zoom: 1.6,
+      pitch: 28,
+      bearing: -12,
       antialias: true,
     });
 
@@ -75,14 +95,27 @@ export default function MapboxMap({
           },
         });
         map.addLayer({
-          id: `${id}-line`,
+          id: `${id}-glow`,
           type: "line",
           source: id,
           layout: { "line-cap": "round", "line-join": "round" },
           paint: {
             "line-color": i === 0 ? "#8b5cf6" : "#ff7a18",
-            "line-width": 2,
-            "line-opacity": 0.65,
+            "line-width": 6,
+            "line-opacity": 0.2,
+            "line-blur": 4,
+          },
+        });
+        map.addLayer({
+          id: `${id}-line`,
+          type: "line",
+          source: id,
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": i === 0 ? "#a855f7" : "#ffb347",
+            "line-width": 2.5,
+            "line-opacity": 0.85,
+            "line-dasharray": [2, 1],
           },
         });
       });
@@ -101,18 +134,30 @@ export default function MapboxMap({
 
     const markers: mapboxgl.Marker[] = [];
 
-    validPlaces.forEach((place) => {
+    if (showDemoMarkers) {
+      DEMO_MARKERS.forEach((m) => {
+        const el = createMarkerElement(m.label, m.variant);
+        const popup = new mapboxgl.Popup({ offset: 20, closeButton: false }).setHTML(
+          `<div style="padding:6px 2px;font-weight:600">${m.label} мест</div>`,
+        );
+        markers.push(
+          new mapboxgl.Marker({ element: el })
+            .setLngLat([m.lng, m.lat])
+            .setPopup(popup)
+            .addTo(map),
+        );
+      });
+    }
+
+    validPlaces.forEach((place, index) => {
       const lat = Number(place.latitude);
       const lng = Number(place.longitude);
-      const el = document.createElement("div");
-      el.className = "w-4 h-4 rounded-full cursor-pointer transition-transform hover:scale-150";
-      el.style.background = "linear-gradient(135deg, #8b5cf6, #ff7a18)";
-      el.style.boxShadow = "0 0 20px rgba(139, 92, 246, 0.8)";
-      el.style.border = "2px solid white";
+      const variants: Array<"purple" | "orange" | "green"> = ["purple", "orange", "green"];
+      const el = createMarkerElement(String(index + 1), variants[index % 3]);
       el.addEventListener("click", () => onPlaceClick?.(place));
 
-      const popup = new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
-        `<div style="padding:4px 0"><strong>${place.name}</strong></div>`,
+      const popup = new mapboxgl.Popup({ offset: 20, closeButton: false }).setHTML(
+        `<div style="padding:6px 2px"><strong>${place.name}</strong>${place.type ? `<div style="opacity:0.7;font-size:11px;margin-top:2px">${place.type}</div>` : ""}</div>`,
       );
 
       markers.push(
@@ -135,10 +180,16 @@ export default function MapboxMap({
       } else {
         map.addSource(routeId, { type: "geojson", data });
         map.addLayer({
+          id: `${routeId}-glow`,
+          type: "line",
+          source: routeId,
+          paint: { "line-color": "#22d3ee", "line-width": 8, "line-opacity": 0.25, "line-blur": 3 },
+        });
+        map.addLayer({
           id: `${routeId}-line`,
           type: "line",
           source: routeId,
-          paint: { "line-color": "#22d3ee", "line-width": 4, "line-opacity": 0.9 },
+          paint: { "line-color": "#22d3ee", "line-width": 4, "line-opacity": 0.95 },
         });
       }
       const bounds = coords.reduce(
@@ -149,7 +200,7 @@ export default function MapboxMap({
     }
 
     return () => markers.forEach((m) => m.remove());
-  }, [validPlaces, ready, onPlaceClick, showRoute, token]);
+  }, [validPlaces, ready, onPlaceClick, showRoute, showDemoMarkers, token]);
 
   if (!token) {
     return (
@@ -159,7 +210,7 @@ export default function MapboxMap({
           height={height}
           showRoute={showRoute}
           glowMarkers
-          numberedMarkers={showRoute}
+          numberedMarkers={showRoute || showDemoMarkers}
           routeGlow={showRoute}
           onPlaceClick={onPlaceClick}
           className="h-full rounded-none border-0"

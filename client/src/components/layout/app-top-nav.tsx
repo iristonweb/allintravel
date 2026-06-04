@@ -31,8 +31,8 @@ import { cn } from "@/lib/utils";
 function BrandLogo() {
   return (
     <Link href="/" className="flex items-center gap-3 shrink-0 group">
-      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl ait-btn-glow text-sm font-bold text-white">
-        <span className="relative z-10">Ai</span>
+      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl ait-btn-glow text-sm font-bold text-white shadow-lg">
+        <span className="relative z-10">✕</span>
       </div>
       <div className="hidden sm:block">
         <span className="text-lg font-bold text-white tracking-tight block leading-tight">
@@ -106,38 +106,40 @@ export default function AppTopNav() {
       <div className="max-w-[1600px] mx-auto flex h-20 items-center gap-4 px-4 lg:px-8">
         <BrandLogo />
 
-        <nav className="hidden xl:flex items-center justify-center flex-1 gap-1">
-          {centerNav.map((item) => (
-            <Link key={`${item.href}-${item.label}`} href={item.href}>
-              <span
-                className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                  isActive(item.href)
-                    ? "text-white ait-nav-active"
-                    : "text-slate-400 hover:text-white hover:bg-white/5",
-                )}
-              >
-                {item.label}
-              </span>
-            </Link>
-          ))}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-1"
-              >
-                Ещё <MoreHorizontal className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="ait-glass-strong border-white/10 min-w-[180px]">
-              {moreItems.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  <DropdownMenuItem className="cursor-pointer">{item.label}</DropdownMenuItem>
-                </Link>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <nav className="hidden xl:flex items-center justify-center flex-1">
+          <div className="ait-nav-pill rounded-full flex items-center gap-0.5 px-2 py-1.5">
+            {centerNav.map((item) => (
+              <Link key={`${item.href}-${item.label}`} href={item.href}>
+                <span
+                  className={cn(
+                    "px-4 py-2 rounded-full text-sm font-medium transition-all",
+                    isActive(item.href)
+                      ? "text-white ait-nav-active"
+                      : "text-slate-400 hover:text-white hover:bg-white/5",
+                  )}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            ))}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-full text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 flex items-center gap-1"
+                >
+                  Ещё <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="ait-glass-strong border-white/10 min-w-[180px]">
+                {moreItems.map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <DropdownMenuItem className="cursor-pointer">{item.label}</DropdownMenuItem>
+                  </Link>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto">

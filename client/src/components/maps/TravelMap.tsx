@@ -9,6 +9,7 @@ type TravelMapProps = {
   className?: string;
   height?: string;
   showRoute?: boolean;
+  showDemoMarkers?: boolean;
   onPlaceClick?: (place: TravelMapPlace) => void;
 };
 

@@ -50,7 +50,7 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
           <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
         </Button>
         {place.isVerified && (
-          <Badge className="absolute left-3 top-3 bg-white/85 text-black hover:bg-white">
+          <Badge className="absolute left-3 top-3 ait-glass border-white/20 text-white hover:bg-white/10">
             Проверено
           </Badge>
         )}

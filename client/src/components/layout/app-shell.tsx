@@ -28,8 +28,11 @@ export default function AppShell({
         <AppTopNav />
         <div
           className={cn(
-            "flex-1 pt-20",
+            "flex-1",
+            !immersive && "pt-20",
+            immersive && "pt-0",
             isAuthenticated && !immersive && "pb-24 md:pb-8",
+            isAuthenticated && immersive && "pb-24 md:pb-0",
             className,
           )}
         >

@@ -7,6 +7,7 @@ interface InteractiveMapProps {
   places: TravelMapPlace[];
   onPlaceClick?: (place: TravelMapPlace) => void;
   fullHeight?: boolean;
+  showDemoMarkers?: boolean;
 }
 
 const placeTypes = ["all", "hotel", "restaurant", "attraction", "tour"];
@@ -18,7 +19,12 @@ const typeLabels: Record<string, string> = {
   tour: "Туры",
 };
 
-export function InteractiveMap({ places = [], onPlaceClick, fullHeight }: InteractiveMapProps) {
+export function InteractiveMap({
+  places = [],
+  onPlaceClick,
+  fullHeight,
+  showDemoMarkers,
+}: InteractiveMapProps) {
   const [filterType, setFilterType] = useState<string>("all");
 
   const filteredPlaces = places.filter(
@@ -47,6 +53,7 @@ export function InteractiveMap({ places = [], onPlaceClick, fullHeight }: Intera
       </div>
       <TravelMap
         places={filteredPlaces}
+        showDemoMarkers={showDemoMarkers ?? filteredPlaces.length === 0}
         height={fullHeight ? "100%" : "28rem"}
         onPlaceClick={onPlaceClick}
         className={cn(fullHeight && "h-full min-h-[calc(100vh-5rem)] rounded-none")}
