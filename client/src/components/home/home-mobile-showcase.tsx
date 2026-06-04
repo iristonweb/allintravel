@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import AppDownloadButtons from "@/components/home/app-download-buttons";
+import { HERO_BG_SRC, RESORT_BG_SRC } from "@/lib/site-meta";
 
 export default function HomeMobileShowcase() {
   return (
@@ -22,7 +23,7 @@ export default function HomeMobileShowcase() {
                 className="h-32 bg-cover bg-center p-4 flex flex-col justify-end"
                 style={{
                   backgroundImage:
-                    "linear-gradient(to top, #050816, transparent 50%), url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=600&q=80')",
+                    `linear-gradient(to top, #050816, transparent 50%), url('${HERO_BG_SRC}')`,
                   backgroundSize: "cover",
                 }}
               >
@@ -34,12 +35,12 @@ export default function HomeMobileShowcase() {
                   Куда хотите поехать?
                 </div>
                 <div className="flex gap-2">
-                  {["Бали", "Исландия"].map((d) => (
+                  {["Бали", "Исландия"].map((d, i) => (
                     <div
                       key={d}
                       className="flex-1 h-16 rounded-xl bg-cover bg-center border border-white/10"
                       style={{
-                        backgroundImage: `url('https://images.unsplash.com/photo-1537996195241-795aa0a07e0f?w=200&q=70')`,
+                        backgroundImage: `url('${i === 0 ? HERO_BG_SRC : RESORT_BG_SRC}')`,
                       }}
                     />
                   ))}

@@ -5,6 +5,7 @@ import { Calendar, MapPin, DollarSign, User } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { Event } from "@shared/schema";
+import { EVENT_CARD_FALLBACK_SRC } from "@/lib/site-meta";
 
 interface EventCardProps {
   event: Event;
@@ -42,7 +43,7 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative">
         <img
-          src={event.imageUrl || `https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400&h=200&fit=crop`}
+          src={event.imageUrl || EVENT_CARD_FALLBACK_SRC}
           alt={event.title}
           className="w-full h-48 object-cover"
         />

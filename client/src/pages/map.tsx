@@ -17,6 +17,7 @@ import MapSearchPanel from "@/components/map/MapSearchPanel";
 import { resolveMapHref } from "@/lib/map-navigate";
 
 import type { Place } from "@shared/schema";
+import { HERO_BG_SRC, RESORT_BG_SRC } from "@/lib/site-meta";
 
 
 
@@ -28,7 +29,7 @@ const showcaseDestinations = [
 
     name: "Бали",
 
-    imageUrl: "https://images.unsplash.com/photo-1537996195241-795aa0a07e0f?w=500&q=85",
+    imageUrl: HERO_BG_SRC,
 
     placesCount: 342,
 
@@ -42,7 +43,7 @@ const showcaseDestinations = [
 
     name: "Исландия",
 
-    imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=500&q=85",
+    imageUrl: RESORT_BG_SRC,
 
     placesCount: 128,
 
@@ -56,7 +57,7 @@ const showcaseDestinations = [
 
     name: "Норвегия",
 
-    imageUrl: "https://images.unsplash.com/photo-1518837695005-2083099ee35b?w=500&q=85",
+    imageUrl: RESORT_BG_SRC,
 
     placesCount: 96,
 
@@ -70,7 +71,7 @@ const showcaseDestinations = [
 
     name: "Япония",
 
-    imageUrl: "https://images.unsplash.com/photo-1493976040374-85c8e912f437?w=500&q=85",
+    imageUrl: HERO_BG_SRC,
 
     placesCount: 276,
 
