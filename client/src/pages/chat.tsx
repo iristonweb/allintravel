@@ -468,12 +468,21 @@ export function Chat() {
     setWsMessages((prev) => ({ ...prev, [activeRoom]: [] }));
   }, [activeRoom]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, wsMessages, activeRoom]);
-
   const currentWsMessages = wsMessages[activeRoom] || [];
   const allMessages = mergeChronologicalMessages(history, currentWsMessages);
+
+  const prevScrollRoomRef = useRef(activeRoom);
+  const prevScrollLenRef = useRef(0);
+
+  useEffect(() => {
+    const roomChanged = prevScrollRoomRef.current !== activeRoom;
+    const grew = allMessages.length > prevScrollLenRef.current;
+    prevScrollRoomRef.current = activeRoom;
+    prevScrollLenRef.current = allMessages.length;
+    if (roomChanged || grew) {
+      scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [allMessages.length, activeRoom]);
 
   useEffect(() => {
     if (!roomId || allMessages.length === 0) return;

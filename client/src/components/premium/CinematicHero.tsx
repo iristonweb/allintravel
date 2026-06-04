@@ -129,7 +129,7 @@ export default function CinematicHero({
           </div>
           {showSearch && (
             <motion.div
-              className="w-full max-w-5xl mx-auto"
+              className="w-full max-w-6xl mx-auto"
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.6 }}

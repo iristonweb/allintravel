@@ -5,8 +5,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -37,6 +39,8 @@ import {
   PinOff,
   Trash2,
   Reply,
+  Eye,
+  Smile,
 } from "lucide-react";
 import type { MessageDeliveryStatus, MessageReactionMeta, MessageReadMeta, ReactionSummary, User } from "@shared/schema";
 import { QUICK_REACTION_EMOJIS, DEFAULT_REACTION, findMyReaction, toggleReactionEmoji } from "@/lib/message-reactions";
@@ -104,7 +108,9 @@ export default function ChatMessageRow({
   const [editText, setEditText] = useState(content);
   const editTextRef = useRef<HTMLTextAreaElement>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
-  const hasActions = Boolean(onReact || onReply || onPin || onUnpin || onDelete || onEdit);
+  const hasActions = Boolean(
+    onReact || onReply || onPin || onUnpin || onDelete || onEdit || insightsUrl,
+  );
 
   const { data: insights, isLoading: insightsLoading } = useQuery<InsightsPayload>({
     queryKey: [insightsUrl, messageId],
@@ -180,6 +186,7 @@ export default function ChatMessageRow({
       reacting={reacting}
       deliveryStatus={deliveryStatus ?? meta?.deliveryStatus}
       onDoubleClickReact={onReact ? handleDoubleClick : undefined}
+      onReactionDetails={insightsUrl ? () => setInsightsOpen(true) : undefined}
       senderLabel={
         senderLabel ? (
           <span className="text-xs text-muted-foreground px-1">{senderLabel}</span>
@@ -236,56 +243,71 @@ export default function ChatMessageRow({
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-48">
+                <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-56">
                   {onReply && (
                     <DropdownMenuItem onClick={onReply}>
                       <Reply className="h-4 w-4 mr-2" />
                       Ответить
                     </DropdownMenuItem>
                   )}
-                  {onReact && (
-                    <>
-                      {onReply && <DropdownMenuSeparator />}
-                      <DropdownMenuLabel>Реакция</DropdownMenuLabel>
-                      {reactionPicker}
-                    </>
+                  {canPin && !isPinned && onPin && (
+                    <DropdownMenuItem onClick={onPin}>
+                      <Pin className="h-4 w-4 mr-2" />
+                      Закрепить
+                    </DropdownMenuItem>
+                  )}
+                  {canPin && isPinned && onUnpin && (
+                    <DropdownMenuItem onClick={onUnpin}>
+                      <PinOff className="h-4 w-4 mr-2" />
+                      Открепить
+                    </DropdownMenuItem>
+                  )}
+                  {insightsUrl && (
+                    <DropdownMenuItem onClick={() => setInsightsOpen(true)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Просмотры и реакции
+                    </DropdownMenuItem>
                   )}
                   {canEdit && onEdit && (
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setEditText(content);
-                            setEditOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Редактировать
-                        </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditText(content);
+                        setEditOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Редактировать
+                    </DropdownMenuItem>
+                  )}
+                  {onReact && (
+                    <>
+                      {(onReply || onPin || onUnpin || insightsUrl || (canEdit && onEdit)) && (
+                        <DropdownMenuSeparator />
                       )}
-                      {canPin && !isPinned && onPin && (
-                        <DropdownMenuItem onClick={onPin}>
-                          <Pin className="h-4 w-4 mr-2" />
-                          Закрепить
-                        </DropdownMenuItem>
-                      )}
-                      {canPin && isPinned && onUnpin && (
-                        <DropdownMenuItem onClick={onUnpin}>
-                          <PinOff className="h-4 w-4 mr-2" />
-                          Открепить
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && onDelete && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={onDelete}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Удалить
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Smile className="h-4 w-4 mr-2" />
+                          Реакция
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-48">
+                          {reactionPicker}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </>
+                  )}
+                  {canDelete && onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={onDelete}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Удалить
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
                   </DropdownMenu>
                 )}
               </div>
@@ -302,18 +324,29 @@ export default function ChatMessageRow({
               <ContextMenuSeparator />
             </>
           )}
-          {onReact && (
-            <>
-              <ContextMenuLabel>Реакция</ContextMenuLabel>
-              {reactionPicker}
-            </>
+          {canPin && !isPinned && onPin && (
+            <ContextMenuItem onClick={onPin}>
+              <Pin className="h-4 w-4 mr-2" />
+              Закрепить
+            </ContextMenuItem>
+          )}
+          {canPin && isPinned && onUnpin && (
+            <ContextMenuItem onClick={onUnpin}>
+              <PinOff className="h-4 w-4 mr-2" />
+              Открепить
+            </ContextMenuItem>
           )}
           {insightsUrl && (
+            <ContextMenuItem onClick={() => setInsightsOpen(true)}>
+              <Eye className="h-4 w-4 mr-2" />
+              Просмотры и реакции
+            </ContextMenuItem>
+          )}
+          {onReact && (
             <>
               <ContextMenuSeparator />
-              <ContextMenuItem onClick={() => setInsightsOpen(true)}>
-                Кто просмотрел и реагировал
-              </ContextMenuItem>
+              <ContextMenuLabel>Реакция</ContextMenuLabel>
+              {reactionPicker}
             </>
           )}
         </ContextMenuContent>

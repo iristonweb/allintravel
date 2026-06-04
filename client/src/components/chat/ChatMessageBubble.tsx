@@ -53,6 +53,7 @@ type ChatMessageBubbleProps = {
   reacting?: boolean;
   deliveryStatus?: MessageDeliveryStatus;
   onDoubleClickReact?: () => void;
+  onReactionDetails?: () => void;
 };
 
 function safeUrl(url: string): string | undefined {
@@ -143,6 +144,7 @@ export default function ChatMessageBubble({
   reacting,
   deliveryStatus,
   onDoubleClickReact,
+  onReactionDetails,
 }: ChatMessageBubbleProps) {
   const parts = parseChatMessage(content);
   const replyPart = parts.find((p): p is { type: "reply"; username: string; preview: string } => p.type === "reply");
@@ -197,6 +199,7 @@ export default function ChatMessageBubble({
         <MessageReactionBar
           reactions={reactions}
           onToggle={onReact}
+          onDetailsClick={onReactionDetails}
           disabled={reacting}
           className={isOwn ? "justify-end" : "justify-start"}
         />

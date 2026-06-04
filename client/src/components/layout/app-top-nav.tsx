@@ -163,7 +163,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
           </nav>
         )}
 
-        {pageTitle && (
+        {pageTitle && !minimalChrome && (
           <p className="hidden md:block flex-1 min-w-0 text-sm font-medium text-slate-300 truncate pl-1">
             {pageTitle}
           </p>

@@ -57,11 +57,11 @@ export default function GlobalSearchPanel() {
   };
 
   const fieldClass =
-    "flex items-start gap-3 px-4 py-3 min-w-0 rounded-xl lg:rounded-none border-b border-white/10 lg:border-0 last:border-b-0";
+    "flex items-start gap-3 px-4 py-3 min-w-0 rounded-xl lg:rounded-none border-b border-white/10 lg:border-0 last:border-b-0 lg:px-5";
 
   return (
     <div className="ait-glass-strong rounded-2xl md:rounded-[28px] p-3 md:p-4 ait-gradient-border shadow-2xl">
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1.1fr)_minmax(0,0.85fr)_minmax(0,1fr)_auto] lg:gap-1 gap-0">
+      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.28fr)_minmax(0,1.12fr)_minmax(0,1fr)_minmax(0,1.12fr)_minmax(11.5rem,0.72fr)] lg:gap-1 gap-0">
         <div className={fieldClass}>
           <MapPin className="h-5 w-5 text-ait-purple shrink-0 mt-1.5" />
           <div className="flex-1 min-w-0">
@@ -115,7 +115,7 @@ export default function GlobalSearchPanel() {
             <select
               value={travelers}
               onChange={(e) => setTravelers(e.target.value)}
-              className="w-full bg-transparent border-0 outline-none text-sm text-foreground cursor-pointer"
+              className="w-full bg-transparent border-0 outline-none text-sm text-foreground cursor-pointer pr-1"
             >
               {HERO_TRAVELER_OPTIONS.map((o) => (
                 <option key={o.value || "any"} value={o.value} className="bg-[#0f1428]">
@@ -133,7 +133,7 @@ export default function GlobalSearchPanel() {
             <select
               value={target}
               onChange={(e) => setTarget(e.target.value)}
-              className="w-full bg-transparent border-0 outline-none text-sm text-foreground cursor-pointer"
+              className="w-full bg-transparent border-0 outline-none text-sm text-foreground cursor-pointer pr-1"
             >
               {HERO_SEARCH_TARGETS.map((o) => (
                 <option key={o.value} value={o.value} className="bg-[#0f1428]">
@@ -144,11 +144,11 @@ export default function GlobalSearchPanel() {
           </div>
         </label>
 
-        <div className="flex items-stretch p-2 lg:p-3 lg:pl-4">
+        <div className="flex items-stretch p-2 lg:p-3 lg:pl-2 lg:pr-3">
           <motion.button
             type="button"
             onClick={search}
-            className="w-full lg:w-auto min-h-[48px] ait-btn-glow rounded-2xl px-6 lg:px-8 flex items-center justify-center gap-2 font-semibold text-white whitespace-nowrap"
+            className="w-full min-h-[52px] lg:min-h-[56px] ait-btn-glow rounded-2xl px-8 lg:px-10 flex items-center justify-center gap-2.5 font-semibold text-white whitespace-nowrap text-[15px] lg:text-base tracking-wide"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >

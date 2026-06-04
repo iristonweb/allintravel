@@ -138,9 +138,20 @@ export function Messages() {
     },
   });
 
+  const prevScrollConvRef = useRef<string | undefined>();
+  const prevScrollLenRef = useRef(0);
+
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, selectedConversation?.user.id]);
+    const convId = selectedConversation?.user.id;
+    const len = messages.length;
+    const convChanged = convId !== prevScrollConvRef.current;
+    const grew = len > prevScrollLenRef.current;
+    prevScrollConvRef.current = convId;
+    prevScrollLenRef.current = len;
+    if (convChanged || grew) {
+      scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages.length, selectedConversation?.user.id]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: { receiverId: string; content: string }) => {
@@ -255,9 +266,11 @@ export function Messages() {
 
   return (
     <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-2 md:p-4">
-      <div className="max-w-[1600px] mx-auto">
-        <h1 className="ait-section-title">Сообщения</h1>
-        <p className="text-muted-foreground mt-1 mb-4">Личные чаты и групповые поездки</p>
+      <div className="max-w-[1600px] mx-auto flex flex-col min-h-0 h-[calc(100dvh-var(--ait-header-h,5rem)-1rem)] md:h-[calc(100dvh-var(--ait-header-h,5rem)-2rem)]">
+        <div className="shrink-0 mb-4">
+          <h1 className="ait-section-title text-2xl md:text-3xl">Сообщения</h1>
+          <p className="text-muted-foreground mt-1">Личные чаты и групповые поездки</p>
+        </div>
 
         <ChatFilterTabs
           layoutId="messages-page-filter"
@@ -268,10 +281,10 @@ export function Messages() {
           ]}
           value={msgTab}
           onChange={setMsgTab}
-          className="mb-6"
+          className="shrink-0 mb-4"
         />
 
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-3 h-[calc(100dvh-var(--ait-header-h,5rem))] min-h-[560px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-3 flex-1 min-h-0 min-h-[480px]">
             <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
               <div className="ait-chat-panel-header p-4">
                 <h2 className="font-semibold flex items-center gap-2">
@@ -280,7 +293,7 @@ export function Messages() {
                 </h2>
               </div>
               <div className="p-0">
-                <ScrollArea className="h-[calc(100dvh-var(--ait-header-h,5rem)-8rem)] md:h-[calc(100dvh-var(--ait-header-h,5rem)-6rem)]">
+                <ScrollArea className="flex-1 min-h-0 h-full max-h-[calc(100dvh-var(--ait-header-h,5rem)-14rem)] lg:max-h-none">
                   {msgTab === "groups" ? (
                     roomsLoading ? (
                       <div className="p-6 text-center text-sm text-muted-foreground">Загрузка…</div>

@@ -182,7 +182,7 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
         "transition-[width,box-shadow] duration-200 ease-out",
         minimalChrome
           ? "ait-chrome-minimal-sidebar"
-          : "border-r border-white/10 bg-[#070b14]/98 backdrop-blur-xl hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]",
+          : "ait-chrome-solid-sidebar backdrop-blur-xl hover:shadow-[4px_0_24px_rgba(0,0,0,0.35)] focus-within:shadow-[4px_0_24px_rgba(0,0,0,0.35)]",
       )}
       aria-label="Основная навигация"
     >

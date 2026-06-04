@@ -51,8 +51,9 @@ export default function AppShell({
         <AppShellPlayerPadding
             className={cn(
               "flex-1",
-              !effectiveImmersive && "pt-20",
-              effectiveImmersive && "pt-0",
+              minimalChrome && "pt-[var(--ait-header-h,5rem)]",
+              !minimalChrome && !effectiveImmersive && "pt-20",
+              !minimalChrome && effectiveImmersive && "pt-0",
               isAuthenticated && !effectiveImmersive && "pb-24 md:pb-8",
               isAuthenticated && effectiveImmersive && "pb-24 md:pb-0",
               isAuthenticated && !minimalChrome && "md:pl-[72px]",
