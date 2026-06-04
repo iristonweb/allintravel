@@ -4,7 +4,7 @@ import type { Express } from "express";
 import { put } from "@vercel/blob";
 
 export const VERCEL_BLOB_REQUIRED_MSG =
-  "Загрузка на Vercel требует Vercel Blob: создайте store в Vercel → Storage → Blob и добавьте переменную BLOB_READ_WRITE_TOKEN (не BLOB_WEBHOOK_PUBLIC_KEY). После redeploy загрузки заработают. Лимит тела запроса на Vercel ~4.5 МБ.";
+  "Загрузка на Vercel требует Vercel Blob: Storage → Blob → Connect to Project (один store). Должны появиться BLOB_STORE_ID (OIDC) или BLOB_READ_WRITE_TOKEN. BLOB_WEBHOOK_PUBLIC_KEY — не для загрузок. После redeploy загрузки заработают. Лимит тела ~4.5 МБ.";
 
 function resolveUploadsDir(): string {
   if (process.env.VERCEL) {
@@ -51,8 +51,13 @@ function fileBuffer(file: Express.Multer.File): Buffer {
   throw new Error("Empty upload");
 }
 
-function hasBlobStorage(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
+/** Vercel Blob via static token or OIDC (BLOB_STORE_ID + token on deploy). */
+export function hasBlobStorage(): boolean {
+  if (process.env.BLOB_READ_WRITE_TOKEN?.trim()) return true;
+  const storeId = process.env.BLOB_STORE_ID?.trim();
+  if (!storeId) return false;
+  if (process.env.VERCEL) return true;
+  return Boolean(process.env.VERCEL_OIDC_TOKEN?.trim());
 }
 
 /** Persist upload and return a URL usable in DB and <img src> */

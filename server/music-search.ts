@@ -185,7 +185,8 @@ export async function importJamendoTrackToBlob(trackId: string): Promise<{
   const mimeType = res.headers.get("content-type") || "audio/mpeg";
   let fileUrl: string;
 
-  if (process.env.BLOB_READ_WRITE_TOKEN?.trim()) {
+  const { hasBlobStorage } = await import("./media-storage");
+  if (hasBlobStorage()) {
     const key = `music/jamendo-${trackId}-${Date.now()}.mp3`;
     const blob = await put(key, buffer, {
       access: "public",
