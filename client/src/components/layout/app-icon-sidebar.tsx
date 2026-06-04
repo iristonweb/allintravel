@@ -18,7 +18,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { sidebarMainNav, sidebarServiceNav } from "@/lib/nav-config";
+import {
+  sidebarPrimaryNav,
+  sidebarDiscoverNav,
+  sidebarExtraNav,
+} from "@/lib/nav-config";
 import type { LucideIcon } from "lucide-react";
 
 const iconByHref: Record<string, LucideIcon> = {
@@ -72,6 +76,16 @@ function NavIcon({
   );
 }
 
+function NavSection({ items, activeFn }: { items: NavItemWithMeta[]; activeFn: (href: string) => boolean }) {
+  return (
+    <>
+      {items.map((item) => (
+        <NavIcon key={item.href} item={item} active={activeFn(item.href)} />
+      ))}
+    </>
+  );
+}
+
 export default function AppIconSidebar() {
   const [location] = useLocation();
 
@@ -80,19 +94,20 @@ export default function AppIconSidebar() {
       ? location === "/"
       : location === href || location.startsWith(`${href}/`);
 
-  const serviceItems: NavItemWithMeta[] = sidebarServiceNav.map((item) =>
+  const extraItems: NavItemWithMeta[] = sidebarExtraNav.map((item) =>
     item.href === "/wallet" ? { ...item, badge: "Demo" } : item,
   );
 
   return (
-    <aside className="hidden md:flex fixed left-0 top-20 z-40 h-[calc(100vh-var(--ait-header-h))] w-[72px] flex-col items-center gap-1 border-r border-border/60 bg-background/40 backdrop-blur-xl py-4">
-      {sidebarMainNav.map((item) => (
-        <NavIcon key={item.href} item={item} active={isActive(item.href)} />
-      ))}
-      <div className="w-8 border-t border-white/10 my-2" />
-      {serviceItems.map((item) => (
-        <NavIcon key={item.href} item={item} active={isActive(item.href)} />
-      ))}
+    <aside
+      className="hidden md:flex fixed left-0 top-20 z-40 h-[calc(100vh-var(--ait-header-h,5rem))] w-[72px] flex-col items-center gap-0.5 border-r border-border/60 bg-background/40 backdrop-blur-xl py-3 overflow-y-auto overscroll-contain"
+      aria-label="Основная навигация"
+    >
+      <NavSection items={sidebarPrimaryNav} activeFn={isActive} />
+      <div className="w-8 border-t border-white/10 my-2 shrink-0" aria-hidden />
+      <NavSection items={sidebarDiscoverNav} activeFn={isActive} />
+      <div className="w-8 border-t border-white/10 my-2 shrink-0" aria-hidden />
+      <NavSection items={extraItems} activeFn={isActive} />
     </aside>
   );
 }
