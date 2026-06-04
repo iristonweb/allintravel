@@ -77,7 +77,6 @@ npm run geo:import
 |------------|-------------|----------|
 | `DATABASE_URL` | да | Connection string из Neon (Dashboard → Connect) |
 | `SESSION_SECRET` | да | Случайная длинная строка (hex 64 символа) |
-| `APP_ACCESS_CODE` | да | Общий код входа на `/login`, например `demo` |
 | `APP_URL` | да для Google | `https://allintravel.vercel.app` |
 | `GOOGLE_CLIENT_ID` | нет | Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | нет | Google Cloud Console |
@@ -111,9 +110,9 @@ npm run geo:import
 
 Второй проект имеет смысл только если вы **намеренно** выносите API на отдельный домен (тогда в Vercel задайте `VITE_API_ORIGIN=https://api.example.com` и настройте CORS/cookies). Для `allintravel.vercel.app` это не требуется.
 
-### Регистрация по email
+### Вход и регистрация по email
 
-Отдельной страницы «Регистрация» нет: на `/login` вводятся **email + код доступа** (`APP_ACCESS_CODE`). При первом успешном входе пользователь **создаётся в БД** автоматически. В production код доступа обязателен.
+Отдельной страницы «Регистрация» нет: на `/login` вводятся **email + пароль** (минимум 8 символов). При первом успешном входе пользователь **создаётся в БД** с хешем пароля. Повторный вход — тем же email и паролем. Общий код доступа не используется.
 
 ### Что работает после входа (нужен `DATABASE_URL`)
 

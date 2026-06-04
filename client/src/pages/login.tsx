@@ -47,7 +47,7 @@ export function Login() {
         <CardContent>
           <form action={formAction} method="post" className="space-y-4">
             {error && (
-              <p className="text-sm text-destructive">Проверьте email и код доступа.</p>
+              <p className="text-sm text-destructive">Неверный email или пароль.</p>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -61,17 +61,19 @@ export function Login() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Код доступа</Label>
+              <Label htmlFor="password">Пароль</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Код из приглашения"
+                placeholder="Минимум 8 символов"
                 autoComplete="current-password"
+                minLength={8}
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Новый пользователь: укажите email и тот же код — профиль создастся автоматически.
+                При первом входе аккаунт создаётся автоматически — откроется личный кабинет со всеми
+                функциями.
               </p>
             </div>
             <Button type="submit" variant="premium" className="w-full">

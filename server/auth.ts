@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
 import { getSessionPool } from "./db";
 import { setupGoogleAuth } from "./google-auth";
+import { hashPassword, isPasswordLongEnough, verifyPassword } from "./password";
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
 const PgSession = connectPgSimple(session);
@@ -55,6 +56,24 @@ export type SessionUser = {
   };
 };
 
+function toSessionUser(user: {
+  id: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+}): SessionUser {
+  return {
+    claims: {
+      sub: user.id,
+      email: user.email ?? undefined,
+      first_name: user.firstName ?? undefined,
+      last_name: user.lastName ?? undefined,
+      profile_image_url: user.profileImageUrl ?? undefined,
+    },
+  };
+}
+
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
@@ -69,45 +88,48 @@ export async function setupAuth(app: Express) {
       async (email, _password, done) => {
         try {
           const trimmed = (email || "").trim().toLowerCase();
+          const password = String(_password ?? "");
+
           if (!trimmed) {
             return done(null, false, { message: "Email is required" });
           }
-
-          const accessCode = process.env.APP_ACCESS_CODE;
-          const password = String(_password ?? "");
-          if (process.env.NODE_ENV === "production" && !accessCode) {
-            throw new Error("APP_ACCESS_CODE must be set in production");
-          }
-          if (accessCode && password !== accessCode) {
-            return done(null, false, { message: "Invalid access code" });
+          if (!isPasswordLongEnough(password)) {
+            return done(null, false, { message: "Invalid email or password" });
           }
 
           let user = await storage.getUserByEmail(trimmed);
+
           if (!user) {
             const id = crypto.randomUUID();
+            const passwordHash = await hashPassword(password);
             user = await storage.upsertUser({
               id,
               email: trimmed,
               firstName: null,
               lastName: null,
               profileImageUrl: null,
+              passwordHash,
             });
+            return done(null, toSessionUser(user));
           }
-          const sessionUser: SessionUser = {
-            claims: {
-              sub: user.id,
-              email: user.email ?? undefined,
-              first_name: user.firstName ?? undefined,
-              last_name: user.lastName ?? undefined,
-              profile_image_url: user.profileImageUrl ?? undefined,
-            },
-          };
-          return done(null, sessionUser);
+
+          if (!user.passwordHash) {
+            const passwordHash = await hashPassword(password);
+            user = await storage.setUserPassword(user.id, passwordHash);
+            return done(null, toSessionUser(user));
+          }
+
+          const valid = await verifyPassword(password, user.passwordHash);
+          if (!valid) {
+            return done(null, false, { message: "Invalid email or password" });
+          }
+
+          return done(null, toSessionUser(user));
         } catch (err) {
           return done(err);
         }
-      }
-    )
+      },
+    ),
   );
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
@@ -139,7 +161,7 @@ export async function setupAuth(app: Express) {
           return res.redirect(safeRedirect);
         });
       })(req, res, next);
-    }
+    },
   );
 
   const handleLogout = (req: import("express").Request, res: import("express").Response) => {

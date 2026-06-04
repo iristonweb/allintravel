@@ -84,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/config", (_req, res) => {
     res.json({
       googleOAuth: isGoogleAuthEnabled(),
-      /** First login with email + access code creates the account (no separate signup page). */
+      /** First login with email + password creates the account (no separate signup page). */
       emailSignup: true,
     });
   });

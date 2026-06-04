@@ -38,6 +38,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  setUserPassword(userId: string, passwordHash: string): Promise<User>;
 
   getPlaces(filters?: {
     type?: string;
@@ -455,6 +456,14 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     } as User;
     this.users.set(user.id, user);
+    return user;
+  }
+
+  async setUserPassword(userId: string, passwordHash: string): Promise<User> {
+    const existing = this.users.get(userId);
+    if (!existing) throw new Error("User not found");
+    const user: User = { ...existing, passwordHash, updatedAt: new Date() };
+    this.users.set(userId, user);
     return user;
   }
 

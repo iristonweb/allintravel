@@ -140,6 +140,16 @@ export class PgStorage implements IStorage {
     return created;
   }
 
+  async setUserPassword(userId: string, passwordHash: string): Promise<User> {
+    const [updated] = await this.db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
+  }
+
   async getPlaces(filters?: {
     type?: string;
     search?: string;
