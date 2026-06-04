@@ -6,6 +6,9 @@ const resources = {
   ru: {
     translation: {
       appName: "All In Travel",
+      appTagline: "Explore · Plan · Share",
+      appDescription:
+        "Единая экосистема для путешественников: карта, планировщик, сообщество и чаты.",
       nav: {
         home: "Главная",
         places: "Места",
@@ -20,6 +23,9 @@ const resources = {
   en: {
     translation: {
       appName: "All In Travel",
+      appTagline: "Explore · Plan · Share",
+      appDescription:
+        "Единая экосистема для путешественников: карта, планировщик, сообщество и чаты.",
       nav: {
         home: "Home",
         places: "Places",

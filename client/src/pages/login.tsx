@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AmbientBackground from "@/components/premium/AmbientBackground";
-import { Globe } from "lucide-react";
+import BrandLogo from "@/components/brand/brand-logo";
+import { SITE_DESCRIPTION_SHORT, SITE_TAGLINE } from "@/lib/site-meta";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -37,13 +38,20 @@ export function Login() {
   return (
     <AmbientBackground className="min-h-screen flex items-center justify-center px-4">
       <Card className="w-full max-w-md ait-glass-strong ait-gradient-border">
-        <CardHeader className="space-y-1 flex flex-row items-center gap-2">
-          <Globe className="text-primary h-8 w-8" />
-          <div>
-            <CardTitle className="text-2xl">All In Travel</CardTitle>
-            <CardDescription>
-              Вход или регистрация по email — аккаунт создаётся при первом входе
+        <CardHeader className="space-y-4 text-center">
+          <div className="flex justify-center">
+            <BrandLogo href={null} className="justify-center" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.25em] text-ait-purple font-medium">
+              {SITE_TAGLINE}
+            </p>
+            <CardDescription className="text-base leading-relaxed">
+              {SITE_DESCRIPTION_SHORT}
             </CardDescription>
+            <p className="text-sm text-muted-foreground">
+              Вход или регистрация по email — аккаунт создаётся при первом входе
+            </p>
           </div>
         </CardHeader>
         <CardContent>

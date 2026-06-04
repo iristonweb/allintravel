@@ -1,7 +1,7 @@
 {
   "name": "All In Travel",
-  "short_name": "AllInTravel",
-  "description": "Интерактивный туристический справочник и социальная платформа для путешественников",
+  "short_name": "All In Travel",
+  "description": "Единая экосистема для путешественников: карта мира, планировщик маршрутов, сообщество и чаты. Explore · Plan · Share.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050816",
@@ -9,9 +9,16 @@
   "lang": "ru",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64",
-      "type": "image/x-icon"
+      "src": "/brand/logo-ait.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/logo-ait.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

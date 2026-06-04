@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { SITE_DESCRIPTION, SITE_TAGLINE } from "@/lib/site-meta";
 
 export function Landing() {
   const [, navigate] = useLocation();
@@ -43,8 +44,11 @@ export function Landing() {
             className="text-center max-w-2xl mx-auto mb-14"
           >
             <h2 className="ait-section-title">Единая экосистема путешествий</h2>
-            <p className="mt-4 text-muted-foreground text-lg">
-              Карта, планировщик, сообщество, чаты и маркетплейс — в одном премиальном пространстве.
+            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-ait-purple font-medium">
+              {SITE_TAGLINE}
+            </p>
+            <p className="mt-4 text-muted-foreground text-lg leading-relaxed">
+              {SITE_DESCRIPTION}
             </p>
           </motion.div>
 

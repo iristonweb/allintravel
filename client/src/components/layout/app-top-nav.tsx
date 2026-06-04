@@ -27,24 +27,7 @@ import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-function BrandLogo() {
-  return (
-    <Link href="/" className="flex items-center gap-3 shrink-0 group">
-      <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl ait-btn-glow text-sm font-bold text-white shadow-lg">
-        <span className="relative z-10">✕</span>
-      </div>
-      <div className="hidden sm:block">
-        <span className="text-lg font-bold text-white tracking-tight block leading-tight">
-          All In Travel
-        </span>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Travel OS
-        </span>
-      </div>
-    </Link>
-  );
-}
+import BrandLogo from "@/components/brand/brand-logo";
 
 export default function AppTopNav() {
   const { user, isAuthenticated } = useAuth();

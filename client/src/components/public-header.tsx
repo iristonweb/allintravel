@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Globe, LogIn } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import BrandLogo from "@/components/brand/brand-logo";
+import { LogIn } from "lucide-react";
+import { useLocation } from "wouter";
 
 type PublicHeaderProps = {
   /**
@@ -17,10 +18,7 @@ export default function PublicHeader({ navItems }: PublicHeaderProps) {
     <header className="sticky top-0 z-50 border-b border-border bg-background/20 backdrop-blur supports-[backdrop-filter]:bg-background/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center">
-            <Globe className="text-primary text-2xl mr-2" />
-            <span className="text-xl font-bold text-foreground">All In Travel</span>
-          </Link>
+          <BrandLogo />
 
           {navItems?.length ? (
             <nav className="hidden md:flex items-center space-x-8">
