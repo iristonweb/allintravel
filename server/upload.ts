@@ -1,8 +1,15 @@
+import { Readable } from "node:stream";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import multer, { MulterError } from "multer";
+import { get } from "@vercel/blob";
 import { isAuthenticated } from "./auth";
 import { storage } from "./storage";
-import { getUploadsStaticDir, persistUploadedFile, VERCEL_BLOB_REQUIRED_MSG } from "./media-storage";
+import {
+  getUploadsStaticDir,
+  isValidBlobDeliveryPathname,
+  persistUploadedFile,
+  VERCEL_BLOB_REQUIRED_MSG,
+} from "./media-storage";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -85,6 +92,26 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
     const dir = getUploadsStaticDir();
     app.use("/uploads", express.static(dir));
   }
+
+  app.get("/api/media/blob", async (req: Request, res: Response) => {
+    const pathname = typeof req.query.pathname === "string" ? req.query.pathname : "";
+    if (!isValidBlobDeliveryPathname(pathname)) {
+      return res.status(400).json({ message: "Invalid pathname" });
+    }
+    try {
+      const result = await get(pathname, { access: "private" });
+      if (result?.statusCode !== 200 || !result.stream) {
+        return res.status(404).end();
+      }
+      res.setHeader("Content-Type", result.blob.contentType);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      Readable.fromWeb(result.stream as import("node:stream/web").ReadableStream).pipe(res);
+    } catch (e) {
+      console.error("[blob-delivery]", e);
+      res.status(500).json({ message: "Failed to load file" });
+    }
+  });
 
   app.post(
     "/api/upload",

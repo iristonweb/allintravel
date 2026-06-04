@@ -22,6 +22,7 @@ function hostAllowed(hostname: string): boolean {
 export function isSafeServerMediaUrl(url: string): boolean {
   if (!url?.trim()) return false;
   if (url.startsWith("/stickers/")) return true;
+  if (url.startsWith("/api/media/blob?")) return true;
   if (!process.env.VERCEL && url.startsWith("/uploads/")) return true;
   try {
     const parsed = new URL(url);

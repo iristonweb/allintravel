@@ -1,4 +1,3 @@
-import { put } from "@vercel/blob";
 
 export type JamendoSearchResult = {
   source: "jamendo";
@@ -185,15 +184,10 @@ export async function importJamendoTrackToBlob(trackId: string): Promise<{
   const mimeType = res.headers.get("content-type") || "audio/mpeg";
   let fileUrl: string;
 
-  const { hasBlobStorage } = await import("./media-storage");
+  const { hasBlobStorage, putBlobBuffer } = await import("./media-storage");
   if (hasBlobStorage()) {
     const key = `music/jamendo-${trackId}-${Date.now()}.mp3`;
-    const blob = await put(key, buffer, {
-      access: "public",
-      contentType: mimeType,
-      addRandomSuffix: false,
-    });
-    fileUrl = blob.url;
+    fileUrl = await putBlobBuffer(key, buffer, mimeType);
   } else if (!process.env.VERCEL) {
     const fs = await import("fs");
     const path = await import("path");

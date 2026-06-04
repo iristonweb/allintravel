@@ -51,6 +51,10 @@ function fileBuffer(file: Express.Multer.File): Buffer {
   throw new Error("Empty upload");
 }
 
+function isPrivateStoreError(message: string): boolean {
+  return /private store|private access/i.test(message);
+}
+
 /** Vercel Blob via static token or OIDC (BLOB_STORE_ID + token on deploy). */
 export function hasBlobStorage(): boolean {
   if (process.env.BLOB_READ_WRITE_TOKEN?.trim()) return true;
@@ -58,6 +62,40 @@ export function hasBlobStorage(): boolean {
   if (!storeId) return false;
   if (process.env.VERCEL) return true;
   return Boolean(process.env.VERCEL_OIDC_TOKEN?.trim());
+}
+
+export function blobDeliveryUrl(pathname: string): string {
+  return `/api/media/blob?pathname=${encodeURIComponent(pathname)}`;
+}
+
+export function isValidBlobDeliveryPathname(pathname: string): boolean {
+  if (!pathname || pathname.includes("..") || pathname.startsWith("/")) return false;
+  return pathname.startsWith("media/") || pathname.startsWith("music/");
+}
+
+/** Upload buffer to Vercel Blob; auto-detects public vs private store. */
+export async function putBlobBuffer(key: string, buffer: Buffer, mime: string): Promise<string> {
+  const baseOpts = { contentType: mime, addRandomSuffix: false };
+  const accessEnv = process.env.BLOB_ACCESS?.trim().toLowerCase();
+
+  if (accessEnv === "private") {
+    const blob = await put(key, buffer, { ...baseOpts, access: "private" });
+    return blobDeliveryUrl(blob.pathname);
+  }
+  if (accessEnv === "public") {
+    const blob = await put(key, buffer, { ...baseOpts, access: "public" });
+    return blob.url;
+  }
+
+  try {
+    const blob = await put(key, buffer, { ...baseOpts, access: "public" });
+    return blob.url;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!isPrivateStoreError(msg)) throw e;
+    const blob = await put(key, buffer, { ...baseOpts, access: "private" });
+    return blobDeliveryUrl(blob.pathname);
+  }
 }
 
 /** Persist upload and return a URL usable in DB and <img src> */
@@ -68,12 +106,7 @@ export async function persistUploadedFile(file: Express.Multer.File): Promise<st
 
   if (hasBlobStorage()) {
     const key = `media/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const blob = await put(key, buffer, {
-      access: "public",
-      contentType: mime,
-      addRandomSuffix: false,
-    });
-    return blob.url;
+    return putBlobBuffer(key, buffer, mime);
   }
 
   if (!process.env.VERCEL) {

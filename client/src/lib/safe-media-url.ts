@@ -19,6 +19,7 @@ function hostAllowed(hostname: string): boolean {
 /** Only https URLs from trusted CDNs (Giphy, Vercel Blob, same-origin uploads). */
 export function isSafeChatMediaUrl(url: string): boolean {
   if (url.startsWith("/stickers/")) return true;
+  if (url.startsWith("/api/media/blob?")) return true;
   if (!import.meta.env.PROD && url.startsWith("/uploads/")) return true;
   try {
     const parsed = new URL(url);
