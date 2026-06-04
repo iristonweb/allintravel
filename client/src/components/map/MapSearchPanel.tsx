@@ -1,15 +1,12 @@
 import { Button } from "@/components/ui/button";
 import DestinationSearch from "@/components/search/DestinationSearch";
+import { MAP_PLACE_TYPE_FILTERS } from "@/lib/filter-config";
 import { cn } from "@/lib/utils";
 
-const placeTypes = ["all", "hotel", "restaurant", "attraction", "tour"] as const;
-const typeLabels: Record<(typeof placeTypes)[number], string> = {
-  all: "Все",
-  hotel: "Отели",
-  restaurant: "Рестораны",
-  attraction: "Активности",
-  tour: "Туры",
-};
+const placeTypes = MAP_PLACE_TYPE_FILTERS.map((f) => f.value) as readonly string[];
+const typeLabels = Object.fromEntries(
+  MAP_PLACE_TYPE_FILTERS.map((f) => [f.value, f.label]),
+) as Record<string, string>;
 
 type MapSearchPanelProps = {
   search: string;

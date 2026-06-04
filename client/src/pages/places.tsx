@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -16,28 +15,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, MapPin, Filter, AlertCircle, Plus } from "lucide-react";
+import { MapPin, AlertCircle, Plus } from "lucide-react";
 import { useLocation } from "wouter";
 import DestinationSearch from "@/components/search/DestinationSearch";
+import FilterChipRow from "@/components/filters/FilterChipRow";
+import {
+  PLACE_TYPE_FILTERS,
+  PLACE_RATING_FILTERS,
+  PLACE_PRICE_FILTERS,
+} from "@/lib/filter-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePlaceFavorites } from "@/hooks/usePlaceFavorites";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Place } from "@shared/schema";
-const PLACE_TYPES = [
-  { value: "", label: "Все" },
-  { value: "restaurant", label: "Рестораны" },
-  { value: "hotel", label: "Отели" },
-  { value: "attraction", label: "Достопримечательности" },
-];
-
-const PRICE_RANGES = [
-  { value: "", label: "Любая" },
-  { value: "$", label: "$" },
-  { value: "$$", label: "$$" },
-  { value: "$$$", label: "$$$" },
-  { value: "$$$$", label: "$$$$" },
-];
 
 export function Places() {
   const [, navigate] = useLocation();
@@ -148,7 +139,7 @@ export function Places() {
                 <Input placeholder="Название" value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })} />
                 <Textarea placeholder="Описание" value={newPlace.description} onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })} />
                 <select className="w-full rounded-md border px-3 py-2 text-sm bg-background" value={newPlace.type} onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}>
-                  {PLACE_TYPES.filter((t) => t.value).map((t) => (
+                  {PLACE_TYPE_FILTERS.filter((t) => t.value).map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
@@ -191,47 +182,28 @@ export function Places() {
         </p>
       </div>
 
-        <div className="flex flex-wrap gap-2 mb-6">
-          <span className="text-sm text-muted-foreground flex items-center">
-            <Filter className="h-4 w-4 mr-1" />
-            Тип:
-          </span>
-          {PLACE_TYPES.map((t) => (
-            <Badge
-              key={t.value}
-              variant={typeFilter === t.value ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => setTypeFilter(t.value)}
-            >
-              {t.label}
-            </Badge>
-          ))}
-          <span className="text-sm text-muted-foreground ml-2">Рейтинг от:</span>
-          {["", "3", "4", "4.5"].map((r) => (
-            <Badge
-              key={r || "any"}
-              variant={minRating === r ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => setMinRating(r)}
-            >
-              {r || "Любой"}
-            </Badge>
-          ))}
-          <span className="text-sm text-muted-foreground ml-2">Цена:</span>
-          <select
+        <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6 space-y-4">
+          <FilterChipRow
+            label="Тип"
+            options={PLACE_TYPE_FILTERS}
+            value={typeFilter}
+            onChange={setTypeFilter}
+          />
+          <FilterChipRow
+            label="Рейтинг"
+            options={PLACE_RATING_FILTERS}
+            value={minRating}
+            onChange={setMinRating}
+          />
+          <FilterChipRow
+            label="Цена"
+            options={PLACE_PRICE_FILTERS}
             value={priceRange}
-            onChange={(e) => setPriceRange(e.target.value)}
-            className="rounded-md px-2 py-1 text-sm ait-glass"
-          >
-            {PRICE_RANGES.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+            onChange={setPriceRange}
+          />
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Сбросить
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
+              Сбросить все фильтры
             </Button>
           )}
         </div>

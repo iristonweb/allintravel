@@ -37,25 +37,24 @@ export default function CinematicHero({
   const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
 
   return (
-    <section ref={ref} className="relative min-h-[100vh] flex flex-col isolate overflow-hidden">
+    <section ref={ref} className="relative min-h-[100svh] flex flex-col isolate overflow-hidden">
       <motion.div className="absolute inset-0 -z-10" style={{ y: imageY }}>
         <img
           src={HERO_IMAGE}
           alt="Путешествия — воздушные шары над горами"
           className="h-full w-full object-cover object-[center_40%] scale-[1.02]"
         />
-        {/* Лёгкий скрим только под текстом слева (~45% ширины), без затемнения всего кадра */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "linear-gradient(105deg, rgba(5,8,22,0.42) 0%, rgba(5,8,22,0.18) 38%, transparent 58%)",
+              "linear-gradient(105deg, rgba(5,8,22,0.42) 0%, rgba(5,8,22,0.18) 38%, transparent 58%), linear-gradient(to top, rgba(5,8,22,0.55) 0%, transparent 45%)",
           }}
         />
       </motion.div>
 
-      <div className="relative z-10 flex-1 flex items-center">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 lg:pt-36 lg:pb-20">
+      <div className="relative z-10 flex-1 flex items-center min-h-0">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-8 lg:pt-36 lg:pb-12">
           <div className="grid lg:grid-cols-[1fr_380px] gap-12 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, y: 40 }}
@@ -123,20 +122,23 @@ export default function CinematicHero({
         </div>
       </div>
 
-      <div className="relative z-10 hidden md:block px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full pb-8">
-        <HeroStats />
+      <div className="relative z-20 mt-auto w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 lg:pb-14 flex flex-col gap-6">
+          <div className="hidden md:block">
+            <HeroStats />
+          </div>
+          {showSearch && (
+            <motion.div
+              className="w-full max-w-5xl mx-auto"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.6 }}
+            >
+              <GlobalSearchPanel />
+            </motion.div>
+          )}
+        </div>
       </div>
-
-      {showSearch && (
-        <motion.div
-          className="relative z-20 -mt-8 mb-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.7 }}
-        >
-          <GlobalSearchPanel />
-        </motion.div>
-      )}
     </section>
   );
 }

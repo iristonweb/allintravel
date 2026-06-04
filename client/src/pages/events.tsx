@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
 import PageHeader from "@/components/page-header";
@@ -20,22 +21,21 @@ import { Search, Calendar, Globe, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
+import FilterChipRow from "@/components/filters/FilterChipRow";
+import { EVENT_TYPE_FILTERS, EVENT_TIME_FILTERS } from "@/lib/filter-config";
 import type { Event } from "@shared/schema";
-
-const EVENT_TYPES = [
-  { value: "", label: "Все" },
-  { value: "festival", label: "Фестивали" },
-  { value: "workshop", label: "Воркшопы" },
-  { value: "adventure", label: "Приключения" },
-  { value: "food", label: "Еда" },
-  { value: "music", label: "Музыка" },
-  { value: "culture", label: "Культура" },
-];
 
 export function Events() {
   const { toast } = useToast();
-  const [search, setSearch] = useState("");
+  const searchString = useSearch();
+  const urlParams = new URLSearchParams(searchString);
+  const [search, setSearch] = useState(urlParams.get("q") ?? "");
   const [activeType, setActiveType] = useState("");
+  const [timeFilter, setTimeFilter] = useState("upcoming");
+
+  useEffect(() => {
+    setSearch(new URLSearchParams(searchString).get("q") ?? "");
+  }, [searchString]);
   const [createOpen, setCreateOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -92,17 +92,25 @@ export function Events() {
   });
 
   const filtered = events.filter((e) => {
+    const q = search.trim().toLowerCase();
     const matchesSearch =
-      !search ||
-      e.title.toLowerCase().includes(search.toLowerCase()) ||
-      e.location?.toLowerCase().includes(search.toLowerCase()) ||
-      e.description?.toLowerCase().includes(search.toLowerCase());
+      !q ||
+      e.title.toLowerCase().includes(q) ||
+      e.location?.toLowerCase().includes(q) ||
+      e.description?.toLowerCase().includes(q);
     const matchesType = !activeType || e.type === activeType;
-    return matchesSearch && matchesType;
+    const isUpcoming = new Date(e.startDate) > new Date();
+    const matchesTime =
+      timeFilter === "all" ||
+      (timeFilter === "upcoming" && isUpcoming) ||
+      (timeFilter === "past" && !isUpcoming);
+    return matchesSearch && matchesType && matchesTime;
   });
 
   const upcoming = filtered.filter((e) => new Date(e.startDate) > new Date());
   const past = filtered.filter((e) => new Date(e.startDate) <= new Date());
+  const showUpcoming = timeFilter !== "past";
+  const showPast = timeFilter !== "upcoming";
 
   return (
     <AppLayout>
@@ -137,7 +145,7 @@ export function Events() {
                   value={newEvent.type}
                   onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
                 >
-                  {EVENT_TYPES.filter((t) => t.value).map((t) => (
+                  {EVENT_TYPE_FILTERS.filter((t) => t.value).map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
@@ -197,28 +205,37 @@ export function Events() {
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="mb-6 mt-8 max-w-2xl">
+        <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Поиск событий..."
-            className="pl-9"
+            placeholder="Название, город или описание события…"
+            className="pl-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {EVENT_TYPES.map((type) => (
-            <Badge
-              key={type.value}
-              variant={activeType === type.value ? "default" : "outline"}
-              className="cursor-pointer"
-              onClick={() => setActiveType(type.value)}
-            >
-              {type.label}
-            </Badge>
-          ))}
-        </div>
+      </div>
+
+      <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6 space-y-4">
+        <FilterChipRow
+          label="Период"
+          options={EVENT_TIME_FILTERS}
+          value={timeFilter}
+          onChange={setTimeFilter}
+        />
+        <FilterChipRow
+          label="Тип"
+          options={EVENT_TYPE_FILTERS}
+          value={activeType}
+          onChange={setActiveType}
+          showClear
+          onClear={() => {
+            setActiveType("");
+            setTimeFilter("upcoming");
+            setSearch("");
+          }}
+        />
       </div>
 
       {isLoading ? (
@@ -235,7 +252,7 @@ export function Events() {
         />
       ) : (
         <>
-          {upcoming.length > 0 && (
+          {showUpcoming && upcoming.length > 0 && (
             <section className="mb-10">
               <h2 className="text-xl font-semibold mb-4">
                 Предстоящие события
@@ -254,7 +271,7 @@ export function Events() {
             </section>
           )}
 
-          {past.length > 0 && (
+          {showPast && past.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4 text-muted-foreground">
                 Прошедшие события

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
@@ -31,6 +32,8 @@ import {
 } from "@/components/ui/form";
 import { Plus, Search, MapPin } from "lucide-react";
 import StatPill from "@/components/brand/stat-pill";
+import FilterChipRow from "@/components/filters/FilterChipRow";
+import { TRIP_AVAILABILITY_FILTERS } from "@/lib/filter-config";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -69,8 +72,14 @@ export function Trips() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
-  const [search, setSearch] = useState("");
+  const searchString = useSearch();
+  const [search, setSearch] = useState(() => new URLSearchParams(searchString).get("search") ?? "");
+  const [availability, setAvailability] = useState("");
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setSearch(new URLSearchParams(searchString).get("search") ?? "");
+  }, [searchString]);
 
   const { data: trips = [], isLoading } = useQuery<Trip[]>({
     queryKey: ["/api/trips", { limit: 20 }],
@@ -133,7 +142,14 @@ export function Trips() {
   };
 
   const q = search.trim();
-  const filtered = trips.filter((t) => !q || tripMatchesSearch(t, q));
+  const filtered = trips.filter((t) => {
+    if (q && !tripMatchesSearch(t, q)) return false;
+    const count = t.currentParticipants ?? 0;
+    const max = t.maxParticipants ?? 0;
+    if (availability === "open" && count >= max) return false;
+    if (availability === "full" && count < max) return false;
+    return true;
+  });
 
   const openCreateDialog = () => setOpen(true);
 
@@ -317,6 +333,20 @@ export function Trips() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6">
+          <FilterChipRow
+            label="Группа"
+            options={TRIP_AVAILABILITY_FILTERS}
+            value={availability}
+            onChange={setAvailability}
+            showClear
+            onClear={() => {
+              setAvailability("");
+              setSearch("");
+            }}
+          />
         </div>
 
         <div className="flex flex-wrap gap-3 mb-6">
