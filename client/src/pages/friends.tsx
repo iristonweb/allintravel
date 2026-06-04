@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User, FriendshipWithUser } from "@shared/schema";
 import FollowButton from "@/components/social/FollowButton";
+import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 
 export function Friends() {
   const { user, isAuthenticated } = useAuth();
@@ -133,13 +134,13 @@ export function Friends() {
                           <div className="flex items-center gap-3">
                             <Avatar>
                               <AvatarImage src={friend.profileImageUrl ?? undefined} />
-                              <AvatarFallback>{friend.firstName?.[0] || friend.email?.[0] || "?"}</AvatarFallback>
+                              <AvatarFallback>{getUserInitial(friend)}</AvatarFallback>
                             </Avatar>
                             <div>
-                              <h3 className="font-semibold">
-                                {friend.firstName} {friend.lastName}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">{friend.email}</p>
+                              <h3 className="font-semibold">{getUserDisplayLabel(friend)}</h3>
+                              {getUserHandle(friend) && (
+                                <p className="text-sm text-ait-purple">{getUserHandle(friend)}</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -176,7 +177,7 @@ export function Friends() {
                 <CardContent>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Введите имя или email..."
+                      placeholder="@ник или имя..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -210,13 +211,13 @@ export function Friends() {
                               <div className="flex items-center gap-3">
                                 <Avatar>
                                   <AvatarImage src={result.profileImageUrl ?? undefined} />
-                                  <AvatarFallback>{result.firstName?.[0] || result.email?.[0] || "?"}</AvatarFallback>
+                                  <AvatarFallback>{getUserInitial(result)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <h3 className="font-semibold">
-                                    {result.firstName} {result.lastName}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground">{result.email}</p>
+                                  <h3 className="font-semibold">{getUserDisplayLabel(result)}</h3>
+                                  {getUserHandle(result) && (
+                                    <p className="text-sm text-ait-purple">{getUserHandle(result)}</p>
+                                  )}
                                 </div>
                               </div>
                               {alreadyFriend ? (
@@ -275,17 +276,15 @@ export function Friends() {
                             <Avatar>
                               <AvatarImage src={request.user?.profileImageUrl ?? undefined} />
                               <AvatarFallback>
-                                {request.user?.firstName?.[0] || "?"}
+                                {request.user ? getUserInitial(request.user) : "?"}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <h3 className="font-semibold">
-                                {request.user
-                                  ? `${request.user.firstName || ""} ${request.user.lastName || ""}`.trim() || "Пользователь"
-                                  : "Пользователь"}
+                                {request.user ? getUserDisplayLabel(request.user) : "Пользователь"}
                               </h3>
-                              {request.user?.email && (
-                                <p className="text-sm text-muted-foreground">{request.user.email}</p>
+                              {request.user && getUserHandle(request.user) && (
+                                <p className="text-sm text-ait-purple">{getUserHandle(request.user)}</p>
                               )}
                               <Badge variant="secondary" className="mt-1">Входящий запрос</Badge>
                             </div>
@@ -337,17 +336,15 @@ export function Friends() {
                             <Avatar>
                               <AvatarImage src={request.user?.profileImageUrl ?? undefined} />
                               <AvatarFallback>
-                                {request.user?.firstName?.[0] || "?"}
+                                {request.user ? getUserInitial(request.user) : "?"}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <h3 className="font-semibold">
-                                {request.user
-                                  ? `${request.user.firstName || ""} ${request.user.lastName || ""}`.trim() || "Пользователь"
-                                  : "Пользователь"}
+                                {request.user ? getUserDisplayLabel(request.user) : "Пользователь"}
                               </h3>
-                              {request.user?.email && (
-                                <p className="text-sm text-muted-foreground">{request.user.email}</p>
+                              {request.user && getUserHandle(request.user) && (
+                                <p className="text-sm text-ait-purple">{getUserHandle(request.user)}</p>
                               )}
                             </div>
                           </div>

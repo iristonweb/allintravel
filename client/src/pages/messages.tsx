@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { PrivateMessage, User } from "@shared/schema";
+import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 
 interface Conversation {
   user: User;
@@ -182,15 +183,13 @@ export function Messages() {
                             <Avatar className="h-10 w-10">
                               <AvatarImage src={conversation.user.profileImageUrl ?? undefined} />
                               <AvatarFallback>
-                                {conversation.user.firstName?.[0] ||
-                                  conversation.user.email?.[0] ||
-                                  "?"}
+                                {getUserInitial(conversation.user)}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <h4 className="font-medium truncate">
-                                  {conversation.user.firstName} {conversation.user.lastName}
+                                  {getUserDisplayLabel(conversation.user)}
                                 </h4>
                                 <span className="text-xs text-muted-foreground shrink-0">
                                   {conversation.lastMessage
@@ -232,19 +231,18 @@ export function Messages() {
                       <Avatar>
                         <AvatarImage src={selectedConversation.user.profileImageUrl ?? undefined} />
                         <AvatarFallback>
-                          {selectedConversation.user.firstName?.[0] ||
-                            selectedConversation.user.email?.[0] ||
-                            "?"}
+                          {getUserInitial(selectedConversation.user)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <h3 className="font-semibold">
-                          {selectedConversation.user.firstName}{" "}
-                          {selectedConversation.user.lastName}
+                          {getUserDisplayLabel(selectedConversation.user)}
                         </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedConversation.user.email}
-                        </p>
+                        {getUserHandle(selectedConversation.user) && (
+                          <p className="text-sm text-ait-purple">
+                            {getUserHandle(selectedConversation.user)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

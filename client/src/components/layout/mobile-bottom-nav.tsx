@@ -11,6 +11,7 @@ import {
   Users,
   User,
   Wallet,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -20,21 +21,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { mobileEcosystemNav, mobileMainNav } from "@/lib/nav-config";
+import type { LucideIcon } from "lucide-react";
 
-const mainItems = [
-  { href: "/", icon: Home, label: "Главная" },
-  { href: "/map", icon: Map, label: "Карта" },
-  { href: "/trips", icon: Plus, label: "", fab: true },
-  { href: "/messages", icon: MessageCircle, label: "Чаты" },
-] as const;
+const iconByHref: Record<string, LucideIcon> = {
+  "/": Home,
+  "/map": Map,
+  "/trips": Plus,
+  "/messages": MessageCircle,
+  "/places": MapPin,
+  "/events": Sparkles,
+  "/blog": BookOpen,
+  "/wallet": Wallet,
+  "/social-feed": Users,
+  "/friends": Users,
+  "/chat": MessageSquare,
+  "/profile": User,
+};
 
-const ecosystemItems = [
-  { href: "/places", icon: MapPin, label: "Места" },
-  { href: "/events", icon: Sparkles, label: "События" },
-  { href: "/blog", icon: BookOpen, label: "Блог" },
-  { href: "/wallet", icon: Wallet, label: "Кошелёк", badge: "Demo" },
-  { href: "/social-feed", icon: Users, label: "Лента" },
-];
+const walletBadge = "Demo";
 
 export default function MobileBottomNav() {
   const [location] = useLocation();
@@ -44,16 +49,17 @@ export default function MobileBottomNav() {
       ? location === "/"
       : location === href || location.startsWith(`${href}/`);
 
-  const ecosystemActive = ecosystemItems.some((item) => isActive(item.href));
+  const ecosystemActive = mobileEcosystemNav.some((item) => isActive(item.href));
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-3 pb-4 pt-2">
       <div className="ait-glass-strong rounded-[28px] px-1.5 py-2 flex items-center justify-between border border-white/10 shadow-2xl max-w-lg mx-auto">
-        {mainItems.map((item) => {
-          const Icon = item.icon;
-          const active = !("fab" in item) && isActive(item.href);
+        {mobileMainNav.map((item) => {
+          const Icon = iconByHref[item.href] ?? Home;
+          const isFab = item.href === "/trips" && !item.label;
+          const active = !isFab && isActive(item.href);
 
-          if ("fab" in item && item.fab) {
+          if (isFab) {
             return (
               <Link key={item.href} href={item.href} className="flex-1 flex justify-center">
                 <motion.span
@@ -99,26 +105,21 @@ export default function MobileBottomNav() {
             side="top"
             className="ait-glass-strong border-white/10 mb-2 min-w-[200px]"
           >
-            {ecosystemItems.map((item) => {
-              const Icon = item.icon;
+            {mobileEcosystemNav.map((item) => {
+              const Icon = iconByHref[item.href] ?? MapPin;
+              const badge = item.href === "/wallet" ? walletBadge : undefined;
               return (
                 <Link key={item.href} href={item.href}>
                   <DropdownMenuItem className="cursor-pointer gap-2">
                     <Icon className="h-4 w-4 text-ait-purple" />
                     <span className="flex-1">{item.label}</span>
-                    {item.badge && (
-                      <span className="text-[10px] font-bold text-ait-orange">{item.badge}</span>
+                    {badge && (
+                      <span className="text-[10px] font-bold text-ait-orange">{badge}</span>
                     )}
                   </DropdownMenuItem>
                 </Link>
               );
             })}
-            <Link href="/profile">
-              <DropdownMenuItem className="cursor-pointer gap-2">
-                <User className="h-4 w-4" />
-                Профиль
-              </DropdownMenuItem>
-            </Link>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

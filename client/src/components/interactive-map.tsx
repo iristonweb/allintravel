@@ -33,7 +33,7 @@ export function InteractiveMap({
 
   return (
     <div className={cn("relative w-full", fullHeight && "h-full min-h-[500px]")}>
-      <div className="absolute top-28 left-4 z-[1000] flex flex-wrap gap-2 max-w-[90%]">
+      <div className="absolute top-44 left-4 md:left-[calc(1rem+72px)] z-[1000] flex flex-wrap gap-2 max-w-[90%]">
         {placeTypes.map((type) => (
           <Button
             key={type}

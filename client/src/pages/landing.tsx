@@ -5,10 +5,20 @@ import HomeExplorePlannerSection from "@/components/home/home-explore-planner-se
 import HomeCommunityPreview from "@/components/home/home-community-preview";
 import HomeMobileShowcase from "@/components/home/home-mobile-showcase";
 import { ArrowRight } from "lucide-react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { scrollToAnchor } from "@/lib/nav-config";
 
 export function Landing() {
   const [, navigate] = useLocation();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const t = window.setTimeout(() => scrollToAnchor(hash), 100);
+      return () => window.clearTimeout(t);
+    }
+  }, []);
 
   return (
     <PublicLayout>

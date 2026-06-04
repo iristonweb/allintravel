@@ -8,6 +8,7 @@ import {
   ilike,
   inArray,
   lte,
+  isNull,
   or,
   sql,
 } from "drizzle-orm";
@@ -62,6 +63,7 @@ import {
 } from "@shared/schema";
 import { getDb } from "./db";
 import { buildSeedData } from "./seed-data";
+import { resolveIsAdmin } from "./admin";
 import type { IStorage } from "./storage";
 
 type Db = NonNullable<ReturnType<typeof getDb>>;
@@ -78,6 +80,9 @@ export class PgStorage implements IStorage {
   async ensureSchema(): Promise<void> {
     await this.db.execute(
       sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar`,
+    );
+    await this.db.execute(
+      sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false`,
     );
   }
 
@@ -132,19 +137,90 @@ export class PgStorage implements IStorage {
     return row;
   }
 
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const lower = username.trim().toLowerCase().replace(/^@/, "");
+    const [row] = await this.db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.username}) = ${lower}`)
+      .limit(1);
+    return row;
+  }
+
+  async updateUserMe(
+    userId: string,
+    data: {
+      displayName?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      username?: string;
+    },
+  ): Promise<User> {
+    const [updated] = await this.db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
+  }
+
+  async ensureUsernames(): Promise<void> {
+    const { generateUniqueUsername } = await import("./user-utils");
+    const rows = await this.db.select().from(users).where(isNull(users.username));
+    for (const row of rows) {
+      if (!row.email) continue;
+      const username = await generateUniqueUsername(this, row.email);
+      await this.db
+        .update(users)
+        .set({ username, updatedAt: new Date() })
+        .where(eq(users.id, row.id));
+    }
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const id = userData.id as string;
+    const adminFlag = resolveIsAdmin(userData.email ?? undefined);
+    const payload = {
+      ...userData,
+      isAdmin: adminFlag || userData.isAdmin === true,
+      updatedAt: new Date(),
+    };
     const existing = await this.getUser(id);
     if (existing) {
       const [updated] = await this.db
         .update(users)
-        .set({ ...userData, updatedAt: new Date() })
+        .set(payload)
         .where(eq(users.id, id))
         .returning();
       return updated;
     }
-    const [created] = await this.db.insert(users).values(userData as typeof users.$inferInsert).returning();
+    const [created] = await this.db
+      .insert(users)
+      .values({ ...payload, createdAt: new Date() } as typeof users.$inferInsert)
+      .returning();
     return created;
+  }
+
+  async setUserAdmin(userId: string, isAdmin: boolean): Promise<User> {
+    const [updated] = await this.db
+      .update(users)
+      .set({ isAdmin, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
+  }
+
+  async ensureAdminUsers(): Promise<void> {
+    const { getAdminEmails } = await import("./admin");
+    for (const email of getAdminEmails()) {
+      const user = await this.getUserByEmail(email);
+      if (user && !user.isAdmin) {
+        await this.setUserAdmin(user.id, true);
+        console.log(`[admin] Granted admin to ${email}`);
+      }
+    }
   }
 
   async setUserPassword(userId: string, passwordHash: string): Promise<User> {
@@ -712,11 +788,20 @@ export class PgStorage implements IStorage {
   }
 
   async searchUsers(query: string, limit = 10): Promise<User[]> {
-    const q = `%${query}%`;
+    const term = query.trim().replace(/^@/, "");
+    const q = `%${term}%`;
     return this.db
       .select()
       .from(users)
-      .where(or(ilike(users.firstName, q), ilike(users.lastName, q), ilike(users.email, q))!)
+      .where(
+        or(
+          ilike(users.username, q),
+          ilike(users.displayName, q),
+          ilike(users.firstName, q),
+          ilike(users.lastName, q),
+          ilike(users.email, q),
+        )!,
+      )
       .limit(limit);
   }
 

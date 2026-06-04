@@ -84,13 +84,21 @@ export async function setupGoogleAuth(app: Express): Promise<void> {
 
       let user = await storage.getUserByEmail(email);
       if (!user) {
+        const { generateUniqueUsername } = await import("./user-utils");
+        const username = await generateUniqueUsername(storage, email);
         user = await storage.upsertUser({
           id: crypto.randomUUID(),
           email,
+          username,
           firstName: (claims?.given_name as string) ?? null,
           lastName: (claims?.family_name as string) ?? null,
           profileImageUrl: (claims?.picture as string) ?? null,
         });
+      } else if (!user.isAdmin) {
+        const { resolveIsAdmin } = await import("./admin");
+        if (resolveIsAdmin(email)) {
+          user = await storage.setUserAdmin(user.id, true);
+        }
       }
 
       const sessionUser: SessionUser = {

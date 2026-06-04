@@ -23,6 +23,7 @@
   --ait-radius-mobile: 28px;
   --ait-blur: 24px;
   --ait-blur-strong: 40px;
+  --ait-header-h: 5rem;
 
   --ait-gradient-brand: linear-gradient(135deg, #8b5cf6 0%, #a855f7 35%, #ff7a18 100%);
   --ait-gradient-cta: linear-gradient(135deg, #8b5cf6 0%, #d946ef 50%, #ff7a18 100%);
@@ -93,9 +94,7 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(139, 92, 246, 0.12), transparent 50%),
-      radial-gradient(ellipse 80% 50% at 100% 50%, rgba(255, 122, 24, 0.06), transparent 45%),
-      linear-gradient(180deg, var(--ait-void) 0%, var(--ait-deep) 40%, var(--ait-navy) 100%);
+    background: linear-gradient(180deg, var(--ait-void) 0%, var(--ait-deep) 50%, var(--ait-navy) 100%);
     min-height: 100vh;
   }
 }

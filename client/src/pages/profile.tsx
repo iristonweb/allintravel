@@ -28,6 +28,9 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UserProfile, TravelPostWithAuthor, UserFavoriteWithPlace, ReviewWithPlace, Trip } from "@shared/schema";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
+import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
+import { validateUsername } from "@shared/username";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
@@ -61,6 +64,13 @@ export function Profile() {
     location: "",
     travelStyle: "",
     isPublic: true,
+  });
+
+  const [accountData, setAccountData] = useState({
+    username: "",
+    displayName: "",
+    firstName: "",
+    lastName: "",
   });
 
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfile | null>({
@@ -103,6 +113,42 @@ export function Profile() {
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (user) {
+      setAccountData({
+        username: user.username ?? "",
+        displayName: user.displayName ?? "",
+        firstName: user.firstName ?? "",
+        lastName: user.lastName ?? "",
+      });
+    }
+  }, [user]);
+
+  const updateAccountMutation = useMutation({
+    mutationFn: async (data: typeof accountData) => {
+      const parsed = validateUsername(data.username);
+      if (!parsed.ok) throw new Error(parsed.message);
+      const res = await apiRequest("PUT", "/api/users/me", {
+        username: parsed.value,
+        displayName: data.displayName.trim() || null,
+        firstName: data.firstName.trim() || null,
+        lastName: data.lastName.trim() || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Аккаунт обновлён" });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Не удалось сохранить",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const updateProfileMutation = useMutation({
     mutationFn: (data: typeof profileData) =>
@@ -157,7 +203,7 @@ export function Profile() {
                     <Avatar className="h-32 w-32">
                       <AvatarImage src={user?.profileImageUrl ?? undefined} />
                       <AvatarFallback className="text-3xl">
-                        {user?.firstName?.[0] || user?.email?.[0] || "?"}
+                        {user ? getUserInitial(user) : "?"}
                       </AvatarFallback>
                     </Avatar>
                     <Button
@@ -185,7 +231,7 @@ export function Profile() {
                           loading="lazy"
                         />
                         <h1 className="text-2xl font-bold">
-                          {user?.firstName} {user?.lastName}
+                          {user ? getUserDisplayLabel(user) : "Профиль"}
                         </h1>
                         {(user as { isVerified?: boolean })?.isVerified && (
                           <Badge className="bg-green-500/15 text-green-500 border border-green-500/30">
@@ -193,7 +239,10 @@ export function Profile() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-muted-foreground">{user?.email}</p>
+                      {user && getUserHandle(user) && (
+                        <p className="text-sm text-ait-purple font-medium">{getUserHandle(user)}</p>
+                      )}
+                      <p className="text-muted-foreground text-sm">{user?.email}</p>
                       {profile?.location && (
                         <div className="flex items-center gap-1 mt-1">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -237,6 +286,14 @@ export function Profile() {
             </CardContent>
           </Card>
 
+          {!user?.username && (
+            <Alert className="mb-6 border-ait-purple/30 bg-ait-purple/10">
+              <AlertDescription>
+                Укажите @ник в профиле — так друзья смогут найти вас и писать в чатах.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Edit profile form */}
           {isEditing && (
             <Card className="mb-8">
@@ -244,6 +301,62 @@ export function Profile() {
                 <CardTitle>Редактировать профиль</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4 pb-4 border-b border-border/60">
+                  <div>
+                    <Label htmlFor="username">@ник (для поиска друзей)</Label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
+                      <Input
+                        id="username"
+                        className="pl-7"
+                        placeholder="alex_travels"
+                        value={accountData.username}
+                        onChange={(e) =>
+                          setAccountData({ ...accountData, username: e.target.value.replace(/^@/, "") })
+                        }
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Латиница, цифры и _, 3–30 символов</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="displayName">Отображаемое имя</Label>
+                    <Input
+                      id="displayName"
+                      placeholder="Как видят вас в чатах"
+                      value={accountData.displayName}
+                      onChange={(e) => setAccountData({ ...accountData, displayName: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="firstName">Имя</Label>
+                    <Input
+                      id="firstName"
+                      value={accountData.firstName}
+                      onChange={(e) => setAccountData({ ...accountData, firstName: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Фамилия</Label>
+                    <Input
+                      id="lastName"
+                      value={accountData.lastName}
+                      onChange={(e) => setAccountData({ ...accountData, lastName: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => updateAccountMutation.mutate(accountData)}
+                      disabled={updateAccountMutation.isPending}
+                    >
+                      Сохранить ник и имя
+                    </Button>
+                  </div>
+                </div>
                 <div>
                   <Label htmlFor="bio">О себе</Label>
                   <Textarea

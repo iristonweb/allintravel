@@ -23,6 +23,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@shared/schema";
+import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
+import type { UserLabelFields } from "@shared/user-display";
 
 const CHAT_ROOMS = [
   { id: "general", label: "Общий", icon: Globe, group: "groups" as const },
@@ -36,12 +38,7 @@ const CHAT_ROOMS = [
 type ChatTab = "all" | "personal" | "groups";
 
 type ChatMessageWithSender = ChatMessage & {
-  sender?: {
-    id?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    profileImageUrl?: string | null;
-  } | null;
+  sender?: (UserLabelFields & { id?: string; profileImageUrl?: string | null }) | null;
 };
 
 const isVercelHost =
@@ -312,13 +309,15 @@ export function Chat() {
                   {allMessages.map((msg, i) => {
                     const isOwn = msg.userId === user?.id;
                     const senderName = isOwn
-                      ? user?.firstName || "Я"
-                      : [msg.sender?.firstName, msg.sender?.lastName]
-                          .filter(Boolean)
-                          .join(" ") || "Путешественник";
+                      ? (user ? getUserDisplayLabel(user) : "Я")
+                      : msg.sender
+                        ? getUserDisplayLabel(msg.sender)
+                        : "Путешественник";
                     const senderInitial = isOwn
-                      ? user?.firstName?.[0] || "Я"
-                      : msg.sender?.firstName?.[0] || "?";
+                      ? (user ? getUserInitial(user) : "Я")
+                      : msg.sender
+                        ? getUserInitial(msg.sender)
+                        : "?";
 
                     return (
                       <div

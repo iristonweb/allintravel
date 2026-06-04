@@ -131,6 +131,7 @@ var users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   passwordHash: varchar("password_hash"),
   isVerified: boolean("is_verified").default(false),
+  isAdmin: boolean("is_admin").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });

@@ -10,6 +10,7 @@ import {
   Wallet,
   BookOpen,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -17,31 +18,34 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { sidebarMainNav, sidebarServiceNav } from "@/lib/nav-config";
+import type { LucideIcon } from "lucide-react";
 
-const mainItems = [
-  { href: "/", label: "Главная", icon: Home },
-  { href: "/map", label: "Карта", icon: Map },
-  { href: "/trips", label: "Планирование", icon: Calendar },
-  { href: "/social-feed", label: "Сообщество", icon: Users },
-  { href: "/messages", label: "Сообщения", icon: MessageCircle },
-  { href: "/profile", label: "Профиль", icon: User },
-];
+const iconByHref: Record<string, LucideIcon> = {
+  "/": Home,
+  "/map": Map,
+  "/trips": Calendar,
+  "/social-feed": Users,
+  "/friends": Users,
+  "/messages": MessageCircle,
+  "/profile": User,
+  "/places": MapPin,
+  "/events": Sparkles,
+  "/blog": BookOpen,
+  "/wallet": Wallet,
+  "/chat": MessageSquare,
+};
 
-const serviceItems = [
-  { href: "/places", label: "Места", icon: MapPin },
-  { href: "/events", label: "События", icon: Sparkles },
-  { href: "/blog", label: "Блог", icon: BookOpen },
-  { href: "/wallet", label: "Кошелёк", icon: Wallet, badge: "Demo" },
-];
+type NavItemWithMeta = { href: string; label: string; badge?: string };
 
 function NavIcon({
   item,
   active,
 }: {
-  item: (typeof mainItems)[0] & { badge?: string };
+  item: NavItemWithMeta;
   active: boolean;
 }) {
-  const Icon = item.icon;
+  const Icon = iconByHref[item.href] ?? MapPin;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -76,9 +80,13 @@ export default function AppIconSidebar() {
       ? location === "/"
       : location === href || location.startsWith(`${href}/`);
 
+  const serviceItems: NavItemWithMeta[] = sidebarServiceNav.map((item) =>
+    item.href === "/wallet" ? { ...item, badge: "Demo" } : item,
+  );
+
   return (
-    <aside className="hidden md:flex fixed left-0 top-20 z-40 h-[calc(100vh-5rem)] w-[72px] flex-col items-center gap-1 border-r border-border/60 bg-background/40 backdrop-blur-xl py-4">
-      {mainItems.map((item) => (
+    <aside className="hidden md:flex fixed left-0 top-20 z-40 h-[calc(100vh-var(--ait-header-h))] w-[72px] flex-col items-center gap-1 border-r border-border/60 bg-background/40 backdrop-blur-xl py-4">
+      {sidebarMainNav.map((item) => (
         <NavIcon key={item.href} item={item} active={isActive(item.href)} />
       ))}
       <div className="w-8 border-t border-white/10 my-2" />

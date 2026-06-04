@@ -7,6 +7,7 @@ import BrandLogo from "@/components/brand/brand-logo";
 import { SITE_DESCRIPTION_SHORT, SITE_TAGLINE } from "@/lib/site-meta";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 
 type AuthConfig = {
   googleOAuth: boolean;
@@ -36,11 +37,16 @@ export function Login() {
   const googleEnabled = authConfig?.googleOAuth ?? false;
 
   return (
-    <AmbientBackground className="min-h-screen flex items-center justify-center px-4">
+    <AmbientBackground className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md mb-4">
+        <Link href="/" className="text-sm text-slate-400 hover:text-ait-purple transition-colors">
+          ← На главную
+        </Link>
+      </div>
       <Card className="w-full max-w-md ait-glass-strong ait-gradient-border">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <BrandLogo href={null} variant="nav" className="justify-center" />
+            <BrandLogo href="/" variant="nav" className="justify-center" />
           </div>
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-[0.25em] text-ait-purple font-medium">

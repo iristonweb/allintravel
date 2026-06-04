@@ -37,8 +37,21 @@ import { PgStorage } from "./pg-storage";
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  updateUserMe(
+    userId: string,
+    data: {
+      displayName?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      username?: string;
+    },
+  ): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   setUserPassword(userId: string, passwordHash: string): Promise<User>;
+  setUserAdmin(userId: string, isAdmin: boolean): Promise<User>;
+  ensureAdminUsers?(): Promise<void>;
+  ensureUsernames?(): Promise<void>;
 
   getPlaces(filters?: {
     type?: string;
@@ -447,16 +460,68 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const lower = username.trim().toLowerCase().replace(/^@/, "");
+    return Array.from(this.users.values()).find(
+      (u) => u.username?.toLowerCase() === lower,
+    );
+  }
+
+  async updateUserMe(
+    userId: string,
+    data: {
+      displayName?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+      username?: string;
+    },
+  ): Promise<User> {
+    const existing = this.users.get(userId);
+    if (!existing) throw new Error("User not found");
+    const user: User = { ...existing, ...data, updatedAt: new Date() } as User;
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async ensureUsernames(): Promise<void> {
+    const { generateUniqueUsername } = await import("./user-utils");
+    for (const user of Array.from(this.users.values())) {
+      if (user.username || !user.email) continue;
+      const username = await generateUniqueUsername(this, user.email);
+      await this.updateUserMe(user.id, { username });
+    }
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
+    const { resolveIsAdmin } = await import("./admin");
     const existing = this.users.get(userData.id as string);
     const user: User = {
       ...existing,
       ...userData,
+      isAdmin: resolveIsAdmin(userData.email ?? undefined) || userData.isAdmin === true,
       createdAt: existing?.createdAt ?? new Date(),
       updatedAt: new Date(),
     } as User;
     this.users.set(user.id, user);
     return user;
+  }
+
+  async setUserAdmin(userId: string, isAdmin: boolean): Promise<User> {
+    const existing = this.users.get(userId);
+    if (!existing) throw new Error("User not found");
+    const user: User = { ...existing, isAdmin, updatedAt: new Date() };
+    this.users.set(userId, user);
+    return user;
+  }
+
+  async ensureAdminUsers(): Promise<void> {
+    const { getAdminEmails } = await import("./admin");
+    for (const email of getAdminEmails()) {
+      const user = await this.getUserByEmail(email);
+      if (user && !user.isAdmin) {
+        await this.setUserAdmin(user.id, true);
+      }
+    }
   }
 
   async setUserPassword(userId: string, passwordHash: string): Promise<User> {
@@ -1056,9 +1121,11 @@ export class MemStorage implements IStorage {
 
   // Search operations
   async searchUsers(query: string, limit = 10): Promise<User[]> {
-    const q = query.toLowerCase();
+    const q = query.toLowerCase().replace(/^@/, "");
     return Array.from(this.users.values())
       .filter(u =>
+        u.username?.toLowerCase().includes(q) ||
+        u.displayName?.toLowerCase().includes(q) ||
         u.firstName?.toLowerCase().includes(q) ||
         u.lastName?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q)
@@ -1084,13 +1151,19 @@ export class MemStorage implements IStorage {
 }
 
 export async function initAppStorage(): Promise<void> {
-  if (storage instanceof PgStorage) {
-    try {
+  try {
+    if (storage instanceof PgStorage) {
       await storage.ensureSchema();
       await storage.ensureSeeded();
-    } catch (error) {
-      console.error("initAppStorage failed (app will continue):", error);
     }
+    if (storage.ensureAdminUsers) {
+      await storage.ensureAdminUsers();
+    }
+    if (storage.ensureUsernames) {
+      await storage.ensureUsernames();
+    }
+  } catch (error) {
+    console.error("initAppStorage failed (app will continue):", error);
   }
 }
 

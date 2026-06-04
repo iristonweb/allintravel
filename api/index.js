@@ -131,6 +131,7 @@ var init_schema = __esm({
       profileImageUrl: varchar("profile_image_url"),
       passwordHash: varchar("password_hash"),
       isVerified: boolean("is_verified").default(false),
+      isAdmin: boolean("is_admin").default(false),
       createdAt: timestamp("created_at").defaultNow(),
       updatedAt: timestamp("updated_at").defaultNow()
     });
@@ -531,6 +532,29 @@ var init_db = __esm({
   }
 });
 
+// server/admin.ts
+var admin_exports = {};
+__export(admin_exports, {
+  DEFAULT_ADMIN_EMAILS: () => DEFAULT_ADMIN_EMAILS,
+  getAdminEmails: () => getAdminEmails,
+  resolveIsAdmin: () => resolveIsAdmin
+});
+function getAdminEmails() {
+  const fromEnv = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return /* @__PURE__ */ new Set([...DEFAULT_ADMIN_EMAILS, ...fromEnv]);
+}
+function resolveIsAdmin(email) {
+  if (!email) return false;
+  return getAdminEmails().has(email.trim().toLowerCase());
+}
+var DEFAULT_ADMIN_EMAILS;
+var init_admin = __esm({
+  "server/admin.ts"() {
+    "use strict";
+    DEFAULT_ADMIN_EMAILS = ["iristonweb@gmail.com"];
+  }
+});
+
 // server/geo/db-autocomplete.ts
 var db_autocomplete_exports = {};
 __export(db_autocomplete_exports, {
@@ -866,6 +890,7 @@ function buildSeedData(now = /* @__PURE__ */ new Date()) {
 }
 
 // server/pg-storage.ts
+init_admin();
 var PgStorage = class {
   db;
   constructor(db2) {
@@ -876,6 +901,9 @@ var PgStorage = class {
   async ensureSchema() {
     await this.db.execute(
       sql2`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar`
+    );
+    await this.db.execute(
+      sql2`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false`
     );
   }
   async ensureSeeded() {
@@ -923,13 +951,34 @@ var PgStorage = class {
   }
   async upsertUser(userData) {
     const id = userData.id;
+    const adminFlag = resolveIsAdmin(userData.email ?? void 0);
+    const payload = {
+      ...userData,
+      isAdmin: adminFlag || userData.isAdmin === true,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
     const existing = await this.getUser(id);
     if (existing) {
-      const [updated] = await this.db.update(users).set({ ...userData, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, id)).returning();
+      const [updated] = await this.db.update(users).set(payload).where(eq(users.id, id)).returning();
       return updated;
     }
-    const [created] = await this.db.insert(users).values(userData).returning();
+    const [created] = await this.db.insert(users).values({ ...payload, createdAt: /* @__PURE__ */ new Date() }).returning();
     return created;
+  }
+  async setUserAdmin(userId, isAdmin) {
+    const [updated] = await this.db.update(users).set({ isAdmin, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, userId)).returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
+  }
+  async ensureAdminUsers() {
+    const { getAdminEmails: getAdminEmails2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
+    for (const email of getAdminEmails2()) {
+      const user = await this.getUserByEmail(email);
+      if (user && !user.isAdmin) {
+        await this.setUserAdmin(user.id, true);
+        console.log(`[admin] Granted admin to ${email}`);
+      }
+    }
   }
   async setUserPassword(userId, passwordHash) {
     const [updated] = await this.db.update(users).set({ passwordHash, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, userId)).returning();
@@ -1585,15 +1634,33 @@ var MemStorage = class {
     );
   }
   async upsertUser(userData) {
+    const { resolveIsAdmin: resolveIsAdmin2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
     const existing = this.users.get(userData.id);
     const user = {
       ...existing,
       ...userData,
+      isAdmin: resolveIsAdmin2(userData.email ?? void 0) || userData.isAdmin === true,
       createdAt: existing?.createdAt ?? /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
     };
     this.users.set(user.id, user);
     return user;
+  }
+  async setUserAdmin(userId, isAdmin) {
+    const existing = this.users.get(userId);
+    if (!existing) throw new Error("User not found");
+    const user = { ...existing, isAdmin, updatedAt: /* @__PURE__ */ new Date() };
+    this.users.set(userId, user);
+    return user;
+  }
+  async ensureAdminUsers() {
+    const { getAdminEmails: getAdminEmails2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
+    for (const email of getAdminEmails2()) {
+      const user = await this.getUserByEmail(email);
+      if (user && !user.isAdmin) {
+        await this.setUserAdmin(user.id, true);
+      }
+    }
   }
   async setUserPassword(userId, passwordHash) {
     const existing = this.users.get(userId);
@@ -2099,13 +2166,16 @@ var MemStorage = class {
   }
 };
 async function initAppStorage() {
-  if (storage instanceof PgStorage) {
-    try {
+  try {
+    if (storage instanceof PgStorage) {
       await storage.ensureSchema();
       await storage.ensureSeeded();
-    } catch (error) {
-      console.error("initAppStorage failed (app will continue):", error);
     }
+    if (storage.ensureAdminUsers) {
+      await storage.ensureAdminUsers();
+    }
+  } catch (error) {
+    console.error("initAppStorage failed (app will continue):", error);
   }
 }
 function createStorage() {
@@ -2198,6 +2268,11 @@ async function setupGoogleAuth(app) {
           lastName: claims?.family_name ?? null,
           profileImageUrl: claims?.picture ?? null
         });
+      } else if (!user.isAdmin) {
+        const { resolveIsAdmin: resolveIsAdmin2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
+        if (resolveIsAdmin2(email)) {
+          user = await storage.setUserAdmin(user.id, true);
+        }
       }
       const sessionUser = {
         claims: {
@@ -2244,6 +2319,11 @@ function isPasswordLongEnough(password) {
 }
 
 // server/auth.ts
+init_admin();
+async function syncAdminRole(user) {
+  if (!resolveIsAdmin(user.email) || user.isAdmin) return user;
+  return storage.setUserAdmin(user.id, true);
+}
 var SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
 var PgSession = connectPgSimple(session);
 var MemoryStore = createMemoryStore(session);
@@ -2331,17 +2411,20 @@ async function setupAuth(app) {
               profileImageUrl: null,
               passwordHash
             });
+            user = await syncAdminRole(user);
             return done(null, toSessionUser(user));
           }
           if (!user.passwordHash) {
             const passwordHash = await hashPassword(password);
             user = await storage.setUserPassword(user.id, passwordHash);
+            user = await syncAdminRole(user);
             return done(null, toSessionUser(user));
           }
           const valid = await verifyPassword(password, user.passwordHash);
           if (!valid) {
             return done(null, false, { message: "Invalid email or password" });
           }
+          user = await syncAdminRole(user);
           return done(null, toSessionUser(user));
         } catch (err) {
           console.error("[auth] local strategy error:", err);

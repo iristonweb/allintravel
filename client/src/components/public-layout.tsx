@@ -9,7 +9,7 @@ type PublicLayoutProps = {
 
 export default function PublicLayout({ children }: PublicLayoutProps) {
   return (
-    <AmbientBackground>
+    <AmbientBackground showOrbs={false}>
       <div className="min-h-screen flex flex-col">
         <AppTopNav />
         <div className="flex-1 pt-20">{children}</div>

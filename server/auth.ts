@@ -8,6 +8,13 @@ import { storage } from "./storage";
 import { getSessionPool } from "./db";
 import { setupGoogleAuth } from "./google-auth";
 import { hashPassword, isPasswordLongEnough, verifyPassword } from "./password";
+import { resolveIsAdmin } from "./admin";
+import type { User } from "@shared/schema";
+
+async function syncAdminRole(user: User): Promise<User> {
+  if (!resolveIsAdmin(user.email) || user.isAdmin) return user;
+  return storage.setUserAdmin(user.id, true);
+}
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
 const PgSession = connectPgSimple(session);
@@ -119,20 +126,25 @@ export async function setupAuth(app: Express) {
           if (!user) {
             const id = crypto.randomUUID();
             const passwordHash = await hashPassword(password);
+            const { generateUniqueUsername } = await import("./user-utils");
+            const username = await generateUniqueUsername(storage, trimmed);
             user = await storage.upsertUser({
               id,
               email: trimmed,
+              username,
               firstName: null,
               lastName: null,
               profileImageUrl: null,
               passwordHash,
             });
+            user = await syncAdminRole(user);
             return done(null, toSessionUser(user));
           }
 
           if (!user.passwordHash) {
             const passwordHash = await hashPassword(password);
             user = await storage.setUserPassword(user.id, passwordHash);
+            user = await syncAdminRole(user);
             return done(null, toSessionUser(user));
           }
 
@@ -141,6 +153,7 @@ export async function setupAuth(app: Express) {
             return done(null, false, { message: "Invalid email or password" });
           }
 
+          user = await syncAdminRole(user);
           return done(null, toSessionUser(user));
         } catch (err) {
           console.error("[auth] local strategy error:", err);
@@ -212,6 +225,22 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as SessionUser | undefined;
   if (!user?.claims?.sub) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+};
+
+export const isAdmin: RequestHandler = async (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const sessionUser = req.user as SessionUser | undefined;
+  const userId = sessionUser?.claims?.sub;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const dbUser = await storage.getUser(userId);
+  if (!dbUser?.isAdmin) {
+    return res.status(403).json({ message: "Forbidden" });
   }
   next();
 };

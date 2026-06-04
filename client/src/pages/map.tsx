@@ -62,8 +62,8 @@ export function MapPage() {
 
   return (
     <AppLayout fullWidth immersive contentClassName="p-0">
-      <div className="relative h-[calc(100vh-5rem)] min-h-[600px]">
-        <div className="absolute top-4 left-4 right-4 z-[1001] pointer-events-none">
+      <div className="relative h-[calc(100vh-var(--ait-header-h))] min-h-[600px]">
+        <div className="absolute top-24 left-4 right-4 md:left-[calc(1rem+72px)] z-40 pointer-events-none">
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -91,7 +91,7 @@ export function MapPage() {
           onPlaceClick={(place) => navigate(`/place/${place.id}`)}
         />
 
-        <div className="absolute bottom-24 md:bottom-8 left-0 right-0 z-[1001] px-4 pointer-events-none">
+        <div className="absolute bottom-24 md:bottom-8 left-0 right-0 z-40 px-4 pointer-events-none">
           <div className="pointer-events-auto flex gap-4 overflow-x-auto pb-2 snap-x">
             {showcaseDestinations.map((d) => (
               <DestinationCard

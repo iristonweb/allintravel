@@ -21,6 +21,15 @@ import {
   insertPostCommentSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { validateUsername } from "@shared/username";
+import { toPublicUser, toSelfUser } from "./user-utils";
+
+const updateUserMeSchema = z.object({
+  displayName: z.string().max(64).nullable().optional(),
+  firstName: z.string().max(100).nullable().optional(),
+  lastName: z.string().max(100).nullable().optional(),
+  username: z.string().optional(),
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -103,10 +112,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      res.json(user);
+      res.json(toSelfUser(user));
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(401).json({ message: "Unauthorized" });
+    }
+  });
+
+  app.put("/api/users/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub as string;
+      const body = updateUserMeSchema.parse(req.body);
+      const patch: {
+        displayName?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        username?: string;
+      } = {};
+
+      if (body.displayName !== undefined) patch.displayName = body.displayName;
+      if (body.firstName !== undefined) patch.firstName = body.firstName;
+      if (body.lastName !== undefined) patch.lastName = body.lastName;
+
+      if (body.username !== undefined) {
+        const parsed = validateUsername(body.username);
+        if (!parsed.ok) {
+          return res.status(400).json({ message: parsed.message });
+        }
+        const taken = await storage.getUserByUsername(parsed.value);
+        if (taken && taken.id !== userId) {
+          return res.status(409).json({ message: "Этот ник уже занят" });
+        }
+        patch.username = parsed.value;
+      }
+
+      const updated = await storage.updateUserMe(userId, patch);
+      res.json(toSelfUser(updated));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      }
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 
@@ -114,7 +161,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      res.json(user);
+      const sessionUser = req.isAuthenticated() ? (req.user as SessionUser) : undefined;
+      const viewerId = sessionUser?.claims?.sub;
+      if (viewerId === user.id) {
+        return res.json(toSelfUser(user));
+      }
+      res.json(toPublicUser(user));
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -485,14 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sender = msg.userId ? await storage.getUser(msg.userId) : null;
         return {
           ...msg,
-          sender: sender
-            ? {
-                id: sender.id,
-                firstName: sender.firstName,
-                lastName: sender.lastName,
-                profileImageUrl: sender.profileImageUrl,
-              }
-            : null,
+          sender: sender ? toPublicUser(sender) : null,
         };
       }),
     );
@@ -665,7 +710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const friends = await storage.getFriends(userId);
-      res.json(friends);
+      res.json(friends.map(toPublicUser));
     } catch (error) {
       console.error("Error fetching friends:", error);
       res.status(500).json({ message: "Failed to fetch friends" });
@@ -680,7 +725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const enriched = await Promise.all(requests.map(async (friendship) => {
         const otherUserId = type === 'sent' ? friendship.addresseeId : friendship.requesterId;
         const user = await storage.getUser(otherUserId);
-        return { ...friendship, user: user || null };
+        return { ...friendship, user: user ? toPublicUser(user) : null };
       }));
       res.json(enriched);
     } catch (error) {
@@ -778,7 +823,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const conversations = await storage.getConversations(userId);
-      res.json(conversations);
+      res.json(
+        conversations.map((c) => ({
+          ...c,
+          user: toPublicUser(c.user),
+        })),
+      );
     } catch (error) {
       console.error("Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -962,7 +1012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Search query is required" });
       }
       const users = await storage.searchUsers(q as string, Number(limit));
-      res.json(users);
+      res.json(users.map(toPublicUser));
     } catch (error) {
       console.error("Error searching users:", error);
       res.status(500).json({ message: "Failed to search users" });
@@ -1022,7 +1072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               client.send(JSON.stringify({
                 type: 'new_message',
                 message: savedMessage,
-                sender: sender ? { id: sender.id, firstName: sender.firstName, lastName: sender.lastName, profileImageUrl: sender.profileImageUrl } : null,
+                sender: sender ? toPublicUser(sender) : null,
               }));
             }
           });

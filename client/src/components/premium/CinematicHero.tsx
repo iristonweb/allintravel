@@ -35,22 +35,26 @@ export default function CinematicHero({
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0.85]);
 
   return (
-    <section ref={ref} className="relative min-h-[100vh] flex flex-col">
-      <motion.div className="absolute inset-0" style={{ y: imageY }}>
+    <section ref={ref} className="relative min-h-[100vh] flex flex-col isolate overflow-hidden">
+      <motion.div className="absolute inset-0 -z-10" style={{ y: imageY }}>
         <img
           src={HERO_IMAGE}
           alt="Путешествия — воздушные шары над горами"
-          className="h-full w-full object-cover object-[center_35%] scale-105"
+          className="h-full w-full object-cover object-[center_40%] scale-[1.02]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050816]/70 via-[#050816]/35 to-transparent" />
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-[#8b5cf6]/20 blur-[120px] ait-ambient-orb" />
-        <div className="absolute bottom-1/3 left-1/4 w-80 h-80 rounded-full bg-[#ff7a18]/15 blur-[100px] ait-ambient-orb" style={{ animationDelay: "-4s" }} />
+        {/* Лёгкий скрим только под текстом слева (~45% ширины), без затемнения всего кадра */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(105deg, rgba(5,8,22,0.42) 0%, rgba(5,8,22,0.18) 38%, transparent 58%)",
+          }}
+        />
       </motion.div>
 
-      <motion.div className="relative z-10 flex-1 flex items-center" style={{ opacity: contentOpacity }}>
+      <div className="relative z-10 flex-1 flex items-center">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 lg:pt-36 lg:pb-20">
           <div className="grid lg:grid-cols-[1fr_380px] gap-12 lg:gap-16 items-center">
             <motion.div
@@ -58,14 +62,14 @@ export default function CinematicHero({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             >
-              <h1 className="ait-text-hero text-white">
+              <h1 className="ait-text-hero text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
                 Путешествуй.
                 <br />
                 Исследуй.
                 <br />
                 <span className="ait-gradient-text">Делись.</span>
               </h1>
-              <p className="mt-6 text-lg md:text-xl text-slate-300 max-w-xl leading-relaxed">
+              <p className="mt-6 text-lg md:text-xl text-slate-100 max-w-xl leading-relaxed drop-shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
                 Интерактивный гид по лучшим местам мира. Планируй маршруты, находи вдохновение и
                 делись впечатлениями.
               </p>
@@ -76,7 +80,7 @@ export default function CinematicHero({
                       key={pill.href}
                       type="button"
                       onClick={() => scrollToAnchor(pill.href)}
-                      className="rounded-full px-4 py-2 text-sm font-medium ait-glass border border-white/15 text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+                      className="rounded-full px-4 py-2 text-sm font-medium ait-glass border border-white/15 text-slate-200 hover:text-white hover:bg-white/10 transition-colors"
                     >
                       {pill.label}
                     </button>
@@ -117,7 +121,7 @@ export default function CinematicHero({
             </motion.div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <div className="relative z-10 hidden md:block px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full pb-8">
         <HeroStats />
@@ -130,9 +134,7 @@ export default function CinematicHero({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.7 }}
         >
-          <div className="drop-shadow-[0_8px_32px_rgba(5,8,22,0.45)]">
-            <GlobalSearchPanel />
-          </div>
+          <GlobalSearchPanel />
         </motion.div>
       )}
     </section>
