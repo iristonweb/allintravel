@@ -33,6 +33,9 @@ import NotFound from "@/pages/not-found";
 import PremiumBackground from "@/components/premium/PremiumBackground";
 import ErrorBoundary from "@/components/error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
+import AitGrantListener from "@/components/ait/AitGrantListener";
+import PushSoundListener from "@/components/PushSoundListener";
+import AdminPage from "@/pages/admin";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -101,6 +104,7 @@ function Router() {
           {isAuthenticated && <Route path="/chat" component={Chat} />}
           {isAuthenticated && <Route path="/chat/join/:token" component={Chat} />}
           {isAuthenticated && <Route path="/wallet" component={Wallet} />}
+          {isAuthenticated && <Route path="/admin" component={AdminPage} />}
           {isAuthenticated && <Route path="/privacy" component={Privacy} />}
           {isAuthenticated && <Route component={NotFound} />}
         </Switch>
@@ -114,6 +118,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <AitGrantListener />
+        <PushSoundListener />
         <ErrorBoundary>
           <Router />
         </ErrorBoundary>

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, X } from "lucide-react";
+import { Menu, Shield, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import type { AppNotification } from "@shared/notification-types";
@@ -20,7 +20,7 @@ import {
 } from "@/lib/nav-config";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
-import AdminBroadcastDialog from "@/components/admin/AdminBroadcastDialog";
+import AitBalancePill from "@/components/ait/AitBalancePill";
 
 const pageTitles: Record<string, string> = {
   "/": "Главная",
@@ -35,8 +35,11 @@ const pageTitles: Record<string, string> = {
   "/places": "Места",
   "/events": "События",
   "/blog": "Блог",
-  "/wallet": "Кошелёк",
-  "/chat": "Комнаты",
+  "/wallet": "AIT Hub",
+  "/chat": "Чаты",
+  "/admin": "Админ",
+  "/profile/edit": "Редактирование",
+  "/profile/settings": "Настройки",
 };
 
 function resolvePageTitle(path: string): string | null {
@@ -154,13 +157,15 @@ export default function AppTopNav() {
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
           {user?.isAdmin && (
-            <>
-              <AdminBroadcastDialog />
-              <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-ait-orange px-2 py-1 rounded-full border border-ait-orange/40 mr-1">
-                Admin
-              </span>
-            </>
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5 text-xs h-8" asChild>
+              <Link href="/admin">
+                <Shield className="h-3.5 w-3.5" />
+                Админ
+              </Link>
+            </Button>
           )}
+
+          <AitBalancePill className="hidden sm:inline-flex" />
 
           <HeaderQuickActions
             unreadItems={unreadItems}
@@ -212,7 +217,7 @@ export default function AppTopNav() {
                 >
                   {item.label}
                   {item.href === "/wallet" && (
-                    <span className="ml-auto text-[10px] font-bold text-ait-orange">Demo</span>
+                    <span className="ml-auto text-[10px] font-bold text-ait-orange">AIT</span>
                   )}
                 </Link>
               ))}

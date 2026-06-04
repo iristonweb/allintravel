@@ -2077,6 +2077,8 @@ export async function initAppStorage(): Promise<void> {
   const { setNotificationStorage } = await import("./notification-service");
   setNotificationStorage(storage);
   try {
+    const { ensureAitReady } = await import("./ait/service");
+    await ensureAitReady();
     if (storage instanceof PgStorage) {
       await storage.ensureSchema();
       if (!process.env.VERCEL) {

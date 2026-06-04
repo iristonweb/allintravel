@@ -46,9 +46,10 @@ import StatPill from "@/components/brand/stat-pill";
 import FilterChipRow from "@/components/filters/FilterChipRow";
 import { TRIP_AVAILABILITY_FILTERS } from "@/lib/filter-config";
 import { cn } from "@/lib/utils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { insertTripSchema, type Trip } from "@shared/schema";
+import { insertTripSchema, type Trip, type User } from "@shared/schema";
+import TripInvitePicker from "@/components/trips/TripInvitePicker";
 
 function destinationKeywords(destination: string): string[] {
   const full = destination.trim().toLowerCase();
@@ -112,6 +113,7 @@ export function Trips() {
   const [routeDrafts, setRouteDrafts] = useState<TripRouteDraft[]>([]);
   const [routeQuery, setRouteQuery] = useState("");
   const [selectedRouteGeo, setSelectedRouteGeo] = useState<GeoAutocompleteItem | null>(null);
+  const [inviteUsers, setInviteUsers] = useState<User[]>([]);
 
   useEffect(() => {
     setSearch(new URLSearchParams(searchString).get("search") ?? "");
@@ -148,6 +150,7 @@ export function Trips() {
     setRouteDrafts([]);
     setRouteQuery("");
     setSelectedRouteGeo(null);
+    setInviteUsers([]);
     form.reset();
   };
 
@@ -164,8 +167,13 @@ export function Trips() {
       };
       if (data.budgetMin != null) payload.budgetMin = data.budgetMin;
       if (data.budgetMax != null) payload.budgetMax = data.budgetMax;
-      const res = await apiRequest("POST", "/api/trips", payload);
-      const trip = (await res.json()) as Trip;
+      if (inviteUsers.length > 0) {
+        payload.inviteUserIds = inviteUsers.map((u) => u.id);
+      }
+      const trip = (await apiRequestJson("POST", "/api/trips", payload)) as Trip & {
+        invites?: { invited: string[]; skipped: string[] };
+        chatSlug?: string | null;
+      };
       if (routeDrafts.length > 0 && trip.id) {
         try {
           await addTripStopsFromDrafts(trip.id, routeDrafts);
@@ -181,13 +189,20 @@ export function Trips() {
     },
     onSuccess: (trip) => {
       const stopCount = routeDrafts.length;
+      const invitedCount = trip.invites?.invited?.length ?? 0;
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
       setOpen(false);
       resetCreateDialog();
       toast({
-        title: "Поездка создана!",
-        description: stopCount > 0 ? "Маршрут сохранён." : "Ваша поездка добавлена в список.",
+        title: "Поездка и чат группы созданы",
+        description:
+          invitedCount > 0
+            ? `Маршрут${stopCount > 0 ? " сохранён" : ""}. В чат приглашено: ${invitedCount}.`
+            : stopCount > 0
+              ? "Маршрут сохранён. Откройте вкладку «Группа» для чата."
+              : "Приватный чат группы уже ждёт вас на странице поездки.",
       });
       if (trip?.id) setLocation(`/trips/${trip.id}`);
     },
@@ -294,7 +309,8 @@ export function Trips() {
           <DialogHeader>
             <DialogTitle>Новая поездка</DialogTitle>
             <DialogDescription>
-              Заполните данные — группа появится в списке поездок для попутчиков.
+              Создаётся поездка, приватный чат группы и приглашения по @нику. Остальные попутчики смогут
+              присоединиться из каталога.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -435,6 +451,13 @@ export function Trips() {
                 />
               </div>
 
+              <TripInvitePicker
+                value={inviteUsers}
+                onChange={setInviteUsers}
+                max={Math.max(1, (form.watch("maxParticipants") ?? 5) - 1)}
+                currentUserId={user?.id}
+              />
+
               <div className="space-y-3 pt-2 border-t border-white/10">
                 <div>
                   <FormLabel>Маршрут (места)</FormLabel>
@@ -526,7 +549,7 @@ export function Trips() {
     <AppLayout>
       <PageHeader
         title="Поездки"
-        description="Найдите попутчиков или создайте свою группу"
+        description="Поездка = маршрут + чат группы. Приглашайте друзей через @ при создании."
         rightSlot={
           <Button variant="premium" type="button" onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
@@ -580,19 +603,6 @@ export function Trips() {
               )}
             >
               Сбросить «{q}»
-            </button>
-          )}
-          {!q && trips.length > 0 && (
-            <button
-              type="button"
-              onClick={openCreateDialog}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-2xl ait-glass border border-primary/20",
-                "px-4 py-3 text-sm font-medium text-primary hover:bg-primary/10 transition-colors",
-              )}
-            >
-              <Plus className="h-4 w-4" />
-              Создать группу
             </button>
           )}
         </div>

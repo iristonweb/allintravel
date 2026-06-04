@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, UserPlus, MessageCircle, UserCheck, UserX, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User, FriendshipWithUser, Trip } from "@shared/schema";
 import FollowButton from "@/components/social/FollowButton";
@@ -79,7 +79,7 @@ export function Friends() {
 
   const respondToRequestMutation = useMutation({
     mutationFn: ({ friendshipId, status }: { friendshipId: string; status: string }) =>
-      apiRequest("PUT", `/api/friends/respond/${friendshipId}`, { status }),
+      apiRequestJson("PUT", `/api/friends/respond/${friendshipId}`, { status }),
     onSuccess: (_, { status }) => {
       toast({ title: status === "accepted" ? "Запрос принят" : "Запрос отклонён" });
       queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
@@ -119,7 +119,10 @@ export function Friends() {
         <PageHeader
           title="Друзья"
           description="Управляйте друзьями и находите попутчиков по направлению"
-          backHref="/profile"
+          breadcrumbs={[
+            { label: "Профиль", href: "/profile" },
+            { label: "Друзья" },
+          ]}
         />
 
         {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mt-6" />}

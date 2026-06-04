@@ -27,7 +27,7 @@ import {
 import GlassCard from "@/components/brand/glass-card";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -46,6 +46,11 @@ import StoryBar, { type StoryGroup } from "@/components/feed/StoryBar";
 import StoryViewer from "@/components/feed/StoryViewer";
 import ReelFeed from "@/components/feed/ReelFeed";
 import JournalCard from "@/components/feed/JournalCard";
+import PostTipButton from "@/components/ait/PostTipButton";
+import CreatorSpotlight from "@/components/ait/CreatorSpotlight";
+import AitLeaderboard from "@/components/ait/AitLeaderboard";
+import CreatorAvatar from "@/components/ait/CreatorAvatar";
+import BoostPostButton from "@/components/ait/BoostPostButton";
 import { isVideoUrl as isVideoUrlShared } from "@shared/post-formats";
 
 function contentFormatToApi(format: "feed" | "stories" | "reels" | "journals"): PostFormat {
@@ -132,7 +137,7 @@ export function SocialFeed() {
       tags: string[];
       isPublic: boolean;
       images?: string[];
-    }) => apiRequest("POST", "/api/posts", postData),
+    }) => apiRequestJson("POST", "/api/posts", postData),
     onSuccess: () => {
       toast({ title: "Пост опубликован!" });
       setIsCreating(false);
@@ -146,6 +151,7 @@ export function SocialFeed() {
         images: [],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
     },
     onError: (error: Error) => {
       const msg = error?.message ?? "";
@@ -155,22 +161,27 @@ export function SocialFeed() {
   });
 
   const likePostMutation = useMutation({
-    mutationFn: ({ postId, isLiked }: { postId: string; isLiked: boolean }) =>
-      isLiked
-        ? apiRequest("DELETE", `/api/posts/${postId}/like`)
-        : apiRequest("POST", `/api/posts/${postId}/like`),
+    mutationFn: async ({ postId, isLiked }: { postId: string; isLiked: boolean }) => {
+      if (isLiked) {
+        await apiRequest("DELETE", `/api/posts/${postId}/like`);
+        return null;
+      }
+      return apiRequestJson("POST", `/api/posts/${postId}/like`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
     },
   });
 
   const commentMutation = useMutation({
     mutationFn: ({ postId, content }: { postId: string; content: string }) =>
-      apiRequest("POST", `/api/posts/${postId}/comments`, { content }),
+      apiRequestJson("POST", `/api/posts/${postId}/comments`, { content }),
     onSuccess: (_, variables) => {
       setCommentInputs((prev) => ({ ...prev, [variables.postId]: "" }));
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: [`/api/posts/${variables.postId}/comments`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
       toast({ title: "Комментарий добавлен" });
     },
     onError: (error: Error) => {
@@ -317,6 +328,11 @@ export function SocialFeed() {
           <p className="text-muted-foreground mt-1">
             Лента путешественников — Stories, Reels и Journals
           </p>
+        </div>
+
+        <div className="my-4 space-y-4">
+          <CreatorSpotlight />
+          <AitLeaderboard compact />
         </div>
 
         <div className="flex flex-wrap gap-2 mt-6 mb-4">
@@ -605,14 +621,13 @@ export function SocialFeed() {
                 <GlassCard key={post.id} className="overflow-hidden">
                   <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
-                      <Avatar>
-                        <AvatarImage src={resolveMediaUrl(post.author?.profileImageUrl)} />
-                        <AvatarFallback>
-                          {post.author?.firstName?.[0] || "?"}
-                        </AvatarFallback>
-                      </Avatar>
+                      <CreatorAvatar
+                        src={post.author?.profileImageUrl}
+                        fallback={post.author?.firstName?.[0] || "?"}
+                        creatorBadge={(post as { creatorBadge?: boolean }).creatorBadge}
+                      />
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-semibold">
                             {post.author
                               ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || "Пользователь"
@@ -621,6 +636,9 @@ export function SocialFeed() {
                           <span className="text-sm text-muted-foreground">
                             {formatDate(post.createdAt as unknown as string)}
                           </span>
+                          {(post as { isBoosted?: boolean }).isBoosted && (
+                            <Badge className="bg-ait-orange/20 text-ait-orange text-xs">Boost</Badge>
+                          )}
                         </div>
                         {post.location && (
                           <div className="flex items-center gap-1 mt-0.5">
@@ -712,6 +730,19 @@ export function SocialFeed() {
                           <MessageCircle className="mr-1.5 h-4 w-4" />
                           {post.commentsCount > 0 ? post.commentsCount : "Комментарии"}
                         </Button>
+                        {post.author?.id && (
+                          <PostTipButton
+                            postId={post.id}
+                            authorId={post.author.id}
+                            currentUserId={user?.id}
+                          />
+                        )}
+                        <BoostPostButton
+                          postId={post.id}
+                          authorId={post.author?.id ?? ""}
+                          currentUserId={user?.id}
+                          isBoosted={(post as { isBoosted?: boolean }).isBoosted}
+                        />
                       </div>
                       <div className="flex gap-1">
                         <Button

@@ -12,6 +12,7 @@ export const createTripBodySchema = insertTripSchema
     endDate: z.coerce.date(),
     budgetMin: optionalBudget,
     budgetMax: optionalBudget,
+    inviteUserIds: z.array(z.string().uuid()).max(20).optional(),
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: "Дата окончания должна быть не раньше даты начала",
@@ -19,7 +20,9 @@ export const createTripBodySchema = insertTripSchema
   });
 
 export function parseCreateTripBody(body: unknown, userId: string) {
-  return createTripBodySchema.parse({ ...(body as object), userId });
+  const parsed = createTripBodySchema.parse({ ...(body as object), userId });
+  const { inviteUserIds, ...tripData } = parsed;
+  return { tripData, inviteUserIds: inviteUserIds ?? [] };
 }
 
 export function parseUpdateTripBody(body: unknown) {

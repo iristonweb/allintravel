@@ -1,5 +1,5 @@
 // Custom notification sound: supported mainly on installed mobile PWAs; desktop Chrome may ignore.
-const CACHE_NAME = "ait-v2";
+const CACHE_NAME = "ait-v3";
 const DEFAULT_NOTIFICATION_SOUND = "/sounds/notify-short.wav";
 const OFFLINE_URLS = ["/", "/places", "/api/places?limit=20"];
 
@@ -38,15 +38,26 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   const data = event.data?.json() ?? { title: "All In Travel", body: "Новое уведомление", url: "/" };
+  const soundKind = data.soundKind === "ait" ? "ait" : "default";
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
-      tag: data.tag || "ait-notification",
-      sound: data.sound || DEFAULT_NOTIFICATION_SOUND,
-      data: { url: data.url || "/", sound: data.sound || DEFAULT_NOTIFICATION_SOUND },
-    }),
+    (async () => {
+      await self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: "/favicon.ico",
+        badge: "/favicon.ico",
+        tag: data.tag || "ait-notification",
+        sound: data.sound || DEFAULT_NOTIFICATION_SOUND,
+        data: {
+          url: data.url || "/",
+          sound: data.sound || DEFAULT_NOTIFICATION_SOUND,
+          soundKind,
+        },
+      });
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of clients) {
+        client.postMessage({ type: "PLAY_NOTIFICATION_SOUND", soundKind });
+      }
+    })(),
   );
 });
 

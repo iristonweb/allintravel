@@ -16,6 +16,8 @@ type YandexMapProps = {
   mapFocus?: MapFocus | null;
   showDestinationPin?: boolean;
   onPlaceClick?: (place: YandexPlace) => void;
+  /** Road geometry from Yandex Router API as [lng, lat] pairs */
+  routeGeometry?: [number, number][];
 };
 
 function resolveInitialView(
@@ -95,6 +97,7 @@ export default function YandexMap({
   mapFocus,
   showDestinationPin,
   onPlaceClick,
+  routeGeometry,
 }: YandexMapProps) {
   const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY as string | undefined;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -267,19 +270,27 @@ export default function YandexMap({
       addPlacemark(lat, lon, String(index + 1), variants[index % 3], place);
     });
 
-    if (showRoute && validPlaces.length > 1) {
-      const lineCoords = validPlaces.map((p) => [Number(p.latitude), Number(p.longitude)]);
-      const polyline = new ymaps.Polyline(
-        lineCoords,
-        {},
-        {
-          strokeColor: "#22D3EE",
-          strokeWidth: 5,
-          strokeOpacity: 0.9,
-        },
-      );
-      map.geoObjects.add(polyline);
-      dynamicObjectsRef.current.push(polyline);
+    if (showRoute) {
+      const roadCoords =
+        routeGeometry && routeGeometry.length > 1
+          ? routeGeometry.map(([lng, lat]) => [lat, lng] as [number, number])
+          : validPlaces.length > 1
+            ? validPlaces.map((p) => [Number(p.latitude), Number(p.longitude)] as [number, number])
+            : null;
+
+      if (roadCoords && roadCoords.length > 1) {
+        const polyline = new ymaps.Polyline(
+          roadCoords,
+          {},
+          {
+            strokeColor: "#22D3EE",
+            strokeWidth: 5,
+            strokeOpacity: 0.9,
+          },
+        );
+        map.geoObjects.add(polyline);
+        dynamicObjectsRef.current.push(polyline);
+      }
     }
 
     if (
@@ -314,6 +325,7 @@ export default function YandexMap({
     mapFocus,
     showDestinationPin,
     onPlaceClick,
+    routeGeometry,
     apiKey,
   ]);
 

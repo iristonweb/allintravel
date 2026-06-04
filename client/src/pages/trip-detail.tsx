@@ -4,6 +4,7 @@ import AppLayout from "@/components/app-layout";
 import TripPlannerLayout from "@/components/planner/trip-planner-layout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import type { Trip } from "@shared/schema";
 import type { TripWaypointWithPlace } from "@shared/schema";
 import { useState } from "react";
@@ -60,12 +61,12 @@ export function TripDetail() {
 
   return (
     <AppLayout contentClassName="pb-28">
-      <Link href="/trips">
-        <Button variant="ghost" className="mb-4 -ml-2">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          К списку поездок
-        </Button>
-      </Link>
+      <AppBreadcrumbs
+        items={[
+          { label: "Поездки", href: "/trips" },
+          { label: trip.title },
+        ]}
+      />
       <TripPlannerLayout
         trip={trip}
         tripId={id}

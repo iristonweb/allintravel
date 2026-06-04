@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -32,6 +32,7 @@ import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user
 import { validateUsername } from "@shared/username";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 
 export function ProfileEdit() {
   const { user, isAuthenticated } = useAuth();
@@ -145,13 +146,12 @@ export function ProfileEdit() {
     mutationFn: async (data: typeof accountData) => {
       const parsed = validateUsername(data.username);
       if (!parsed.ok) throw new Error(parsed.message);
-      const res = await apiRequest("PUT", "/api/users/me", {
+      return apiRequestJson("PUT", "/api/users/me", {
         username: parsed.value,
         displayName: data.displayName.trim() || null,
         firstName: data.firstName.trim() || null,
         lastName: data.lastName.trim() || null,
       });
-      return res.json();
     },
     onSuccess: () => {
       toast({ title: "Аккаунт обновлён" });
@@ -209,9 +209,12 @@ export function ProfileEdit() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto">
-          <Button variant="ghost" size="sm" className="mb-4" asChild>
-            <Link href="/profile">← К профилю</Link>
-          </Button>
+          <AppBreadcrumbs
+            items={[
+              { label: "Профиль", href: "/profile" },
+              { label: "Редактирование" },
+            ]}
+          />
 
           {/* Profile header card */}
           <Card className="mb-8">

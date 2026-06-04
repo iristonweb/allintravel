@@ -10,6 +10,7 @@ import HeroStats from "@/components/home/hero-stats";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import { useToast } from "@/hooks/use-toast";
 import type { Place, Trip, Event, TripWaypointWithPlace } from "@shared/schema";
 import { motion } from "framer-motion";
@@ -86,7 +87,19 @@ export function Home() {
             {user?.firstName ? `Привет, ${user.firstName}!` : "Привет!"}
           </h2>
           <HomeQuickActions />
+          {isAuthenticated && <AitDailyPulse />}
         </motion.section>
+
+        {isAuthenticated && (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="hidden md:block max-w-xl"
+          >
+            <AitDailyPulse />
+          </motion.section>
+        )}
 
         <HomeExplorePlannerSection places={places} trip={myTrip} waypoints={myTripWaypoints} />
         <HomeCommunityPreview useLiveData />

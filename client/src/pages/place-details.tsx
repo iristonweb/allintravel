@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { pushRecentlyViewedPlace } from "@/lib/recentlyViewed";
 import AppLayout from "@/components/app-layout";
 import { ReviewCard } from "@/components/review-card";
@@ -17,6 +17,7 @@ import { Star, MapPin, Phone, Globe, Heart, Share2 } from "lucide-react";
 import { useState } from "react";
 import { shareUrl } from "@/lib/share";
 import TravelMap from "@/components/maps/TravelMap";
+import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import type { PlaceWithDetails, FavoriteStatus, Review } from "@shared/schema";
 
 export default function PlaceDetails() {
@@ -80,7 +81,7 @@ export default function PlaceDetails() {
 
   const createReviewMutation = useMutation({
     mutationFn: async (reviewData: { rating: number; content: string }) => {
-      return await apiRequest("POST", `/api/places/${id}/reviews`, reviewData);
+      return await apiRequestJson("POST", `/api/places/${id}/reviews`, reviewData);
     },
     onSuccess: () => {
       toast({
@@ -196,6 +197,12 @@ export default function PlaceDetails() {
 
   return (
     <AppLayout contentClassName="py-8">
+        <AppBreadcrumbs
+          items={[
+            { label: "Места", href: "/places" },
+            { label: place?.name ?? "Место" },
+          ]}
+        />
         {/* Place Header */}
         <div className="mb-8">
           <div className="relative h-64 md:h-96 rounded-xl overflow-hidden mb-6">

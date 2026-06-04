@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { createChatRoom } from "@/lib/upload-media";
@@ -50,8 +50,10 @@ import type {
   ChatRoom,
   MessageReactionMeta,
   MessageReadMeta,
+  Trip,
   User,
 } from "@shared/schema";
+import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import { mergeChronologicalMessages } from "@/lib/chat-thread";
 import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
 import MessageContent from "@/components/chat/MessageContent";
@@ -180,6 +182,33 @@ export function Chat() {
     ? []
     : (historyPayload?.pinnedMessageIds ?? []);
 
+  const fromHref = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return params.get("from");
+  }, [searchString]);
+
+  const effectiveTripId = useMemo(() => {
+    if (fromHref) {
+      const match = fromHref.match(/^\/trips\/([^/?#]+)/);
+      if (match) return match[1];
+    }
+    return activeRoomMeta?.settings?.tripId ?? null;
+  }, [fromHref, activeRoomMeta?.settings?.tripId]);
+
+  const { data: breadcrumbTrip } = useQuery<Trip>({
+    queryKey: ["/api/trips", effectiveTripId],
+    enabled: !!effectiveTripId,
+  });
+
+  const roomBreadcrumbs = useMemo(() => {
+    if (!effectiveTripId || !breadcrumbTrip) return null;
+    return [
+      { label: "Поездки", href: "/trips" },
+      { label: breadcrumbTrip.title, href: `/trips/${effectiveTripId}` },
+      { label: "Чат" },
+    ];
+  }, [effectiveTripId, breadcrumbTrip]);
+
   const createRoomMutation = useMutation({
     mutationFn: async () => {
       const { room, avatarWarning } = await createChatRoom({
@@ -234,8 +263,7 @@ export function Chat() {
 
   const postMessage = useMutation({
     mutationFn: async (content: string) => {
-      const res = await apiRequest("POST", `/api/chat/${activeRoom}`, { content });
-      return (await res.json()) as ChatMessageWithSender;
+      return apiRequestJson<ChatMessageWithSender>("POST", `/api/chat/${activeRoom}`, { content });
     },
     onSuccess: (saved) => {
       appendMessageToHistory(saved);
@@ -748,6 +776,11 @@ export function Chat() {
           </div>
 
           <div className="ait-chat-panel flex flex-col overflow-hidden min-h-0">
+            {roomBreadcrumbs && (
+              <div className="px-4 pt-3 pb-0 border-b border-white/5">
+                <AppBreadcrumbs items={roomBreadcrumbs} className="mb-0" />
+              </div>
+            )}
             <div className="ait-chat-panel-header p-4 flex items-center gap-3">
               <RoomAvatar
                 title={activeRoomMeta?.title ?? activeRoom}

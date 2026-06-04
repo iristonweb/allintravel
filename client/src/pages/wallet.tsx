@@ -1,16 +1,17 @@
 import AppLayout from "@/components/app-layout";
-import TravelWalletDemo from "@/components/wallet/travel-wallet-demo";
+import AitHub from "@/components/ait/AitHub";
 
 export function Wallet() {
   return (
     <AppLayout>
       <div className="mb-8">
-        <h1 className="ait-section-title">Travel Wallet</h1>
-        <p className="text-muted-foreground mt-2">
-          Получайте и обменивайте валюту в путешествии — демо без подключения к блокчейну
+        <h1 className="ait-section-title">AIT Hub</h1>
+        <p className="text-muted-foreground mt-2 max-w-xl">
+          Копите AIT за общение, посты и поддержку других. Тратьте на темы и буст — или отправляйте чаевые
+          авторам. Creator AIT — награда от аудитории.
         </p>
       </div>
-      <TravelWalletDemo />
+      <AitHub />
     </AppLayout>
   );
 }

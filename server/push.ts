@@ -47,6 +47,7 @@ export function setupPushRoutes(app: Express): void {
         title: "All In Travel",
         body: "Push-уведомления работают!",
         url: "/profile/settings",
+        soundKind: "default",
       });
       res.json({ ok: true });
     } catch (err) {
@@ -58,10 +59,16 @@ export function setupPushRoutes(app: Express): void {
 
 const DEFAULT_PUSH_SOUND = "/sounds/notify-short.wav";
 
-export async function sendPushToUser(
-  userId: string,
-  payload: { title: string; body: string; url?: string; tag?: string; sound?: string },
-): Promise<void> {
+export type PushPayload = {
+  title: string;
+  body: string;
+  url?: string;
+  tag?: string;
+  sound?: string;
+  soundKind?: "default" | "ait";
+};
+
+export async function sendPushToUser(userId: string, payload: PushPayload): Promise<void> {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!publicKey || !privateKey) return;
@@ -69,12 +76,15 @@ export async function sendPushToUser(
   const subs = await storage.getPushSubscriptionsForUser(userId);
   if (!subs.length) return;
 
+  const sound = payload.sound ?? DEFAULT_PUSH_SOUND;
+  const soundKind = payload.soundKind ?? "default";
   const data = JSON.stringify({
     title: payload.title,
     body: payload.body,
     url: payload.url ?? "/",
     tag: payload.tag,
-    sound: payload.sound ?? DEFAULT_PUSH_SOUND,
+    sound,
+    soundKind,
   });
 
   await Promise.all(
@@ -96,4 +106,38 @@ export async function sendPushToUser(
       }
     }),
   );
+}
+
+/** Strip markdown/media tags for push preview */
+export function plainTextPreview(content: string, max = 140): string {
+  const text = content
+    .replace(/!\[[^\]]*]\([^)]+\)/g, "")
+    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+export async function sendPushToUsers(
+  userIds: string[],
+  payload: PushPayload,
+): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+  const chunk = 25;
+  for (let i = 0; i < userIds.length; i += chunk) {
+    const slice = userIds.slice(i, i + chunk);
+    await Promise.all(
+      slice.map(async (uid) => {
+        try {
+          await sendPushToUser(uid, payload);
+          sent++;
+        } catch {
+          failed++;
+        }
+      }),
+    );
+  }
+  return { sent, failed };
 }

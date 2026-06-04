@@ -16,12 +16,16 @@ export type PlayerTrack = {
   fileUrl: string;
 };
 
+export type PlayerUiMode = "expanded" | "collapsed" | "hidden";
+
 type MusicPlayerContextValue = {
   queue: PlayerTrack[];
   currentIndex: number;
   currentTrack: PlayerTrack | null;
   isPlaying: boolean;
   volume: number;
+  playerUi: PlayerUiMode;
+  isPlayerVisible: boolean;
   playTrack: (track: PlayerTrack, queue?: PlayerTrack[]) => void;
   setQueue: (tracks: PlayerTrack[], startIndex?: number) => void;
   togglePlay: () => void;
@@ -29,6 +33,9 @@ type MusicPlayerContextValue = {
   prev: () => void;
   stop: () => void;
   setVolume: (value: number) => void;
+  collapsePlayer: () => void;
+  expandPlayer: () => void;
+  dismissPlayer: () => void;
 };
 
 const MusicPlayerContext = createContext<MusicPlayerContextValue | null>(null);
@@ -40,6 +47,7 @@ type PersistedState = {
   queueIds: string[];
   currentIndex: number;
   volume: number;
+  playerUi: PlayerUiMode;
 };
 
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
@@ -48,8 +56,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolumeState] = useState(0.85);
+  const [playerUi, setPlayerUi] = useState<PlayerUiMode>("hidden");
 
   const currentTrack = queue[currentIndex] ?? null;
+  const isPlayerVisible = currentTrack != null && playerUi !== "hidden";
 
   useEffect(() => {
     try {
@@ -58,6 +68,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       const parsed = JSON.parse(raw) as PersistedState;
       if (typeof parsed.volume === "number") {
         setVolumeState(Math.min(1, Math.max(0, parsed.volume)));
+      }
+      if (
+        parsed.playerUi === "expanded" ||
+        parsed.playerUi === "collapsed" ||
+        parsed.playerUi === "hidden"
+      ) {
+        setPlayerUi(parsed.playerUi);
       }
     } catch {
       /* ignore */
@@ -93,43 +110,53 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [isPlaying, currentTrack?.id]);
 
   const persist = useCallback(
-    (nextQueue: PlayerTrack[], index: number, nextVolume = volume) => {
+    (
+      nextQueue: PlayerTrack[],
+      index: number,
+      nextVolume = volume,
+      nextPlayerUi: PlayerUiMode = playerUi,
+    ) => {
       try {
         const payload: PersistedState = {
           trackId: nextQueue[index]?.id ?? null,
           queueIds: nextQueue.map((t) => t.id),
           currentIndex: index,
           volume: nextVolume,
+          playerUi: nextPlayerUi,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       } catch {
         /* ignore */
       }
     },
-    [volume],
+    [volume, playerUi],
   );
 
   const playTrack = useCallback(
     (track: PlayerTrack, nextQueue?: PlayerTrack[]) => {
       const q = nextQueue ?? [track];
       const idx = q.findIndex((t) => t.id === track.id);
+      const ui: PlayerUiMode = "expanded";
       setQueueState(q);
       setCurrentIndex(idx >= 0 ? idx : 0);
       setIsPlaying(true);
-      persist(q, idx >= 0 ? idx : 0);
+      setPlayerUi(ui);
+      persist(q, idx >= 0 ? idx : 0, volume, ui);
     },
-    [persist],
+    [persist, volume],
   );
 
   const setQueue = useCallback(
     (tracks: PlayerTrack[], startIndex = 0) => {
       const idx = Math.min(Math.max(0, startIndex), Math.max(0, tracks.length - 1));
+      const ui: PlayerUiMode = tracks.length > 0 ? "expanded" : "hidden";
       setQueueState(tracks);
       setCurrentIndex(idx);
       setIsPlaying(tracks.length > 0);
-      persist(tracks, idx);
+      setPlayerUi(ui);
+      persist(tracks, idx, volume, ui);
     },
-    [persist],
+    [persist, volume],
   );
 
   const togglePlay = useCallback(() => {
@@ -157,12 +184,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false);
     setQueueState([]);
     setCurrentIndex(0);
+    setPlayerUi("hidden");
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
       audio.removeAttribute("src");
     }
-  }, []);
+    persist([], 0, volume, "hidden");
+  }, [persist, volume]);
 
   const setVolume = useCallback(
     (value: number) => {
@@ -173,6 +202,22 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     [queue, currentIndex, persist],
   );
 
+  const collapsePlayer = useCallback(() => {
+    if (!currentTrack) return;
+    setPlayerUi("collapsed");
+    persist(queue, currentIndex, volume, "collapsed");
+  }, [currentTrack, queue, currentIndex, persist, volume]);
+
+  const expandPlayer = useCallback(() => {
+    if (!currentTrack) return;
+    setPlayerUi("expanded");
+    persist(queue, currentIndex, volume, "expanded");
+  }, [currentTrack, queue, currentIndex, persist, volume]);
+
+  const dismissPlayer = useCallback(() => {
+    stop();
+  }, [stop]);
+
   const value = useMemo(
     () => ({
       queue,
@@ -180,6 +225,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       currentTrack,
       isPlaying,
       volume,
+      playerUi,
+      isPlayerVisible,
       playTrack,
       setQueue,
       togglePlay,
@@ -187,6 +234,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       prev,
       stop,
       setVolume,
+      collapsePlayer,
+      expandPlayer,
+      dismissPlayer,
     }),
     [
       queue,
@@ -194,6 +244,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       currentTrack,
       isPlaying,
       volume,
+      playerUi,
+      isPlayerVisible,
       playTrack,
       setQueue,
       togglePlay,
@@ -201,6 +253,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       prev,
       stop,
       setVolume,
+      collapsePlayer,
+      expandPlayer,
+      dismissPlayer,
     ],
   );
 

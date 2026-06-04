@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { ChatRoom, PrivateMessage, PrivateMessageWithMeta, User } from "@shared/schema";
@@ -137,8 +137,7 @@ export function Messages() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: { receiverId: string; content: string }) => {
-      const res = await apiRequest("POST", "/api/messages", messageData);
-      return (await res.json()) as PrivateMessageWithMeta;
+      return apiRequestJson<PrivateMessageWithMeta>("POST", "/api/messages", messageData);
     },
     onMutate: async (messageData) => {
       const key = ["/api/messages", messageData.receiverId] as const;

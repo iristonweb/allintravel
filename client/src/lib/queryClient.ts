@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { emitAitGrant, extractAitGrantFromBody } from "@/lib/ait-toast";
 
 const API_BASE =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_ORIGIN) || "";
@@ -30,6 +31,20 @@ export async function apiRequest(
 
   await throwIfResNotOk(res);
   return res;
+}
+
+/** Parse JSON and show AIT toast if response includes aitGrant */
+export async function apiRequestJson<T = unknown>(
+  method: string,
+  url: string,
+  data?: unknown,
+): Promise<T> {
+  const res = await apiRequest(method, url, data);
+  const text = await res.text();
+  if (!text) return {} as T;
+  const body = JSON.parse(text) as T;
+  emitAitGrant(extractAitGrantFromBody(body));
+  return body;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

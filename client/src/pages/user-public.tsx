@@ -6,6 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import CreatorAvatar from "@/components/ait/CreatorAvatar";
+import UserTipButton from "@/components/ait/UserTipButton";
 import { useToast } from "@/hooks/use-toast";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
@@ -13,6 +16,7 @@ import type { UserProfile } from "@shared/schema";
 import { MessageCircle, UserPlus, MapPin, Compass } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import FollowButton from "@/components/social/FollowButton";
+import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 
 type PublicUserView = {
   id: string;
@@ -24,6 +28,8 @@ type PublicUserView = {
   isOnline?: boolean;
   lastSeenAt?: string;
   isFriend?: boolean;
+  creatorBadge?: boolean;
+  creatorRank?: { title: string };
 };
 
 export function UserPublicProfile() {
@@ -31,6 +37,7 @@ export function UserPublicProfile() {
   const username = params.username ?? "";
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user: me } = useAuth();
 
   const { data: publicUser, isLoading, error } = useQuery<PublicUserView>({
     queryKey: [`/api/users/by-username/${username}`],
@@ -72,17 +79,32 @@ export function UserPublicProfile() {
     );
   }
 
+  const displayLabel = getUserDisplayLabel(publicUser);
+
   return (
     <AppLayout contentClassName="py-6 max-w-lg mx-auto">
+      <AppBreadcrumbs
+        items={[
+          { label: "Профиль", href: "/profile" },
+          { label: displayLabel },
+        ]}
+      />
       <Card>
         <CardContent className="p-6">
           <div className="flex gap-4 items-start">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={resolveMediaUrl(publicUser.profileImageUrl)} />
-              <AvatarFallback>{getUserInitial(publicUser)}</AvatarFallback>
-            </Avatar>
+            <CreatorAvatar
+              className="h-20 w-20"
+              src={publicUser.profileImageUrl}
+              fallback={getUserInitial(publicUser)}
+              creatorBadge={publicUser.creatorBadge}
+            />
             <div>
               <h1 className="text-xl font-bold">{getUserDisplayLabel(publicUser)}</h1>
+              {publicUser.creatorRank && (
+                <Badge variant="secondary" className="mt-1 text-ait-purple">
+                  {publicUser.creatorRank.title}
+                </Badge>
+              )}
               {getUserHandle(publicUser) && (
                 <p className="text-muted-foreground">{getUserHandle(publicUser)}</p>
               )}
@@ -177,6 +199,7 @@ export function UserPublicProfile() {
               </Button>
             )}
             <FollowButton userId={publicUser.id} />
+            <UserTipButton userId={publicUser.id} currentUserId={me?.id} />
           </div>
         </CardContent>
       </Card>

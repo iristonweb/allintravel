@@ -17,8 +17,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Download, Route, Calendar, Users, BookOpen, GripVertical } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { Plus, Trash2, Download, Route, Calendar, Users, BookOpen, GripVertical, Film, MapPin, Share2 } from "lucide-react";
+import TripCinema from "@/components/trips/TripCinema";
+import { apiRequest, apiRequestJson, toApiUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { optimizeWaypointOrder, totalRouteKm } from "@/lib/routeUtils";
 import {
@@ -55,6 +56,7 @@ export default function TripPlannerLayout({
   const [tab, setTab] = useState("route");
   const [selectedDay, setSelectedDay] = useState(1);
   const [dragWaypointId, setDragWaypointId] = useState<string | null>(null);
+  const [cinemaOpen, setCinemaOpen] = useState(false);
 
   const totalDays = tripCalendarDayCount(trip);
 
@@ -82,32 +84,44 @@ export default function TripPlannerLayout({
       }));
   }, [waypoints, waypointsByDay, selectedDay]);
 
-  const allRoutePlaces = useMemo(
-    () =>
-      waypoints
-        .filter((w) => w.place)
-        .map((w) => ({
-          id: w.place!.id,
-          name: w.place!.name,
-          type: w.place!.type ?? undefined,
-          latitude: w.place!.latitude,
-          longitude: w.place!.longitude,
-        })),
+  const allRoutePlacesCount = useMemo(
+    () => waypoints.filter((w) => w.place).length,
     [waypoints],
   );
 
-  const coords = allRoutePlaces.map(
-    (p) => [Number(p.latitude), Number(p.longitude)] as [number, number],
+  const routeScopeHasDay = (waypointsByDay.get(selectedDay) ?? []).some((w) => w.place);
+  const yandexRouteDayKey = routeScopeHasDay ? selectedDay : "all";
+
+  const routeCoords = useMemo(
+    () =>
+      routePlaces.map(
+        (p) => [Number(p.latitude), Number(p.longitude)] as [number, number],
+      ),
+    [routePlaces],
   );
 
-  const kmStraight = totalRouteKm(coords);
+  const kmStraight = totalRouteKm(routeCoords);
 
   const { data: yandexRouteData } = useQuery<{
     configured: boolean;
     route: { distanceKm: number; durationMin: number; geometry: [number, number][] } | null;
   }>({
-    queryKey: ["/api/trips", tripId, "yandex-route"],
-    enabled: allRoutePlaces.length >= 2,
+    queryKey: ["/api/trips", tripId, "yandex-route", yandexRouteDayKey],
+    enabled: routePlaces.length >= 2,
+    queryFn: async () => {
+      const q = routeScopeHasDay ? `?day=${selectedDay}` : "";
+      const res = await fetch(toApiUrl(`/api/trips/${tripId}/yandex-route${q}`), {
+        credentials: "include",
+      });
+      if (res.status === 503) {
+        return { configured: false, route: null };
+      }
+      if (!res.ok) {
+        const text = (await res.text()) || res.statusText;
+        throw new Error(`${res.status}: ${text}`);
+      }
+      return res.json();
+    },
   });
 
   const { data: chatRoomData } = useQuery<{ room: { slug: string; title: string }; slug: string }>({
@@ -331,7 +345,9 @@ export default function TripPlannerLayout({
 
   const existingPlaceIds = new Set(waypoints.map((w) => w.placeId));
   const addingStop = addWaypointMutation.isPending || addFromLocationMutation.isPending;
-  const chatHref = chatRoomData?.slug ? `/chat?room=${encodeURIComponent(chatRoomData.slug)}` : "/chat";
+  const chatHref = chatRoomData?.slug
+    ? `/chat?room=${encodeURIComponent(chatRoomData.slug)}&from=${encodeURIComponent(`/trips/${tripId}`)}`
+    : "/chat";
 
   return (
     <div className="space-y-4">
@@ -340,7 +356,56 @@ export default function TripPlannerLayout({
           <h1 className="text-2xl font-bold">{trip.title}</h1>
           <p className="text-muted-foreground text-sm">{trip.destination}</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2 rounded-2xl"
+            onClick={() => {
+              const url = `${window.location.origin}/trips/${tripId}`;
+              void navigator.clipboard.writeText(url);
+              toast({ title: "Ссылка на поездку скопирована" });
+            }}
+          >
+            <Share2 className="h-4 w-4" />
+            Поделиться
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2 rounded-2xl"
+            onClick={() => {
+              void apiRequestJson("POST", `/api/trips/${tripId}/checkin`).then((r) => {
+                if ((r as { alreadyCheckedIn?: boolean }).alreadyCheckedIn) {
+                  toast({ title: "Check-in уже был сегодня" });
+                }
+              }).catch((e: Error) => toast({ title: e.message, variant: "destructive" }));
+            }}
+          >
+            <MapPin className="h-4 w-4" />
+            Check-in
+          </Button>
+          <Button
+            type="button"
+            variant="premium"
+            className="gap-2 rounded-2xl"
+            onClick={() => setCinemaOpen(true)}
+            disabled={waypoints.filter((w) => w.place).length < 2}
+          >
+            <Film className="h-4 w-4" />
+            Trip Cinema
+          </Button>
+        </div>
       </div>
+
+      {cinemaOpen && (
+        <TripCinema
+          trip={trip}
+          tripId={tripId}
+          waypoints={waypoints}
+          onClose={() => setCinemaOpen(false)}
+        />
+      )}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="ait-glass mb-4 flex-wrap h-auto">
@@ -508,7 +573,7 @@ export default function TripPlannerLayout({
                 <TravelMap
                   places={routePlaces}
                   showRoute
-                  routeGeometry={selectedDay === 1 ? yandexRoute?.geometry : undefined}
+                  routeGeometry={yandexRoute?.geometry}
                   height="100%"
                   className="h-full min-h-[420px] rounded-[24px]"
                 />
@@ -559,8 +624,8 @@ export default function TripPlannerLayout({
               <h3 className="font-semibold">Чат группы</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              У каждой поездки есть приватная комната для участников. Присоединившиеся к поездке автоматически
-              попадают в чат.
+              При создании поездки автоматически открывается приватный чат группы. Участников можно было
+              пригласить через @ник; новые попутчики из каталога тоже попадают в чат при присоединении.
             </p>
             <Link href={chatHref}>
               <Button variant="premium">Открыть чат поездки</Button>
@@ -613,7 +678,7 @@ export default function TripPlannerLayout({
             <strong>{totalDays}</strong> дней
           </span>
           <span>
-            <strong>{allRoutePlaces.length}</strong> локаций
+            <strong>{allRoutePlacesCount}</strong> локаций
           </span>
           <span>
             <strong>{km || "—"}</strong> км
@@ -628,7 +693,7 @@ export default function TripPlannerLayout({
             <strong>${budgetMax || "—"}</strong> бюджет
           </span>
         </div>
-        <GradientButton onClick={handleOptimize} disabled={allRoutePlaces.length < 2 || reorderMutation.isPending}>
+        <GradientButton onClick={handleOptimize} disabled={allRoutePlacesCount < 2 || reorderMutation.isPending}>
           {reorderMutation.isPending ? "Оптимизация…" : "Оптимизировать порядок"}
         </GradientButton>
       </div>

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Search, Calendar, Globe, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import FilterChipRow from "@/components/filters/FilterChipRow";
 import { EVENT_TYPE_FILTERS, EVENT_TIME_FILTERS } from "@/lib/filter-config";
@@ -60,7 +60,7 @@ export function Events() {
   const registeredSet = new Set(registrations.eventIds);
 
   const registerMutation = useMutation({
-    mutationFn: (eventId: string) => apiRequest("POST", `/api/events/${eventId}/register`),
+    mutationFn: (eventId: string) => apiRequestJson("POST", `/api/events/${eventId}/register`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events/registrations"] });
       toast({ title: "Вы зарегистрировались!", description: "Вы записаны на мероприятие." });

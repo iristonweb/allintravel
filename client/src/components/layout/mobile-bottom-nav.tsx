@@ -41,7 +41,7 @@ const iconByHref: Record<string, LucideIcon> = {
   "/profile": User,
 };
 
-const walletBadge = "Demo";
+const walletBadge = "AIT";
 
 export default function MobileBottomNav() {
   const [location] = useLocation();

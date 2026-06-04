@@ -1,6 +1,26 @@
 /** Shared navigation config — single source of truth for app shell nav */
 
-export type NavItem = { href: string; label: string };
+import type { LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  Calendar,
+  Hash,
+  Home,
+  Map,
+  MapPin,
+  MessageCircle,
+  Music,
+  Settings,
+  Sparkles,
+  User,
+  PenLine,
+  Users,
+  Wallet,
+} from "lucide-react";
+
+export type NavItem = { href: string; label: string; badge?: string };
+
+export type SidebarNavItem = NavItem & { icon?: LucideIcon };
 
 export const guestAnchors: NavItem[] = [
   { href: "#explore", label: "Исследовать" },
@@ -14,14 +34,14 @@ export const footerAnchors: NavItem[] = [
   { href: "#apps", label: "Приложения" },
 ];
 
-/** Sidebar + mobile drawer: основные разделы (ежедневное использование) */
+/** Sidebar: основные разделы */
 export const sidebarPrimaryNav: NavItem[] = [
   { href: "/", label: "Главная" },
   { href: "/map", label: "Карта" },
   { href: "/trips", label: "Поездки" },
-  { href: "/profile/friends", label: "Друзья" },
+  { href: "/social-feed", label: "Лента" },
+  { href: "/friends", label: "Друзья" },
   { href: "/messages", label: "Сообщения" },
-  { href: "/profile", label: "Профиль" },
 ];
 
 /** Sidebar: каталог и контент */
@@ -29,40 +49,29 @@ export const sidebarDiscoverNav: NavItem[] = [
   { href: "/places", label: "Места" },
   { href: "/events", label: "События" },
   { href: "/blog", label: "Блог" },
-  { href: "/social-feed", label: "Сообщество" },
-  { href: "/chat", label: "Комнаты" },
+  { href: "/chat", label: "Чаты и комнаты" },
   { href: "/profile/music", label: "Моя музыка" },
 ];
 
-/** Sidebar: доп. инструменты */
-export const sidebarExtraNav: NavItem[] = [];
+/** Sidebar: AIT */
+export const sidebarExtraNav: NavItem[] = [
+  { href: "/wallet", label: "AIT Hub", badge: "AIT" },
+];
 
-/** Полное меню для мобильного drawer в шапке (< md, когда сайдбар скрыт) */
+/** Sidebar: аккаунт (без дублирования ссылок из ленты) */
+export const sidebarAccountNav: SidebarNavItem[] = [
+  { href: "/profile", label: "Мой профиль", icon: User },
+  { href: "/profile/edit", label: "Редактировать", icon: PenLine },
+  { href: "/profile/settings", label: "Настройки", icon: Settings },
+];
+
+/** Полное меню для мобильного drawer в шапке */
 export const authenticatedMenuNav: NavItem[] = [
   ...sidebarPrimaryNav,
   ...sidebarDiscoverNav,
   ...sidebarExtraNav,
+  ...sidebarAccountNav.map(({ href, label }) => ({ href, label })),
 ];
-
-/** @deprecated Use sidebarPrimaryNav — kept for imports during migration */
-export const sidebarMainNav = sidebarPrimaryNav;
-
-/** @deprecated Use sidebarDiscoverNav + sidebarExtraNav */
-export const sidebarServiceNav: NavItem[] = [...sidebarDiscoverNav, ...sidebarExtraNav];
-
-/** @deprecated Header no longer duplicates sidebar; use authenticatedMenuNav on mobile */
-export const centerNav: NavItem[] = [
-  { href: "/", label: "Главная" },
-  { href: "/map", label: "Карта" },
-  { href: "/social-feed", label: "Сообщество" },
-  { href: "/trips", label: "Поездки" },
-  { href: "/blog", label: "Блог" },
-];
-
-/** @deprecated All items live in sidebar; mobile uses authenticatedMenuNav */
-export const moreNav: NavItem[] = [...sidebarDiscoverNav, ...sidebarExtraNav, ...sidebarPrimaryNav.filter(
-  (i) => ["/friends", "/messages"].includes(i.href),
-)];
 
 export const mobileMainNav: NavItem[] = [
   { href: "/", label: "Главная" },
@@ -74,10 +83,13 @@ export const mobileMainNav: NavItem[] = [
 export const mobileEcosystemNav: NavItem[] = [
   { href: "/places", label: "Места" },
   { href: "/events", label: "События" },
-  { href: "/social-feed", label: "Сообщество" },
+  { href: "/social-feed", label: "Лента" },
+  { href: "/friends", label: "Друзья" },
   { href: "/chat", label: "Комнаты" },
-  { href: "/profile/music", label: "Моя музыка" },
+  { href: "/wallet", label: "AIT Hub" },
+  { href: "/profile/music", label: "Музыка" },
   { href: "/profile", label: "Профиль" },
+  { href: "/profile/settings", label: "Настройки" },
 ];
 
 /** Landing hash → full path for guest pages without section IDs */

@@ -12,16 +12,21 @@ import {
   Sparkles,
   MessageSquare,
   Music,
+  Settings,
+  PenLine,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   sidebarPrimaryNav,
   sidebarDiscoverNav,
   sidebarExtraNav,
+  sidebarAccountNav,
+  type SidebarNavItem,
 } from "@/lib/nav-config";
 import type { LucideIcon } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
-/** Collapsed rail width — keep in sync with app-shell md:pl-[72px] */
 export const SIDEBAR_WIDTH_COLLAPSED = 72;
 export const SIDEBAR_WIDTH_EXPANDED = 220;
 
@@ -31,18 +36,20 @@ const iconByHref: Record<string, LucideIcon> = {
   "/trips": Calendar,
   "/social-feed": Users,
   "/friends": Users,
-  "/profile/friends": Users,
-  "/profile/music": Music,
   "/messages": MessageCircle,
-  "/profile": User,
   "/places": MapPin,
   "/events": Sparkles,
   "/blog": BookOpen,
   "/wallet": Wallet,
   "/chat": MessageSquare,
+  "/profile/music": Music,
+  "/profile": User,
+  "/profile/edit": PenLine,
+  "/profile/settings": Settings,
+  "/admin": Shield,
 };
 
-type NavItemWithMeta = { href: string; label: string; badge?: string };
+type NavItemWithMeta = { href: string; label: string; badge?: string; icon?: LucideIcon };
 
 function NavItem({
   item,
@@ -51,7 +58,7 @@ function NavItem({
   item: NavItemWithMeta;
   active: boolean;
 }) {
-  const Icon = iconByHref[item.href] ?? MapPin;
+  const Icon = item.icon ?? iconByHref[item.href] ?? MapPin;
   return (
     <Link href={item.href}>
       <span
@@ -100,14 +107,28 @@ function NavItem({
 }
 
 function NavSection({
+  label,
   items,
   activeFn,
 }: {
+  label?: string;
   items: NavItemWithMeta[];
   activeFn: (href: string) => boolean;
 }) {
   return (
     <div className="flex flex-col gap-0.5 w-full">
+      {label && (
+        <p
+          className={cn(
+            "px-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1",
+            "opacity-0 max-h-0 overflow-hidden transition-all duration-200",
+            "group-hover/sidebar:opacity-100 group-hover/sidebar:max-h-8",
+            "group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-h-8",
+          )}
+        >
+          {label}
+        </p>
+      )}
       {items.map((item) => (
         <NavItem key={item.href} item={item} active={activeFn(item.href)} />
       ))}
@@ -130,16 +151,23 @@ function SectionDivider() {
 
 export default function AppIconSidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
 
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
     if (href === "/profile") return location === "/profile";
+    if (href === "/friends") return location === "/friends" || location.startsWith("/profile/friends");
     return location === href || location.startsWith(`${href}/`);
   };
 
   const extraItems: NavItemWithMeta[] = sidebarExtraNav.map((item) =>
-    item.href === "/wallet" ? { ...item, badge: "Demo" } : item,
+    item.href === "/wallet" ? { ...item, badge: item.badge ?? "AIT" } : item,
   );
+
+  const accountItems: NavItemWithMeta[] = [
+    ...sidebarAccountNav,
+    ...(user?.isAdmin ? [{ href: "/admin", label: "Админ", icon: Shield }] : []),
+  ];
 
   return (
     <aside
@@ -155,9 +183,11 @@ export default function AppIconSidebar() {
     >
       <NavSection items={sidebarPrimaryNav} activeFn={isActive} />
       <SectionDivider />
-      <NavSection items={sidebarDiscoverNav} activeFn={isActive} />
+      <NavSection label="Каталог" items={sidebarDiscoverNav} activeFn={isActive} />
       <SectionDivider />
       <NavSection items={extraItems} activeFn={isActive} />
+      <SectionDivider />
+      <NavSection label="Аккаунт" items={accountItems} activeFn={isActive} />
     </aside>
   );
 }

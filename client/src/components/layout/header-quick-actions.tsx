@@ -81,7 +81,7 @@ export default function HeaderQuickActions({
           )}
           <DropdownMenuSeparator className="bg-white/10" />
           <DropdownMenuItem asChild>
-            <Link href="/profile/friends" className="cursor-pointer flex items-center">
+            <Link href="/friends" className="cursor-pointer flex items-center">
               Заявки в друзья
               {friendRequestCount > 0 && (
                 <span className="ml-auto text-xs font-bold text-ait-orange">{friendRequestCount}</span>

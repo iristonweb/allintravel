@@ -8,6 +8,7 @@ import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import GlobalMusicBar from "@/components/music/GlobalMusicBar";
+import AppShellPlayerPadding from "@/components/layout/app-shell-player-padding";
 import BroadcastModal from "@/components/admin/BroadcastModal";
 import { cn } from "@/lib/utils";
 import { useEffect, type ReactNode } from "react";
@@ -45,7 +46,7 @@ export default function AppShell({
         <div className="min-h-screen flex flex-col">
           <AppTopNav />
           {isAuthenticated && <AppIconSidebar />}
-          <div
+          <AppShellPlayerPadding
             className={cn(
               "flex-1",
               !immersive && "pt-20",
@@ -66,7 +67,7 @@ export default function AppShell({
             >
               {children}
             </main>
-          </div>
+          </AppShellPlayerPadding>
           {isAuthenticated && <MobileBottomNav />}
           {isAuthenticated && <GlobalMusicBar />}
           {isAuthenticated && <BroadcastModal />}

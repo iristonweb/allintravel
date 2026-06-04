@@ -57,6 +57,7 @@ export async function notifyUser(input: NotifyInput): Promise<void> {
     body: input.body,
     url: input.link ?? "/",
     tag: `${input.type}-${input.entityId ?? row.id}`,
+    soundKind: "default",
   });
 }
 
@@ -134,6 +135,29 @@ export async function notifyTripJoin(
     body: `${name} присоединился к «${tripTitle}»`,
     link: `/trips/${tripId}`,
     actorId: joiner.id,
+    entityId: tripId,
+  });
+}
+
+export async function notifyTripInvite(
+  inviteeId: string,
+  inviter: User,
+  tripId: string,
+  tripTitle: string,
+  chatSlug?: string | null,
+): Promise<void> {
+  if (inviteeId === inviter.id) return;
+  const name = getUserDisplayLabel(inviter);
+  const link = chatSlug
+    ? `/chat?room=${encodeURIComponent(chatSlug)}`
+    : `/trips/${tripId}`;
+  await notifyUser({
+    userId: inviteeId,
+    type: "group_invite",
+    title: "Приглашение в поездку",
+    body: `${name} добавил(а) вас в «${tripTitle}» — открыт чат группы`,
+    link,
+    actorId: inviter.id,
     entityId: tripId,
   });
 }

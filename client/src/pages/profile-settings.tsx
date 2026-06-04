@@ -21,6 +21,11 @@ import type { UserPrivacySettings } from "@shared/privacy";
 import type { PrivacyAudience } from "@shared/privacy";
 import { Smartphone, Shield, Bell } from "lucide-react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import {
+  isNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+  playNotificationSound,
+} from "@/lib/notification-sound";
 
 const audienceOptions: { value: PrivacyAudience; label: string }[] = [
   { value: "everyone", label: "Все" },
@@ -35,6 +40,7 @@ export function ProfileSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Partial<UserPrivacySettings>>({});
+  const [soundOn, setSoundOn] = useState(() => isNotificationSoundEnabled());
 
   const { data: settings, isLoading } = useQuery<UserPrivacySettings>({
     queryKey: ["/api/settings/privacy"],
@@ -103,7 +109,13 @@ export function ProfileSettings() {
 
   return (
     <AppLayout contentClassName="py-6 max-w-2xl mx-auto">
-      <PageHeader title="Настройки" backHref="/profile" />
+      <PageHeader
+        title="Настройки"
+        breadcrumbs={[
+          { label: "Профиль", href: "/profile" },
+          { label: "Настройки" },
+        ]}
+      />
       {isLoading ? (
         <p className="text-muted-foreground">Загрузка…</p>
       ) : (
@@ -205,6 +217,22 @@ export function ProfileSettings() {
                     <Button type="button" variant="outline" onClick={() => testPush().catch(() => {})}>
                       Тестовое уведомление
                     </Button>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                    <div>
+                      <p className="text-sm font-medium">Звук уведомлений</p>
+                      <p className="text-xs text-muted-foreground">
+                        Короткий сигнал при push, сообщениях и начислении AIT
+                      </p>
+                    </div>
+                    <Switch
+                      checked={soundOn}
+                      onCheckedChange={(v) => {
+                        setSoundOn(v);
+                        setNotificationSoundEnabled(v);
+                        if (v) playNotificationSound("default");
+                      }}
+                    />
                   </div>
                 </>
               )}

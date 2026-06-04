@@ -13,6 +13,7 @@ import { uploadMediaFile } from "@/lib/upload-media";
 import { useToast } from "@/hooks/use-toast";
 import type { UserTrack } from "@shared/schema";
 import { useMusicPlayer, type PlayerTrack } from "@/contexts/MusicPlayerContext";
+import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -170,6 +171,12 @@ function ProfileMusicContent() {
 
   return (
       <div className="max-w-2xl mx-auto space-y-6">
+        <AppBreadcrumbs
+          items={[
+            { label: "Профиль", href: "/profile" },
+            { label: "Моя музыка" },
+          ]}
+        />
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Music2 className="h-6 w-6 text-primary" />

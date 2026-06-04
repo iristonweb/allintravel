@@ -5,9 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Settings, Search, Edit } from "lucide-react";
-import { profileHubLinks, profileMapLink } from "@/lib/profile-hub-links";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
@@ -62,7 +60,10 @@ export function Profile() {
                     <span className="text-muted-foreground">{getUserHandle(user)}</span>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-2 mt-3">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Лента, друзья, чаты и настройки — в меню слева. Здесь только ваш профиль и поиск людей.
+                </p>
+                <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" asChild>
                     <Link href="/profile/edit">
                       <Edit className="h-4 w-4 mr-1" />
@@ -77,7 +78,7 @@ export function Profile() {
                   </Button>
                 </div>
                 <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
-                  <Link href="/profile/friends" className="hover:text-ait-purple transition-colors">
+                  <Link href="/friends" className="hover:text-ait-purple transition-colors">
                     <strong className="text-foreground">{friends.length}</strong> друзей
                   </Link>
                 </div>
@@ -87,7 +88,7 @@ export function Profile() {
               <div className="mt-6 pt-6 border-t border-border/40">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-medium">Друзья</p>
-                  <Link href="/profile/friends" className="text-xs text-ait-purple hover:underline">
+                  <Link href="/friends" className="text-xs text-ait-purple hover:underline">
                     Все ({friends.length})
                   </Link>
                 </div>
@@ -140,45 +141,6 @@ export function Profile() {
             )}
           </CardContent>
         </Card>
-
-        <h2 className="text-lg font-semibold mb-3">Личный кабинет</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {profileHubLinks.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <Card className="h-full hover:border-primary/40 transition-colors cursor-pointer border-border/60">
-                <CardContent className="p-4 flex gap-3 items-start">
-                  <div className="rounded-lg bg-primary/10 p-2">
-                    <item.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-medium flex items-center gap-2">
-                      {item.label}
-                      {item.badge && (
-                        <Badge variant="secondary" className="text-xs">
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-0.5">{item.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-          <Link href={profileMapLink.href}>
-            <Card className="h-full hover:border-primary/40 transition-colors cursor-pointer border-border/60">
-              <CardContent className="p-4 flex gap-3 items-start">
-                <div className="rounded-lg bg-primary/10 p-2">
-                  <profileMapLink.icon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <div className="font-medium">{profileMapLink.label}</div>
-                  <p className="text-sm text-muted-foreground mt-0.5">{profileMapLink.desc}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
       </div>
     </AppLayout>
   );

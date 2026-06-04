@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { ArrowLeft, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
+import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import AppLayout from "@/components/app-layout";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,12 @@ export function BlogPostPage() {
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto">
-        <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-          <Link href="/blog">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            К блогу
-          </Link>
-        </Button>
+        <AppBreadcrumbs
+          items={[
+            { label: "Блог", href: "/blog" },
+            { label: post?.title ?? "Статья" },
+          ]}
+        />
 
         {isLoading && (
           <p className="text-muted-foreground text-center py-12">Загрузка статьи…</p>

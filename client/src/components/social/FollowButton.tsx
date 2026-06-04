@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -21,7 +21,7 @@ export default function FollowButton({ userId, size = "sm" }: FollowButtonProps)
   });
 
   const followMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/follow/${userId}`),
+    mutationFn: () => apiRequestJson("POST", `/api/follow/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/follow/${userId}/check`] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });

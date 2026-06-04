@@ -58,6 +58,20 @@ import {
   notifyChatMessagePinned,
 } from "./notification-service";
 import { registerUserSocket, unregisterUserSocket } from "./realtime-hub";
+import { registerAitRoutes } from "./ait/routes";
+import {
+  grantForChatMessage,
+  grantForDmMessage,
+  grantForFollow,
+  grantForFriendAccepted,
+  grantForPostCommented,
+  grantForPostCreated,
+  grantForPostLiked,
+  tryProfileCompleteBonus,
+  grantSpend,
+  voidAit,
+  type AitGrantResult,
+} from "./ait/hooks";
 
 const updateUserMeSchema = z.object({
   displayName: z.string().max(64).nullable().optional(),
@@ -69,6 +83,7 @@ const updateUserMeSchema = z.object({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  registerAitRoutes(app);
 
   // Geo autocomplete
   app.get("/api/geo/autocomplete", async (req, res) => {
@@ -325,7 +340,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updated = await storage.updateUserMe(userId, patch);
-      res.json(toSelfUser(updated));
+      const aitGrant = await tryProfileCompleteBonus(userId, updated);
+      res.json({ ...toSelfUser(updated), aitGrant: aitGrant ?? null });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
@@ -350,11 +366,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (viewerId === user.id) return res.json(toSelfUser(user));
       const presence = await storage.getPresence(user.id);
       const showOnline = canSeeOnlineStatus(settings, viewerId, user.id, isFriend);
+      const { getUsersWithCreatorBadge } = await import("./ait/perks");
+      const badges = await getUsersWithCreatorBadge([user.id]);
+      const aitStore = await import("./ait/store");
+      const bal = await aitStore.getOrCreateBalance(user.id);
+      const { resolveCreatorRank } = await import("@shared/ait");
       res.json({
         ...toPublicUser(user),
         isOnline: showOnline ? presence?.isOnline ?? false : undefined,
         lastSeenAt: showOnline && settings.showLastSeen ? presence?.lastSeenAt : undefined,
         isFriend,
+        creatorBadge: badges.has(user.id),
+        creatorRank: resolveCreatorRank(bal.lifetimeCreatorEarned),
       });
     } catch (error) {
       console.error("Error fetching user by username:", error);
@@ -411,7 +434,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/presence/heartbeat", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims.sub as string;
+      voidAit(import("./ait/service").then((m) => m.onDailyPulse(userId)));
       const isOnline = req.body?.isOnline !== false;
       const presence = await storage.touchPresence(userId, isOnline);
       res.json(presence);
@@ -487,7 +511,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         placeId: req.params.id,
       });
       const review = await storage.createReview(reviewData);
-      res.status(201).json(review);
+      const hasPhoto = Boolean(review.images?.length);
+      const aitGrant = await grantSpend(userId, hasPhoto ? "review_photo" : "review", {
+        entityType: "place",
+        entityId: req.params.id,
+      });
+      res.status(201).json({ ...review, aitGrant: aitGrant ?? null });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid review data", errors: error.errors });
@@ -559,8 +588,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isYandexRouterConfigured()) {
         return res.status(503).json({ message: "Yandex Router API key not configured" });
       }
+      const dayParam = req.query.day != null ? Number(req.query.day) : null;
       const waypoints = await storage.getTripWaypoints(req.params.id);
-      const points = waypoints
+      const sorted = [...waypoints].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      const filtered =
+        dayParam != null && Number.isFinite(dayParam)
+          ? sorted.filter((w) => w.dayNumber === dayParam)
+          : sorted;
+      const points = filtered
         .filter((w) => w.place?.latitude != null && w.place?.longitude != null)
         .map((w) => ({
           lat: Number(w.place!.latitude),
@@ -925,11 +960,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { parseCreateTripBody } = await import("./trip-validation");
-      const tripData = parseCreateTripBody(req.body, userId);
+      const { tripData, inviteUserIds } = parseCreateTripBody(req.body, userId);
       let trip = await storage.createTrip(tripData);
-      const { ensureTripChatRoom } = await import("./trip-hub");
+      const { ensureTripChatRoom, inviteUsersToTrip } = await import("./trip-hub");
       trip = await ensureTripChatRoom(storage, trip);
-      res.status(201).json(trip);
+      const { invited, skipped } = await inviteUsersToTrip(storage, trip, inviteUserIds, userId);
+      const aitGrant = await grantSpend(userId, "trip_created", { entityType: "trip", entityId: trip.id });
+      let chatSlug: string | null = null;
+      if (trip.chatRoomId) {
+        const room = await storage.getChatRoom(trip.chatRoomId);
+        chatSlug = room?.slug ?? null;
+      }
+      res.status(201).json({
+        ...trip,
+        chatSlug,
+        invites: { invited, skipped },
+        aitGrant: aitGrant ?? null,
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         const first = error.errors[0]?.message ?? "Invalid trip data";
@@ -1025,11 +1072,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.getEvent(req.params.id);
       if (!event) return res.status(404).json({ message: "Event not found" });
       const registration = await storage.registerForEvent(req.params.id, userId);
+      const aitGrant = await grantSpend(userId, "event_register", {
+        entityType: "event",
+        entityId: req.params.id,
+      });
       const registrant = await storage.getUser(userId);
       if (registrant) {
         void notifyEventRegistration(event.organizerId, registrant, event.id, event.title);
       }
-      res.status(201).json(registration);
+      res.status(201).json({ ...registration, aitGrant: aitGrant ?? null });
     } catch (error) {
       console.error("Error registering for event:", error);
       res.status(500).json({ message: "Failed to register" });
@@ -1086,7 +1137,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const body = insertUserTrackSchema.parse({ ...req.body, userId });
       const track = await storage.createUserTrack(body);
-      res.status(201).json(track);
+      const aitGrant = await grantSpend(userId, "music_upload", {
+        entityType: "track",
+        entityId: track.id,
+      });
+      res.status(201).json({ ...track, aitGrant: aitGrant ?? null });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid track data", errors: error.errors });
@@ -1294,6 +1349,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const { broadcastToUser } = await import("./realtime-hub");
       const userIds = await storage.getAllUserIds();
+      const { sendPushToUsers, plainTextPreview } = await import("./push");
+      const preview = plainTextPreview(body.content, 160);
       for (const uid of userIds) {
         broadcastToUser(uid, {
           type: "broadcast_published",
@@ -1304,6 +1361,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
       }
+      void sendPushToUsers(userIds, {
+        title: "Объявление All In Travel",
+        body: preview || "Новое сообщение от команды",
+        url: "/",
+        tag: `broadcast-${broadcast.id}`,
+        soundKind: "default",
+      }).catch((err) => console.error("Broadcast push:", err));
       res.status(201).json(broadcast);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1321,6 +1385,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching broadcasts:", error);
       res.status(500).json({ message: "Failed to fetch broadcasts" });
+    }
+  });
+
+  app.get("/api/admin/ait/transactions", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { adminRecentTransactions } = await import("./ait/admin");
+      const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 40));
+      const rows = await adminRecentTransactions(limit);
+      const enriched = await Promise.all(
+        rows.map(async (t) => {
+          const user = await storage.getUser(t.userId);
+          return {
+            id: t.id,
+            userId: t.userId,
+            wallet: t.wallet,
+            delta: t.delta,
+            reasonCode: t.reasonCode,
+            title: t.title,
+            createdAt: t.createdAt.toISOString(),
+            userLabel: user
+              ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email
+              : t.userId,
+            username: user?.username ?? null,
+          };
+        }),
+      );
+      res.json({ transactions: enriched });
+    } catch (error) {
+      console.error("GET /api/admin/ait/transactions", error);
+      res.status(500).json({ message: "Failed to load transactions" });
+    }
+  });
+
+  app.get("/api/admin/ait/search", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      if (q.length < 2) return res.json({ users: [] });
+      const adminId = req.user.claims.sub as string;
+      const users = await storage.searchUsers(q, 12, { viewerId: adminId });
+      const aitStore = await import("./ait/store");
+      const list = await Promise.all(
+        users.map(async (u) => {
+          const bal = await aitStore.getOrCreateBalance(u.id);
+          return {
+            id: u.id,
+            email: u.email,
+            username: u.username,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            spendBalance: bal.spendBalance,
+            creatorBalance: bal.creatorBalance,
+          };
+        }),
+      );
+      res.json({ users: list });
+    } catch (error) {
+      console.error("GET /api/admin/ait/search", error);
+      res.status(500).json({ message: "Search failed" });
+    }
+  });
+
+  app.get("/api/admin/ait/users/:userId", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { adminGetUserAit } = await import("./ait/admin");
+      const user = await storage.getUser(req.params.userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const ait = await adminGetUserAit(user.id);
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+        ait,
+      });
+    } catch (error) {
+      console.error("GET /api/admin/ait/users/:id", error);
+      res.status(500).json({ message: "Failed to load user AIT" });
+    }
+  });
+
+  app.post("/api/admin/ait/adjust", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub as string;
+      const body = z
+        .object({
+          userId: z.string().min(1),
+          wallet: z.enum(["spend", "creator"]),
+          delta: z.number().int(),
+          note: z.string().max(200).optional(),
+          sendPush: z.boolean().optional(),
+        })
+        .parse(req.body);
+      const { adminAdjustAit } = await import("./ait/admin");
+      const result = await adminAdjustAit(
+        adminId,
+        body.userId,
+        body.wallet,
+        body.delta,
+        body.note ?? "",
+        { sendPush: body.sendPush !== false },
+      );
+      if (!result.ok) return res.status(400).json({ message: result.message });
+      const { adminGetUserAit } = await import("./ait/admin");
+      res.json({ ok: true, grant: result.grant, aitGrant: result.grant ?? null, ait: await adminGetUserAit(body.userId) });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid body" });
+      }
+      console.error("POST /api/admin/ait/adjust", error);
+      res.status(500).json({ message: "Adjust failed" });
+    }
+  });
+
+  app.post("/api/admin/push/user", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const body = z
+        .object({
+          userId: z.string().min(1),
+          title: z.string().min(1).max(120),
+          body: z.string().min(1).max(300),
+          url: z.string().max(200).optional(),
+        })
+        .parse(req.body);
+      const { sendPushToUser } = await import("./push");
+      await sendPushToUser(body.userId, {
+        title: body.title,
+        body: body.body,
+        url: body.url ?? "/",
+        soundKind: "default",
+      });
+      res.json({ ok: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid body" });
+      }
+      res.status(500).json({ message: "Push failed" });
     }
   });
 
@@ -1392,7 +1595,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       await storage.ensureLegacyChatRooms();
       const rooms = await storage.listChatRoomsForUser(userId);
-      res.json(rooms);
+      const { getRoomOwnersWithSpotlight, sortRoomsWithSpotlight } = await import("./ait/perks");
+      const owners = rooms.map((r) => r.createdBy).filter(Boolean) as string[];
+      const spotlight = await getRoomOwnersWithSpotlight(owners);
+      res.json(sortRoomsWithSpotlight(rooms, spotlight));
     } catch (error) {
       console.error("Error listing chat rooms:", error);
       res.status(500).json({ message: "Failed to list rooms" });
@@ -1444,7 +1650,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...(body.slug ? { slug: body.slug } : {}),
           createdBy: userId,
         });
-        res.status(201).json({ room, ...(avatarWarning ? { avatarWarning } : {}) });
+        const aitGrant = await grantSpend(userId, "chat_room_created", {
+          entityType: "chat_room",
+          entityId: room.id,
+        });
+        res.status(201).json({ room, aitGrant: aitGrant ?? null, ...(avatarWarning ? { avatarWarning } : {}) });
       } catch (error) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: "Invalid room data", errors: error.errors });
@@ -1925,9 +2135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         chatRoom: room,
       });
       const savedMessage = await storage.createChatMessage(messageData);
+      const aitGrant = await grantForChatMessage(userId, content, room);
       const sender = await storage.getUser(userId);
       res.status(201).json({
         ...savedMessage,
+        aitGrant: aitGrant ?? null,
         sender: sender
           ? {
               id: sender.id,
@@ -2106,6 +2318,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (accepter) {
           void notifyFriendAccepted(storage, friendship.requesterId, accepter, friendship.id);
         }
+        const aitGrant = await grantForFriendAccepted(
+          friendship.requesterId,
+          friendship.addresseeId,
+        );
+        res.json({ ...friendship, aitGrant: aitGrant ?? null });
+        return;
       }
       res.json(friendship);
     } catch (error) {
@@ -2166,7 +2384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const followerId = req.user.claims.sub;
       const followingId = req.params.userId;
       const follow = await storage.followUser(followerId, followingId);
-      res.status(201).json(follow);
+      const aitGrant = await grantForFollow(followerId, followingId);
+      res.status(201).json({ ...follow, aitGrant: aitGrant ?? null });
     } catch (error) {
       console.error("Error following user:", error);
       res.status(500).json({ message: "Failed to follow user" });
@@ -2222,11 +2441,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: mediaError });
       }
       const message = await storage.sendPrivateMessage(messageData);
+      const aitGrant = await grantForDmMessage(senderId, message.content, receiverId);
       const sender = await storage.getUser(senderId);
       if (sender) {
         void notifyNewMessage(receiverId, sender, message.content);
       }
-      res.status(201).json(message);
+      res.status(201).json({ ...message, aitGrant: aitGrant ?? null });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid message data", errors: error.errors });
@@ -2420,7 +2640,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const postData = parseCreateTravelPostBody(req.body, userId);
       const post = await storage.createTravelPost(postData);
-      res.status(201).json(post);
+      const aitGrant = await grantForPostCreated(
+        userId,
+        post.format ?? "post",
+        post.content,
+        post.images,
+        post.id,
+      );
+      res.status(201).json({ ...post, aitGrant: aitGrant ?? null });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid post data", errors: error.errors });
@@ -2443,6 +2670,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: Number(limit),
         offset: Number(offset),
       });
+      const {
+        getActiveBoostedPostIds,
+        getUsersWithCreatorBadge,
+        sortPostsWithBoosts,
+      } = await import("./ait/perks");
+      const boosted = await getActiveBoostedPostIds();
       const enriched = await Promise.all(posts.map(async (post) => {
         const author = post.userId ? await storage.getUser(post.userId) : null;
         const likesCount = await storage.getPostLikesCount(post.id);
@@ -2454,9 +2687,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           likesCount,
           commentsCount,
           isLiked,
+          isBoosted: boosted.has(post.id),
         };
       }));
-      res.json(enriched);
+      const authorIds = enriched.map((p) => p.userId).filter(Boolean) as string[];
+      const badges = await getUsersWithCreatorBadge(authorIds);
+      const withBadges = enriched.map((p) => ({
+        ...p,
+        creatorBadge: p.userId ? badges.has(p.userId) : false,
+      }));
+      res.json(sortPostsWithBoosts(withBadges, boosted));
     } catch (error) {
       console.error("Error fetching posts:", error);
       res.status(500).json({ message: "Failed to fetch posts" });
@@ -2528,8 +2768,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const postId = req.params.id;
+      const post = await storage.getTravelPost(postId);
       const like = await storage.likePost(userId, postId);
-      res.status(201).json(like);
+      let aitGrant: AitGrantResult | null = null;
+      if (post?.userId) {
+        const g = await grantForPostLiked(userId, post.userId, postId);
+        aitGrant = g.authorGrant;
+      }
+      res.status(201).json({ ...like, aitGrant });
     } catch (error) {
       console.error("Error liking post:", error);
       res.status(500).json({ message: "Failed to like post" });
@@ -2558,7 +2804,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const commentData = insertPostCommentSchema.parse({ ...req.body, userId, postId });
       const comment = await storage.addPostComment(commentData);
-      res.status(201).json(comment);
+      let aitGrant: AitGrantResult | null = null;
+      if (post.userId) {
+        const g = await grantForPostCommented(userId, post.userId, postId, comment.content);
+        aitGrant = g.commenterGrant;
+      }
+      res.status(201).json({ ...comment, aitGrant });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid comment data", errors: error.errors });

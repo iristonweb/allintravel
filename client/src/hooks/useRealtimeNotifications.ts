@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 import type { AppNotification } from "@shared/notification-types";
+import { playNotificationSound } from "@/lib/notification-sound";
 
 const isVercelHost =
   typeof window !== "undefined" &&
@@ -31,18 +32,24 @@ export function useRealtimeNotifications() {
           queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/received"] });
+          playNotificationSound("default");
           toast({
             title: data.notification.title,
             description: data.notification.body,
           });
         }
         if (data.type === "new_message") {
+          playNotificationSound("default");
           queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
         }
         if (data.type === "broadcast_published") {
+          playNotificationSound("default");
           queryClient.invalidateQueries({ queryKey: ["/api/broadcasts/pending"] });
+        }
+        if (data.type === "ait_grant") {
+          playNotificationSound("ait");
         }
       } catch {
         /* ignore */
