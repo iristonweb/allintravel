@@ -57,8 +57,16 @@ export default function AppTopNav() {
   const moreItems = [
     { href: "/places", label: "Места" },
     { href: "/events", label: "События" },
+    { href: "/blog", label: "Блог" },
+    { href: "/wallet", label: "Кошелёк (Demo)" },
     { href: "/friends", label: "Друзья" },
-    { href: "/chat", label: "Чаты" },
+    { href: "/messages", label: "Чаты" },
+  ];
+
+  const homeAnchors = [
+    { href: "#explore", label: "Исследовать" },
+    { href: "#community", label: "Сообщество" },
+    { href: "#apps", label: "Приложения" },
   ];
 
   const logout = async () => {
@@ -69,13 +77,36 @@ export default function AppTopNav() {
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location === href || location.startsWith(`${href}/`);
 
+  const guestNav = [
+    { href: "#explore", label: "Исследовать" },
+    { href: "#community", label: "Сообщество" },
+    { href: "#apps", label: "Приложения" },
+  ];
+
+  const scrollToSection = (hash: string) => {
+    const id = hash.replace("#", "");
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   if (!isAuthenticated) {
     return (
       <header className="fixed top-0 z-50 w-full ait-glass-nav h-20">
-        <div className="max-w-7xl mx-auto flex h-20 items-center justify-between px-4 lg:px-8">
-          <BrandLogo />
+        <div className="max-w-7xl mx-auto flex h-20 items-center justify-between gap-4 px-4 lg:px-8">
+          <BrandLogo variant="nav" showText />
+          <nav className="hidden sm:flex items-center gap-1">
+            {guestNav.map((item) => (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => scrollToSection(item.href)}
+                className="px-3 py-2 rounded-full text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
           <Link href="/login">
-            <Button className="ait-btn-glow rounded-2xl border-0 text-white font-semibold px-6">
+            <Button className="ait-btn-glow rounded-2xl border-0 text-white font-semibold px-6 shrink-0">
               Войти
             </Button>
           </Link>
@@ -87,7 +118,22 @@ export default function AppTopNav() {
   return (
     <header className="fixed top-0 z-50 w-full ait-glass-nav h-20">
       <div className="max-w-[1600px] mx-auto flex h-20 items-center gap-4 px-4 lg:px-8">
-        <BrandLogo />
+        <BrandLogo variant="nav" showText />
+
+        {location === "/" && (
+          <nav className="hidden lg:flex xl:hidden items-center gap-1 shrink-0">
+            {homeAnchors.map((item) => (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => scrollToSection(item.href)}
+                className="px-3 py-1.5 rounded-full text-xs text-slate-400 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap"
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
         <nav className="hidden xl:flex items-center justify-center flex-1">
           <div className="ait-nav-pill rounded-full flex items-center gap-0.5 px-2 py-1.5">

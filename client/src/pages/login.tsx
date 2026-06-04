@@ -40,7 +40,7 @@ export function Login() {
       <Card className="w-full max-w-md ait-glass-strong ait-gradient-border">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <BrandLogo href={null} className="justify-center" />
+            <BrandLogo href={null} variant="nav" className="justify-center" />
           </div>
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-[0.25em] text-ait-purple font-medium">

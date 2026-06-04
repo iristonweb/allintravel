@@ -1,4 +1,5 @@
 import AppTopNav from "@/components/layout/app-top-nav";
+import AppIconSidebar from "@/components/layout/app-icon-sidebar";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
 import AmbientBackground from "@/components/premium/AmbientBackground";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +27,7 @@ export default function AppShell({
     <AmbientBackground showOrbs={!immersive}>
       <div className="min-h-screen flex flex-col">
         <AppTopNav />
+        {isAuthenticated && <AppIconSidebar />}
         <div
           className={cn(
             "flex-1",
@@ -33,6 +35,7 @@ export default function AppShell({
             immersive && "pt-0",
             isAuthenticated && !immersive && "pb-24 md:pb-8",
             isAuthenticated && immersive && "pb-24 md:pb-0",
+            isAuthenticated && "md:pl-[72px]",
             className,
           )}
         >
@@ -40,6 +43,7 @@ export default function AppShell({
             className={cn(
               !fullWidth && !immersive && "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
               (fullWidth || immersive) && "w-full",
+              isAuthenticated && immersive && "md:pl-0",
               contentClassName,
             )}
           >

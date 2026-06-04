@@ -22,6 +22,7 @@ import { Chat } from "@/pages/chat";
 import { Places } from "@/pages/places";
 import MapPage from "@/pages/map";
 import Blog from "@/pages/blog";
+import { Wallet } from "@/pages/wallet";
 import NotFound from "@/pages/not-found";
 import PremiumBackground from "@/components/premium/PremiumBackground";
 import { AnimatePresence, motion } from "framer-motion";
@@ -83,6 +84,7 @@ function Router() {
           {isAuthenticated && <Route path="/trips/:id" component={TripDetail} />}
           {isAuthenticated && <Route path="/events" component={Events} />}
           {isAuthenticated && <Route path="/chat" component={Chat} />}
+          {isAuthenticated && <Route path="/wallet" component={Wallet} />}
           {isAuthenticated && <Route component={NotFound} />}
         </Switch>
       </motion.div>

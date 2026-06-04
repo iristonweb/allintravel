@@ -11,12 +11,13 @@ import {
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import GlassCard from "@/components/brand/glass-card";
 
 const services = [
   { label: "Отели", icon: Building2, href: "/places?type=hotel" },
   { label: "Рестораны", icon: Utensils, href: "/places?type=restaurant" },
-  { label: "Криптокошелёк", icon: Wallet, soon: true },
+  { label: "Криптокошелёк", icon: Wallet, href: "/wallet", authOnly: true },
   { label: "Транспорт", icon: Car, soon: true },
   { label: "Страховка", icon: Shield, soon: true },
 ];
@@ -28,6 +29,7 @@ type HomeQuickActionsProps = {
 export default function HomeQuickActions({ defaultSearch = "" }: HomeQuickActionsProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState(defaultSearch);
 
   const searchHref = useMemo(() => {
@@ -51,11 +53,16 @@ export default function HomeQuickActions({ defaultSearch = "" }: HomeQuickAction
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-        {services.map(({ label, icon: Icon, href, soon }) => (
+        {services.map(({ label, icon: Icon, href, soon, authOnly }) => (
           <button
             key={label}
             type="button"
             onClick={() => {
+              if (authOnly && !isAuthenticated) {
+                toast({ title: "Войдите", description: "Кошелёк доступен после входа." });
+                navigate("/login");
+                return;
+              }
               if (soon) {
                 toast({ title: "Скоро", description: `${label} появится в следующем обновлении.` });
                 return;

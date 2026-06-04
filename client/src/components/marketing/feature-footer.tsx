@@ -1,6 +1,7 @@
 import { Headphones, Map, Shield, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 
 const features = [
   { icon: Sparkles, label: "Персональные рекомендации", color: "text-ait-purple" },
@@ -10,11 +11,18 @@ const features = [
   { icon: Users, label: "Сообщество единомышленников", color: "text-ait-violet" },
 ];
 
+const anchorLinks = [
+  { href: "#explore", label: "Карта и маршруты" },
+  { href: "#community", label: "Лента" },
+  { href: "#apps", label: "Приложения" },
+];
+
 type FeatureFooterProps = {
   className?: string;
+  showAnchors?: boolean;
 };
 
-export default function FeatureFooter({ className }: FeatureFooterProps) {
+export default function FeatureFooter({ className, showAnchors = false }: FeatureFooterProps) {
   return (
     <section
       className={cn(
@@ -22,7 +30,27 @@ export default function FeatureFooter({ className }: FeatureFooterProps) {
         className,
       )}
     >
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 py-12 space-y-10">
+        {showAnchors && (
+          <div className="flex flex-wrap justify-center gap-4 text-sm">
+            {anchorLinks.map((link) => (
+              <button
+                key={link.href}
+                type="button"
+                onClick={() => {
+                  const id = link.href.replace("#", "");
+                  document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="text-slate-400 hover:text-ait-purple transition-colors"
+              >
+                {link.label}
+              </button>
+            ))}
+            <Link href="/login" className="text-ait-orange hover:underline font-medium">
+              Войти
+            </Link>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8">
           {features.map(({ icon: Icon, label, color }, i) => (
             <motion.div

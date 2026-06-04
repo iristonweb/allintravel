@@ -13,7 +13,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       <div className="min-h-screen flex flex-col">
         <AppTopNav />
         <div className="flex-1 pt-20">{children}</div>
-        <FeatureFooter />
+        <FeatureFooter showAnchors />
       </div>
     </AmbientBackground>
   );

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { feedModeFromQuery, filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,23 @@ export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [feedMode, setFeedMode] = useState<"all" | "following" | "popular">("all");
+  const [feedMode, setFeedMode] = useState<FeedMode>(() =>
+    feedModeFromQuery(new URLSearchParams(window.location.search).get("mode")),
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const next = feedModeFromQuery(params.get("mode"));
+    setFeedMode(next);
+  }, []);
+
+  const setFeedModeWithUrl = (mode: FeedMode) => {
+    setFeedMode(mode);
+    const url = new URL(window.location.href);
+    if (mode === "all") url.searchParams.delete("mode");
+    else url.searchParams.set("mode", mode);
+    window.history.replaceState({}, "", url.pathname + url.search);
+  };
   const [contentFormat, setContentFormat] = useState<"feed" | "stories" | "reels" | "journals">("feed");
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -49,10 +66,7 @@ export function SocialFeed() {
     enabled: isAuthenticated && (feedMode !== "following" || !!user?.id),
   });
 
-  const displayedPosts = useMemo(() => {
-    if (feedMode !== "popular") return posts;
-    return [...posts].sort((a, b) => (b.likesCount ?? 0) - (a.likesCount ?? 0));
-  }, [posts, feedMode]);
+  const displayedPosts = useMemo(() => filterPostsForFeedMode(posts, feedMode), [posts, feedMode]);
 
   const createPostMutation = useMutation({
     mutationFn: (postData: { title: string; content: string; location: string; tags: string[]; isPublic: boolean }) =>
@@ -177,7 +191,7 @@ export function SocialFeed() {
             variant={feedMode === "all" ? "default" : "ghost"}
             size="sm"
             className={feedMode === "all" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
-            onClick={() => { setFeedMode("all"); setActiveTag(null); }}
+            onClick={() => { setFeedModeWithUrl("all"); setActiveTag(null); }}
           >
             Лента
           </Button>
@@ -185,7 +199,7 @@ export function SocialFeed() {
             variant={feedMode === "following" ? "default" : "ghost"}
             size="sm"
             className={feedMode === "following" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
-            onClick={() => { setFeedMode("following"); setActiveTag(null); }}
+            onClick={() => { setFeedModeWithUrl("following"); setActiveTag(null); }}
           >
             Подписки
           </Button>
@@ -193,7 +207,7 @@ export function SocialFeed() {
             variant={feedMode === "popular" ? "default" : "ghost"}
             size="sm"
             className={feedMode === "popular" ? "rounded-full bg-ait-gradient-cta text-white border-0" : "rounded-full"}
-            onClick={() => { setFeedMode("popular"); setActiveTag(null); }}
+            onClick={() => { setFeedModeWithUrl("popular"); setActiveTag(null); }}
           >
             Популярное
           </Button>
