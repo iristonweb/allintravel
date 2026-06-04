@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import MapboxMap from "@/components/maps/MapboxMap";
+import TravelMap from "@/components/maps/TravelMap";
 import GlassCard from "@/components/brand/glass-card";
 import GradientButton from "@/components/brand/gradient-button";
 import { Button } from "@/components/ui/button";
@@ -260,7 +260,7 @@ export default function TripPlannerLayout({
 
             <GlassCard strong className="p-0 overflow-hidden min-h-[420px] ait-gradient-border">
               {routePlaces.length > 0 ? (
-                <MapboxMap
+                <TravelMap
                   places={routePlaces}
                   showRoute
                   height="100%"

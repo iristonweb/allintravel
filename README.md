@@ -29,6 +29,20 @@ npm run db:seed
 
 Без `DATABASE_URL` используется in-memory хранилище (данные сбрасываются при перезапуске).
 
+## Яндекс.Карты и Геокодер (опционально)
+
+В `.env` (см. `.env.example`):
+
+| Переменная | Где | Назначение |
+|------------|-----|------------|
+| `VITE_YANDEX_MAPS_API_KEY` | клиент (Vite) | JavaScript API карт — `/map`, планировщик |
+| `YANDEX_GEOCODER_API_KEY` | сервер | Suggest + Geocoder для поля «Куда?» |
+
+Приоритет карты: **Яндекс** → Mapbox → Leaflet.  
+Приоритет подсказок: локальная БД → **Яндекс** → Nominatim.
+
+Ключи берутся в [Кабинете разработчика Яндекс](https://developer.tech.yandex.ru/). Не коммитьте ключи в git.
+
 ## Деплой на Vercel
 
 1. Подключить репозиторий [iristonweb/allintravel](https://github.com/iristonweb/allintravel) на [Vercel](https://vercel.com)
@@ -50,6 +64,8 @@ npm run db:seed
 | `VAPID_PUBLIC_KEY` | нет | `npx web-push generate-vapid-keys` |
 | `VAPID_PRIVATE_KEY` | нет | то же |
 | `VAPID_SUBJECT` | нет | `mailto:you@example.com` |
+| `VITE_YANDEX_MAPS_API_KEY` | нет | JavaScript API Яндекс.Карт |
+| `YANDEX_GEOCODER_API_KEY` | нет | Геокодер / Suggest (сервер) |
 
 `NODE_ENV` и `VERCEL` Vercel выставляет сам. **Не коммитьте** `.env` в репозиторий.
 

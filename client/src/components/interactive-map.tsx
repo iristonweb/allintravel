@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import MapboxMap, { type MapboxPlace } from "@/components/maps/MapboxMap";
+import TravelMap, { type TravelMapPlace } from "@/components/maps/TravelMap";
 import { cn } from "@/lib/utils";
 
 interface InteractiveMapProps {
-  places: MapboxPlace[];
-  onPlaceClick?: (place: MapboxPlace) => void;
+  places: TravelMapPlace[];
+  onPlaceClick?: (place: TravelMapPlace) => void;
   fullHeight?: boolean;
 }
 
@@ -45,7 +45,7 @@ export function InteractiveMap({ places = [], onPlaceClick, fullHeight }: Intera
           </Button>
         ))}
       </div>
-      <MapboxMap
+      <TravelMap
         places={filteredPlaces}
         height={fullHeight ? "100%" : "28rem"}
         onPlaceClick={onPlaceClick}

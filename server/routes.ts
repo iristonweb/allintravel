@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, getSession, type SessionUser } from "./auth";
 import passport from "passport";
 import { allowGeoRequest, nominatimAutocomplete } from "./geo/nominatim";
+import { isYandexGeocoderConfigured, yandexAutocomplete } from "./geo/yandex";
 import { 
   insertPlaceSchema, 
   insertReviewSchema, 
@@ -58,10 +59,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Fallback: OpenStreetMap Nominatim (no keys). Keep for dev / no-DB setups.
       const acceptLanguage =
         (req.headers["accept-language"] as string | undefined) ??
         (typeof req.query.lang === "string" ? req.query.lang : undefined);
+
+      if (isYandexGeocoderConfigured()) {
+        try {
+          const items = await yandexAutocomplete({ q, limit, acceptLanguage: acceptLanguage ?? null });
+          if (items.length > 0) return res.json(items);
+        } catch (e) {
+          console.warn("Yandex geocoder autocomplete failed; falling back.", e);
+        }
+      }
 
       const items = await nominatimAutocomplete({ q, limit, acceptLanguage: acceptLanguage ?? null });
       return res.json(items);
