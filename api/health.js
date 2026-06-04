@@ -56,6 +56,8 @@ __export(schema_exports, {
   tripWaypointsRelations: () => tripWaypointsRelations,
   trips: () => trips,
   tripsRelations: () => tripsRelations,
+  updateTravelPostSchema: () => updateTravelPostSchema,
+  updateUserProfileSchema: () => updateUserProfileSchema,
   userFavorites: () => userFavorites,
   userFavoritesRelations: () => userFavoritesRelations,
   userFollows: () => userFollows,
@@ -80,6 +82,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
 var countries = pgTable(
   "countries",
   {
@@ -440,6 +443,26 @@ var insertTravelPostSchema = createInsertSchema(travelPosts).omit({
   createdAt: true,
   updatedAt: true
 });
+var updateTravelPostSchema = z.object({
+  title: z.string().max(255).optional(),
+  content: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  location: z.string().max(255).nullable().optional(),
+  latitude: z.string().nullable().optional(),
+  longitude: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  isPublic: z.boolean().optional()
+}).strict();
+var updateUserProfileSchema = z.object({
+  bio: z.string().nullable().optional(),
+  location: z.string().max(255).nullable().optional(),
+  website: z.string().max(500).nullable().optional(),
+  travelStyle: z.string().max(100).nullable().optional(),
+  favoriteDestinations: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
+  interests: z.array(z.string()).optional(),
+  isPublic: z.boolean().optional()
+}).strict();
 var insertPostLikeSchema = createInsertSchema(postLikes).omit({
   id: true,
   createdAt: true
@@ -506,7 +529,6 @@ var pool = new Proxy({}, {
 var config = { maxDuration: 30 };
 async function handler(_req, res) {
   let database = false;
-  let dbError;
   if (process.env.DATABASE_URL) {
     try {
       const db2 = getDb();
@@ -514,19 +536,11 @@ async function handler(_req, res) {
         await db2.execute(sql2`SELECT 1`);
         database = true;
       }
-    } catch (e) {
-      dbError = e instanceof Error ? e.message : String(e);
+    } catch {
+      database = false;
     }
   }
-  res.status(200).json({
-    ok: true,
-    lite: true,
-    vercel: Boolean(process.env.VERCEL),
-    databaseUrl: Boolean(process.env.DATABASE_URL),
-    database,
-    dbError,
-    sessionSecret: Boolean(process.env.SESSION_SECRET)
-  });
+  res.status(200).json({ ok: true, database });
 }
 export {
   config,

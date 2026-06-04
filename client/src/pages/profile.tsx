@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import AppLayout from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -313,6 +314,69 @@ export function Profile() {
               </AlertDescription>
             </Alert>
           )}
+
+          <Card className="mb-6 border-border/60">
+            <CardHeader>
+              <CardTitle className="text-lg">Данные и конфиденциальность</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-3">
+              <Button variant="outline" asChild>
+                <Link href="/privacy">Политика конфиденциальности</Link>
+              </Button>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/account/export", { credentials: "include" });
+                    if (!res.ok) throw new Error("Export failed");
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `all-in-travel-export.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast({ title: "Экспорт загружен" });
+                  } catch {
+                    toast({
+                      title: "Не удалось экспортировать данные",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Скачать мои данные
+              </Button>
+              <Button
+                variant="destructive"
+                type="button"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      "Удалить аккаунт безвозвратно? Все посты, сообщения и поездки будут удалены.",
+                    )
+                  ) {
+                    return;
+                  }
+                  try {
+                    const res = await apiRequest("DELETE", "/api/account");
+                    if (!res.ok) throw new Error("Delete failed");
+                    queryClient.clear();
+                    navigate("/");
+                    window.location.reload();
+                  } catch {
+                    toast({
+                      title: "Не удалось удалить аккаунт",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                Удалить аккаунт
+              </Button>
+            </CardContent>
+          </Card>
 
           {/* Edit profile form */}
           {isEditing && (

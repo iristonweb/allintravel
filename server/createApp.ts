@@ -1,22 +1,28 @@
 import "dotenv/config";
 import { createServer, type Server } from "http";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { initAppStorage } from "./storage";
 import { setupUploadRoutes } from "./upload";
 import { setupPushRoutes } from "./push";
+import { isProductionEnv, redactForLog } from "./security";
 
 const INIT_TIMEOUT_MS = 12_000;
 
 export async function createApp(): Promise<{ app: Express; server: Server }> {
   const app = express();
+  app.use(
+    helmet({
+      contentSecurityPolicy: isProductionEnv() ? undefined : false,
+    }),
+  );
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
   // Health check before heavy init (must respond even if DB is slow)
   app.get("/api/health", async (_req, res) => {
-    let dbOk = false;
-    let dbError: string | undefined;
+    let database = false;
 
     if (process.env.DATABASE_URL) {
       try {
@@ -28,21 +34,14 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
             db.execute(sql`SELECT 1`),
             new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 5000)),
           ]);
-          dbOk = true;
+          database = true;
         }
-      } catch (e) {
-        dbError = e instanceof Error ? e.message : String(e);
+      } catch {
+        database = false;
       }
     }
 
-    res.json({
-      ok: true,
-      vercel: Boolean(process.env.VERCEL),
-      databaseUrl: Boolean(process.env.DATABASE_URL),
-      database: dbOk,
-      dbError,
-      sessionSecret: Boolean(process.env.SESSION_SECRET),
-    });
+    res.json({ ok: true, database });
   });
 
   app.use((req, res, next) => {
@@ -61,7 +60,7 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
       if (path.startsWith("/api")) {
         let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
         if (capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+          logLine += ` :: ${JSON.stringify(redactForLog(capturedJsonResponse))}`;
         }
         if (logLine.length > 80) {
           logLine = logLine.slice(0, 79) + "…";

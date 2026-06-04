@@ -449,6 +449,15 @@ export class PgStorage implements IStorage {
     return row;
   }
 
+  async getTripWaypoint(waypointId: string): Promise<TripWaypoint | undefined> {
+    const [row] = await this.db
+      .select()
+      .from(tripWaypoints)
+      .where(eq(tripWaypoints.id, waypointId))
+      .limit(1);
+    return row;
+  }
+
   async updateTripWaypoint(
     waypointId: string,
     data: { orderIndex?: number; dayNumber?: number },
@@ -596,6 +605,15 @@ export class PgStorage implements IStorage {
       .set({ ...profile, updatedAt: new Date() })
       .where(eq(userProfiles.userId, userId))
       .returning();
+    return row;
+  }
+
+  async getFriendshipById(friendshipId: string): Promise<Friendship | undefined> {
+    const [row] = await this.db
+      .select()
+      .from(friendships)
+      .where(eq(friendships.id, friendshipId))
+      .limit(1);
     return row;
   }
 
@@ -884,5 +902,24 @@ export class PgStorage implements IStorage {
 
   async getUserTrips(userId: string): Promise<Trip[]> {
     return this.getTrips({ userId });
+  }
+
+  async deleteUserAccount(userId: string): Promise<void> {
+    await this.db.delete(users).where(eq(users.id, userId));
+  }
+
+  async exportUserData(userId: string): Promise<Record<string, unknown>> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    const { passwordHash: _pw, ...userSafe } = user;
+    return {
+      exportedAt: new Date().toISOString(),
+      user: userSafe,
+      profile: (await this.getUserProfile(userId)) ?? null,
+      trips: await this.getUserTrips(userId),
+      posts: await this.getTravelPosts({ userId }),
+      reviews: await this.getReviewsByUser(userId),
+      favorites: await this.getUserFavorites(userId),
+    };
   }
 }

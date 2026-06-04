@@ -431,6 +431,34 @@ export const insertTravelPostSchema = createInsertSchema(travelPosts).omit({
   updatedAt: true,
 });
 
+/** Allowed fields for PUT /api/posts/:id (no userId / timestamps). */
+export const updateTravelPostSchema = z
+  .object({
+    title: z.string().max(255).optional(),
+    content: z.string().optional(),
+    images: z.array(z.string()).optional(),
+    location: z.string().max(255).nullable().optional(),
+    latitude: z.string().nullable().optional(),
+    longitude: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
+    isPublic: z.boolean().optional(),
+  })
+  .strict();
+
+/** Allowed fields for PUT /api/profile (no userId / id). */
+export const updateUserProfileSchema = z
+  .object({
+    bio: z.string().nullable().optional(),
+    location: z.string().max(255).nullable().optional(),
+    website: z.string().max(500).nullable().optional(),
+    travelStyle: z.string().max(100).nullable().optional(),
+    favoriteDestinations: z.array(z.string()).optional(),
+    languages: z.array(z.string()).optional(),
+    interests: z.array(z.string()).optional(),
+    isPublic: z.boolean().optional(),
+  })
+  .strict();
+
 export const insertPostLikeSchema = createInsertSchema(postLikes).omit({
   id: true,
   createdAt: true,

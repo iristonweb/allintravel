@@ -6,6 +6,8 @@ import { isDatabaseConfigured } from "./db";
 import { hashPassword, isPasswordLongEnough, verifyPassword } from "./password";
 import { resolveIsAdmin } from "./admin";
 import { toSessionUser, type SessionUser } from "./auth-session";
+import { authLoginLimiter } from "./rate-limit";
+import { isProductionEnv } from "./security";
 
 async function syncAdminRole(user: NonNullable<Awaited<ReturnType<typeof storage.getUser>>>) {
   if (!resolveIsAdmin(user.email) || user.isAdmin) return user;
@@ -135,7 +137,7 @@ export function registerLoginRoutes(app: Express): void {
     res.redirect("/login");
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLoginLimiter, async (req, res) => {
     const email = String(req.body?.email ?? "").trim();
     const password = String(req.body?.password ?? "");
     const redirectTo = safeRedirect(
@@ -150,8 +152,10 @@ export function registerLoginRoutes(app: Express): void {
       return res.status(500).json({
         ok: false,
         error: "server",
-        code: result.code ?? "UNKNOWN",
-        message: result.message,
+        code: isProductionEnv() ? "SERVER" : (result.code ?? "UNKNOWN"),
+        message: isProductionEnv()
+          ? "Временная ошибка сервера. Попробуйте позже."
+          : result.message,
       });
     }
 
@@ -170,7 +174,7 @@ export function registerLoginRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", authLoginLimiter, (req, res, next) => {
     const redirectTo = safeRedirect(
       typeof req.query.redirect === "string" ? req.query.redirect : "/",
     );

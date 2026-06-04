@@ -4,8 +4,9 @@ import connectPgSimple from "connect-pg-simple";
 import createMemoryStore from "memorystore";
 import type { Express } from "express";
 import { getSessionPool } from "./db";
+import { resolveSessionSecret } from "./security";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
+const SESSION_SECRET = resolveSessionSecret();
 const PgSession = connectPgSimple(session);
 const MemoryStore = createMemoryStore(session);
 

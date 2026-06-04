@@ -1,4 +1,5 @@
 import { parseChatMessage } from "@/lib/chat-message";
+import { isSafeChatMediaUrl } from "@/lib/safe-media-url";
 import { cn } from "@/lib/utils";
 
 type MessageContentProps = {
@@ -16,6 +17,7 @@ export default function MessageContent({ content, className, compact }: MessageC
       {parts.map((part, i) => {
         if (part.type === "gif") {
           if (compact) return <span key={i}>GIF</span>;
+          if (!isSafeChatMediaUrl(part.url)) return <span key={i}>[GIF]</span>;
           return (
             <img
               key={i}
@@ -28,6 +30,7 @@ export default function MessageContent({ content, className, compact }: MessageC
         }
         if (part.type === "sticker") {
           if (compact) return <span key={i}>Стикер</span>;
+          if (!isSafeChatMediaUrl(part.url)) return <span key={i}>[Стикер]</span>;
           return (
             <img
               key={i}

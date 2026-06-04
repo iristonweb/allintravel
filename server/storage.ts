@@ -86,6 +86,7 @@ export interface IStorage {
   getTripParticipationsByUser(userId: string): Promise<string[]>;
   getTripWaypoints(tripId: string): Promise<(TripWaypoint & { place: Place | null })[]>;
   addTripWaypoint(tripId: string, placeId: string, orderIndex?: number, dayNumber?: number): Promise<TripWaypoint>;
+  getTripWaypoint(waypointId: string): Promise<TripWaypoint | undefined>;
   updateTripWaypoint(waypointId: string, data: { orderIndex?: number; dayNumber?: number }): Promise<TripWaypoint | undefined>;
   removeTripWaypoint(waypointId: string): Promise<void>;
 
@@ -114,6 +115,7 @@ export interface IStorage {
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateUserProfile(userId: string, profile: Partial<InsertUserProfile>): Promise<UserProfile>;
 
+  getFriendshipById(friendshipId: string): Promise<Friendship | undefined>;
   sendFriendRequest(requesterId: string, addresseeId: string): Promise<Friendship>;
   respondToFriendRequest(friendshipId: string, status: 'accepted' | 'rejected'): Promise<Friendship>;
   getFriends(userId: string): Promise<User[]>;
@@ -157,6 +159,9 @@ export interface IStorage {
   isPostLikedByUser(userId: string, postId: string): Promise<boolean>;
   getPostCommentsCount(postId: string): Promise<number>;
   getUserTrips(userId: string): Promise<Trip[]>;
+
+  deleteUserAccount(userId: string): Promise<void>;
+  exportUserData(userId: string): Promise<Record<string, unknown>>;
 }
 
 function genId(): string {
@@ -724,6 +729,10 @@ export class MemStorage implements IStorage {
     return waypoint;
   }
 
+  async getTripWaypoint(waypointId: string): Promise<TripWaypoint | undefined> {
+    return this.tripWaypoints.get(waypointId);
+  }
+
   async updateTripWaypoint(
     waypointId: string,
     data: { orderIndex?: number; dayNumber?: number },
@@ -883,6 +892,10 @@ export class MemStorage implements IStorage {
     const updated: UserProfile = { ...existing, ...profile, updatedAt: new Date() };
     this.userProfiles.set(userId, updated);
     return updated;
+  }
+
+  async getFriendshipById(friendshipId: string): Promise<Friendship | undefined> {
+    return this.friendships.get(friendshipId);
   }
 
   // Friend operations
@@ -1153,6 +1166,62 @@ export class MemStorage implements IStorage {
 
   async getUserTrips(userId: string): Promise<Trip[]> {
     return this.getTrips({ userId });
+  }
+
+  async deleteUserAccount(userId: string): Promise<void> {
+    this.users.delete(userId);
+    for (const [id, t] of Array.from(this.trips.entries())) {
+      if (t.userId === userId) this.trips.delete(id);
+    }
+    for (const [id, p] of Array.from(this.tripParticipants.entries())) {
+      if (p.userId === userId) this.tripParticipants.delete(id);
+    }
+    for (const [id, r] of Array.from(this.reviews.entries())) {
+      if (r.userId === userId) this.reviews.delete(id);
+    }
+    for (const [id, m] of Array.from(this.chatMessages.entries())) {
+      if (m.userId === userId) this.chatMessages.delete(id);
+    }
+    for (const [id, f] of Array.from(this.userFavorites.entries())) {
+      if (f.userId === userId) this.userFavorites.delete(id);
+    }
+    this.userProfiles.delete(userId);
+    for (const [id, f] of Array.from(this.friendships.entries())) {
+      if (f.requesterId === userId || f.addresseeId === userId) this.friendships.delete(id);
+    }
+    for (const [id, f] of Array.from(this.userFollows.entries())) {
+      if (f.followerId === userId || f.followingId === userId) this.userFollows.delete(id);
+    }
+    for (const [id, m] of Array.from(this.privateMessages.entries())) {
+      if (m.senderId === userId || m.receiverId === userId) this.privateMessages.delete(id);
+    }
+    for (const [id, p] of Array.from(this.travelPosts.entries())) {
+      if (p.userId === userId) this.travelPosts.delete(id);
+    }
+    for (const [id, l] of Array.from(this.postLikes.entries())) {
+      if (l.userId === userId) this.postLikes.delete(id);
+    }
+    for (const [id, c] of Array.from(this.postComments.entries())) {
+      if (c.userId === userId) this.postComments.delete(id);
+    }
+    for (const [id, r] of Array.from(this.eventRegistrations.entries())) {
+      if (r.userId === userId) this.eventRegistrations.delete(id);
+    }
+  }
+
+  async exportUserData(userId: string): Promise<Record<string, unknown>> {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    const { passwordHash: _pw, ...userSafe } = user;
+    return {
+      exportedAt: new Date().toISOString(),
+      user: userSafe,
+      profile: this.userProfiles.get(userId) ?? null,
+      trips: await this.getUserTrips(userId),
+      posts: await this.getTravelPosts({ userId }),
+      reviews: await this.getReviewsByUser(userId),
+      favorites: await this.getUserFavorites(userId),
+    };
   }
 }
 

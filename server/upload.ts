@@ -18,10 +18,11 @@ const ALLOWED_MIME = new Set([
 
 function isAllowedMime(mime: string, originalName: string): boolean {
   if (ALLOWED_MIME.has(mime)) return true;
-  if (mime.startsWith("image/")) return true;
   const lower = originalName.toLowerCase();
-  if (lower.endsWith(".gif")) return true;
-  if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
+  if (mime === "application/octet-stream") {
+    if (lower.endsWith(".gif")) return true;
+    if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
+  }
   return false;
 }
 

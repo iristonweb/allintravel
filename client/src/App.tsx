@@ -24,6 +24,7 @@ import MapPage from "@/pages/map";
 import Blog from "@/pages/blog";
 import BlogPostPage from "@/pages/blog-post";
 import { Wallet } from "@/pages/wallet";
+import { Privacy } from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 import PremiumBackground from "@/components/premium/PremiumBackground";
 import ErrorBoundary from "@/components/error-boundary";
@@ -70,6 +71,7 @@ function Router() {
       >
         <Switch>
           {!isAuthenticated && <Route path="/login" component={Login} />}
+          {!isAuthenticated && <Route path="/privacy" component={Privacy} />}
           {!isAuthenticated && <Route path="/" component={Landing} />}
           {!isAuthenticated && <Route path="*" component={RequireLogin} />}
 
@@ -88,6 +90,7 @@ function Router() {
           {isAuthenticated && <Route path="/events" component={Events} />}
           {isAuthenticated && <Route path="/chat" component={Chat} />}
           {isAuthenticated && <Route path="/wallet" component={Wallet} />}
+          {isAuthenticated && <Route path="/privacy" component={Privacy} />}
           {isAuthenticated && <Route component={NotFound} />}
         </Switch>
       </motion.div>

@@ -52,6 +52,8 @@ __export(schema_exports, {
   tripWaypointsRelations: () => tripWaypointsRelations,
   trips: () => trips,
   tripsRelations: () => tripsRelations,
+  updateTravelPostSchema: () => updateTravelPostSchema,
+  updateUserProfileSchema: () => updateUserProfileSchema,
   userFavorites: () => userFavorites,
   userFavoritesRelations: () => userFavoritesRelations,
   userFollows: () => userFollows,
@@ -76,7 +78,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
-var countries, cities, sessions, users, places, reviews, trips, tripParticipants, tripWaypoints, events, eventRegistrations, chatMessages, userFavorites, friendships, userFollows, privateMessages, travelPosts, postLikes, postComments, userProfiles, usersRelations, placesRelations, reviewsRelations, tripsRelations, tripParticipantsRelations, tripWaypointsRelations, eventsRelations, chatMessagesRelations, userFavoritesRelations, friendshipsRelations, userFollowsRelations, privateMessagesRelations, travelPostsRelations, postLikesRelations, postCommentsRelations, userProfilesRelations, insertPlaceSchema, insertReviewSchema, insertTripSchema, insertTripWaypointSchema, insertEventSchema, insertChatMessageSchema, insertUserProfileSchema, insertFriendshipSchema, insertUserFollowSchema, insertPrivateMessageSchema, insertTravelPostSchema, insertPostLikeSchema, insertPostCommentSchema;
+import { z } from "zod";
+var countries, cities, sessions, users, places, reviews, trips, tripParticipants, tripWaypoints, events, eventRegistrations, chatMessages, userFavorites, friendships, userFollows, privateMessages, travelPosts, postLikes, postComments, userProfiles, usersRelations, placesRelations, reviewsRelations, tripsRelations, tripParticipantsRelations, tripWaypointsRelations, eventsRelations, chatMessagesRelations, userFavoritesRelations, friendshipsRelations, userFollowsRelations, privateMessagesRelations, travelPostsRelations, postLikesRelations, postCommentsRelations, userProfilesRelations, insertPlaceSchema, insertReviewSchema, insertTripSchema, insertTripWaypointSchema, insertEventSchema, insertChatMessageSchema, insertUserProfileSchema, insertFriendshipSchema, insertUserFollowSchema, insertPrivateMessageSchema, insertTravelPostSchema, updateTravelPostSchema, updateUserProfileSchema, insertPostLikeSchema, insertPostCommentSchema;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -440,6 +443,26 @@ var init_schema = __esm({
       createdAt: true,
       updatedAt: true
     });
+    updateTravelPostSchema = z.object({
+      title: z.string().max(255).optional(),
+      content: z.string().optional(),
+      images: z.array(z.string()).optional(),
+      location: z.string().max(255).nullable().optional(),
+      latitude: z.string().nullable().optional(),
+      longitude: z.string().nullable().optional(),
+      tags: z.array(z.string()).optional(),
+      isPublic: z.boolean().optional()
+    }).strict();
+    updateUserProfileSchema = z.object({
+      bio: z.string().nullable().optional(),
+      location: z.string().max(255).nullable().optional(),
+      website: z.string().max(500).nullable().optional(),
+      travelStyle: z.string().max(100).nullable().optional(),
+      favoriteDestinations: z.array(z.string()).optional(),
+      languages: z.array(z.string()).optional(),
+      interests: z.array(z.string()).optional(),
+      isPublic: z.boolean().optional()
+    }).strict();
     insertPostLikeSchema = createInsertSchema(postLikes).omit({
       id: true,
       createdAt: true
@@ -532,23 +555,21 @@ var init_db = __esm({
 // server/admin.ts
 var admin_exports = {};
 __export(admin_exports, {
-  DEFAULT_ADMIN_EMAILS: () => DEFAULT_ADMIN_EMAILS,
   getAdminEmails: () => getAdminEmails,
   resolveIsAdmin: () => resolveIsAdmin
 });
 function getAdminEmails() {
-  const fromEnv = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-  return /* @__PURE__ */ new Set([...DEFAULT_ADMIN_EMAILS, ...fromEnv]);
+  return new Set(
+    (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+  );
 }
 function resolveIsAdmin(email) {
   if (!email) return false;
   return getAdminEmails().has(email.trim().toLowerCase());
 }
-var DEFAULT_ADMIN_EMAILS;
 var init_admin = __esm({
   "server/admin.ts"() {
     "use strict";
-    DEFAULT_ADMIN_EMAILS = ["iristonweb@gmail.com"];
   }
 });
 
@@ -1376,6 +1397,7 @@ var init_vite_stub = __esm({
 import "dotenv/config";
 import { createServer as createServer2 } from "http";
 import express2 from "express";
+import helmet from "helmet";
 
 // server/routes.ts
 import { createServer } from "http";
@@ -1860,6 +1882,10 @@ var PgStorage = class {
     const [row] = await this.db.insert(tripWaypoints).values({ tripId, placeId, orderIndex: nextOrder, dayNumber: dayNumber ?? null }).returning();
     return row;
   }
+  async getTripWaypoint(waypointId) {
+    const [row] = await this.db.select().from(tripWaypoints).where(eq(tripWaypoints.id, waypointId)).limit(1);
+    return row;
+  }
   async updateTripWaypoint(waypointId, data) {
     const patch = {};
     if (data.orderIndex != null) patch.orderIndex = data.orderIndex;
@@ -1944,6 +1970,10 @@ var PgStorage = class {
       return this.createUserProfile({ userId, ...profile });
     }
     const [row] = await this.db.update(userProfiles).set({ ...profile, updatedAt: /* @__PURE__ */ new Date() }).where(eq(userProfiles.userId, userId)).returning();
+    return row;
+  }
+  async getFriendshipById(friendshipId) {
+    const [row] = await this.db.select().from(friendships).where(eq(friendships.id, friendshipId)).limit(1);
     return row;
   }
   async sendFriendRequest(requesterId, addresseeId) {
@@ -2128,6 +2158,23 @@ var PgStorage = class {
   }
   async getUserTrips(userId) {
     return this.getTrips({ userId });
+  }
+  async deleteUserAccount(userId) {
+    await this.db.delete(users).where(eq(users.id, userId));
+  }
+  async exportUserData(userId) {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+    const { passwordHash: _pw, ...userSafe } = user;
+    return {
+      exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      user: userSafe,
+      profile: await this.getUserProfile(userId) ?? null,
+      trips: await this.getUserTrips(userId),
+      posts: await this.getTravelPosts({ userId }),
+      reviews: await this.getReviewsByUser(userId),
+      favorites: await this.getUserFavorites(userId)
+    };
   }
 };
 
@@ -2633,6 +2680,9 @@ var MemStorage = class {
     this.tripWaypoints.set(id, waypoint);
     return waypoint;
   }
+  async getTripWaypoint(waypointId) {
+    return this.tripWaypoints.get(waypointId);
+  }
   async updateTripWaypoint(waypointId, data) {
     const wp = this.tripWaypoints.get(waypointId);
     if (!wp) return void 0;
@@ -2763,6 +2813,9 @@ var MemStorage = class {
     const updated = { ...existing, ...profile, updatedAt: /* @__PURE__ */ new Date() };
     this.userProfiles.set(userId, updated);
     return updated;
+  }
+  async getFriendshipById(friendshipId) {
+    return this.friendships.get(friendshipId);
   }
   // Friend operations
   async sendFriendRequest(requesterId, addresseeId) {
@@ -2977,6 +3030,60 @@ var MemStorage = class {
   async getUserTrips(userId) {
     return this.getTrips({ userId });
   }
+  async deleteUserAccount(userId) {
+    this.users.delete(userId);
+    for (const [id, t] of Array.from(this.trips.entries())) {
+      if (t.userId === userId) this.trips.delete(id);
+    }
+    for (const [id, p] of Array.from(this.tripParticipants.entries())) {
+      if (p.userId === userId) this.tripParticipants.delete(id);
+    }
+    for (const [id, r] of Array.from(this.reviews.entries())) {
+      if (r.userId === userId) this.reviews.delete(id);
+    }
+    for (const [id, m] of Array.from(this.chatMessages.entries())) {
+      if (m.userId === userId) this.chatMessages.delete(id);
+    }
+    for (const [id, f] of Array.from(this.userFavorites.entries())) {
+      if (f.userId === userId) this.userFavorites.delete(id);
+    }
+    this.userProfiles.delete(userId);
+    for (const [id, f] of Array.from(this.friendships.entries())) {
+      if (f.requesterId === userId || f.addresseeId === userId) this.friendships.delete(id);
+    }
+    for (const [id, f] of Array.from(this.userFollows.entries())) {
+      if (f.followerId === userId || f.followingId === userId) this.userFollows.delete(id);
+    }
+    for (const [id, m] of Array.from(this.privateMessages.entries())) {
+      if (m.senderId === userId || m.receiverId === userId) this.privateMessages.delete(id);
+    }
+    for (const [id, p] of Array.from(this.travelPosts.entries())) {
+      if (p.userId === userId) this.travelPosts.delete(id);
+    }
+    for (const [id, l] of Array.from(this.postLikes.entries())) {
+      if (l.userId === userId) this.postLikes.delete(id);
+    }
+    for (const [id, c] of Array.from(this.postComments.entries())) {
+      if (c.userId === userId) this.postComments.delete(id);
+    }
+    for (const [id, r] of Array.from(this.eventRegistrations.entries())) {
+      if (r.userId === userId) this.eventRegistrations.delete(id);
+    }
+  }
+  async exportUserData(userId) {
+    const user = this.users.get(userId);
+    if (!user) throw new Error("User not found");
+    const { passwordHash: _pw, ...userSafe } = user;
+    return {
+      exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      user: userSafe,
+      profile: this.userProfiles.get(userId) ?? null,
+      trips: await this.getUserTrips(userId),
+      posts: await this.getTravelPosts({ userId }),
+      reviews: await this.getReviewsByUser(userId),
+      favorites: await this.getUserFavorites(userId)
+    };
+  }
 };
 async function initAppStorage() {
   try {
@@ -3123,7 +3230,74 @@ import passport from "passport";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import createMemoryStore from "memorystore";
-var SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
+
+// server/security.ts
+var PUBLIC_CHAT_ROOMS = /* @__PURE__ */ new Set([
+  "general",
+  "europe",
+  "asia",
+  "america",
+  "tips",
+  "iceland-2024"
+]);
+function isProductionEnv() {
+  return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+}
+function resolveSessionSecret() {
+  const secret = process.env.SESSION_SECRET?.trim();
+  if (isProductionEnv()) {
+    if (!secret || secret.length < 32) {
+      throw new Error(
+        "SESSION_SECRET must be set to a random string of at least 32 characters in production"
+      );
+    }
+    return secret;
+  }
+  return secret || "dev-secret-change-in-production";
+}
+function canAccessChatRoom(room) {
+  const normalized = room.trim().slice(0, 100);
+  if (!normalized || normalized.includes("..")) return false;
+  return PUBLIC_CHAT_ROOMS.has(normalized);
+}
+async function userCanManageTrip(storage2, userId, tripId) {
+  const trip = await storage2.getTrip(tripId);
+  if (!trip) return false;
+  if (trip.userId === userId) return true;
+  const participants = await storage2.getTripParticipants(tripId);
+  return participants.some(
+    (p) => p.userId === userId && (p.status === "accepted" || p.status === "pending")
+  );
+}
+var SENSITIVE_KEYS = /* @__PURE__ */ new Set([
+  "email",
+  "password",
+  "passwordHash",
+  "content",
+  "message",
+  "token",
+  "secret",
+  "authorization"
+]);
+function redactForLog(value, depth = 0) {
+  if (depth > 4) return "[\u2026]";
+  if (value == null || typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    return value.slice(0, 5).map((v) => redactForLog(v, depth + 1));
+  }
+  const out = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+      out[key] = "[redacted]";
+    } else {
+      out[key] = redactForLog(val, depth + 1);
+    }
+  }
+  return out;
+}
+
+// server/auth-middleware.ts
+var SESSION_SECRET = resolveSessionSecret();
 var PgSession = connectPgSimple(session);
 var MemoryStore = createMemoryStore(session);
 var sessionMiddleware = null;
@@ -3201,6 +3375,24 @@ function toSessionUser(user) {
     }
   };
 }
+
+// server/rate-limit.ts
+import rateLimit from "express-rate-limit";
+function clientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.length > 0) {
+    return forwarded.split(",")[0]?.trim() || "unknown";
+  }
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+var authLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1e3,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `login:${clientIp(req)}`,
+  message: { ok: false, error: "rate_limit", message: "\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u043D\u043E\u0433\u043E \u043F\u043E\u043F\u044B\u0442\u043E\u043A \u0432\u0445\u043E\u0434\u0430. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435." }
+});
 
 // server/local-auth.ts
 async function syncAdminRole(user) {
@@ -3304,7 +3496,7 @@ function registerLoginRoutes(app) {
   app.get("/api/login", (_req, res) => {
     res.redirect("/login");
   });
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", authLoginLimiter, async (req, res) => {
     const email = String(req.body?.email ?? "").trim();
     const password = String(req.body?.password ?? "");
     const redirectTo = safeRedirect(
@@ -3318,8 +3510,8 @@ function registerLoginRoutes(app) {
       return res.status(500).json({
         ok: false,
         error: "server",
-        code: result.code ?? "UNKNOWN",
-        message: result.message
+        code: isProductionEnv() ? "SERVER" : result.code ?? "UNKNOWN",
+        message: isProductionEnv() ? "\u0412\u0440\u0435\u043C\u0435\u043D\u043D\u0430\u044F \u043E\u0448\u0438\u0431\u043A\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0430. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435." : result.message
       });
     }
     try {
@@ -3336,7 +3528,7 @@ function registerLoginRoutes(app) {
       });
     }
   });
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", authLoginLimiter, (req, res, next) => {
     const redirectTo = safeRedirect(
       typeof req.query.redirect === "string" ? req.query.redirect : "/"
     );
@@ -3411,12 +3603,12 @@ init_schema();
 init_username();
 init_user_utils();
 import passport3 from "passport";
-import { z } from "zod";
-var updateUserMeSchema = z.object({
-  displayName: z.string().max(64).nullable().optional(),
-  firstName: z.string().max(100).nullable().optional(),
-  lastName: z.string().max(100).nullable().optional(),
-  username: z.string().optional()
+import { z as z2 } from "zod";
+var updateUserMeSchema = z2.object({
+  displayName: z2.string().max(64).nullable().optional(),
+  firstName: z2.string().max(100).nullable().optional(),
+  lastName: z2.string().max(100).nullable().optional(),
+  username: z2.string().optional()
 });
 async function registerRoutes(app) {
   await setupAuth(app);
@@ -3615,7 +3807,7 @@ async function registerRoutes(app) {
       const updated = await storage.updateUserMe(userId, patch);
       res.json(toSelfUser(updated));
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
       console.error("Error updating user:", error);
@@ -3672,7 +3864,7 @@ async function registerRoutes(app) {
       const place = await storage.createPlace(placeData);
       res.status(201).json(place);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid place data", errors: error.errors });
       }
       console.error("Error creating place:", error);
@@ -3699,7 +3891,7 @@ async function registerRoutes(app) {
       const review = await storage.createReview(reviewData);
       res.status(201).json(review);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid review data", errors: error.errors });
       }
       console.error("Error creating review:", error);
@@ -3803,6 +3995,10 @@ async function registerRoutes(app) {
   });
   app.post("/api/trips/:id/waypoints", isAuthenticated, async (req, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await userCanManageTrip(storage, userId, req.params.id)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const { placeId, orderIndex, dayNumber } = req.body;
       const waypoint = await storage.addTripWaypoint(
         req.params.id,
@@ -3818,6 +4014,10 @@ async function registerRoutes(app) {
   });
   app.post("/api/trips/:id/waypoints/from-location", isAuthenticated, async (req, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await userCanManageTrip(storage, userId, req.params.id)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const label = String(req.body?.label ?? "").trim();
       const lat = Number(req.body?.lat);
       const lon = Number(req.body?.lon);
@@ -3855,6 +4055,14 @@ async function registerRoutes(app) {
   });
   app.patch("/api/trips/:id/waypoints/:waypointId", isAuthenticated, async (req, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await userCanManageTrip(storage, userId, req.params.id)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const existingWp = await storage.getTripWaypoint(req.params.waypointId);
+      if (!existingWp || existingWp.tripId !== req.params.id) {
+        return res.status(404).json({ message: "Waypoint not found" });
+      }
       const { orderIndex, dayNumber } = req.body;
       const waypoint = await storage.updateTripWaypoint(req.params.waypointId, {
         orderIndex: orderIndex != null ? Number(orderIndex) : void 0,
@@ -3871,6 +4079,14 @@ async function registerRoutes(app) {
   });
   app.delete("/api/trips/:id/waypoints/:waypointId", isAuthenticated, async (req, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!await userCanManageTrip(storage, userId, req.params.id)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const existingWp = await storage.getTripWaypoint(req.params.waypointId);
+      if (!existingWp || existingWp.tripId !== req.params.id) {
+        return res.status(404).json({ message: "Waypoint not found" });
+      }
       await storage.removeTripWaypoint(req.params.waypointId);
       res.status(204).send();
     } catch (error) {
@@ -3900,7 +4116,7 @@ async function registerRoutes(app) {
       const trip = await storage.createTrip(tripData);
       res.status(201).json(trip);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid trip data", errors: error.errors });
       }
       console.error("Error creating trip:", error);
@@ -3942,7 +4158,7 @@ async function registerRoutes(app) {
       const event = await storage.createEvent(eventData);
       res.status(201).json(event);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid event data", errors: error.errors });
       }
       console.error("Error creating event:", error);
@@ -3991,14 +4207,21 @@ async function registerRoutes(app) {
       res.status(500).json({ message: "Failed to unregister" });
     }
   });
-  app.get("/api/trips/:id/participants", async (req, res) => {
+  app.get("/api/trips/:id/participants", isAuthenticated, async (req, res) => {
     try {
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) {
+        return res.status(404).json({ message: "Trip not found" });
+      }
       const participants = await storage.getTripParticipants(req.params.id);
       const enriched = await Promise.all(
-        participants.map(async (p) => ({
-          ...p,
-          user: p.userId ? await storage.getUser(p.userId) : null
-        }))
+        participants.map(async (p) => {
+          const raw = p.userId ? await storage.getUser(p.userId) : null;
+          return {
+            ...p,
+            user: raw ? toPublicUser(raw) : null
+          };
+        })
       );
       res.json(enriched);
     } catch (error) {
@@ -4054,9 +4277,12 @@ async function registerRoutes(app) {
       };
     })
   );
-  app.get("/api/chat/:room", async (req, res) => {
+  app.get("/api/chat/:room", isAuthenticated, async (req, res) => {
     try {
       const { room } = req.params;
+      if (!canAccessChatRoom(room)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const { limit = 50 } = req.query;
       const messages = await storage.getChatMessages(room, Number(limit));
       const withSenders = await enrichChatMessages(messages);
@@ -4069,6 +4295,9 @@ async function registerRoutes(app) {
   app.post("/api/chat/:room", isAuthenticated, async (req, res) => {
     try {
       const { room } = req.params;
+      if (!canAccessChatRoom(room)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const userId = req.user.claims.sub;
       const content = String(req.body?.content ?? "").trim();
       if (!content) {
@@ -4170,7 +4399,7 @@ async function registerRoutes(app) {
       const profile = await storage.createUserProfile(profileData);
       res.status(201).json(profile);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid profile data", errors: error.errors });
       }
       console.error("Error creating profile:", error);
@@ -4180,10 +4409,13 @@ async function registerRoutes(app) {
   app.put("/api/profile", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user.claims.sub;
-      const profileData = req.body;
+      const profileData = updateUserProfileSchema.parse(req.body);
       const profile = await storage.updateUserProfile(userId, profileData);
       res.json(profile);
     } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: "Invalid profile data", errors: error.errors });
+      }
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
     }
@@ -4201,10 +4433,24 @@ async function registerRoutes(app) {
   });
   app.put("/api/friends/respond/:friendshipId", isAuthenticated, async (req, res) => {
     try {
-      const { status } = req.body;
+      const userId = req.user.claims.sub;
+      const status = z2.enum(["accepted", "rejected"]).parse(req.body?.status);
+      const existing = await storage.getFriendshipById(req.params.friendshipId);
+      if (!existing) {
+        return res.status(404).json({ message: "Friend request not found" });
+      }
+      if (existing.addresseeId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      if (existing.status !== "pending") {
+        return res.status(400).json({ message: "Request already handled" });
+      }
       const friendship = await storage.respondToFriendRequest(req.params.friendshipId, status);
       res.json(friendship);
     } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
       console.error("Error responding to friend request:", error);
       res.status(500).json({ message: "Failed to respond to friend request" });
     }
@@ -4292,7 +4538,7 @@ async function registerRoutes(app) {
       const message = await storage.sendPrivateMessage(messageData);
       res.status(201).json(message);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid message data", errors: error.errors });
       }
       console.error("Error sending message:", error);
@@ -4344,7 +4590,7 @@ async function registerRoutes(app) {
       const post = await storage.createTravelPost(postData);
       res.status(201).json(post);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid post data", errors: error.errors });
       }
       console.error("Error creating post:", error);
@@ -4413,9 +4659,13 @@ async function registerRoutes(app) {
       const existing = await storage.getTravelPost(req.params.id);
       if (!existing) return res.status(404).json({ message: "Post not found" });
       if (existing.userId !== userId) return res.status(403).json({ message: "Forbidden" });
-      const post = await storage.updateTravelPost(req.params.id, req.body);
+      const postData = updateTravelPostSchema.parse(req.body);
+      const post = await storage.updateTravelPost(req.params.id, postData);
       res.json(post);
     } catch (error) {
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: "Invalid post data", errors: error.errors });
+      }
       console.error("Error updating post:", error);
       res.status(500).json({ message: "Failed to update post" });
     }
@@ -4467,7 +4717,7 @@ async function registerRoutes(app) {
       const comment = await storage.addPostComment(commentData);
       res.status(201).json(comment);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid comment data", errors: error.errors });
       }
       console.error("Error adding comment:", error);
@@ -4494,6 +4744,34 @@ async function registerRoutes(app) {
     } catch (error) {
       console.error("Error deleting comment:", error);
       res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+  app.get("/api/account/export", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = await storage.exportUserData(userId);
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="all-in-travel-export-${userId}.json"`
+      );
+      res.json(data);
+    } catch (error) {
+      console.error("Error exporting account:", error);
+      res.status(500).json({ message: "Failed to export account data" });
+    }
+  });
+  app.delete("/api/account", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteUserAccount(userId);
+      req.logout((err) => {
+        if (err) console.error("Logout after account delete:", err);
+        res.status(204).send();
+      });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      res.status(500).json({ message: "Failed to delete account" });
     }
   });
   app.get("/api/search/users", async (req, res) => {
@@ -4534,15 +4812,20 @@ async function registerRoutes(app) {
         try {
           const data = JSON.parse(message);
           if (data.type === "chat_message") {
-            const userId = authenticatedUserId ?? data.userId;
+            const userId = authenticatedUserId;
             if (!userId) {
               ws.send(JSON.stringify({ type: "error", message: "Authentication required" }));
+              return;
+            }
+            const chatRoom = String(data.chatRoom ?? "");
+            if (!canAccessChatRoom(chatRoom)) {
+              ws.send(JSON.stringify({ type: "error", message: "Forbidden chat room" }));
               return;
             }
             const messageData = insertChatMessageSchema.parse({
               userId,
               content: data.content,
-              chatRoom: data.chatRoom
+              chatRoom
             });
             const savedMessage = await storage.createChatMessage(messageData);
             const sender = await storage.getUser(savedMessage.userId);
@@ -4661,10 +4944,11 @@ var ALLOWED_MIME = /* @__PURE__ */ new Set([
 ]);
 function isAllowedMime(mime, originalName) {
   if (ALLOWED_MIME.has(mime)) return true;
-  if (mime.startsWith("image/")) return true;
   const lower = originalName.toLowerCase();
-  if (lower.endsWith(".gif")) return true;
-  if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
+  if (mime === "application/octet-stream") {
+    if (lower.endsWith(".gif")) return true;
+    if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")) return true;
+  }
   return false;
 }
 function createUploadMiddleware() {
@@ -4796,11 +5080,15 @@ function setupPushRoutes(app) {
 var INIT_TIMEOUT_MS = 12e3;
 async function createApp() {
   const app = express2();
+  app.use(
+    helmet({
+      contentSecurityPolicy: isProductionEnv() ? void 0 : false
+    })
+  );
   app.use(express2.json());
   app.use(express2.urlencoded({ extended: false }));
   app.get("/api/health", async (_req, res) => {
-    let dbOk = false;
-    let dbError;
+    let database = false;
     if (process.env.DATABASE_URL) {
       try {
         const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
@@ -4811,20 +5099,13 @@ async function createApp() {
             db2.execute(sql3`SELECT 1`),
             new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 5e3))
           ]);
-          dbOk = true;
+          database = true;
         }
-      } catch (e) {
-        dbError = e instanceof Error ? e.message : String(e);
+      } catch {
+        database = false;
       }
     }
-    res.json({
-      ok: true,
-      vercel: Boolean(process.env.VERCEL),
-      databaseUrl: Boolean(process.env.DATABASE_URL),
-      database: dbOk,
-      dbError,
-      sessionSecret: Boolean(process.env.SESSION_SECRET)
-    });
+    res.json({ ok: true, database });
   });
   app.use((req, res, next) => {
     const start = Date.now();
@@ -4840,7 +5121,7 @@ async function createApp() {
       if (path2.startsWith("/api")) {
         let logLine = `${req.method} ${path2} ${res.statusCode} in ${duration}ms`;
         if (capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+          logLine += ` :: ${JSON.stringify(redactForLog(capturedJsonResponse))}`;
         }
         if (logLine.length > 80) {
           logLine = logLine.slice(0, 79) + "\u2026";
@@ -5061,11 +5342,7 @@ async function handler(req, res) {
     const detail = error instanceof Error ? error.message : String(error);
     console.error("[api] unhandled error:", detail);
     if (!res.headersSent) {
-      res.status(500).json({
-        message: "Internal Server Error",
-        detail,
-        hint: "Check Vercel logs, DATABASE_URL, SESSION_SECRET, and npm run db:push."
-      });
+      res.status(500).json({ message: "Internal Server Error" });
     }
   }
 }

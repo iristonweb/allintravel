@@ -70,11 +70,7 @@ export default async function handler(req: Request, res: Response) {
     const detail = error instanceof Error ? error.message : String(error);
     console.error("[api] unhandled error:", detail);
     if (!res.headersSent) {
-      res.status(500).json({
-        message: "Internal Server Error",
-        detail,
-        hint: "Check Vercel logs, DATABASE_URL, SESSION_SECRET, and npm run db:push.",
-      });
+      res.status(500).json({ message: "Internal Server Error" });
     }
   }
 }

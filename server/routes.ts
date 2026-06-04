@@ -18,10 +18,13 @@ import {
   insertTravelPostSchema,
   insertPostLikeSchema,
   insertPostCommentSchema,
+  updateTravelPostSchema,
+  updateUserProfileSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { validateUsername } from "@shared/username";
 import { toPublicUser, toSelfUser } from "./user-utils";
+import { canAccessChatRoom, userCanManageTrip } from "./security";
 
 const updateUserMeSchema = z.object({
   displayName: z.string().max(64).nullable().optional(),
@@ -501,6 +504,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/trips/:id/waypoints', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const { placeId, orderIndex, dayNumber } = req.body;
       const waypoint = await storage.addTripWaypoint(
         req.params.id,
@@ -517,6 +524,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/trips/:id/waypoints/from-location', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const label = String(req.body?.label ?? "").trim();
       const lat = Number(req.body?.lat);
       const lon = Number(req.body?.lon);
@@ -561,8 +572,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req, res) => {
+  app.patch('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const existingWp = await storage.getTripWaypoint(req.params.waypointId);
+      if (!existingWp || existingWp.tripId !== req.params.id) {
+        return res.status(404).json({ message: "Waypoint not found" });
+      }
       const { orderIndex, dayNumber } = req.body;
       const waypoint = await storage.updateTripWaypoint(req.params.waypointId, {
         orderIndex: orderIndex != null ? Number(orderIndex) : undefined,
@@ -578,8 +597,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req, res) => {
+  app.delete('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const existingWp = await storage.getTripWaypoint(req.params.waypointId);
+      if (!existingWp || existingWp.tripId !== req.params.id) {
+        return res.status(404).json({ message: "Waypoint not found" });
+      }
       await storage.removeTripWaypoint(req.params.waypointId);
       res.status(204).send();
     } catch (error) {
@@ -711,14 +738,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/trips/:id/participants', async (req, res) => {
+  app.get('/api/trips/:id/participants', isAuthenticated, async (req: any, res) => {
     try {
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) {
+        return res.status(404).json({ message: "Trip not found" });
+      }
       const participants = await storage.getTripParticipants(req.params.id);
       const enriched = await Promise.all(
-        participants.map(async (p) => ({
-          ...p,
-          user: p.userId ? await storage.getUser(p.userId) : null,
-        })),
+        participants.map(async (p) => {
+          const raw = p.userId ? await storage.getUser(p.userId) : null;
+          return {
+            ...p,
+            user: raw ? toPublicUser(raw) : null,
+          };
+        }),
       );
       res.json(enriched);
     } catch (error) {
@@ -782,9 +816,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }),
     );
 
-  app.get("/api/chat/:room", async (req, res) => {
+  app.get("/api/chat/:room", isAuthenticated, async (req: any, res) => {
     try {
       const { room } = req.params;
+      if (!canAccessChatRoom(room)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const { limit = 50 } = req.query;
       const messages = await storage.getChatMessages(room, Number(limit));
       const withSenders = await enrichChatMessages(messages);
@@ -798,6 +835,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat/:room", isAuthenticated, async (req: any, res) => {
     try {
       const { room } = req.params;
+      if (!canAccessChatRoom(room)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const userId = req.user.claims.sub;
       const content = String(req.body?.content ?? "").trim();
       if (!content) {
@@ -922,10 +962,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const profileData = req.body;
+      const profileData = updateUserProfileSchema.parse(req.body);
       const profile = await storage.updateUserProfile(userId, profileData);
       res.json(profile);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid profile data", errors: error.errors });
+      }
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
     }
@@ -946,10 +989,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/friends/respond/:friendshipId', isAuthenticated, async (req: any, res) => {
     try {
-      const { status } = req.body;
+      const userId = req.user.claims.sub;
+      const status = z.enum(["accepted", "rejected"]).parse(req.body?.status);
+      const existing = await storage.getFriendshipById(req.params.friendshipId);
+      if (!existing) {
+        return res.status(404).json({ message: "Friend request not found" });
+      }
+      if (existing.addresseeId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      if (existing.status !== "pending") {
+        return res.status(400).json({ message: "Request already handled" });
+      }
       const friendship = await storage.respondToFriendRequest(req.params.friendshipId, status);
       res.json(friendship);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
       console.error("Error responding to friend request:", error);
       res.status(500).json({ message: "Failed to respond to friend request" });
     }
@@ -1178,9 +1235,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getTravelPost(req.params.id);
       if (!existing) return res.status(404).json({ message: "Post not found" });
       if (existing.userId !== userId) return res.status(403).json({ message: "Forbidden" });
-      const post = await storage.updateTravelPost(req.params.id, req.body);
+      const postData = updateTravelPostSchema.parse(req.body);
+      const post = await storage.updateTravelPost(req.params.id, postData);
       res.json(post);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid post data", errors: error.errors });
+      }
       console.error("Error updating post:", error);
       res.status(500).json({ message: "Failed to update post" });
     }
@@ -1269,6 +1330,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Account privacy (GDPR-style export / delete)
+  app.get("/api/account/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const data = await storage.exportUserData(userId);
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="all-in-travel-export-${userId}.json"`,
+      );
+      res.json(data);
+    } catch (error) {
+      console.error("Error exporting account:", error);
+      res.status(500).json({ message: "Failed to export account data" });
+    }
+  });
+
+  app.delete("/api/account", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteUserAccount(userId);
+      req.logout((err: unknown) => {
+        if (err) console.error("Logout after account delete:", err);
+        res.status(204).send();
+      });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
+
   // Search routes
   app.get('/api/search/users', async (req, res) => {
     try {
@@ -1318,15 +1410,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const data = JSON.parse(message);
 
         if (data.type === 'chat_message') {
-          const userId = authenticatedUserId ?? data.userId;
+          const userId = authenticatedUserId;
           if (!userId) {
             ws.send(JSON.stringify({ type: 'error', message: 'Authentication required' }));
+            return;
+          }
+          const chatRoom = String(data.chatRoom ?? "");
+          if (!canAccessChatRoom(chatRoom)) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Forbidden chat room' }));
             return;
           }
           const messageData = insertChatMessageSchema.parse({
             userId,
             content: data.content,
-            chatRoom: data.chatRoom,
+            chatRoom,
           });
 
           const savedMessage = await storage.createChatMessage(messageData);
