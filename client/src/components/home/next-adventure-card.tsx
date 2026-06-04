@@ -4,8 +4,6 @@ import { Progress } from "@/components/ui/progress";
 import { MapPin, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import type { Trip } from "@shared/schema";
-import { RESORT_BG_SRC } from "@/lib/site-meta";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 type NextAdventureCardProps = {
   trip?: Trip | null;
@@ -17,13 +15,12 @@ const DEMO = {
   days: 12,
   locations: 8,
   progress: 60,
-  imageUrl: RESORT_BG_SRC,
+  imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=800&q=85",
 };
 
 export default function NextAdventureCard({ trip, premium }: NextAdventureCardProps) {
   const title = trip?.title ?? DEMO.title;
   const progress = trip ? 45 : DEMO.progress;
-  const coverUrl = trip?.imageUrl ? resolveMediaUrl(trip.imageUrl) : DEMO.imageUrl;
   const href = trip ? `/trips/${trip.id}` : "/trips";
 
   const Card = (
@@ -36,7 +33,7 @@ export default function NextAdventureCard({ trip, premium }: NextAdventureCardPr
     >
       <div
         className={premium ? "h-44 bg-cover bg-center relative" : "h-36 bg-cover bg-center"}
-        style={{ backgroundImage: `url('${coverUrl}')` }}
+        style={{ backgroundImage: `url('${DEMO.imageUrl}')` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-[#050816] to-transparent" />
       </div>

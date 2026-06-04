@@ -2,7 +2,6 @@ import { useRef, useState, useMemo, useEffect } from "react";
 import { Link } from "wouter";
 import { feedModeFromQuery, filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
-import { COMMUNITY_POST_FALLBACK_SRC } from "@/lib/site-meta";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -703,7 +702,8 @@ export function SocialFeed() {
                       <div
                         className="rounded-2xl overflow-hidden mx-1 h-64 md:h-[420px] bg-cover bg-center"
                         style={{
-                          backgroundImage: `url('${COMMUNITY_POST_FALLBACK_SRC}')`,
+                          backgroundImage:
+                            "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=85')",
                         }}
                       />
                     )}

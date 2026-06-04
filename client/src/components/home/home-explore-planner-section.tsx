@@ -15,41 +15,40 @@ import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
 import { homeDaysFromWaypoints, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
 import { fetchBuiltRoute } from "@/lib/fetch-route";
-import { HERO_BG_SRC, RESORT_BG_SRC } from "@/lib/site-meta";
 
 const showcaseDestinations = [
   {
     id: "bali",
     name: "Бали",
-    imageUrl: HERO_BG_SRC,
+    imageUrl: "https://images.unsplash.com/photo-1537996195241-795aa0a07e0f?w=500&q=85",
     placesCount: 342,
     rating: 4.8,
   },
   {
     id: "iceland",
     name: "Исландия",
-    imageUrl: RESORT_BG_SRC,
+    imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=500&q=85",
     placesCount: 128,
     rating: 4.9,
   },
   {
     id: "peru",
     name: "Перу",
-    imageUrl: RESORT_BG_SRC,
+    imageUrl: "https://images.unsplash.com/photo-1587595431973-160d0d94add1?w=500&q=85",
     placesCount: 156,
     rating: 4.7,
   },
   {
     id: "italy",
     name: "Италия",
-    imageUrl: HERO_BG_SRC,
+    imageUrl: "https://images.unsplash.com/photo-1516483638260-f4dbaf9a9346?w=500&q=85",
     placesCount: 412,
     rating: 4.9,
   },
   {
     id: "japan",
     name: "Япония",
-    imageUrl: HERO_BG_SRC,
+    imageUrl: "https://images.unsplash.com/photo-1493976040374-85c8e912f437?w=500&q=85",
     placesCount: 276,
     rating: 4.9,
   },
@@ -74,28 +73,28 @@ const DEMO_DAYS: PlannerDayView[] = [
   {
     day: 1,
     title: "Рейкьявик",
-    image: HERO_BG_SRC,
+    image: "https://images.unsplash.com/photo-1529963188137-1429c77ce9bf?w=200&q=80",
     stops: ["Хаттегримскиркья", "Солнечный путешественник"],
     routeIds: ["1"],
   },
   {
     day: 2,
     title: "Золотое кольцо",
-    image: RESORT_BG_SRC,
+    image: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=200&q=80",
     stops: ["Гейсир", "Гулльфосс"],
     routeIds: ["1", "2"],
   },
   {
     day: 3,
     title: "Южный берег",
-    image: RESORT_BG_SRC,
+    image: "https://images.unsplash.com/photo-1518837695005-2083099ee35b?w=200&q=80",
     stops: ["Сельяландсфосс", "Скóгафосс"],
     routeIds: ["2", "3"],
   },
   {
     day: 4,
     title: "Лагуна Йёкюльсаурлон",
-    image: HERO_BG_SRC,
+    image: "https://images.unsplash.com/photo-1531168556467-80abfa572935?w=200&q=80",
     stops: ["Айсберги", "Алмазный пляж"],
     routeIds: ["3", "4"],
   },
@@ -332,7 +331,7 @@ export default function HomeExplorePlannerSection({
       ? realHomeDays.map((d) => ({
           day: d.day,
           title: d.title,
-          image: d.image ?? RESORT_BG_SRC,
+          image: d.image ?? "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=200&q=80",
           stops: d.stops,
           routeIds: d.routePlaces.map((p) => p.id),
           routePlaces: d.routePlaces,

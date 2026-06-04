@@ -19,7 +19,6 @@ import { shareUrl } from "@/lib/share";
 import TravelMap from "@/components/maps/TravelMap";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import type { PlaceWithDetails, FavoriteStatus, Review } from "@shared/schema";
-import { PLACE_CARD_FALLBACK_SRC } from "@/lib/site-meta";
 
 export default function PlaceDetails() {
   const { id } = useParams();
@@ -208,7 +207,7 @@ export default function PlaceDetails() {
         <div className="mb-8">
           <div className="relative h-64 md:h-96 rounded-xl overflow-hidden mb-6">
             <img
-              src={place?.imageUrl || PLACE_CARD_FALLBACK_SRC}
+              src={place?.imageUrl || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=600"}
               alt={place?.name || "Place"}
               className="w-full h-full object-cover"
             />

@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Star, MapPin, Heart, DollarSign } from "lucide-react";
 import { Link } from "wouter";
 import type { Place } from "@shared/schema";
-import { PLACE_CARD_FALLBACK_SRC } from "@/lib/site-meta";
 
 interface PlaceCardProps {
   place: Place;
@@ -31,7 +30,7 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
     <Card className="group overflow-hidden ait-gradient-border transition-all hover:-translate-y-1 hover:shadow-[var(--ait-glow-purple)]">
       <div className="relative">
         <img
-          src={place.imageUrl || PLACE_CARD_FALLBACK_SRC}
+          src={place.imageUrl || `https://images.unsplash.com/photo-1551632811-561732d1e306?w=400&h=200&fit=crop`}
           alt={place.name}
           className="h-52 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
