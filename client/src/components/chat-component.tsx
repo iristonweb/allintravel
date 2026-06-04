@@ -23,15 +23,16 @@ export function ChatComponent({ chatRoom, title = "Чат", height = "h-96" }: C
   const [ws, setWs] = useState<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch initial messages
-  const { data: initialMessages } = useQuery({
+  // Fetch initial messages; handle API errors (404/500) so chat doesn't show blank
+  const { data: initialMessages, isError: isChatError, error: chatError } = useQuery({
     queryKey: [`/api/chat/${chatRoom}`],
     enabled: isAuthenticated,
+    retry: false,
   });
 
   useEffect(() => {
-    if (initialMessages) {
-      setMessages(initialMessages as ChatMessage[] || []);
+    if (initialMessages && Array.isArray(initialMessages)) {
+      setMessages(initialMessages as ChatMessage[]);
     }
   }, [initialMessages]);
 
@@ -116,6 +117,11 @@ export function ChatComponent({ chatRoom, title = "Чат", height = "h-96" }: C
       <CardContent className="flex-1 flex flex-col p-0">
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto px-4 space-y-3">
+          {isChatError && (
+            <div className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 text-center">
+              {chatError?.message?.includes("404") ? "Чат временно недоступен. Проверьте подключение к серверу." : "Не удалось загрузить сообщения. Попробуйте обновить страницу."}
+            </div>
+          )}
           {messages.map((msg) => {
             const isOwnMessage = msg.userId === user?.id;
             
@@ -132,10 +138,10 @@ export function ChatComponent({ chatRoom, title = "Чат", height = "h-96" }: C
                 </Avatar>
                 
                 <div className={`flex flex-col ${isOwnMessage ? "items-end" : ""}`}>
-                  <div
+                    <div
                     className={`px-3 py-2 rounded-lg max-w-xs ${
                       isOwnMessage
-                        ? "bg-coral-500 text-white"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-muted"
                     }`}
                   >
@@ -165,7 +171,7 @@ export function ChatComponent({ chatRoom, title = "Чат", height = "h-96" }: C
               size="icon"
               onClick={sendMessage}
               disabled={!message.trim()}
-              className="bg-coral-500 hover:bg-coral-600"
+              className="bg-primary hover:bg-primary/90"
             >
               <Send className="h-4 w-4" />
             </Button>

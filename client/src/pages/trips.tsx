@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import NavigationHeader from "@/components/navigation-header";
+import AppLayout from "@/components/app-layout";
+import PageHeader from "@/components/page-header";
+import EmptyState from "@/components/empty-state";
 import TravelCompanionCard from "@/components/travel-companion-card";
+import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,12 +51,18 @@ type CreateTripForm = z.infer<typeof createTripSchema>;
 
 export function Trips() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [joinedTrips, setJoinedTrips] = useState<Set<string>>(new Set());
 
   const { data: trips = [], isLoading } = useQuery<Trip[]>({
     queryKey: ["/api/trips", { limit: 20 }],
+  });
+
+  const { data: participations = { tripIds: [] as string[] } } = useQuery<{ tripIds: string[] }>({
+    queryKey: ["/api/trips/my-participations"],
+    enabled: isAuthenticated,
   });
 
   const form = useForm<CreateTripForm>({
@@ -92,9 +102,9 @@ export function Trips() {
       const res = await apiRequest("POST", `/api/trips/${tripId}/join`);
       return res.json();
     },
-    onSuccess: (_, tripId) => {
-      setJoinedTrips(prev => new Set([...Array.from(prev), tripId]));
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
       toast({ title: "Вы присоединились!", description: "Вы добавлены в список участников поездки." });
     },
     onError: () => {
@@ -113,18 +123,11 @@ export function Trips() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <NavigationHeader />
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Планирование поездок</h1>
-            <p className="text-muted-foreground">
-              Найдите попутчиков или создайте свою группу
-            </p>
-          </div>
-
+    <AppLayout>
+      <PageHeader
+        title="Поездки"
+        description="Найдите попутчиков или создайте свою группу"
+        rightSlot={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90">
@@ -159,7 +162,13 @@ export function Trips() {
                       <FormItem>
                         <FormLabel>Направление</FormLabel>
                         <FormControl>
-                          <Input placeholder="Страна или город" {...field} />
+                          <LocationAutocompleteInput
+                            placeholder="Страна или город"
+                            value={field.value ?? ""}
+                            onChange={(v) => field.onChange(v)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -276,19 +285,20 @@ export function Trips() {
               </Form>
             </DialogContent>
           </Dialog>
-        </div>
+        }
+      />
 
-        <div className="flex gap-3 mb-8">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Поиск по направлению или названию..."
-              className="pl-9"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
+      <div className="flex gap-3 mb-8 mt-8">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по направлению или названию..."
+            className="pl-9"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
+      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <Card className="bg-primary/5 border-primary/20">
@@ -318,24 +328,21 @@ export function Trips() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <MapPin className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              {search ? "Поездки не найдены" : "Пока нет поездок"}
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              {search
+          <EmptyState
+            icon={MapPin}
+            title={search ? "Поездки не найдены" : "Пока нет поездок"}
+            description={
+              search
                 ? "Попробуйте другой запрос или создайте свою поездку"
-                : "Будьте первым — создайте поездку и найдите попутчиков!"}
-            </p>
-            <Button
-              className="bg-primary hover:bg-primary/90"
-              onClick={() => setOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Создать поездку
-            </Button>
-          </div>
+                : "Будьте первым — создайте поездку и найдите попутчиков!"
+            }
+            action={
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => setOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Создать поездку
+              </Button>
+            }
+          />
         ) : (
           <>
             <div className="flex items-center gap-2 mb-4">
@@ -354,14 +361,13 @@ export function Trips() {
                   key={trip.id}
                   trip={trip}
                   onJoin={id => joinMutation.mutate(id)}
-                  isJoined={joinedTrips.has(trip.id)}
+                  isJoined={participations.tripIds.includes(trip.id)}
                 />
               ))}
             </div>
           </>
         )}
-      </div>
-    </div>
+    </AppLayout>
   );
 }
 

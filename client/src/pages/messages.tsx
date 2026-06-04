@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { NavigationHeader } from "@/components/navigation-header";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import AppLayout from "@/components/app-layout";
+import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,24 +18,52 @@ import type { PrivateMessage, User } from "@shared/schema";
 
 interface Conversation {
   user: User;
-  lastMessage: PrivateMessage;
+  lastMessage: PrivateMessage | null;
   unreadCount: number;
 }
 
 export function Messages() {
   const { user, isAuthenticated } = useAuth();
+  const [location] = useLocation();
   const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
+
+  const withUserId =
+    location === "/messages" && typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("with")
+      : null;
 
   const { data: conversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
     enabled: isAuthenticated,
   });
 
+  const { data: userToOpen } = useQuery<User | null>({
+    queryKey: ["/api/users", withUserId || ""],
+    enabled: !!withUserId && withUserId !== user?.id,
+  });
+
+  useEffect(() => {
+    if (withUserId && withUserId !== user?.id) {
+      if (userToOpen) {
+        const existing = conversations.find((c) => c.user.id === userToOpen.id);
+        setSelectedConversation(
+          existing ?? {
+            user: userToOpen,
+            lastMessage: null,
+            unreadCount: 0,
+          }
+        );
+      }
+    } else if (!withUserId && selectedConversation?.user && !conversations.some((c) => c.user.id === selectedConversation.user.id)) {
+      setSelectedConversation(null);
+    }
+  }, [withUserId, userToOpen, user?.id, conversations]);
+
   const { data: messages = [] } = useQuery<PrivateMessage[]>({
     queryKey: ["/api/messages", selectedConversation?.user.id],
-    enabled: !!selectedConversation,
+    enabled: !!selectedConversation?.user?.id,
   });
 
   const sendMessageMutation = useMutation({
@@ -80,31 +110,21 @@ export function Messages() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background">
-        <NavigationHeader />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
-            <p className="text-muted-foreground">Чтобы отправлять сообщения, необходимо войти в систему</p>
-          </div>
+      <AppLayout>
+        <div className="text-center py-16">
+          <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
+          <p className="text-muted-foreground">Чтобы отправлять сообщения, необходимо войти в систему</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <NavigationHeader />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Сообщения</h1>
-            <p className="text-muted-foreground">
-              Общайтесь с друзьями и попутчиками
-            </p>
-          </div>
+    <AppLayout>
+      <div className="max-w-6xl mx-auto">
+        <PageHeader title="Сообщения" description="Общайтесь с друзьями и попутчиками" />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)] mt-8">
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -149,11 +169,13 @@ export function Messages() {
                                   {conversation.user.firstName} {conversation.user.lastName}
                                 </h4>
                                 <span className="text-xs text-muted-foreground">
-                                  {formatDate(conversation.lastMessage.createdAt as unknown as string)}
+                                  {conversation.lastMessage
+                                    ? formatDate(conversation.lastMessage.createdAt as unknown as string)
+                                    : ""}
                                 </span>
                               </div>
                               <p className="text-sm text-muted-foreground truncate">
-                                {conversation.lastMessage.content}
+                                {conversation.lastMessage?.content ?? "Нет сообщений"}
                               </p>
                               {conversation.unreadCount > 0 && (
                                 <Badge className="mt-1 bg-primary">
@@ -272,9 +294,8 @@ export function Messages() {
               )}
             </Card>
           </div>
-        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

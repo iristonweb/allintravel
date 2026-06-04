@@ -1,0 +1,17 @@
+{
+  "name": "All In Travel",
+  "short_name": "AllInTravel",
+  "description": "Интерактивный туристический справочник и социальная платформа для путешественников",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ff6a3d",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { NavigationHeader } from "@/components/navigation-header";
+import AppLayout from "@/components/app-layout";
+import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,9 +66,10 @@ export function Chat() {
         const data = JSON.parse(event.data);
         if (data.type === "new_message" && data.message) {
           const room: string = data.message.chatRoom;
+          const messageWithSender = { ...data.message, sender: data.sender ?? null };
           setWsMessages((prev) => ({
             ...prev,
-            [room]: [...(prev[room] || []), data.message],
+            [room]: [...(prev[room] || []), messageWithSender],
           }));
         }
       } catch {}
@@ -116,35 +118,32 @@ export function Chat() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background">
-        <NavigationHeader />
-        <div className="container mx-auto px-4 py-16 text-center">
+      <AppLayout contentClassName="py-16">
+        <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
           <p className="text-muted-foreground">Чтобы участвовать в чате, необходимо войти</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <NavigationHeader />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-1">Чат путешественников</h1>
-              <p className="text-muted-foreground">Общайтесь с попутчиками в реальном времени</p>
-            </div>
+    <AppLayout>
+      <div className="max-w-5xl mx-auto">
+        <PageHeader
+          title="Чат"
+          description="Общайтесь с попутчиками в реальном времени"
+          rightSlot={
             <Badge
               variant={wsConnected ? "default" : "secondary"}
-              className={`h-7 ${wsConnected ? "bg-green-500 hover:bg-green-500" : ""}`}
+              className={wsConnected ? "h-7 bg-secondary hover:bg-secondary" : "h-7"}
             >
               {wsConnected ? "● Онлайн" : "● Подключение..."}
             </Badge>
-          </div>
+          }
+        />
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" style={{ height: "calc(100vh - 260px)", minHeight: "500px" }}>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8" style={{ height: "calc(100vh - 260px)", minHeight: "500px" }}>
             {/* Room list */}
             <Card className="lg:col-span-1">
               <CardHeader className="pb-3">
@@ -184,8 +183,12 @@ export function Chat() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {allMessages.map((msg, i) => {
+                      {allMessages.map((msg: ChatMessage & { sender?: { firstName?: string; lastName?: string; profileImageUrl?: string } | null }, i) => {
                         const isOwn = msg.userId === user?.id;
+                        const senderName = isOwn
+                          ? (user?.firstName || "Я")
+                          : (msg.sender ? [msg.sender.firstName, msg.sender.lastName].filter(Boolean).join(" ") || "Путешественник" : "Путешественник");
+                        const senderInitial = isOwn ? (user?.firstName?.[0] || "Я") : (msg.sender?.firstName?.[0] || msg.sender?.lastName?.[0] || "?");
                         return (
                           <div
                             key={msg.id || `ws-${i}`}
@@ -196,13 +199,13 @@ export function Chat() {
                                 isOwn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                               }`}
                             >
-                              {isOwn ? (user?.firstName?.[0] || "Я") : "?"}
+                              {senderInitial}
                             </div>
                             <div
                               className={`flex flex-col gap-0.5 max-w-xs lg:max-w-md ${isOwn ? "items-end" : "items-start"}`}
                             >
                               {!isOwn && (
-                                <span className="text-xs text-muted-foreground px-1">Путешественник</span>
+                                <span className="text-xs text-muted-foreground px-1">{senderName}</span>
                               )}
                               <div
                                 className={`px-3 py-2 rounded-2xl text-sm ${
@@ -259,9 +262,8 @@ export function Chat() {
               </CardContent>
             </Card>
           </div>
-        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

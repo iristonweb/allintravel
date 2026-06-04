@@ -1,8 +1,9 @@
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar, MapPin, Users, DollarSign } from "lucide-react";
+import { Calendar, MapPin, Users, DollarSign, Route } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { Trip } from "@shared/schema";
@@ -99,7 +100,7 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
             </div>
           )}
           
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
             <div className="text-sm text-muted-foreground">
               {spotsLeft > 0 ? (
                 <span className="text-green-600">
@@ -109,15 +110,22 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
                 <span className="text-red-600">Мест нет</span>
               )}
             </div>
-            
-            <Button
-              size="sm"
-              className="bg-primary hover:bg-primary/90"
-              disabled={!trip.isActive || spotsLeft === 0 || isJoined}
-              onClick={() => onJoin?.(trip.id)}
-            >
-              {isJoined ? "Уже участвуете" : spotsLeft === 0 ? "Мест нет" : "Присоединиться"}
-            </Button>
+            <div className="flex gap-2">
+              <Link href={`/trips/${trip.id}`}>
+                <Button size="sm" variant="outline">
+                  <Route className="mr-1 h-3.5 w-3.5" />
+                  Маршрут
+                </Button>
+              </Link>
+              <Button
+                size="sm"
+                className="bg-primary hover:bg-primary/90"
+                disabled={!trip.isActive || spotsLeft === 0 || isJoined}
+                onClick={() => onJoin?.(trip.id)}
+              >
+                {isJoined ? "Уже участвуете" : spotsLeft === 0 ? "Мест нет" : "Присоединиться"}
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

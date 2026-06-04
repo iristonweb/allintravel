@@ -26,7 +26,7 @@ function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProp
         className={`h-4 w-4 ${
           i < rating
             ? "fill-yellow-400 text-yellow-400"
-            : "text-gray-300"
+            : "text-muted"
         }`}
       />
     ));
@@ -79,7 +79,7 @@ function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProp
                 />
               ))}
               {review.images.length > 4 && (
-                <div className="w-full h-20 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-sm text-muted-foreground">
+                <div className="w-full h-20 bg-muted rounded flex items-center justify-center text-sm text-muted-foreground">
                   +{review.images.length - 4} фото
                 </div>
               )}

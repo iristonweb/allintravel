@@ -8,8 +8,11 @@ import {
   type Trip,
   type InsertTrip,
   type TripParticipant,
+  type TripWaypoint,
+  type InsertTripWaypoint,
   type Event,
   type InsertEvent,
+  type EventRegistration,
   type ChatMessage,
   type InsertChatMessage,
   type UserFavorite,
@@ -28,9 +31,12 @@ import {
   type PostComment,
   type InsertPostComment,
 } from "@shared/schema";
+import { getDb, isDatabaseConfigured } from "./db";
+import { PgStorage } from "./pg-storage";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   getPlaces(filters?: {
@@ -62,6 +68,10 @@ export interface IStorage {
   createTrip(trip: InsertTrip): Promise<Trip>;
   joinTrip(tripId: string, userId: string): Promise<TripParticipant>;
   getTripParticipants(tripId: string): Promise<TripParticipant[]>;
+  getTripParticipationsByUser(userId: string): Promise<string[]>;
+  getTripWaypoints(tripId: string): Promise<(TripWaypoint & { place: Place | null })[]>;
+  addTripWaypoint(tripId: string, placeId: string, orderIndex?: number, dayNumber?: number): Promise<TripWaypoint>;
+  removeTripWaypoint(waypointId: string): Promise<void>;
 
   getEvents(filters?: {
     type?: string;
@@ -71,6 +81,10 @@ export interface IStorage {
   }): Promise<Event[]>;
   getEvent(id: string): Promise<Event | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
+  registerForEvent(eventId: string, userId: string): Promise<EventRegistration>;
+  unregisterFromEvent(eventId: string, userId: string): Promise<void>;
+  getRegisteredEventIds(userId: string): Promise<string[]>;
+  isRegisteredForEvent(eventId: string, userId: string): Promise<boolean>;
 
   getChatMessages(chatRoom: string, limit?: number): Promise<ChatMessage[]>;
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
@@ -105,6 +119,7 @@ export interface IStorage {
   getTravelPosts(filters?: {
     userId?: string;
     following?: string;
+    tag?: string;
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]>;
@@ -116,6 +131,7 @@ export interface IStorage {
   unlikePost(userId: string, postId: string): Promise<void>;
   addPostComment(comment: InsertPostComment): Promise<PostComment>;
   getPostComments(postId: string): Promise<PostComment[]>;
+  getPostComment(id: string): Promise<PostComment | undefined>;
   deletePostComment(id: string): Promise<void>;
 
   searchUsers(query: string, limit?: number): Promise<User[]>;
@@ -136,7 +152,9 @@ export class MemStorage implements IStorage {
   private reviews: Map<string, Review> = new Map();
   private trips: Map<string, Trip> = new Map();
   private tripParticipants: Map<string, TripParticipant> = new Map();
+  private tripWaypoints: Map<string, TripWaypoint> = new Map();
   private events: Map<string, Event> = new Map();
+  private eventRegistrations: Map<string, EventRegistration> = new Map();
   private chatMessages: Map<string, ChatMessage> = new Map();
   private userFavorites: Map<string, UserFavorite> = new Map();
   private userProfiles: Map<string, UserProfile> = new Map();
@@ -420,6 +438,13 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const lower = email.trim().toLowerCase();
+    return Array.from(this.users.values()).find(
+      (u) => u.email?.toLowerCase() === lower
+    );
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const existing = this.users.get(userData.id as string);
     const user: User = {
@@ -588,6 +613,44 @@ export class MemStorage implements IStorage {
     return Array.from(this.tripParticipants.values()).filter(p => p.tripId === tripId);
   }
 
+  async getTripParticipationsByUser(userId: string): Promise<string[]> {
+    return Array.from(this.tripParticipants.values())
+      .filter(p => p.userId === userId)
+      .map(p => p.tripId);
+  }
+
+  async getTripWaypoints(tripId: string): Promise<(TripWaypoint & { place: Place | null })[]> {
+    const waypoints = Array.from(this.tripWaypoints.values())
+      .filter(w => w.tripId === tripId)
+      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+    return Promise.all(
+      waypoints.map(async (w) => {
+        const place = await this.getPlace(w.placeId);
+        return { ...w, place: place ?? null };
+      })
+    );
+  }
+
+  async addTripWaypoint(tripId: string, placeId: string, orderIndex?: number, dayNumber?: number): Promise<TripWaypoint> {
+    const waypoints = Array.from(this.tripWaypoints.values()).filter(w => w.tripId === tripId);
+    const nextOrder = orderIndex ?? waypoints.length;
+    const id = genId();
+    const waypoint: TripWaypoint = {
+      id,
+      tripId,
+      placeId,
+      orderIndex: nextOrder,
+      dayNumber: dayNumber ?? null,
+      createdAt: new Date(),
+    } as TripWaypoint;
+    this.tripWaypoints.set(id, waypoint);
+    return waypoint;
+  }
+
+  async removeTripWaypoint(waypointId: string): Promise<void> {
+    this.tripWaypoints.delete(waypointId);
+  }
+
   // Event operations
   async getEvents(filters?: {
     type?: string;
@@ -627,6 +690,37 @@ export class MemStorage implements IStorage {
     } as Event;
     this.events.set(id, newEvent);
     return newEvent;
+  }
+
+  async registerForEvent(eventId: string, userId: string): Promise<EventRegistration> {
+    const existing = Array.from(this.eventRegistrations.values()).find(
+      (r) => r.eventId === eventId && r.userId === userId,
+    );
+    if (existing) return existing;
+    const id = genId();
+    const reg: EventRegistration = { id, eventId, userId, createdAt: new Date() } as EventRegistration;
+    this.eventRegistrations.set(id, reg);
+    return reg;
+  }
+
+  async unregisterFromEvent(eventId: string, userId: string): Promise<void> {
+    for (const [key, r] of Array.from(this.eventRegistrations.entries())) {
+      if (r.eventId === eventId && r.userId === userId) {
+        this.eventRegistrations.delete(key);
+      }
+    }
+  }
+
+  async getRegisteredEventIds(userId: string): Promise<string[]> {
+    return Array.from(this.eventRegistrations.values())
+      .filter((r) => r.userId === userId)
+      .map((r) => r.eventId);
+  }
+
+  async isRegisteredForEvent(eventId: string, userId: string): Promise<boolean> {
+    return Array.from(this.eventRegistrations.values()).some(
+      (r) => r.eventId === eventId && r.userId === userId,
+    );
   }
 
   // Chat operations
@@ -853,6 +947,7 @@ export class MemStorage implements IStorage {
   async getTravelPosts(filters?: {
     userId?: string;
     following?: string;
+    tag?: string;
     limit?: number;
     offset?: number;
   }): Promise<TravelPost[]> {
@@ -865,6 +960,10 @@ export class MemStorage implements IStorage {
         .filter(f => f.followerId === filters.following)
         .map(f => f.followingId);
       results = results.filter(p => followingIds.includes(p.userId!));
+    }
+    if (filters?.tag) {
+      const tag = filters.tag.toLowerCase();
+      results = results.filter(p => p.tags?.some(t => t.toLowerCase() === tag));
     }
     results.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
     const offset = filters?.offset ?? 0;
@@ -922,6 +1021,10 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
   }
 
+  async getPostComment(id: string): Promise<PostComment | undefined> {
+    return this.postComments.get(id);
+  }
+
   async deletePostComment(id: string): Promise<void> {
     this.postComments.delete(id);
   }
@@ -955,4 +1058,17 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export async function initAppStorage(): Promise<void> {
+  if (storage instanceof PgStorage) {
+    await storage.ensureSeeded();
+  }
+}
+
+function createStorage(): IStorage {
+  if (isDatabaseConfigured() && getDb()) {
+    return new PgStorage();
+  }
+  return new MemStorage();
+}
+
+export const storage = createStorage();

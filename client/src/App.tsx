@@ -1,55 +1,82 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
+import { consumeSearchIntent } from "./lib/searchIntent";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { Landing } from "@/pages/landing";
+import { Login } from "@/pages/login";
 import { Home } from "@/pages/home";
+import { RequireLogin } from "@/pages/require-login";
 import PlaceDetails from "@/pages/place-details";
 import { Profile } from "@/pages/profile";
 import { Friends } from "@/pages/friends";
 import { Messages } from "@/pages/messages";
 import { SocialFeed } from "@/pages/social-feed";
 import { Trips } from "@/pages/trips";
+import TripDetail from "@/pages/trip-detail";
 import { Events } from "@/pages/events";
 import { Chat } from "@/pages/chat";
+import { Places } from "@/pages/places";
 import NotFound from "@/pages/not-found";
+import PremiumBackground from "@/components/premium/PremiumBackground";
+import { AnimatePresence, motion } from "framer-motion";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!isAuthenticated || isLoading) return;
+    const pending = consumeSearchIntent();
+    if (pending && location === "/") {
+      navigate(pending);
+    }
+  }, [isAuthenticated, isLoading, location, navigate]);
 
   // Show loading while checking auth status
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <PremiumBackground contentClassName="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="loading-spinner mx-auto mb-4" />
           <p className="text-muted-foreground">Загрузка...</p>
         </div>
-      </div>
+      </PremiumBackground>
     );
   }
 
   return (
-    <Switch>
-      {!isAuthenticated ? (
-        <Route path="*" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Home} />
-          <Route path="/place/:id" component={PlaceDetails} />
-          <Route path="/profile" component={Profile} />
-          <Route path="/friends" component={Friends} />
-          <Route path="/messages" component={Messages} />
-          <Route path="/social-feed" component={SocialFeed} />
-          <Route path="/trips" component={Trips} />
-          <Route path="/events" component={Events} />
-          <Route path="/chat" component={Chat} />
-          <Route component={NotFound} />
-        </>
-      )}
-    </Switch>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location}
+        initial={{ opacity: 0, y: 8, filter: "blur(2px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        exit={{ opacity: 0, y: -6, filter: "blur(2px)" }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+      >
+        <Switch>
+          {!isAuthenticated && <Route path="/login" component={Login} />}
+          {!isAuthenticated && <Route path="/" component={Landing} />}
+          {!isAuthenticated && <Route path="*" component={RequireLogin} />}
+
+          {isAuthenticated && <Route path="/" component={Home} />}
+          {isAuthenticated && <Route path="/place/:id" component={PlaceDetails} />}
+          {isAuthenticated && <Route path="/places" component={Places} />}
+          {isAuthenticated && <Route path="/profile" component={Profile} />}
+          {isAuthenticated && <Route path="/friends" component={Friends} />}
+          {isAuthenticated && <Route path="/messages" component={Messages} />}
+          {isAuthenticated && <Route path="/social-feed" component={SocialFeed} />}
+          {isAuthenticated && <Route path="/trips" component={Trips} />}
+          {isAuthenticated && <Route path="/trips/:id" component={TripDetail} />}
+          {isAuthenticated && <Route path="/events" component={Events} />}
+          {isAuthenticated && <Route path="/chat" component={Chat} />}
+          {isAuthenticated && <Route component={NotFound} />}
+        </Switch>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

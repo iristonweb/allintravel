@@ -1,8 +1,10 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, getSession, type SessionUser } from "./auth";
+import passport from "passport";
+import { allowGeoRequest, nominatimAutocomplete } from "./geo/nominatim";
 import { 
   insertPlaceSchema, 
   insertReviewSchema, 
@@ -23,11 +25,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Geo autocomplete
+  app.get("/api/geo/autocomplete", async (req, res) => {
+    try {
+      const q = String(req.query.q ?? "").trim();
+      const limitRaw = req.query.limit != null ? Number(req.query.limit) : 8;
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(10, Math.floor(limitRaw))) : 8;
+      const scopeRaw = typeof req.query.scope === "string" ? req.query.scope : "all";
+      const scope = scopeRaw === "city" || scopeRaw === "country" || scopeRaw === "all" ? scopeRaw : "all";
+
+      if (q.length < 2) {
+        return res.json([]);
+      }
+
+      const ip =
+        (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+        req.socket.remoteAddress ||
+        "unknown";
+
+      if (!allowGeoRequest(`geo:${ip}`)) {
+        return res.status(429).json({ message: "Too many requests" });
+      }
+
+      // Prefer local DB-backed autocomplete when Postgres is configured.
+      if (process.env.DATABASE_URL) {
+        try {
+          const mod = await import("./geo/db-autocomplete");
+          const items = await mod.dbGeoAutocomplete({ q, limit, scope });
+          return res.json(items);
+        } catch (e) {
+          console.warn("DB geo autocomplete failed; falling back to Nominatim.", e);
+        }
+      }
+
+      // Fallback: OpenStreetMap Nominatim (no keys). Keep for dev / no-DB setups.
+      const acceptLanguage =
+        (req.headers["accept-language"] as string | undefined) ??
+        (typeof req.query.lang === "string" ? req.query.lang : undefined);
+
+      const items = await nominatimAutocomplete({ q, limit, acceptLanguage: acceptLanguage ?? null });
+      return res.json(items);
+    } catch (error) {
+      console.error("Error fetching geo autocomplete:", error);
+      res.status(500).json({ message: "Failed to fetch geo autocomplete" });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.get('/api/users/:id', async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -146,6 +205,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/trips/my-participations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const tripIds = await storage.getTripParticipationsByUser(userId);
+      res.json({ tripIds });
+    } catch (error) {
+      console.error("Error fetching my participations:", error);
+      res.status(500).json({ message: "Failed to fetch participations" });
+    }
+  });
+
+  app.get('/api/trips/:id/waypoints', async (req, res) => {
+    try {
+      const waypoints = await storage.getTripWaypoints(req.params.id);
+      res.json(waypoints);
+    } catch (error) {
+      console.error("Error fetching trip waypoints:", error);
+      res.status(500).json({ message: "Failed to fetch waypoints" });
+    }
+  });
+
+  app.post('/api/trips/:id/waypoints', isAuthenticated, async (req: any, res) => {
+    try {
+      const { placeId, orderIndex, dayNumber } = req.body;
+      const waypoint = await storage.addTripWaypoint(
+        req.params.id,
+        placeId,
+        orderIndex != null ? Number(orderIndex) : undefined,
+        dayNumber != null ? Number(dayNumber) : undefined
+      );
+      res.status(201).json(waypoint);
+    } catch (error) {
+      console.error("Error adding waypoint:", error);
+      res.status(500).json({ message: "Failed to add waypoint" });
+    }
+  });
+
+  app.delete('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req, res) => {
+    try {
+      await storage.removeTripWaypoint(req.params.waypointId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing waypoint:", error);
+      res.status(500).json({ message: "Failed to remove waypoint" });
+    }
+  });
+
   app.get('/api/trips/:id', async (req, res) => {
     try {
       const trip = await storage.getTrip(req.params.id);
@@ -223,13 +329,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/events/registrations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const eventIds = await storage.getRegisteredEventIds(userId);
+      res.json({ eventIds });
+    } catch (error) {
+      console.error("Error fetching event registrations:", error);
+      res.status(500).json({ message: "Failed to fetch registrations" });
+    }
+  });
+
+  app.get('/api/events/:id', async (req, res) => {
+    try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event) return res.status(404).json({ message: "Event not found" });
+      res.json(event);
+    } catch (error) {
+      console.error("Error fetching event:", error);
+      res.status(500).json({ message: "Failed to fetch event" });
+    }
+  });
+
+  app.post('/api/events/:id/register', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const event = await storage.getEvent(req.params.id);
+      if (!event) return res.status(404).json({ message: "Event not found" });
+      const registration = await storage.registerForEvent(req.params.id, userId);
+      res.status(201).json(registration);
+    } catch (error) {
+      console.error("Error registering for event:", error);
+      res.status(500).json({ message: "Failed to register" });
+    }
+  });
+
+  app.delete('/api/events/:id/register', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.unregisterFromEvent(req.params.id, userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error unregistering from event:", error);
+      res.status(500).json({ message: "Failed to unregister" });
+    }
+  });
+
+  app.get('/api/trips/:id/participants', async (req, res) => {
+    try {
+      const participants = await storage.getTripParticipants(req.params.id);
+      const enriched = await Promise.all(
+        participants.map(async (p) => ({
+          ...p,
+          user: p.userId ? await storage.getUser(p.userId) : null,
+        })),
+      );
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching participants:", error);
+      res.status(500).json({ message: "Failed to fetch participants" });
+    }
+  });
+
+  app.get('/api/follow/:userId/check', isAuthenticated, async (req: any, res) => {
+    try {
+      const followerId = req.user.claims.sub;
+      const isFollowing = await storage.isFollowing(followerId, req.params.userId);
+      res.json({ isFollowing });
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+      res.status(500).json({ message: "Failed to check follow status" });
+    }
+  });
+
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const [receivedRequests, conversations] = await Promise.all([
+        storage.getFriendRequests(userId, "received"),
+        storage.getConversations(userId),
+      ]);
+      const unreadMessages = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+      res.json({
+        friendRequests: receivedRequests.length,
+        unreadMessages,
+        items: [
+          ...receivedRequests.map((r) => ({
+            type: "friend_request" as const,
+            id: r.id,
+            message: "Новый запрос в друзья",
+          })),
+          ...conversations
+            .filter((c) => c.unreadCount > 0)
+            .map((c) => ({
+              type: "message" as const,
+              id: c.user.id,
+              message: `Непрочитанных: ${c.unreadCount} от ${c.user.firstName || "пользователя"}`,
+            })),
+        ],
+      });
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
   // Chat routes
   app.get('/api/chat/:room', async (req, res) => {
     try {
       const { room } = req.params;
       const { limit = 50 } = req.query;
       const messages = await storage.getChatMessages(room, Number(limit));
-      res.json(messages.reverse()); // Return in chronological order
+      const withSenders = await Promise.all(
+        messages.map(async (msg) => {
+          const sender = msg.userId ? await storage.getUser(msg.userId) : null;
+          return {
+            ...msg,
+            sender: sender ? { id: sender.id, firstName: sender.firstName, lastName: sender.lastName, profileImageUrl: sender.profileImageUrl } : null,
+          };
+        })
+      );
+      res.json(withSenders.reverse()); // Return in chronological order
     } catch (error) {
       console.error("Error fetching chat messages:", error);
       res.status(500).json({ message: "Failed to fetch chat messages" });
@@ -509,11 +729,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/posts', async (req: any, res) => {
     try {
-      const { userId, following, limit = 20, offset = 0 } = req.query;
+      const { userId, following, tag, limit = 20, offset = 0 } = req.query;
       const currentUserId: string | null = req.user?.claims?.sub || null;
       const posts = await storage.getTravelPosts({
         userId: userId as string,
         following: following as string,
+        tag: tag as string,
         limit: Number(limit),
         offset: Number(offset),
       });
@@ -552,8 +773,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/posts/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const postData = req.body;
-      const post = await storage.updateTravelPost(req.params.id, postData);
+      const userId = req.user.claims.sub;
+      const existing = await storage.getTravelPost(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Post not found" });
+      if (existing.userId !== userId) return res.status(403).json({ message: "Forbidden" });
+      const post = await storage.updateTravelPost(req.params.id, req.body);
       res.json(post);
     } catch (error) {
       console.error("Error updating post:", error);
@@ -563,6 +787,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/posts/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const existing = await storage.getTravelPost(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Post not found" });
+      if (existing.userId !== userId) return res.status(403).json({ message: "Forbidden" });
       await storage.deleteTravelPost(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -600,6 +828,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const postId = req.params.id;
+      const post = await storage.getTravelPost(postId);
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
       const commentData = insertPostCommentSchema.parse({ ...req.body, userId, postId });
       const comment = await storage.addPostComment(commentData);
       res.status(201).json(comment);
@@ -624,6 +856,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/comments/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const comment = await storage.getPostComment(req.params.id);
+      if (!comment) return res.status(404).json({ message: "Comment not found" });
+      if (comment.userId !== userId) return res.status(403).json({ message: "Forbidden" });
       await storage.deletePostComment(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -648,32 +884,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  const sessionParser = getSession();
 
   // WebSocket setup for chat
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  wss.on('connection', (ws: WebSocket) => {
-    console.log('Client connected to WebSocket');
+  wss.on('connection', (ws: WebSocket, req) => {
+    let authenticatedUserId: string | null = null;
+
+    const runSession = (cb: () => void) => {
+      sessionParser(req as Request, {} as Response, () => {
+        passport.initialize()(req as Request, {} as Response, () => {
+          passport.session()(req as Request, {} as Response, cb);
+        });
+      });
+    };
+
+    runSession(() => {
+      const user = (req as Request).user as SessionUser | undefined;
+      authenticatedUserId = user?.claims?.sub ?? null;
+    });
 
     ws.on('message', async (message: string) => {
       try {
         const data = JSON.parse(message);
-        
+
         if (data.type === 'chat_message') {
+          const userId = authenticatedUserId ?? data.userId;
+          if (!userId) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Authentication required' }));
+            return;
+          }
           const messageData = insertChatMessageSchema.parse({
-            userId: data.userId,
+            userId,
             content: data.content,
             chatRoom: data.chatRoom,
           });
-          
+
           const savedMessage = await storage.createChatMessage(messageData);
-          
-          // Broadcast to all connected clients
+          const sender = await storage.getUser(savedMessage.userId);
+
           wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({
                 type: 'new_message',
                 message: savedMessage,
+                sender: sender ? { id: sender.id, firstName: sender.firstName, lastName: sender.lastName, profileImageUrl: sender.profileImageUrl } : null,
               }));
             }
           });

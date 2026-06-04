@@ -15,6 +15,42 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Geo reference tables (countries & major cities)
+export const countries = pgTable(
+  "countries",
+  {
+    code: varchar("code", { length: 2 }).primaryKey(), // ISO2
+    name: varchar("name", { length: 128 }).notNull(),
+    capitalName: varchar("capital_name", { length: 128 }),
+    continent: varchar("continent", { length: 2 }),
+    currency: varchar("currency", { length: 3 }),
+    phone: varchar("phone", { length: 32 }),
+  },
+  (t) => [index("IDX_countries_name").on(t.name)],
+);
+
+export const cities = pgTable(
+  "cities",
+  {
+    geonameId: integer("geoname_id").primaryKey(),
+    name: varchar("name", { length: 200 }).notNull(),
+    asciiName: varchar("ascii_name", { length: 200 }),
+    countryCode: varchar("country_code", { length: 2 }).notNull(),
+    admin1: varchar("admin1", { length: 20 }),
+    latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
+    longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+    population: integer("population").default(0),
+    featureClass: varchar("feature_class", { length: 1 }),
+    featureCode: varchar("feature_code", { length: 10 }),
+  },
+  (t) => [
+    index("IDX_cities_country_code").on(t.countryCode),
+    index("IDX_cities_population").on(t.population),
+    index("IDX_cities_name").on(t.name),
+    index("IDX_cities_ascii_name").on(t.asciiName),
+  ],
+);
+
 // Session storage table.
 export const sessions = pgTable(
   "sessions",
@@ -33,6 +69,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  isVerified: boolean("is_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -101,6 +138,16 @@ export const tripParticipants = pgTable("trip_participants", {
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
+// Trip waypoints (stops/places in a trip route)
+export const tripWaypoints = pgTable("trip_waypoints", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  tripId: uuid("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
+  placeId: uuid("place_id").notNull().references(() => places.id, { onDelete: "cascade" }),
+  orderIndex: integer("order_index").notNull().default(0),
+  dayNumber: integer("day_number"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Events table
 export const events = pgTable("events", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -116,6 +163,14 @@ export const events = pgTable("events", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Event registrations (RSVP)
+export const eventRegistrations = pgTable("event_registrations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Chat messages table
@@ -245,11 +300,17 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 export const tripsRelations = relations(trips, ({ one, many }) => ({
   user: one(users, { fields: [trips.userId], references: [users.id] }),
   participants: many(tripParticipants),
+  waypoints: many(tripWaypoints),
 }));
 
 export const tripParticipantsRelations = relations(tripParticipants, ({ one }) => ({
   trip: one(trips, { fields: [tripParticipants.tripId], references: [trips.id] }),
   user: one(users, { fields: [tripParticipants.userId], references: [users.id] }),
+}));
+
+export const tripWaypointsRelations = relations(tripWaypoints, ({ one }) => ({
+  trip: one(trips, { fields: [tripWaypoints.tripId], references: [trips.id] }),
+  place: one(places, { fields: [tripWaypoints.placeId], references: [places.id] }),
 }));
 
 export const eventsRelations = relations(events, ({ one }) => ({
@@ -322,6 +383,11 @@ export const insertTripSchema = createInsertSchema(trips).omit({
   updatedAt: true,
 });
 
+export const insertTripWaypointSchema = createInsertSchema(tripWaypoints).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertEventSchema = createInsertSchema(events).omit({
   id: true,
   createdAt: true,
@@ -382,8 +448,11 @@ export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Trip = typeof trips.$inferSelect;
 export type InsertTrip = z.infer<typeof insertTripSchema>;
 export type TripParticipant = typeof tripParticipants.$inferSelect;
+export type TripWaypoint = typeof tripWaypoints.$inferSelect;
+export type InsertTripWaypoint = z.infer<typeof insertTripWaypointSchema>;
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
+export type EventRegistration = typeof eventRegistrations.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type UserFavorite = typeof userFavorites.$inferSelect;
@@ -416,6 +485,10 @@ export interface FriendshipWithUser extends Friendship {
   user: User | null;
 }
 
+export interface TripWaypointWithPlace extends TripWaypoint {
+  place: Place | null;
+}
+
 export interface UserFavoriteWithPlace extends UserFavorite {
   place: Place | null;
 }
@@ -431,3 +504,6 @@ export type PostLike = typeof postLikes.$inferSelect;
 export type InsertPostLike = z.infer<typeof insertPostLikeSchema>;
 export type PostComment = typeof postComments.$inferSelect;
 export type InsertPostComment = z.infer<typeof insertPostCommentSchema>;
+
+export type Country = typeof countries.$inferSelect;
+export type City = typeof cities.$inferSelect;

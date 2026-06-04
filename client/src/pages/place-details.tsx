@@ -5,7 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
-import { NavigationHeader } from "@/components/navigation-header";
+import { pushRecentlyViewedPlace } from "@/lib/recentlyViewed";
+import AppLayout from "@/components/app-layout";
 import { ReviewCard } from "@/components/review-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Star, MapPin, Phone, Globe, Heart, Share2 } from "lucide-react";
 import { useState } from "react";
+import { shareUrl } from "@/lib/share";
+import PlaceMap from "@/components/PlaceMap";
 import type { PlaceWithDetails, FavoriteStatus, Review } from "@shared/schema";
 
 export default function PlaceDetails() {
@@ -28,12 +31,13 @@ export default function PlaceDetails() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Нужен вход",
+        description: "Сессия закончилась. Перенаправляем на страницу входа…",
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        const redirect = window.location.pathname + window.location.search + window.location.hash;
+        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
       }, 500);
       return;
     }
@@ -43,6 +47,11 @@ export default function PlaceDetails() {
     queryKey: ["/api/places", id],
     enabled: !!id && isAuthenticated,
   });
+
+  useEffect(() => {
+    if (!place?.id) return;
+    pushRecentlyViewedPlace({ id: place.id, type: place.type });
+  }, [place?.id, place?.type]);
 
   const { data: reviews, isLoading: reviewsLoading } = useQuery<Review[]>({
     queryKey: ["/api/places", id, "reviews"],
@@ -58,12 +67,13 @@ export default function PlaceDetails() {
   useEffect(() => {
     if (placeError && isUnauthorizedError(placeError as Error)) {
       toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        title: "Нужен вход",
+        description: "Сессия закончилась. Перенаправляем на страницу входа…",
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        const redirect = window.location.pathname + window.location.search + window.location.hash;
+        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
       }, 500);
     }
   }, [placeError, toast]);
@@ -74,8 +84,8 @@ export default function PlaceDetails() {
     },
     onSuccess: () => {
       toast({
-        title: "Review Added",
-        description: "Your review has been posted successfully!",
+        title: "Отзыв добавлен",
+        description: "Спасибо! Ваш отзыв опубликован.",
       });
       setReviewText("");
       setReviewRating("5");
@@ -85,18 +95,19 @@ export default function PlaceDetails() {
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Нужен вход",
+          description: "Сессия закончилась. Перенаправляем на страницу входа…",
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          const redirect = window.location.pathname + window.location.search + window.location.hash;
+          window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
         }, 500);
         return;
       }
       toast({
-        title: "Error",
-        description: "Failed to add review. Please try again.",
+        title: "Ошибка",
+        description: "Не удалось добавить отзыв. Попробуйте ещё раз.",
         variant: "destructive",
       });
     },
@@ -110,27 +121,28 @@ export default function PlaceDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/favorites", id, "check"] });
       toast({
-        title: favoriteStatus?.isFavorite ? "Removed from Favorites" : "Added to Favorites",
-        description: favoriteStatus?.isFavorite 
-          ? "Place removed from your favorites"
-          : "Place added to your favorites",
+        title: favoriteStatus?.isFavorite ? "Удалено из избранного" : "Добавлено в избранное",
+        description: favoriteStatus?.isFavorite
+          ? "Место убрано из избранного."
+          : "Место добавлено в избранное.",
       });
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Нужен вход",
+          description: "Сессия закончилась. Перенаправляем на страницу входа…",
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          const redirect = window.location.pathname + window.location.search + window.location.hash;
+          window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
         }, 500);
         return;
       }
       toast({
-        title: "Error",
-        description: "Failed to update favorites. Please try again.",
+        title: "Ошибка",
+        description: "Не удалось обновить избранное. Попробуйте ещё раз.",
         variant: "destructive",
       });
     },
@@ -139,8 +151,8 @@ export default function PlaceDetails() {
   const handleSubmitReview = () => {
     if (!reviewText.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a review.",
+        title: "Ошибка",
+        description: "Введите текст отзыва.",
         variant: "destructive",
       });
       return;
@@ -154,45 +166,36 @@ export default function PlaceDetails() {
 
   if (authLoading || placeLoading) {
     return (
-      <div className="min-h-screen">
-        <NavigationHeader />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-64 bg-gray-200 rounded-xl mb-8"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3 mb-8"></div>
-            <div className="space-y-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+      <AppLayout contentClassName="py-8">
+        <div className="animate-pulse">
+          <div className="h-64 bg-muted rounded-xl mb-8" />
+          <div className="h-8 bg-muted rounded w-1/3 mb-4" />
+          <div className="h-4 bg-muted rounded w-2/3 mb-8" />
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-32 bg-muted rounded" />
+            ))}
           </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   if (!place) {
     return (
-      <div className="min-h-screen">
-        <NavigationHeader />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Place Not Found</h1>
-            <p className="text-gray-600">The place you're looking for doesn't exist.</p>
-          </div>
+      <AppLayout contentClassName="py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-4">Место не найдено</h1>
+          <p className="text-muted-foreground">Похоже, такого места не существует или оно было удалено.</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   const averageRating = parseFloat(place?.averageRating || "0");
 
   return (
-    <div className="min-h-screen bg-white">
-      <NavigationHeader />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AppLayout contentClassName="py-8">
         {/* Place Header */}
         <div className="mb-8">
           <div className="relative h-64 md:h-96 rounded-xl overflow-hidden mb-6">
@@ -207,14 +210,21 @@ export default function PlaceDetails() {
                 size="sm"
                 onClick={() => toggleFavoriteMutation.mutate()}
                 disabled={toggleFavoriteMutation.isPending}
-                className="bg-white/90 hover:bg-white"
+                className="ait-glass hover:bg-card/50"
               >
                 <Heart 
-                  className={`h-4 w-4 ${favoriteStatus?.isFavorite ? 'fill-primary text-primary' : 'text-gray-600'}`} 
+                  className={`h-4 w-4 ${favoriteStatus?.isFavorite ? 'fill-primary text-primary' : 'text-muted-foreground'}`} 
                 />
               </Button>
-              <Button variant="secondary" size="sm" className="bg-white/90 hover:bg-white">
-                <Share2 className="h-4 w-4 text-gray-600" />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="ait-glass hover:bg-card/50"
+                onClick={() =>
+                  shareUrl(window.location.href, place?.name, place?.description?.slice(0, 120))
+                }
+              >
+                <Share2 className="h-4 w-4 text-muted-foreground" />
               </Button>
             </div>
           </div>
@@ -222,13 +232,13 @@ export default function PlaceDetails() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{place?.name}</h1>
+                <h1 className="text-3xl font-bold text-foreground">{place?.name}</h1>
                 <Badge variant="outline" className="capitalize">
                   {place?.type}
                 </Badge>
                 {place?.isVerified && (
-                  <Badge className="bg-green-100 text-green-800">
-                    Verified
+                  <Badge className="bg-green-500/15 text-green-500 border border-green-500/30">
+                    Проверено
                   </Badge>
                 )}
               </div>
@@ -243,8 +253,8 @@ export default function PlaceDetails() {
                       />
                     ))}
                   </div>
-                  <span className="text-sm text-gray-600">
-                    {averageRating.toFixed(1)} ({place?.reviewCount || 0} reviews)
+                  <span className="text-sm text-muted-foreground">
+                    {averageRating.toFixed(1)} ({place?.reviewCount || 0} отзывов)
                   </span>
                 </div>
                 {place?.priceRange && (
@@ -255,24 +265,35 @@ export default function PlaceDetails() {
               </div>
 
               {place?.description && (
-                <p className="text-gray-700 mb-4">{place.description}</p>
+                <p className="text-muted-foreground mb-4">{place.description}</p>
+              )}
+
+              {place?.latitude && place?.longitude && (
+                <div className="mb-6">
+                  <PlaceMap
+                    places={[place]}
+                    center={[Number(place.latitude), Number(place.longitude)]}
+                    zoom={14}
+                    height="16rem"
+                  />
+                </div>
               )}
 
               <div className="space-y-2">
                 {place?.address && (
-                  <div className="flex items-center text-gray-600">
+                  <div className="flex items-center text-muted-foreground">
                     <MapPin className="h-4 w-4 mr-2" />
                     <span>{place.address}</span>
                   </div>
                 )}
                 {place?.phone && (
-                  <div className="flex items-center text-gray-600">
+                  <div className="flex items-center text-muted-foreground">
                     <Phone className="h-4 w-4 mr-2" />
                     <span>{place.phone}</span>
                   </div>
                 )}
                 {place?.website && (
-                  <div className="flex items-center text-gray-600">
+                  <div className="flex items-center text-muted-foreground">
                     <Globe className="h-4 w-4 mr-2" />
                     <a href={place.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary">
                       {place.website}
@@ -287,27 +308,27 @@ export default function PlaceDetails() {
         {/* Add Review Section */}
         <Card className="mb-8">
           <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold mb-4">Write a Review</h3>
+            <h3 className="text-lg font-semibold mb-4">Оставить отзыв</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Rating</label>
+                <label className="block text-sm font-medium mb-2">Оценка</label>
                 <Select value={reviewRating} onValueChange={setReviewRating}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">5 Stars</SelectItem>
-                    <SelectItem value="4">4 Stars</SelectItem>
-                    <SelectItem value="3">3 Stars</SelectItem>
-                    <SelectItem value="2">2 Stars</SelectItem>
-                    <SelectItem value="1">1 Star</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="4">4</SelectItem>
+                    <SelectItem value="3">3</SelectItem>
+                    <SelectItem value="2">2</SelectItem>
+                    <SelectItem value="1">1</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Your Review</label>
+                <label className="block text-sm font-medium mb-2">Текст отзыва</label>
                 <Textarea
-                  placeholder="Share your experience..."
+                  placeholder="Поделитесь впечатлениями о месте…"
                   value={reviewText}
                   onChange={(e) => setReviewText(e.target.value)}
                   className="min-h-[100px]"
@@ -318,7 +339,7 @@ export default function PlaceDetails() {
                 disabled={createReviewMutation.isPending}
                 className="bg-primary hover:bg-primary/90"
               >
-                {createReviewMutation.isPending ? "Posting..." : "Post Review"}
+                {createReviewMutation.isPending ? "Публикуем…" : "Опубликовать"}
               </Button>
             </div>
           </CardContent>
@@ -326,14 +347,14 @@ export default function PlaceDetails() {
 
         {/* Reviews Section */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Reviews ({place?.reviewCount || 0})
+          <h2 className="text-2xl font-bold text-foreground mb-6">
+            Отзывы ({place?.reviewCount || 0})
           </h2>
           
           {reviewsLoading ? (
             <div className="space-y-6">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="bg-gray-200 rounded-xl h-32 animate-pulse"></div>
+                <div key={i} className="bg-muted rounded-xl h-32 animate-pulse" />
               ))}
             </div>
           ) : reviews && reviews.length > 0 ? (
@@ -344,11 +365,10 @@ export default function PlaceDetails() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-600">No reviews yet. Be the first to review this place!</p>
+              <p className="text-muted-foreground">Пока нет отзывов. Будьте первым!</p>
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AppLayout>
   );
 }

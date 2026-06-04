@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="All-in-travel">
+  <title>All-in-travel</title>
+  <defs>
+    <linearGradient id="ait-g" x1="32" y1="40" x2="224" y2="216" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="0.55" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <filter id="ait-s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0b1220" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Mark: compass ring -->
+  <g filter="url(#ait-s)">
+    <circle cx="128" cy="128" r="96" fill="none" stroke="url(#ait-g)" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="128" cy="128" r="58" fill="none" stroke="url(#ait-g)" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+  </g>
+
+  <!-- North pointer -->
+  <path d="M128 44l18 42h-36l18-42z" fill="url(#ait-g)"/>
+
+  <!-- Airplane (minimal) -->
+  <path
+    d="M170 138l-22-10-10-22c-2-4-6-7-11-7-6 0-11 5-11 11 0 5 3 9 7 11l22 10 10 22c2 4 6 7 11 7 6 0 11-5 11-11 0-5-3-9-7-11z"
+    fill="#0b1220"
+    opacity="0.92"
+  />
+  <path d="M112 134l32 14" stroke="#ffffff" stroke-opacity="0.85" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- Center dot -->
+  <circle cx="128" cy="128" r="8" fill="#0b1220" opacity="0.88"/>
+</svg>

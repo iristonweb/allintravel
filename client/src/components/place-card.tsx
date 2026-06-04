@@ -16,67 +16,66 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
     const labels: Record<string, string> = {
       restaurant: "Ресторан",
       hotel: "Отель",
-      attraction: "Достопримечательность"
+      attraction: "Достопримечательность",
     };
     return labels[type] || type;
   };
 
-  const getPriceDisplay = (priceRange: string | null) => {
-    if (!priceRange) return null;
-    return priceRange;
-  };
+  const rating =
+    typeof place.averageRating === "string"
+      ? Number.parseFloat(place.averageRating) || 0
+      : place.averageRating || 0;
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="group overflow-hidden rounded-[20px] border-border/70 bg-card/50 transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(0,0,0,0.12)]">
       <div className="relative">
         <img
           src={place.imageUrl || `https://images.unsplash.com/photo-1551632811-561732d1e306?w=400&h=200&fit=crop`}
           alt={place.name}
-          className="w-full h-48 object-cover"
+          className="h-52 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0 opacity-70" />
         <Button
           variant="ghost"
           size="icon"
-          className={`absolute top-2 right-2 ${
+          className={`absolute right-3 top-3 ${
             isFavorite ? "text-red-500" : "text-white"
-          } hover:text-red-500`}
-          onClick={() => onToggleFavorite?.(place.id)}
+          } hover:text-red-500 bg-black/15 backdrop-blur-md hover:bg-black/20`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleFavorite?.(place.id);
+          }}
         >
           <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />
         </Button>
         {place.isVerified && (
-          <Badge className="absolute top-2 left-2 bg-green-500">
+          <Badge className="absolute left-3 top-3 bg-white/85 text-black hover:bg-white">
             Проверено
           </Badge>
         )}
       </div>
       
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <h3 className="font-semibold text-lg leading-tight">{place.name}</h3>
-          <div className="flex items-center gap-1 ml-2">
-            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm font-medium">
-              {typeof place.averageRating === 'string' 
-                ? parseFloat(place.averageRating) || 0 
-                : place.averageRating || 0}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              ({place.reviewCount || 0})
-            </span>
+      <CardHeader className="pb-2 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-lg font-semibold leading-tight tracking-[-0.01em]">
+            {place.name}
+          </h3>
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card/40 px-2 py-1">
+            <Star className="h-4 w-4 fill-[var(--ait-accent)] text-[var(--ait-accent)]" />
+            <span className="text-sm font-semibold">{rating.toFixed(1)}</span>
+            <span className="text-xs text-muted-foreground">({place.reviewCount || 0})</span>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="rounded-full">
             {getTypeLabel(place.type)}
           </Badge>
           {place.priceRange && (
-            <div className="flex items-center gap-1">
-              <DollarSign className="h-4 w-4 text-green-600" />
-              <span className="text-sm text-muted-foreground">
-                {getPriceDisplay(place.priceRange)}
-              </span>
+            <div className="flex items-center gap-1 rounded-full border border-border bg-card/30 px-2 py-1">
+              <DollarSign className="h-4 w-4 text-[var(--ait-palm)]" />
+              <span className="text-sm text-muted-foreground">{place.priceRange}</span>
             </div>
           )}
         </div>
@@ -84,21 +83,21 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
       
       <CardContent>
         {place.description && (
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+          <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
             {place.description}
           </p>
         )}
         
         {place.address && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
             <span className="truncate">{place.address}</span>
           </div>
         )}
         
         <div className="flex gap-2">
-          <Link href={`/places/${place.id}`} className="flex-1">
-            <Button className="w-full bg-primary hover:bg-primary/90">
+          <Link href={`/place/${place.id}`} className="flex-1">
+            <Button className="w-full rounded-[16px] bg-primary hover:bg-primary/90">
               Подробнее
             </Button>
           </Link>

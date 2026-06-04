@@ -1,231 +1,352 @@
+import PublicLayout from "@/components/public-layout";
+import Hero from "@/components/marketing/Hero";
+import FeatureCard from "@/components/marketing/FeatureCard";
+import FloatingSearchBar from "@/components/search/FloatingSearchBar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Globe, MapPin, Users, Calendar, Star, MessageSquare } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  Globe,
+  MapPin,
+  MessageSquare,
+  Star,
+  Users,
+} from "lucide-react";
+import { useLocation } from "wouter";
 
 export function Landing() {
+  const [, navigate] = useLocation();
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <PublicLayout
+      navItems={[
+        { href: "#features", label: "Возможности" },
+        { href: "#how-it-works", label: "Как это работает" },
+        { href: "#testimonials", label: "Отзывы" },
+      ]}
+    >
+      <Hero
+        title={
+          <>
+            Путешествия, которые{" "}
+            <span className="bg-gradient-to-r from-[var(--ait-primary)] to-[var(--ait-accent)] bg-clip-text text-transparent">
+              хочется
+            </span>{" "}
+            планировать
+          </>
+        }
+        subtitle="Находите места, собирайте маршруты, знакомьтесь с попутчиками и делитесь впечатлениями — в одном премиальном пространстве."
+        actions={
+          <button
+            type="button"
+            onClick={() => navigate("/login")}
+            className="inline-flex items-center justify-center rounded-[var(--ait-radius-button)] bg-[linear-gradient(90deg,var(--ait-primary),var(--ait-accent),#7c3aed)] px-6 py-3 text-base font-semibold text-white shadow-[0_16px_60px_rgba(0,0,0,0.14)] transition-transform hover:translate-y-[-1px] active:translate-y-0 w-full sm:w-auto"
+          >
+            Начать путешествие
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </button>
+        }
+        below={
+          <FloatingSearchBar className="mt-2" />
+        }
+        backgroundImageUrl="https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=2400&q=70"
+      />
+
+      {/* Features Section */}
+      <section id="features" className="scroll-offset relative py-16 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Globe className="text-primary text-2xl mr-2" />
-              <span className="text-xl font-bold text-gray-900">All In Travel</span>
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-primary transition-colors">Features</a>
-              <a href="#how-it-works" className="text-gray-600 hover:text-primary transition-colors">How it Works</a>
-              <a href="#testimonials" className="text-gray-600 hover:text-primary transition-colors">Testimonials</a>
-            </nav>
-            <Button 
-              onClick={() => window.location.href = '/api/login'}
-              className="bg-primary hover:bg-primary/90 text-white"
-            >
-              Sign In
-            </Button>
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
+              Чёткая система для поездок любого масштаба
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+              Минимализм, глубина и сильный CTA. Всё важное — на поверхности, детали — на расстоянии одного клика.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+            <FeatureCard
+              icon={<MapPin className="h-5 w-5" />}
+              title="Исследуйте"
+              description="Подбирайте рестораны, отели и места на карте — быстро, чисто, без лишних кликов."
+            />
+            <FeatureCard
+              icon={<Users className="h-5 w-5" />}
+              title="Найдите"
+              description="Ищите попутчиков, обсуждайте идеи и собирайте команду под стиль вашей поездки."
+            />
+            <FeatureCard
+              icon={<Calendar className="h-5 w-5" />}
+              title="Планируйте"
+              description="Собирайте маршруты, события и заметки так, чтобы поездка была под контролем."
+            />
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              {
+                title: "Отзывы и рейтинги",
+                icon: <Star className="h-4 w-4" />,
+                text: "Решайте увереннее, опираясь на опыт других путешественников.",
+              },
+              {
+                title: "Чат сообщества",
+                icon: <MessageSquare className="h-4 w-4" />,
+                text: "Задавайте вопросы по городам и получайте советы от местных.",
+              },
+              {
+                title: "Глобальный охват",
+                icon: <Globe className="h-4 w-4" />,
+                text: "Сообщество и контент из десятков стран — всегда актуально.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="ait-surface rounded-[var(--ait-radius-card)] px-5 py-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-border bg-card/30 text-[var(--ait-accent)]">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {item.title}
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {item.text}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* Hero Section */}
-      <section className="relative h-96 bg-gradient-to-r from-primary to-secondary">
-        <div className="absolute inset-0 bg-black bg-opacity-30"></div>
-        <div 
-          className="absolute inset-0"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=800')",
-            backgroundSize: "cover",
-            backgroundPosition: "center"
-          }}
-        />
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="text-white max-w-2xl">
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-              Discover Your Next Adventure
-            </h1>
-            <p className="text-xl mb-8 text-gray-100">
-              Connect with fellow travelers, find hidden gems, and create unforgettable memories with our interactive travel guide.
+      {/* Statistics Section */}
+      <section className="py-16 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="ait-surface rounded-[var(--ait-radius-hero)] px-6 py-10 md:px-10">
+            <div className="grid grid-cols-2 gap-8 text-center md:grid-cols-4">
+              <div>
+                <div className="text-3xl font-bold tracking-[-0.02em] text-foreground md:text-4xl">
+                  2 500+
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  мест с отзывами
+                </div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold tracking-[-0.02em] text-foreground md:text-4xl">
+                  15K+
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  путешественников
+                </div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold tracking-[-0.02em] text-foreground md:text-4xl">
+                  127
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">стран</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold tracking-[-0.02em] text-foreground md:text-4xl">
+                  8K+
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  поездок вместе
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how-it-works" className="scroll-offset py-16 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
+              Как это работает
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+              Три шага — и вы уже планируете поездку без хаоса и лишних таблиц.
             </p>
-            
-            <div className="bg-white rounded-lg p-2 flex items-center shadow-lg">
-              <MapPin className="text-gray-400 ml-3 mr-2" size={20} />
-              <Input 
-                placeholder="Where do you want to go?" 
-                className="flex-1 border-0 outline-none text-gray-900 bg-transparent"
-              />
-              <Button className="bg-primary text-white hover:bg-primary/90">
-                Search
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {[
+              {
+                step: "01",
+                title: "Выберите направление",
+                text: "Откройте карту и сохраните места, которые хотите посетить.",
+              },
+              {
+                step: "02",
+                title: "Соберите маршрут",
+                text: "Добавьте поездку, события и заметки — всё в одной структуре.",
+              },
+              {
+                step: "03",
+                title: "Делитесь и общайтесь",
+                text: "Подключайте друзей или находите попутчиков по интересам.",
+              },
+            ].map((item) => (
+              <div
+                key={item.step}
+                className="ait-surface rounded-[var(--ait-radius-card)] p-6"
+              >
+                <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground">
+                  {item.step}
+                </div>
+                <div className="mt-3 text-base font-semibold text-foreground">
+                  {item.title}
+                </div>
+                <div className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {item.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section id="testimonials" className="scroll-offset py-16 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
+              Отзывы
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+              Коротко, по делу — почему люди возвращаются планировать поездки здесь.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+            {[
+              {
+                quote:
+                  "Собрали маршрут на неделю за вечер. Карта и сохранённые места — это магия.",
+                name: "Алина",
+                meta: "Барселона → Валенсия",
+              },
+              {
+                quote:
+                  "Наконец-то все поездки и идеи в одном месте. Никаких заметок в 5 приложениях.",
+                name: "Дмитрий",
+                meta: "Прага, 4 дня",
+              },
+              {
+                quote:
+                  "Нашли попутчиков и сразу собрали план. Интерфейс очень спокойный и понятный.",
+                name: "София",
+                meta: "Бали, 2 недели",
+              },
+            ].map((t) => (
+              <div
+                key={t.name}
+                className="ait-surface rounded-[var(--ait-radius-card)] p-6"
+              >
+                <div className="flex items-center gap-2 text-[var(--ait-primary)]">
+                  <Star className="h-4 w-4" />
+                  <Star className="h-4 w-4" />
+                  <Star className="h-4 w-4" />
+                  <Star className="h-4 w-4" />
+                  <Star className="h-4 w-4" />
+                </div>
+                <p className="mt-4 text-sm leading-relaxed text-foreground/90">
+                  “{t.quote}”
+                </p>
+                <div className="mt-5 text-sm font-semibold text-foreground">
+                  {t.name}
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {t.meta}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action */}
+      <section className="py-16 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-[var(--ait-radius-hero)] border border-border bg-[radial-gradient(900px_300px_at_30%_0%,rgba(14,165,164,0.14),transparent_60%),radial-gradient(800px_340px_at_90%_20%,rgba(255,106,61,0.14),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-8 text-center backdrop-blur-[var(--ait-blur)] md:p-12">
+            <h2 className="text-3xl font-bold tracking-[-0.02em] text-foreground sm:text-4xl">
+              Готовы отправиться в путь?
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+              Начните с первого места, которое хочется увидеть. Дальше система соберёт всё вокруг вашей поездки.
+            </p>
+            <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+              <Button
+                variant="premium"
+                size="cta"
+                onClick={() => navigate("/login")}
+                className="w-full sm:w-auto"
+              >
+                Начать путешествие
+                <ArrowRight className="ml-1" />
+              </Button>
+              <Button
+                variant="glass"
+                size="cta"
+                onClick={() => navigate("/places")}
+                className="w-full sm:w-auto"
+              >
+                Посмотреть места
               </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Everything You Need for Perfect Travel
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              From discovering hidden gems to connecting with fellow travelers, All In Travel provides all the tools you need for an amazing journey.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <MapPin className="text-primary text-4xl mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold mb-2">Interactive Maps</h3>
-                <p className="text-gray-600">
-                  Explore destinations with detailed maps showing restaurants, hotels, and attractions with real-time information.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <Users className="text-primary text-4xl mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold mb-2">Travel Companions</h3>
-                <p className="text-gray-600">
-                  Find like-minded travelers for your next adventure. Connect, plan, and explore together safely.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <Star className="text-primary text-4xl mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold mb-2">Reviews & Ratings</h3>
-                <p className="text-gray-600">
-                  Read authentic reviews from fellow travelers and share your own experiences to help others.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <MessageSquare className="text-primary text-4xl mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold mb-2">Community Chat</h3>
-                <p className="text-gray-600">
-                  Join city-specific chat rooms to get real-time tips and advice from locals and other travelers.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <Calendar className="text-primary text-4xl mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold mb-2">Events & Activities</h3>
-                <p className="text-gray-600">
-                  Discover local events, festivals, and activities happening during your visit.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                <Globe className="text-primary text-4xl mb-4 mx-auto" />
-                <h3 className="text-xl font-semibold mb-2">Global Community</h3>
-                <p className="text-gray-600">
-                  Join a worldwide community of travelers sharing experiences across 127+ countries.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Statistics Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-primary mb-2">2,500+</div>
-              <div className="text-gray-600">Places Reviewed</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-secondary mb-2">15K+</div>
-              <div className="text-gray-600">Happy Travelers</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-accent mb-2">127</div>
-              <div className="text-gray-600">Countries</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-gray-900 mb-2">8K+</div>
-              <div className="text-gray-600">Travel Connections</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Call to Action */}
-      <section className="py-16 bg-primary text-white">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold mb-4">
-            Ready to Start Your Journey?
-          </h2>
-          <p className="text-xl mb-8 text-primary-foreground/90">
-            Join thousands of travelers who trust All In Travel for their adventures.
-          </p>
-          <Button 
-            size="lg"
-            onClick={() => window.location.href = '/api/login'}
-            className="bg-white text-primary hover:bg-gray-100 text-lg px-8 py-3"
-          >
-            Get Started for Free
-          </Button>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-200">
+      <footer className="border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center mb-4">
-                <Globe className="text-primary text-2xl mr-2" />
-                <span className="text-xl font-bold text-gray-900">All In Travel</span>
+                <Globe className="text-[var(--ait-primary)] text-2xl mr-2" />
+                <span className="text-xl font-bold text-foreground">All In Travel</span>
               </div>
-              <p className="text-gray-600 mb-4">
-                Your ultimate companion for discovering amazing places, connecting with fellow travelers, and creating unforgettable memories around the world.
+              <p className="text-muted-foreground mb-4">
+                Ваш помощник в поиске мест, общении с попутчиками и создании незабываемых путешествий по всему миру.
               </p>
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Explore</h3>
+              <h3 className="font-semibold text-foreground mb-4">Исследовать</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Popular Destinations</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Top Restaurants</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Best Hotels</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Travel Guides</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Популярные направления</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Рестораны</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Отели</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Путеводители</a></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-900 mb-4">Support</h3>
+              <h3 className="font-semibold text-foreground mb-4">Поддержка</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Help Center</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Contact Us</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-primary transition-colors">Terms of Service</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Центр помощи</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Связаться с нами</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Конфиденциальность</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Условия использования</a></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-gray-200 pt-8 mt-8">
+          <div className="border-t border-border pt-8 mt-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-gray-600 text-sm">© 2024 All In Travel. All rights reserved.</p>
+              <p className="text-muted-foreground text-sm">© 2024 All In Travel. Все права защищены.</p>
             </div>
           </div>
         </div>
       </footer>
-    </div>
+    </PublicLayout>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import NavigationHeader from "@/components/navigation-header";
+import AppLayout from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,12 +27,35 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UserProfile, TravelPostWithAuthor, UserFavoriteWithPlace, ReviewWithPlace, Trip } from "@shared/schema";
+import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+
+  const avatarUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/users/avatar", { method: "POST", body: form, credentials: "include" });
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Аватар обновлён" });
+    },
+    onError: () => {
+      toast({ title: "Не удалось загрузить фото", variant: "destructive" });
+    },
+  });
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) avatarUploadMutation.mutate(file);
+  };
   const [profileData, setProfileData] = useState({
     bio: "",
     location: "",
@@ -104,13 +127,12 @@ export function Profile() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background">
-        <NavigationHeader />
-        <div className="container mx-auto px-4 py-16 text-center">
+      <AppLayout contentClassName="py-16">
+        <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
           <p className="text-muted-foreground">Чтобы просмотреть профиль, необходимо войти</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
@@ -123,10 +145,8 @@ export function Profile() {
     ));
 
   return (
-    <div className="min-h-screen bg-background">
-      <NavigationHeader />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+    <AppLayout>
+      <div className="max-w-4xl mx-auto">
 
           {/* Profile header card */}
           <Card className="mb-8">
@@ -144,8 +164,12 @@ export function Profile() {
                       size="icon"
                       variant="outline"
                       className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
+                      asChild
                     >
-                      <Camera className="h-4 w-4" />
+                      <label className="cursor-pointer">
+                        <Camera className="h-4 w-4" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                      </label>
                     </Button>
                   </div>
                 </div>
@@ -153,9 +177,22 @@ export function Profile() {
                 <div className="flex-1">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 gap-3">
                     <div>
-                      <h1 className="text-2xl font-bold">
-                        {user?.firstName} {user?.lastName}
-                      </h1>
+                      <div className="flex items-center gap-3">
+                        <img
+                          src="/brand/logo.svg"
+                          alt="All-in-travel"
+                          className="h-9 w-9 shrink-0"
+                          loading="lazy"
+                        />
+                        <h1 className="text-2xl font-bold">
+                          {user?.firstName} {user?.lastName}
+                        </h1>
+                        {(user as { isVerified?: boolean })?.isVerified && (
+                          <Badge className="bg-green-500/15 text-green-500 border border-green-500/30">
+                            Проверен
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-muted-foreground">{user?.email}</p>
                       {profile?.location && (
                         <div className="flex items-center gap-1 mt-1">
@@ -218,11 +255,11 @@ export function Profile() {
                 </div>
                 <div>
                   <Label htmlFor="location">Местоположение</Label>
-                  <Input
+                  <LocationAutocompleteInput
                     id="location"
                     placeholder="Москва, Россия"
                     value={profileData.location}
-                    onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                    onChange={(v) => setProfileData({ ...profileData, location: v })}
                   />
                 </div>
                 <div>
@@ -467,9 +504,8 @@ export function Profile() {
               )}
             </TabsContent>
           </Tabs>
-        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { NavigationHeader } from "@/components/navigation-header";
+import AppLayout from "@/components/app-layout";
+import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User, FriendshipWithUser } from "@shared/schema";
+import FollowButton from "@/components/social/FollowButton";
 
 export function Friends() {
   const { user, isAuthenticated } = useAuth();
@@ -79,27 +81,21 @@ export function Friends() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background">
-        <NavigationHeader />
-        <div className="container mx-auto px-4 py-16 text-center">
+      <AppLayout contentClassName="py-16">
+        <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
           <p className="text-muted-foreground">Чтобы управлять друзьями, необходимо войти</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <NavigationHeader />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Друзья</h1>
-            <p className="text-muted-foreground">Управляйте друзьями и находите новых попутчиков</p>
-          </div>
+    <AppLayout>
+      <div className="max-w-4xl mx-auto">
+        <PageHeader title="Друзья" description="Управляйте друзьями и находите новых попутчиков" />
 
-          <Tabs defaultValue="friends" className="w-full">
+          <Tabs defaultValue="friends" className="w-full mt-8">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="friends">
                 <Users className="mr-2 h-4 w-4" />
@@ -147,7 +143,7 @@ export function Friends() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Link href="/messages">
+                            <Link href={`/messages?with=${friend.id}`}>
                               <Button size="sm" variant="outline">
                                 <MessageCircle className="mr-2 h-4 w-4" />
                                 Сообщение
@@ -224,14 +220,22 @@ export function Friends() {
                                 </div>
                               </div>
                               {alreadyFriend ? (
-                                <Badge variant="secondary">
-                                  <UserCheck className="mr-1 h-3.5 w-3.5" />
-                                  Друг
-                                </Badge>
+                                <div className="flex gap-2 items-center">
+                                  <Badge variant="secondary">
+                                    <UserCheck className="mr-1 h-3.5 w-3.5" />
+                                    Друг
+                                  </Badge>
+                                  <FollowButton userId={result.id} />
+                                </div>
                               ) : requestSent ? (
-                                <Badge variant="outline">Запрос отправлен</Badge>
+                                <div className="flex gap-2 items-center">
+                                  <Badge variant="outline">Запрос отправлен</Badge>
+                                  <FollowButton userId={result.id} />
+                                </div>
                               ) : (
-                                <Button
+                                <div className="flex gap-2">
+                                  <FollowButton userId={result.id} />
+                                  <Button
                                   size="sm"
                                   onClick={() => sendRequestMutation.mutate(result.id)}
                                   disabled={sendRequestMutation.isPending}
@@ -240,6 +244,7 @@ export function Friends() {
                                   <UserPlus className="mr-2 h-4 w-4" />
                                   Добавить
                                 </Button>
+                                </div>
                               )}
                             </div>
                           </CardContent>
@@ -290,7 +295,7 @@ export function Friends() {
                               size="sm"
                               onClick={() => respondToRequestMutation.mutate({ friendshipId: request.id, status: "accepted" })}
                               disabled={respondToRequestMutation.isPending}
-                              className="bg-green-500 hover:bg-green-600 text-white"
+                              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
                             >
                               <UserCheck className="mr-2 h-4 w-4" />
                               Принять
@@ -355,9 +360,8 @@ export function Friends() {
               )}
             </TabsContent>
           </Tabs>
-        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

@@ -48,8 +48,11 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
         />
         <Badge 
           className={`absolute top-2 right-2 ${
-            isPastEvent ? "bg-gray-500" : 
-            isUpcoming ? "bg-green-500" : "bg-blue-500"
+            isPastEvent
+              ? "bg-muted text-muted-foreground border border-border"
+              : isUpcoming
+                ? "bg-green-500 text-white"
+                : "bg-blue-500 text-white"
           }`}
         >
           {isPastEvent ? "Завершено" : isUpcoming ? "Скоро" : "Идет"}

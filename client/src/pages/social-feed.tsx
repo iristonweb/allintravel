@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { NavigationHeader } from "@/components/navigation-header";
+import AppLayout from "@/components/app-layout";
+import PageHeader from "@/components/page-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +16,16 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { TravelPostWithAuthor } from "@shared/schema";
+import LocationAutocompleteInput from "@/components/location-autocomplete-input";
+import PostComments from "@/components/social/PostComments";
+import { shareUrl } from "@/lib/share";
 
 export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [feedMode, setFeedMode] = useState<"all" | "following">("all");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newPost, setNewPost] = useState({
     title: "",
@@ -33,8 +39,12 @@ export function SocialFeed() {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
   const { data: posts = [], isLoading } = useQuery<TravelPostWithAuthor[]>({
-    queryKey: ["/api/posts"],
-    enabled: isAuthenticated,
+    queryKey: activeTag
+      ? ["/api/posts", { tag: activeTag }]
+      : feedMode === "following"
+        ? ["/api/posts", { following: user?.id }]
+        : ["/api/posts"],
+    enabled: isAuthenticated && (feedMode === "all" || !!user?.id),
   });
 
   const createPostMutation = useMutation({
@@ -46,8 +56,10 @@ export function SocialFeed() {
       setNewPost({ title: "", content: "", location: "", tags: [], tagInput: "", isPublic: true });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
-    onError: () => {
-      toast({ title: "Ошибка при публикации поста", variant: "destructive" });
+    onError: (error: Error) => {
+      const msg = error?.message ?? "";
+      const description = msg.includes("401") ? "Войдите в систему" : msg.includes("5") ? "Ошибка сервера. Попробуйте позже." : "Не удалось опубликовать пост";
+      toast({ title: "Ошибка при публикации поста", description, variant: "destructive" });
     },
   });
 
@@ -67,9 +79,24 @@ export function SocialFeed() {
     onSuccess: (_, variables) => {
       setCommentInputs((prev) => ({ ...prev, [variables.postId]: "" }));
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/posts/${variables.postId}/comments`] });
       toast({ title: "Комментарий добавлен" });
     },
+    onError: (error: Error) => {
+      const message = error?.message?.includes("404") ? "Пост не найден" : "Не удалось добавить комментарий";
+      toast({ title: "Ошибка", description: message, variant: "destructive" });
+    },
   });
+
+  /** Submit comment only if content is non-empty after trim; show toast otherwise. */
+  const handleSubmitComment = (postId: string) => {
+    const content = (commentInputs[postId] ?? "").trim();
+    if (!content) {
+      toast({ title: "Введите текст комментария", variant: "destructive" });
+      return;
+    }
+    commentMutation.mutate({ postId, content });
+  };
 
   const handleCreatePost = () => {
     if (!newPost.title.trim() || !newPost.content.trim()) {
@@ -93,28 +120,49 @@ export function SocialFeed() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background">
-        <NavigationHeader />
-        <div className="container mx-auto px-4 py-16 text-center">
+      <AppLayout contentClassName="py-16">
+        <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
           <p className="text-muted-foreground">Чтобы увидеть ленту, необходимо войти</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <NavigationHeader />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Лента путешествий</h1>
-            <p className="text-muted-foreground">Следите за путешествиями и делитесь своими приключениями</p>
-          </div>
+    <AppLayout>
+      <div className="max-w-2xl mx-auto">
+        <PageHeader
+          title="Лента"
+          description="Следите за путешествиями и делитесь своими приключениями"
+        />
+
+        <div className="flex gap-2 mt-6 mb-2">
+          <Button
+            variant={feedMode === "all" ? "default" : "outline"}
+            size="sm"
+            className={feedMode === "all" ? "bg-primary hover:bg-primary/90" : ""}
+            onClick={() => setFeedMode("all")}
+          >
+            Все
+          </Button>
+          <Button
+            variant={feedMode === "following" ? "default" : "outline"}
+            size="sm"
+            className={feedMode === "following" ? "bg-primary hover:bg-primary/90" : ""}
+            onClick={() => { setFeedMode("following"); setActiveTag(null); }}
+          >
+            Подписки
+          </Button>
+          {activeTag && (
+            <Badge variant="default" className="cursor-pointer" onClick={() => setActiveTag(null)}>
+              #{activeTag} ×
+            </Badge>
+          )}
+        </div>
 
           {/* Create post card */}
-          <Card className="mb-6">
+          <Card className="mb-6 mt-8">
             <CardContent className="pt-4">
               <div className="flex items-start gap-3">
                 <Avatar>
@@ -143,10 +191,10 @@ export function SocialFeed() {
                         onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
                         rows={4}
                       />
-                      <Input
+                      <LocationAutocompleteInput
                         placeholder="Местоположение (необязательно)"
                         value={newPost.location}
-                        onChange={(e) => setNewPost({ ...newPost, location: e.target.value })}
+                        onChange={(v) => setNewPost({ ...newPost, location: v })}
                       />
                       <div className="flex gap-2">
                         <Input
@@ -199,7 +247,7 @@ export function SocialFeed() {
           <div className="space-y-6">
             {isLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+                <div className="loading-spinner mx-auto" />
                 <p className="text-muted-foreground mt-2">Загружаем посты...</p>
               </div>
             ) : posts.length === 0 ? (
@@ -267,7 +315,14 @@ export function SocialFeed() {
                     {post.tags && post.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {post.tags.map((tag, i) => (
-                          <Badge key={i} variant="secondary">#{tag}</Badge>
+                          <Badge
+                            key={i}
+                            variant="secondary"
+                            className="cursor-pointer"
+                            onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                          >
+                            #{tag}
+                          </Badge>
                         ))}
                       </div>
                     )}
@@ -303,13 +358,19 @@ export function SocialFeed() {
                           {post.commentsCount > 0 ? post.commentsCount : "Комментарии"}
                         </Button>
                       </div>
-                      <Button variant="ghost" size="sm" className="text-muted-foreground">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => shareUrl(window.location.href, post.title, post.content.slice(0, 100))}
+                        className="text-muted-foreground"
+                      >
                         <Share2 className="h-4 w-4" />
                       </Button>
                     </div>
 
                     {expandedComments[post.id] && (
                       <div className="border-t pt-3 space-y-3">
+                        <PostComments postId={post.id} enabled={expandedComments[post.id]} />
                         <div className="flex gap-2">
                           <Avatar className="h-8 w-8">
                             <AvatarImage src={user?.profileImageUrl ?? undefined} />
@@ -323,17 +384,16 @@ export function SocialFeed() {
                                 setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }))
                               }
                               onKeyDown={(e) => {
-                                if (e.key === "Enter" && commentInputs[post.id]?.trim()) {
-                                  commentMutation.mutate({ postId: post.id, content: commentInputs[post.id] });
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleSubmitComment(post.id);
                                 }
                               }}
                             />
                             <Button
                               size="sm"
                               disabled={!commentInputs[post.id]?.trim() || commentMutation.isPending}
-                              onClick={() =>
-                                commentMutation.mutate({ postId: post.id, content: commentInputs[post.id] })
-                              }
+                              onClick={() => handleSubmitComment(post.id)}
                               className="bg-primary hover:bg-primary/90"
                             >
                               <Send className="h-4 w-4" />
@@ -347,9 +407,8 @@ export function SocialFeed() {
               ))
             )}
           </div>
-        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

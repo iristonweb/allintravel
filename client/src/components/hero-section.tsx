@@ -1,59 +1,36 @@
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Users } from "lucide-react";
+import Hero from "@/components/marketing/Hero";
+import FloatingSearchBar from "@/components/search/FloatingSearchBar";
+import { ArrowRight, MapPin } from "lucide-react";
+import { Link } from "wouter";
 
 export function HeroSection() {
   return (
-    <section className="relative py-16 px-4 bg-gradient-to-br from-red-50 to-teal-50 dark:from-red-950 dark:to-teal-950">
-      <div className="container mx-auto text-center">
-        <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-6">
-          Откройте мир вместе
-        </h1>
-        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Исследуйте новые места, находите попутчиков и делитесь незабываемыми моментами
-          в нашем сообществе путешественников
-        </p>
-        <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-12">
-          <Button size="lg" className="bg-primary hover:bg-primary/90">
-            <MapPin className="mr-2 h-5 w-5" />
-            Найти места
-          </Button>
-          <Button size="lg" variant="outline">
-            <Calendar className="mr-2 h-5 w-5" />
-            Планировать поездку
-          </Button>
-          <Button size="lg" variant="outline">
-            <Users className="mr-2 h-5 w-5" />
-            Найти попутчиков
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <MapPin className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Исследуйте места</h3>
-            <p className="text-muted-foreground">Откройте для себя лучшие рестораны, отели и достопримечательности</p>
-          </div>
-          
-          <div className="text-center">
-            <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-secondary" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Найдите компанию</h3>
-            <p className="text-muted-foreground">Встречайте единомышленников и планируйте совместные путешествия</p>
-          </div>
-          
-          <div className="text-center">
-            <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="h-8 w-8 text-accent" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Планируйте поездки</h3>
-            <p className="text-muted-foreground">Создавайте детальные маршруты и не упустите важные события</p>
-          </div>
-        </div>
-      </div>
-    </section>
+    <Hero
+      title={
+        <>
+          Откройте мир{" "}
+          <span className="bg-gradient-to-r from-[var(--ait-primary)] to-[var(--ait-accent)] bg-clip-text text-transparent">
+            вместе
+          </span>
+        </>
+      }
+      subtitle="Исследуйте места, планируйте поездки и держите всё важное под рукой — без перегруженных интерфейсов."
+      actions={
+        <>
+          <Link href="/places">
+            <Button variant="premium" size="cta" className="w-full sm:w-auto">
+              <MapPin className="mr-1" />
+              Исследовать места
+              <ArrowRight className="ml-1" />
+            </Button>
+          </Link>
+        </>
+      }
+      below={<FloatingSearchBar className="mt-2" />}
+      backgroundImageUrl="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2400&q=70"
+      className="py-14 sm:py-16 lg:py-20"
+    />
   );
 }
 

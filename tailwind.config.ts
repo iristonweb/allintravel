@@ -5,6 +5,20 @@ export default {
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica",
+          "Arial",
+          "Apple Color Emoji",
+          "Segoe UI Emoji",
+        ],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -61,6 +75,22 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
+        ait: {
+          ocean: "var(--ait-ocean)",
+          sunset: "var(--ait-sunset)",
+          sand: "var(--ait-sand)",
+          palm: "var(--ait-palm)",
+          primary: "var(--ait-primary)",
+          accent: "var(--ait-accent)",
+        },
+      },
+      backgroundImage: {
+        "ait-overlay": "var(--ait-overlay-gradient)",
+      },
+      boxShadow: {
+        "ait-glow": "var(--ait-glow-cyan)",
+        "ait-glow-strong": "var(--ait-glow-cyan-strong)",
+        "ait-glow-sunset": "var(--ait-glow-sunset)",
       },
       keyframes: {
         "accordion-down": {

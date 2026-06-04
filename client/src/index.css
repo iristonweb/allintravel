@@ -3,48 +3,166 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(240, 10%, 3.9%);
-  --muted: hsl(240, 4.8%, 95.9%);
-  --muted-foreground: hsl(240, 3.7%, 45.1%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(240, 10%, 3.9%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(240, 10%, 3.9%);
-  --border: hsl(240, 5.9%, 90%);
-  --input: hsl(240, 5.9%, 90%);
-  --primary: hsl(351, 95%, 67%);
-  --primary-foreground: hsl(0, 0%, 98%);
-  --secondary: hsl(177, 100%, 33%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --accent: hsl(19, 96%, 58%);
-  --accent-foreground: hsl(0, 0%, 98%);
+  /* Warm travel palette (brand primitives) */
+  --ait-ocean: #0ea5a4; /* muted teal (supporting) */
+  --ait-sunset: #ff6a3d; /* sunset orange */
+  --ait-amber: #f59e0b; /* warm amber */
+  --ait-sand: #ffe2b8; /* warm sand */
+  --ait-palm: #34d399; /* palm green */
+  --ait-ink: #0b1020;
+  --ait-pearl: #fff8f0;
+
+  /* Brand semantic */
+  --ait-primary: var(--ait-sunset);
+  --ait-accent: var(--ait-amber);
+
+  /* Shape + material */
+  --ait-radius-card: 16px;
+  --ait-radius-button: 18px;
+  --ait-radius-hero: 24px;
+  --ait-blur: 20px;
+
+  /* Modern gradients (UI accents) */
+  --ait-gradient-modern: linear-gradient(90deg, var(--ait-primary), var(--ait-accent), #7c3aed);
+  --ait-shadow-float: 0 18px 60px rgba(0, 0, 0, 0.10);
+  --ait-shadow-float-strong: 0 24px 80px rgba(0, 0, 0, 0.14);
+
+  /* Backdrop + surfaces (theme-specific overrides below) */
+  --ait-bg: var(--ait-pearl);
+  --ait-text: var(--ait-ink);
+  --ait-muted: rgba(11, 16, 32, 0.70);
+  --ait-surface-bg: rgba(255, 255, 255, 0.72);
+  --ait-surface-border: rgba(11, 16, 32, 0.12);
+
+  /* Filmic background tuning (theme-specific overrides below) */
+  --ait-backdrop-photo-opacity: 0.26;
+  --ait-backdrop-photo-blend: luminosity;
+  --ait-backdrop-video-opacity: 0.10;
+  --ait-backdrop-video-blend: soft-light;
+  --ait-noise-opacity: 0.08;
+
+  /* Gradients used by PremiumBackground */
+  --ait-overlay-gradient: radial-gradient(
+      980px 560px at 10% 0%,
+      rgba(255, 106, 61, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(980px 640px at 92% 12%, rgba(245, 158, 11, 0.14), transparent 58%),
+    radial-gradient(860px 620px at 55% 92%, rgba(255, 226, 184, 0.18), transparent 62%),
+    linear-gradient(180deg, rgba(255, 248, 240, 0.94), rgba(255, 248, 240, 0.78));
+
+  /* Parallax scene colors */
+  --ait-parallax-sun: rgba(255, 122, 66, 0.22);
+  --ait-parallax-ocean: rgba(14, 165, 164, 0.14);
+  --ait-parallax-sand: rgba(255, 226, 184, 0.18);
+  --ait-parallax-palm: rgba(52, 211, 153, 0.12);
+
+  /* shadcn semantic tokens (LIGHT) */
+  --background: var(--ait-bg);
+  --foreground: var(--ait-text);
+  --muted: rgba(11, 16, 32, 0.06);
+  --muted-foreground: var(--ait-muted);
+  --popover: rgba(255, 248, 240, 0.96);
+  --popover-foreground: var(--ait-text);
+  --card: var(--ait-surface-bg);
+  --card-foreground: var(--ait-text);
+  --border: rgba(11, 16, 32, 0.14);
+  --input: rgba(11, 16, 32, 0.18);
+  --primary: var(--ait-primary);
+  --primary-foreground: #04121a;
+  --secondary: color-mix(in srgb, var(--ait-amber) 12%, rgba(255, 255, 255, 1));
+  --secondary-foreground: var(--ait-ink);
+  --accent: var(--ait-accent);
+  --accent-foreground: #08061a;
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(240, 10%, 3.9%);
-  --radius: 0.5rem;
+  --ring: rgba(255, 106, 61, 0.52);
+  --radius: var(--ait-radius-card);
+
+  /* Optional shadcn tokens (used by sidebar/chart utilities) */
+  --sidebar-background: var(--ait-bg);
+  --sidebar-foreground: var(--ait-text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: rgba(11, 16, 32, 0.06);
+  --sidebar-accent-foreground: var(--ait-text);
+  --sidebar-border: rgba(11, 16, 32, 0.12);
+  --sidebar-ring: var(--ring);
+
+  --chart-1: var(--ait-ocean);
+  --chart-2: var(--ait-sunset);
+  --chart-3: var(--ait-sand);
+  --chart-4: var(--ait-palm);
+  --chart-5: #5eead4;
+
+  /* Shadows */
+  --ait-glow-cyan: 0 0 0 1px rgba(15, 208, 193, 0.10), 0 16px 48px rgba(15, 208, 193, 0.14);
+  --ait-glow-cyan-strong: 0 0 0 1px rgba(15, 208, 193, 0.14), 0 22px 72px rgba(15, 208, 193, 0.22);
+  --ait-glow-sunset: 0 0 0 1px rgba(255, 106, 61, 0.10), 0 18px 60px rgba(255, 106, 61, 0.18);
 }
 
 .dark {
-  --background: hsl(240, 10%, 3.9%);
-  --foreground: hsl(0, 0%, 98%);
-  --muted: hsl(240, 3.7%, 15.9%);
-  --muted-foreground: hsl(240, 5%, 64.9%);
-  --popover: hsl(240, 10%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --card: hsl(240, 10%, 3.9%);
-  --card-foreground: hsl(0, 0%, 98%);
-  --border: hsl(240, 3.7%, 15.9%);
-  --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(351, 95%, 67%);
-  --primary-foreground: hsl(0, 0%, 98%);
-  --secondary: hsl(177, 100%, 33%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --accent: hsl(19, 96%, 58%);
-  --accent-foreground: hsl(0, 0%, 98%);
+  /* Theme-specific overrides (DARK / premium night) */
+  --ait-bg: #0b0a08;
+  --ait-text: #fff3e6;
+  --ait-muted: #d3bda9;
+  --ait-surface-bg: rgba(255, 255, 255, 0.11);
+  --ait-surface-border: rgba(255, 255, 255, 0.16);
+
+  --ait-backdrop-photo-opacity: 0.38;
+  --ait-backdrop-photo-blend: normal;
+  --ait-backdrop-video-opacity: 0.14;
+  --ait-noise-opacity: 0.10;
+
+  --ait-overlay-gradient: radial-gradient(
+      900px 520px at 15% 0%,
+      rgba(255, 106, 61, 0.20),
+      transparent 60%
+    ),
+    radial-gradient(980px 600px at 95% 10%, rgba(245, 158, 11, 0.18), transparent 58%),
+    radial-gradient(760px 540px at 55% 85%, rgba(255, 226, 184, 0.10), transparent 56%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.00));
+
+  /* shadcn semantic tokens mapped to premium palette */
+  --background: var(--ait-bg);
+  --foreground: var(--ait-text);
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: var(--ait-muted);
+  --popover: rgba(11, 10, 8, 0.96);
+  --popover-foreground: var(--ait-text);
+  --card: var(--ait-surface-bg);
+  --card-foreground: var(--ait-text);
+  --border: rgba(255, 255, 255, 0.16);
+  --input: rgba(255, 255, 255, 0.16);
+  --primary: var(--ait-primary);
+  --primary-foreground: #04121a;
+  --secondary: var(--ait-accent);
+  --secondary-foreground: #08061a;
+  --accent: var(--ait-accent);
+  --accent-foreground: #08061a;
   --destructive: hsl(0, 62.8%, 30.6%);
   --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(240, 4.9%, 83.9%);
+  --ring: rgba(255, 106, 61, 0.62);
+  --radius: var(--ait-radius-card);
+
+  --sidebar-background: var(--ait-bg);
+  --sidebar-foreground: var(--ait-text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent-foreground: var(--ait-text);
+  --sidebar-border: rgba(255, 255, 255, 0.10);
+  --sidebar-ring: var(--ring);
+
+  --chart-1: var(--ait-ocean);
+  --chart-2: var(--ait-sunset);
+  --chart-3: var(--ait-sand);
+  --chart-4: var(--ait-palm);
+  --chart-5: #5eead4;
+}
+
+.scroll-offset {
+  scroll-margin-top: 88px;
 }
 
 @layer base {
@@ -55,187 +173,76 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
-}
 
-/* Custom travel theme colors */
-.travel-primary {
-  background-color: #FF5A5F;
-}
-
-.travel-secondary {
-  background-color: #00A699;
-}
-
-.travel-accent {
-  background-color: #FC642D;
-}
-
-.travel-gray-900 {
-  color: #484848;
-}
-
-.travel-gray-600 {
-  color: #767676;
-}
-
-.travel-gray-100 {
-  background-color: #F7F7F7;
-}
-
-/* Smooth transitions for interactive elements */
-.transition-all {
-  transition: all 0.3s ease;
-}
-
-/* Custom hover effects */
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-}
-
-/* Map container styles */
-.map-container {
-  position: relative;
-  overflow: hidden;
-  border-radius: 0.75rem;
-}
-
-/* Chat message styles */
-.chat-message {
-  max-width: 80%;
-  word-wrap: break-word;
-}
-
-/* Place card animations */
-.place-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.place-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-}
-
-/* Rating stars */
-.star-rating {
-  color: #FFC107;
-}
-
-/* Price range styling */
-.price-range-1 { color: #28A745; } /* $ - Green */
-.price-range-2 { color: #FFC107; } /* $$ - Yellow */
-.price-range-3 { color: #FD7E14; } /* $$$ - Orange */
-.price-range-4 { color: #DC3545; } /* $$$$ - Red */
-
-/* Custom scrollbar for chat */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* Loading skeleton animations */
-.skeleton {
-  animation: skeleton-loading 1s linear infinite alternate;
-}
-
-@keyframes skeleton-loading {
-  0% {
-    background-color: hsl(200, 20%, 80%);
+  html {
+    scroll-behavior: smooth;
   }
-  100% {
-    background-color: hsl(200, 20%, 95%);
+
+  /* Smooth transitions for interactive elements */
+  button, a, [role="button"], .transition-default {
+    @apply transition-colors duration-200;
+  }
+
+  /* Accessible focus outline */
+  button:focus-visible, a:focus-visible, [role="button"]:focus-visible, input:focus-visible, textarea:focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
   }
 }
 
-/* Notification badge */
-.notification-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background-color: #FC642D;
-  color: white;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
+/* Unified loading spinner (use with container for centering) */
+.loading-spinner {
+  @apply animate-spin rounded-full border-2 border-muted border-t-primary h-8 w-8;
 }
 
-/* Mobile responsiveness enhancements */
-@media (max-width: 768px) {
-  .mobile-padding {
-    padding-left: 1rem;
-    padding-right: 1rem;
+@layer utilities {
+  .ait-glass {
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+    backdrop-filter: blur(var(--ait-blur));
+    -webkit-backdrop-filter: blur(var(--ait-blur));
+    border: 1px solid var(--border);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 0 0 1px rgba(0, 0, 0, 0.04);
   }
-  
-  .mobile-text-sm {
-    font-size: 0.875rem;
+
+  .ait-backdrop-photo {
+    opacity: var(--ait-backdrop-photo-opacity);
+    mix-blend-mode: var(--ait-backdrop-photo-blend);
   }
-}
 
-/* Focus states for accessibility */
-.focus-ring:focus {
-  outline: 2px solid #FF5A5F;
-  outline-offset: 2px;
-}
-
-/* Custom button styles matching design */
-.btn-primary {
-  background-color: #FF5A5F;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.btn-primary:hover {
-  background-color: #E5484D;
-}
-
-.btn-secondary {
-  background-color: #00A699;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background-color: #008A7A;
-}
-
-/* Image loading placeholder */
-.image-placeholder {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-  0% {
-    background-position: 200% 0;
+  .ait-backdrop-video {
+    opacity: var(--ait-backdrop-video-opacity);
+    mix-blend-mode: var(--ait-backdrop-video-blend);
   }
-  100% {
-    background-position: -200% 0;
+
+  .ait-backdrop-overlay {
+    background-image: var(--ait-overlay-gradient);
+  }
+
+  .ait-backdrop-noise {
+    opacity: var(--ait-noise-opacity);
+  }
+
+  .ait-surface {
+    background: var(--ait-surface-bg);
+    backdrop-filter: blur(var(--ait-blur));
+    -webkit-backdrop-filter: blur(var(--ait-blur));
+    border: 1px solid var(--ait-surface-border);
+  }
+
+  .ait-glow-cyan {
+    box-shadow: var(--ait-glow-cyan);
+  }
+
+  .ait-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+    background-size: 140px 140px;
+  }
+
+  .ait-glass-strong {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(calc(var(--ait-blur) + 10px));
+    -webkit-backdrop-filter: blur(calc(var(--ait-blur) + 10px));
+    border: 1px solid rgba(255, 255, 255, 0.14);
   }
 }
