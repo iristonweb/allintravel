@@ -113,7 +113,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
   const showPopover = open && !disabled && (loading || !!error || items.length > 0);
 
   return (
-    <Popover open={showPopover} onOpenChange={setOpen}>
+    <Popover open={showPopover} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Input
           {...rest}

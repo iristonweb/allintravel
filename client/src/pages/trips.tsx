@@ -10,16 +10,16 @@ import EmptyState from "@/components/empty-state";
 import TravelCompanionCard from "@/components/travel-companion-card";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -135,184 +135,188 @@ export function Trips() {
   const q = search.trim();
   const filtered = trips.filter((t) => !q || tripMatchesSearch(t, q));
 
+  const openCreateDialog = () => setOpen(true);
+
   return (
     <AppLayout>
       <PageHeader
         title="Поездки"
         description="Найдите попутчиков или создайте свою группу"
         rightSlot={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button variant="premium">
-                <Plus className="mr-2 h-4 w-4" />
-                Создать поездку
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg ait-glass-strong ait-gradient-border border-white/10">
-              <DialogHeader>
-                <DialogTitle>Новая поездка</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Название поездки</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Например: Путешествие по Японии" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="destination"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Направление</FormLabel>
-                        <FormControl>
-                          <LocationAutocompleteInput
-                            placeholder="Страна или город"
-                            value={field.value ?? ""}
-                            onChange={(v) => field.onChange(v)}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Описание (необязательно)</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Расскажите о маршруте, планах, что ищете в попутчиках..."
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="startDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Дата начала</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="endDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Дата окончания</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="maxParticipants"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Макс. участников</FormLabel>
-                          <FormControl>
-                            <Input type="number" min={2} max={50} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="budgetMin"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Бюджет от (₽)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="0" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="budgetMax"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Бюджет до (₽)</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="∞" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setOpen(false)}
-                    >
-                      Отмена
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="premium"
-                      className="flex-1"
-                      disabled={createMutation.isPending}
-                    >
-                      {createMutation.isPending ? "Создание..." : "Создать поездку"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+          <Button variant="premium" type="button" onClick={openCreateDialog}>
+            <Plus className="mr-2 h-4 w-4" />
+            Создать поездку
+          </Button>
         }
       />
 
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="ait-glass-strong ait-gradient-border border-white/10 text-foreground">
+          <DialogHeader>
+            <DialogTitle>Новая поездка</DialogTitle>
+            <DialogDescription>
+              Заполните данные — группа появится в списке поездок для попутчиков.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Название поездки</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Например: Путешествие по Японии" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="destination"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Направление</FormLabel>
+                    <FormControl>
+                      <LocationAutocompleteInput
+                        placeholder="Страна или город"
+                        value={field.value ?? ""}
+                        onChange={(v) => field.onChange(v)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Описание (необязательно)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Расскажите о маршруте, планах, что ищете в попутчиках..."
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Дата начала</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Дата окончания</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="maxParticipants"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Макс. участников</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={2} max={50} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="budgetMin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Бюджет от (₽)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="budgetMax"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Бюджет до (₽)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="∞" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2 border-t border-white/10">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setOpen(false)}
+                >
+                  Отмена
+                </Button>
+                <Button
+                  type="submit"
+                  variant="premium"
+                  className="flex-1"
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? "Создание..." : "Создать поездку"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <div className="mb-6 mt-8 max-w-xl">
-        <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по направлению или названию..."
-            className="pl-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Поиск по направлению или названию..."
+              className="pl-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
 
         <div className="flex flex-wrap gap-3 mb-6">
           <StatPill
@@ -338,7 +342,7 @@ export function Trips() {
           {!q && trips.length > 0 && (
             <button
               type="button"
-              onClick={() => setOpen(true)}
+              onClick={openCreateDialog}
               className={cn(
                 "inline-flex items-center gap-2 rounded-2xl ait-glass border border-primary/20",
                 "px-4 py-3 text-sm font-medium text-primary hover:bg-primary/10 transition-colors",
@@ -352,7 +356,7 @@ export function Trips() {
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map(i => (
+            {[1, 2, 3, 4].map((i) => (
               <Card key={i} className="h-64 animate-pulse bg-muted" />
             ))}
           </div>
@@ -366,7 +370,7 @@ export function Trips() {
                 : "Будьте первым — создайте поездку и найдите попутчиков!"
             }
             action={
-              <Button variant="premium" onClick={() => setOpen(true)}>
+              <Button variant="premium" type="button" onClick={openCreateDialog}>
                 <Plus className="mr-2 h-4 w-4" />
                 Создать поездку
               </Button>
@@ -389,11 +393,11 @@ export function Trips() {
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filtered.map(trip => (
+              {filtered.map((trip) => (
                 <TravelCompanionCard
                   key={trip.id}
                   trip={trip}
-                  onJoin={id => joinMutation.mutate(id)}
+                  onJoin={(id) => joinMutation.mutate(id)}
                   isJoined={participations.tripIds.includes(trip.id)}
                 />
               ))}
