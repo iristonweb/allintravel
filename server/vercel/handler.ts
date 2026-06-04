@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createApp } from "../createApp";
+import { isMediaUploadPath, runMediaUploadApp } from "./media-upload-app";
 
 let appPromise: Promise<Express> | null = null;
 
@@ -53,6 +54,11 @@ function runExpress(app: Express, req: Request, res: Response): Promise<void> {
 
 export default async function handler(req: Request, res: Response) {
   try {
+    if (process.env.VERCEL && isMediaUploadPath(req.method, req.url)) {
+      await runMediaUploadApp(req, res);
+      return;
+    }
+
     const app = await getApp();
     await runExpress(app, req, res);
   } catch (error) {

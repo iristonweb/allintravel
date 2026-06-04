@@ -59,11 +59,14 @@ function handleMulter(
   });
 }
 
-export function setupUploadRoutes(app: Express): void {
+export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolean }): void {
   const upload = createUploadMiddleware();
-  const dir = getUploadsStaticDir();
+  const serveStatic = options?.serveStatic !== false;
 
-  app.use("/uploads", express.static(dir));
+  if (serveStatic) {
+    const dir = getUploadsStaticDir();
+    app.use("/uploads", express.static(dir));
+  }
 
   app.post(
     "/api/upload",
@@ -111,4 +114,8 @@ export function setupUploadRoutes(app: Express): void {
       }
     },
   );
+}
+
+export function setupUploadRoutes(app: Express): void {
+  mountUploadRoutes(app);
 }

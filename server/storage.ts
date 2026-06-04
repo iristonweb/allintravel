@@ -1160,7 +1160,9 @@ export async function initAppStorage(): Promise<void> {
   try {
     if (storage instanceof PgStorage) {
       await storage.ensureSchema();
-      await storage.ensureSeeded();
+      if (!process.env.VERCEL) {
+        await storage.ensureSeeded();
+      }
     }
     if (storage.ensureAdminUsers) {
       await storage.ensureAdminUsers();

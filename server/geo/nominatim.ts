@@ -1,6 +1,6 @@
 export type GeoAutocompleteItem = {
   label: string;
-  kind?: "city" | "country";
+  kind?: "city" | "country" | "address" | "poi";
   countryCode?: string;
   geonameId?: number;
   city?: string | null;
@@ -18,6 +18,8 @@ type NominatimSearchItem = {
   lon?: string;
   osm_id?: number;
   osm_type?: string;
+  class?: string;
+  type?: string;
   address?: {
     city?: string;
     town?: string;
@@ -83,6 +85,17 @@ function pickCity(a?: NominatimSearchItem["address"]): string | null {
   return a.city ?? a.town ?? a.village ?? a.municipality ?? a.state ?? null;
 }
 
+function inferNominatimKind(it: NominatimSearchItem): GeoAutocompleteItem["kind"] {
+  const cls = it.class ?? "";
+  const typ = it.type ?? "";
+  if (cls === "boundary" && typ === "country") return "country";
+  if (cls === "place" && ["city", "town", "village", "hamlet", "municipality"].includes(typ)) {
+    return "city";
+  }
+  if (["amenity", "shop", "tourism", "leisure", "building", "craft"].includes(cls)) return "poi";
+  return "address";
+}
+
 function toNumberOrNull(v?: string): number | null {
   if (!v) return null;
   const n = Number(v);
@@ -125,6 +138,7 @@ export async function nominatimAutocomplete(params: {
   const items: GeoAutocompleteItem[] = (Array.isArray(json) ? json : [])
     .map((it) => ({
       label: it.display_name ?? "",
+      kind: inferNominatimKind(it),
       city: pickCity(it.address),
       country: it.address?.country ?? null,
       lat: toNumberOrNull(it.lat),

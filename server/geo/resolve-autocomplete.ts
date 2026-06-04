@@ -1,11 +1,12 @@
 import type { GeoAutocompleteItem } from "./nominatim";
 import { nominatimAutocomplete } from "./nominatim";
+import { photonAutocomplete } from "./photon";
 import { isAnyYandexGeoConfigured } from "./yandex-config";
 import { yandexAutocomplete } from "./yandex";
 import { dbGeoAutocomplete } from "./db-autocomplete";
 
 function clampLimit(limit: number) {
-  return Math.max(1, Math.min(12, Math.floor(limit)));
+  return Math.max(1, Math.min(15, Math.floor(limit)));
 }
 
 function labelKey(item: GeoAutocompleteItem): string {
@@ -46,49 +47,67 @@ function dbItemToGeo(item: Awaited<ReturnType<typeof dbGeoAutocomplete>>[number]
 }
 
 /**
- * DB cities/countries first; if empty or partial, fill from Yandex then Nominatim.
+ * GeoNames DB (cities/countries) + free OSM (Photon, Nominatim) + optional Yandex.
+ * scope=full — приоритет адресов и POI (улицы, заведения, достопримечательности).
  */
 export async function resolveGeoAutocomplete(params: {
   q: string;
   limit?: number;
-  scope?: "city" | "country" | "all";
+  scope?: "city" | "country" | "all" | "full";
   acceptLanguage?: string | null;
 }): Promise<GeoAutocompleteItem[]> {
   const q = params.q.trim();
-  const limit = clampLimit(params.limit ?? 8);
+  const limit = clampLimit(params.limit ?? 10);
   const scope = params.scope ?? "all";
+  const lang = params.acceptLanguage ?? "ru";
   const results: GeoAutocompleteItem[] = [];
+  const remaining = () => Math.max(0, limit - results.length);
 
-  if (process.env.DATABASE_URL) {
+  const useFull = scope === "full" || scope === "all";
+
+  if (useFull && remaining() > 0) {
     try {
-      const dbItems = await dbGeoAutocomplete({ q, limit, scope });
-      mergeUnique(results, dbItems.map(dbItemToGeo), limit);
+      const photon = await photonAutocomplete({ q, limit: remaining(), lang });
+      mergeUnique(results, photon, limit);
     } catch (e) {
-      console.warn("DB geo autocomplete failed; using external providers.", e);
+      console.warn("Photon autocomplete failed.", e);
     }
   }
-
-  const remaining = () => Math.max(0, limit - results.length);
 
   if (remaining() > 0 && isAnyYandexGeoConfigured()) {
     try {
-      const ya = await yandexAutocomplete({
-        q,
-        limit: remaining(),
-        acceptLanguage: params.acceptLanguage ?? null,
-      });
-      mergeUnique(results, ya, limit);
+      const ya = await yandexAutocomplete({ q, limit: remaining(), acceptLanguage: lang });
+      mergeUnique(
+        results,
+        ya.map((item) => ({ ...item, kind: item.kind ?? "address" })),
+        limit,
+      );
     } catch (e) {
-      console.warn("Yandex autocomplete failed; trying Nominatim.", e);
+      console.warn("Yandex autocomplete failed.", e);
     }
   }
 
-  if (remaining() > 0) {
-    const nom = await nominatimAutocomplete({
-      q,
-      limit: remaining(),
-      acceptLanguage: params.acceptLanguage ?? null,
-    });
+  if (useFull && remaining() > 0) {
+    try {
+      const nom = await nominatimAutocomplete({ q, limit: remaining(), acceptLanguage: lang });
+      mergeUnique(results, nom, limit);
+    } catch (e) {
+      console.warn("Nominatim autocomplete failed.", e);
+    }
+  }
+
+  if (scope !== "full" && process.env.DATABASE_URL && remaining() > 0) {
+    try {
+      const dbScope = scope === "country" ? "country" : scope === "city" ? "city" : "all";
+      const dbItems = await dbGeoAutocomplete({ q, limit: remaining(), scope: dbScope });
+      mergeUnique(results, dbItems.map(dbItemToGeo), limit);
+    } catch (e) {
+      console.warn("DB geo autocomplete failed.", e);
+    }
+  }
+
+  if (!useFull && remaining() > 0) {
+    const nom = await nominatimAutocomplete({ q, limit: remaining(), acceptLanguage: lang });
     mergeUnique(results, nom, limit);
   }
 

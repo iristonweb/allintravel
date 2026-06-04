@@ -88,22 +88,35 @@ function toSessionUser(user: {
   };
 }
 
-export async function setupAuth(app: Express) {
+/** Session + passport (required for isAuthenticated and upload routes). */
+export function applyPassportMiddleware(app: Express): void {
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+}
 
-  const googleTimeoutMs = process.env.VERCEL ? 2_000 : 10_000;
-  try {
-    await Promise.race([
-      setupGoogleAuth(app),
-      new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error("Google OAuth setup timeout")), googleTimeoutMs),
-      ),
-    ]);
-  } catch (err) {
+export async function setupAuth(app: Express) {
+  applyPassportMiddleware(app);
+
+  const googleSetup = setupGoogleAuth(app).catch((err) => {
     console.error("[auth] Google OAuth setup skipped:", err);
+  });
+
+  if (!process.env.VERCEL) {
+    const googleTimeoutMs = 10_000;
+    try {
+      await Promise.race([
+        googleSetup,
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("Google OAuth setup timeout")), googleTimeoutMs),
+        ),
+      ]);
+    } catch (err) {
+      console.error("[auth] Google OAuth setup skipped:", err);
+    }
   }
 
   passport.use(
@@ -166,9 +179,6 @@ export async function setupAuth(app: Express) {
       },
     ),
   );
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (_req, res) => {
     res.redirect("/login");

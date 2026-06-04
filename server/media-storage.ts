@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
 import type { Express } from "express";
+import { put } from "@vercel/blob";
 
-const MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_INLINE_IMAGE_BYTES = 3 * 1024 * 1024;
 
 function resolveUploadsDir(): string {
   if (process.env.VERCEL) {
@@ -43,14 +44,17 @@ function fileBuffer(file: Express.Multer.File): Buffer {
   throw new Error("Empty upload");
 }
 
+function hasBlobStorage(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
+}
+
 /** Persist upload and return a URL usable in DB and <img src> */
 export async function persistUploadedFile(file: Express.Multer.File): Promise<string> {
   const buffer = fileBuffer(file);
   const mime = file.mimetype || "application/octet-stream";
   const ext = guessExtension(mime, file.originalname);
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const { put } = await import("@vercel/blob");
+  if (hasBlobStorage()) {
     const key = `media/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
     const blob = await put(key, buffer, {
       access: "public",
@@ -71,7 +75,7 @@ export async function persistUploadedFile(file: Express.Multer.File): Promise<st
   }
 
   throw new Error(
-    "Загрузка файлов на сервере недоступна: подключите Vercel Blob (Storage) в проекте или используйте изображение до 2 МБ.",
+    "Загрузка на Vercel: подключите Vercel Blob (Storage → Blob) в проекте или используйте изображение до 3 МБ.",
   );
 }
 

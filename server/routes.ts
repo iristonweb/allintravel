@@ -39,9 +39,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const q = String(req.query.q ?? "").trim();
       const limitRaw = req.query.limit != null ? Number(req.query.limit) : 8;
-      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(10, Math.floor(limitRaw))) : 8;
+      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(15, Math.floor(limitRaw))) : 10;
       const scopeRaw = typeof req.query.scope === "string" ? req.query.scope : "all";
-      const scope = scopeRaw === "city" || scopeRaw === "country" || scopeRaw === "all" ? scopeRaw : "all";
+      const scope =
+        scopeRaw === "city" || scopeRaw === "country" || scopeRaw === "all" || scopeRaw === "full"
+          ? scopeRaw
+          : "all";
 
       if (q.length < 2) {
         return res.json([]);
@@ -512,6 +515,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/trips/:id/waypoints/from-location', isAuthenticated, async (req: any, res) => {
+    try {
+      const label = String(req.body?.label ?? "").trim();
+      const lat = Number(req.body?.lat);
+      const lon = Number(req.body?.lon);
+      if (!label || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return res.status(400).json({ message: "Укажите адрес и координаты" });
+      }
+
+      const name = label.split(",")[0]?.trim() || label;
+      const candidates = await storage.getPlaces({ search: name, limit: 10 });
+      let place = candidates.find((p) => {
+        const plat = Number(p.latitude);
+        const plon = Number(p.longitude);
+        return (
+          Number.isFinite(plat) &&
+          Number.isFinite(plon) &&
+          Math.abs(plat - lat) < 0.08 &&
+          Math.abs(plon - lon) < 0.08
+        );
+      });
+
+      if (!place) {
+        place = await storage.createPlace({
+          name,
+          type: "attraction",
+          latitude: String(lat),
+          longitude: String(lon),
+          address: label,
+          description: "Точка маршрута",
+        });
+      }
+
+      const waypoint = await storage.addTripWaypoint(
+        req.params.id,
+        place.id,
+        req.body.orderIndex != null ? Number(req.body.orderIndex) : undefined,
+        req.body.dayNumber != null ? Number(req.body.dayNumber) : undefined,
+      );
+      res.status(201).json({ waypoint, place });
+    } catch (error) {
+      console.error("Error adding waypoint from location:", error);
+      res.status(500).json({ message: "Не удалось добавить остановку" });
+    }
+  });
+
   app.patch('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req, res) => {
     try {
       const { orderIndex, dayNumber } = req.body;
@@ -835,9 +884,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User profile routes
   app.get('/api/profile/:userId', async (req, res) => {
     try {
-      const profile = await storage.getUserProfile(req.params.userId);
+      const userId = req.params.userId;
+      const profile = await storage.getUserProfile(userId);
       if (!profile) {
-        return res.status(404).json({ message: "Profile not found" });
+        return res.json({
+          userId,
+          bio: null,
+          location: null,
+          travelStyle: null,
+          isPublic: true,
+          createdAt: null,
+          updatedAt: null,
+        });
       }
       res.json(profile);
     } catch (error) {
