@@ -9,6 +9,7 @@ import AppLayout from "@/components/app-layout";
 import PageHeader from "@/components/page-header";
 import EmptyState from "@/components/empty-state";
 import TravelCompanionCard from "@/components/travel-companion-card";
+import TripRouteMatches from "@/components/planner/trip-route-matches";
 import LocationAutocompleteInput, {
   type GeoAutocompleteItem,
 } from "@/components/location-autocomplete-input";
@@ -35,7 +36,9 @@ import {
 import { Plus, Search, MapPin, Trash2 } from "lucide-react";
 import {
   addTripStopsFromDrafts,
+  geoItemHasCoords,
   geoItemToDraft,
+  resolveGeoFromQuery,
   type TripRouteDraft,
 } from "@/lib/trip-waypoints";
 import MediaUploadField from "@/components/media/MediaUploadField";
@@ -99,7 +102,7 @@ function parseApiError(err: unknown): string {
 export function Trips() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const [search, setSearch] = useState(() => new URLSearchParams(searchString).get("search") ?? "");
@@ -122,6 +125,11 @@ export function Trips() {
     queryKey: ["/api/trips/my-participations"],
     enabled: isAuthenticated,
   });
+
+  const primaryTripId =
+    trips.find((t) => t.userId === user?.id)?.id ??
+    participations.tripIds[0] ??
+    trips[0]?.id;
 
   const form = useForm<CreateTripForm>({
     resolver: zodResolver(createTripSchema),
@@ -188,13 +196,28 @@ export function Trips() {
     },
   });
 
-  const addRouteDraft = () => {
-    if (!selectedRouteGeo) return;
-    const draft = geoItemToDraft(selectedRouteGeo);
+  const addRouteDraft = async () => {
+    const q = routeQuery.trim();
+    if (q.length < 2) {
+      toast({
+        title: "Введите название места",
+        description: "Минимум 2 символа.",
+        variant: "destructive",
+      });
+      return;
+    }
+    let item =
+      selectedRouteGeo && geoItemHasCoords(selectedRouteGeo) ? selectedRouteGeo : null;
+    if (!item && selectedRouteGeo?.label) {
+      item = await resolveGeoFromQuery(selectedRouteGeo.label, { scope: "full" });
+    }
+    if (!item) item = await resolveGeoFromQuery(q, { scope: "full" });
+    const draft = item ? geoItemToDraft(item) : null;
     if (!draft) {
       toast({
-        title: "Укажите место на карте",
-        description: "Выберите пункт из подсказок с координатами.",
+        title: "Не удалось определить место",
+        description:
+          "Выберите город или адрес из подсказок — координаты подставятся автоматически.",
         variant: "destructive",
       });
       return;
@@ -202,11 +225,16 @@ export function Trips() {
     setRouteDrafts((prev) => [...prev, draft]);
     setRouteQuery("");
     setSelectedRouteGeo(null);
+    toast({ title: "Точка добавлена в маршрут", description: draft.label });
   };
 
   const joinMutation = useMutation({
     mutationFn: async (tripId: string) => {
       const res = await apiRequest("POST", `/api/trips/${tripId}/join`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { message?: string }).message ?? "Не удалось присоединиться");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -214,8 +242,12 @@ export function Trips() {
       queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
       toast({ title: "Вы присоединились!", description: "Вы добавлены в список участников поездки." });
     },
-    onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось присоединиться к поездке.", variant: "destructive" });
+    onError: (err: Error) => {
+      toast({
+        title: "Ошибка",
+        description: err.message || "Не удалось присоединиться к поездке.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -407,11 +439,12 @@ export function Trips() {
                 <div>
                   <FormLabel>Маршрут (места)</FormLabel>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Добавьте города и точки по порядку. Маршрут можно изменить позже на странице поездки.
+                    Укажите адреса, улицы и точки по порядку — не только город. Маршрут можно
+                    изменить позже на странице поездки.
                   </p>
                 </div>
                 <LocationAutocompleteInput
-                  placeholder="Город, адрес или место…"
+                  placeholder="Улица, дом, заведение или город…"
                   value={routeQuery}
                   onChange={(v) => {
                     setRouteQuery(v);
@@ -430,8 +463,8 @@ export function Trips() {
                   type="button"
                   variant="secondary"
                   className="w-full"
-                  disabled={!selectedRouteGeo}
-                  onClick={addRouteDraft}
+                  disabled={routeQuery.trim().length < 2 || createMutation.isPending}
+                  onClick={() => void addRouteDraft()}
                 >
                   <MapPin className="h-4 w-4 mr-2" />
                   Добавить в маршрут
@@ -588,6 +621,7 @@ export function Trips() {
           />
         ) : (
           <>
+            {primaryTripId && <TripRouteMatches tripId={primaryTripId} />}
             {q && (
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-sm text-muted-foreground">

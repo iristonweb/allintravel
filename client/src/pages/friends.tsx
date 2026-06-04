@@ -15,11 +15,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User, FriendshipWithUser } from "@shared/schema";
+import type { User, FriendshipWithUser, Trip } from "@shared/schema";
 import FollowButton from "@/components/social/FollowButton";
 import UserPreviewCell, { friendProfileHref } from "@/components/social/UserPreviewCell";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import TripRouteMatches from "@/components/planner/trip-route-matches";
 
 export function Friends() {
   const { user, isAuthenticated } = useAuth();
@@ -46,6 +47,13 @@ export function Friends() {
     queryKey: ["/api/friends/requests/received"],
     enabled: isAuthenticated,
   });
+
+  const { data: myTrips = [] } = useQuery<Trip[]>({
+    queryKey: ["/api/trips", { userId: user?.id, limit: 1 }],
+    enabled: !!user?.id,
+  });
+
+  const primaryTripId = myTrips[0]?.id;
 
   const { data: searchResults = [], isLoading: isSearching } = useQuery<User[]>({
     queryKey: [
@@ -113,6 +121,8 @@ export function Friends() {
           description="Управляйте друзьями и находите попутчиков по направлению"
           backHref="/profile"
         />
+
+        {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mt-6" />}
 
           <Tabs defaultValue="friends" className="w-full mt-8">
             <TabsList className="grid w-full grid-cols-4">

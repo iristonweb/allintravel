@@ -4,7 +4,6 @@ import {
   Car,
   Shield,
   Utensils,
-  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -16,7 +15,6 @@ import DestinationSearch from "@/components/search/DestinationSearch";
 const services = [
   { label: "Отели", icon: Building2, href: "/places?type=hotel" },
   { label: "Рестораны", icon: Utensils, href: "/places?type=restaurant" },
-  { label: "Криптокошелёк", icon: Wallet, href: "/wallet", authOnly: true },
   { label: "Транспорт", icon: Car, soon: true },
   { label: "Страховка", icon: Shield, soon: true },
 ];
@@ -44,16 +42,11 @@ export default function HomeQuickActions({ defaultSearch = "" }: HomeQuickAction
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-        {services.map(({ label, icon: Icon, href, soon, authOnly }) => (
+        {services.map(({ label, icon: Icon, href, soon }) => (
           <button
             key={label}
             type="button"
             onClick={() => {
-              if (authOnly && !isAuthenticated) {
-                toast({ title: "Войдите", description: "Кошелёк доступен после входа." });
-                navigate("/login");
-                return;
-              }
               if (soon) {
                 toast({ title: "Скоро", description: `${label} появится в следующем обновлении.` });
                 return;

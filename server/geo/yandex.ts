@@ -76,15 +76,48 @@ type YandexFeatureMember = {
     description?: string;
     Point?: { pos?: string };
     metaDataProperty?: {
-      GeocoderMetaData?: {
-        text?: string;
-        Address?: {
+            GeocoderMetaData?: {
+              text?: string;
+              kind?: string;
+              Address?: {
           Components?: Array<{ kind?: string; name?: string }>;
         };
       };
     };
   };
 };
+
+function yandexGeocoderKindToItemKind(
+  geocoderKind?: string,
+): GeoAutocompleteItem["kind"] {
+  const k = (geocoderKind ?? "").toLowerCase();
+  if (k === "country") return "country";
+  if (["locality", "area", "province", "district", "region"].includes(k)) return "city";
+  if (["house", "street", "entrance", "hydro", "vegetation", "other"].includes(k)) {
+    return "address";
+  }
+  return "address";
+}
+
+function suggestTagsToKind(tags?: string[]): GeoAutocompleteItem["kind"] {
+  if (!tags?.length) return "address";
+  if (tags.includes("house") || tags.includes("street") || tags.includes("entrance")) {
+    return "address";
+  }
+  if (tags.includes("biz") || tags.includes("station") || tags.includes("airport")) {
+    return "poi";
+  }
+  if (
+    tags.includes("locality") ||
+    tags.includes("district") ||
+    tags.includes("area") ||
+    tags.includes("province")
+  ) {
+    return "city";
+  }
+  if (tags.includes("country")) return "country";
+  return "address";
+}
 
 function memberToItem(member: YandexFeatureMember): GeoAutocompleteItem | null {
   const obj = member?.GeoObject;
@@ -103,7 +136,7 @@ function memberToItem(member: YandexFeatureMember): GeoAutocompleteItem | null {
 
   return {
     label,
-    kind: "city",
+    kind: yandexGeocoderKindToItemKind(meta?.kind),
     city,
     country,
     lat: coords?.lat ?? null,
@@ -165,7 +198,9 @@ async function yandexSuggest(params: {
   url.searchParams.set("text", q);
   url.searchParams.set("results", String(limit));
   url.searchParams.set("lang", lang);
-  url.searchParams.set("types", "geo");
+  // Do not use "geo" alone — it absorbs house/street and returns only localities.
+  url.searchParams.set("types", "house,street,biz,metro,district,locality");
+  url.searchParams.set("print_address", "1");
 
   const res = await fetch(url.toString());
   if (!res.ok) {
@@ -180,7 +215,7 @@ async function yandexSuggest(params: {
     const subtitle = r.subtitle?.text?.trim();
     items.push({
       label: subtitle ? `${title}, ${subtitle}` : title,
-      kind: "city",
+      kind: suggestTagsToKind(r.tags),
       city: title,
       country: subtitle ?? null,
     });

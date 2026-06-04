@@ -91,7 +91,9 @@ export interface IStorage {
   }): Promise<Trip[]>;
   getTrip(id: string): Promise<Trip | undefined>;
   createTrip(trip: InsertTrip): Promise<Trip>;
+  updateTrip(id: string, data: Partial<Omit<Trip, "id" | "userId" | "createdAt">>): Promise<Trip | undefined>;
   joinTrip(tripId: string, userId: string): Promise<TripParticipant>;
+  isTripParticipant(tripId: string, userId: string): Promise<boolean>;
   getTripParticipants(tripId: string): Promise<TripParticipant[]>;
   getTripParticipationsByUser(userId: string): Promise<string[]>;
   getTripWaypoints(tripId: string): Promise<(TripWaypoint & { place: Place | null })[]>;
@@ -533,6 +535,8 @@ export class MemStorage implements IStorage {
         currentParticipants: 3,
         budgetMin: 2000,
         budgetMax: 4000,
+        plannerNotes: null,
+        chatRoomId: null,
         tags: ["islands", "Greece", "sailing", "culture"],
         imageUrl: null,
         isActive: true,
@@ -551,6 +555,8 @@ export class MemStorage implements IStorage {
         currentParticipants: 2,
         budgetMin: 3000,
         budgetMax: 6000,
+        plannerNotes: null,
+        chatRoomId: null,
         tags: ["Japan", "culture", "food", "temples"],
         imageUrl: null,
         isActive: true,
@@ -566,6 +572,7 @@ export class MemStorage implements IStorage {
         id: "post1",
         userId: "demo-user",
         format: "post",
+        tripId: null,
         expiresAt: null,
         title: "Bali Rice Terraces",
         content: "Just arrived in Bali and I'm absolutely speechless! The rice terraces of Tegalalang are even more beautiful in person. If you haven't put Bali on your travel list, you're missing out!",
@@ -582,6 +589,7 @@ export class MemStorage implements IStorage {
         id: "post2",
         userId: "demo-user",
         format: "post",
+        tripId: null,
         expiresAt: null,
         title: "Sahara Sunrise",
         content: "Watching the sunrise over the Sahara Desert from our camel's back. Some moments in life are absolutely priceless. Morocco has stolen my heart forever.",
@@ -598,6 +606,7 @@ export class MemStorage implements IStorage {
         id: "post3",
         userId: "demo-user",
         format: "post",
+        tripId: null,
         expiresAt: null,
         title: "Bangkok Street Food Tour",
         content: "Street food tour in Bangkok complete! Pad Thai, mango sticky rice, green curry and so much more. The food scene here is absolutely insane. Counting down the days until I can come back!",
@@ -828,6 +837,7 @@ export class MemStorage implements IStorage {
       id,
       currentParticipants: 1,
       createdAt: new Date(),
+      updatedAt: new Date(),
     } as Trip;
     this.trips.set(id, newTrip);
     const participantId = genId();
@@ -841,7 +851,33 @@ export class MemStorage implements IStorage {
     return newTrip;
   }
 
+  async updateTrip(
+    id: string,
+    data: Partial<Omit<Trip, "id" | "userId" | "createdAt">>,
+  ): Promise<Trip | undefined> {
+    const trip = this.trips.get(id);
+    if (!trip) return undefined;
+    const updated = { ...trip, ...data, updatedAt: new Date() } as Trip;
+    this.trips.set(id, updated);
+    return updated;
+  }
+
+  async isTripParticipant(tripId: string, userId: string): Promise<boolean> {
+    return Array.from(this.tripParticipants.values()).some(
+      (p) => p.tripId === tripId && p.userId === userId,
+    );
+  }
+
   async joinTrip(tripId: string, userId: string): Promise<TripParticipant> {
+    const trip = this.trips.get(tripId);
+    if (!trip) throw new Error("Trip not found");
+    const existing = Array.from(this.tripParticipants.values()).find(
+      (p) => p.tripId === tripId && p.userId === userId,
+    );
+    if (existing) return existing;
+    const max = trip.maxParticipants ?? 5;
+    const count = trip.currentParticipants ?? 1;
+    if (count >= max) throw new Error("Trip is full");
     const id = genId();
     const participant: TripParticipant = {
       id,
@@ -851,10 +887,11 @@ export class MemStorage implements IStorage {
       status: "confirmed",
     } as TripParticipant;
     this.tripParticipants.set(id, participant);
-    const trip = this.trips.get(tripId);
-    if (trip) {
-      trip.currentParticipants = (trip.currentParticipants ?? 0) + 1;
-      this.trips.set(tripId, trip);
+    trip.currentParticipants = count + 1;
+    trip.updatedAt = new Date();
+    this.trips.set(tripId, trip);
+    if (trip.chatRoomId) {
+      await this.joinChatRoom(trip.chatRoomId, userId, "member");
     }
     return participant;
   }

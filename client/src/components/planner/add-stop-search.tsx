@@ -7,13 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MapPin, Building2 } from "lucide-react";
 import type { Place } from "@shared/schema";
 import { fetchDestinationSearch } from "@/lib/destination-search";
-
-const KIND_LABEL: Record<string, string> = {
-  city: "Город",
-  country: "Страна",
-  address: "Адрес",
-  poi: "Место / заведение",
-};
+import { geoItemHasCoords, geocodeGeoQuery, resolveGeoFromQuery } from "@/lib/trip-waypoints";
+import { useToast } from "@/hooks/use-toast";
 
 type AddStopSearchProps = {
   existingPlaceIds: Set<string>;
@@ -28,9 +23,12 @@ export default function AddStopSearch({
   onAddLocation,
   adding,
 }: AddStopSearchProps) {
+  const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [selectedGeo, setSelectedGeo] = useState<GeoAutocompleteItem | null>(null);
-  const debouncedQ = useDebounced(query, 280);
+  const [resolving, setResolving] = useState(false);
+
+  const debouncedQ = useDebounced(query, 320);
 
   const { data: catalog } = useQuery({
     queryKey: ["destination-catalog", debouncedQ],
@@ -39,43 +37,92 @@ export default function AddStopSearch({
   });
 
   const catalogPlaces = (catalog?.places ?? []).filter((p) => !existingPlaceIds.has(p.id));
+  const canAdd = query.trim().length >= 2;
 
-  const canAddGeo =
-    selectedGeo != null &&
-    selectedGeo.lat != null &&
-    selectedGeo.lon != null &&
-    Number.isFinite(Number(selectedGeo.lat)) &&
-    Number.isFinite(Number(selectedGeo.lon));
+  const pickSuggestion = (item: GeoAutocompleteItem) => {
+    setQuery(item.label);
+    setSelectedGeo(item);
+  };
+
+  const handleAddToRoute = async () => {
+    const q = query.trim();
+    if (q.length < 2) return;
+
+    setResolving(true);
+    try {
+      let item: GeoAutocompleteItem | null =
+        selectedGeo && geoItemHasCoords(selectedGeo) ? selectedGeo : null;
+
+      if (!item && selectedGeo?.label) {
+        item = await geocodeGeoQuery(selectedGeo.label);
+      }
+      if (!item) {
+        item = await resolveGeoFromQuery(q, { scope: "full" });
+      }
+      if (!item || !geoItemHasCoords(item)) {
+        toast({
+          title: "Не удалось определить координаты",
+          description:
+            "Выберите пункт из списка подсказок или уточните адрес (улица, дом, город).",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await onAddLocation(item);
+      setQuery("");
+      setSelectedGeo(null);
+    } catch {
+      toast({
+        title: "Не удалось добавить остановку",
+        description: "Проверьте подключение и попробуйте снова.",
+        variant: "destructive",
+      });
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const busy = adding || resolving;
 
   return (
     <div className="space-y-3">
       <LocationAutocompleteInput
-        placeholder="Город, адрес, улица или заведение…"
+        placeholder="Город, улица, заведение…"
         value={query}
         onChange={(v) => {
           setQuery(v);
           setSelectedGeo(null);
         }}
-        onSelectItem={(item) => {
-          setQuery(item.label);
-          setSelectedGeo(item);
-        }}
+        onSelectItem={pickSuggestion}
         scope="full"
         limit={12}
-        debounceMs={280}
+        debounceMs={320}
         dropdownPortal
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && canAdd && !busy) {
+            e.preventDefault();
+            void handleAddToRoute();
+          }
+        }}
       />
 
-      {canAddGeo && (
+      {canAdd && (
         <Button
           type="button"
           variant="premium"
           className="w-full"
-          disabled={adding}
-          onClick={() => onAddLocation(selectedGeo!)}
+          disabled={busy}
+          onClick={() => void handleAddToRoute()}
         >
-          {adding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MapPin className="h-4 w-4 mr-2" />}
-          Добавить «{selectedGeo!.label.split(",")[0]}»
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <MapPin className="h-4 w-4 mr-2" />
+          )}
+          {selectedGeo
+            ? `Добавить «${selectedGeo.label.split(",")[0]}»`
+            : "Добавить в маршрут"}
         </Button>
       )}
 
@@ -86,7 +133,7 @@ export default function AddStopSearch({
             <CatalogPlaceRow
               key={place.id}
               place={place}
-              disabled={adding}
+              disabled={busy}
               onAdd={() => onAddPlace(place.id)}
             />
           ))}
@@ -94,8 +141,8 @@ export default function AddStopSearch({
       )}
 
       <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-        Подсказки: OpenStreetMap (Photon + Nominatim) — бесплатно; при наличии ключей Яндекс — точнее по РФ.
-        Полная база улиц и заведений локально не хранится — только города (GeoNames) и ваш каталог мест.
+        Можно добавить город целиком (например, «Владикавказ») — координаты подставятся автоматически.
+        Для точного адреса выберите подсказку из списка.
       </p>
     </div>
   );
@@ -131,5 +178,3 @@ function useDebounced(value: string, ms: number) {
   }, [value, ms]);
   return debounced;
 }
-
-export { KIND_LABEL };

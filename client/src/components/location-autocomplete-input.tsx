@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Command, CommandEmpty, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { toApiUrl } from "@/lib/queryClient";
 
 export type GeoAutocompleteItem = {
   label: string;
@@ -94,7 +95,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
         setLoading(true);
         setError(null);
         try {
-          const res = await fetch(queryUrl, { credentials: "include", signal: ctrl.signal });
+          const res = await fetch(toApiUrl(queryUrl), { credentials: "include", signal: ctrl.signal });
           if (!res.ok) {
             const text = await res.text();
             throw new Error(text || String(res.status));

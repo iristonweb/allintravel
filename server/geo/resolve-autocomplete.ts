@@ -4,6 +4,7 @@ import { photonAutocomplete } from "./photon";
 import { isAnyYandexGeoConfigured } from "./yandex-config";
 import { yandexAutocomplete } from "./yandex";
 import { dbGeoAutocomplete } from "./db-autocomplete";
+import { sortGeoAutocompleteResults } from "./geo-sort";
 
 function clampLimit(limit: number) {
   return Math.max(1, Math.min(15, Math.floor(limit)));
@@ -96,9 +97,14 @@ export async function resolveGeoAutocomplete(params: {
     }
   }
 
-  if (scope !== "full" && process.env.DATABASE_URL && remaining() > 0) {
+  if (process.env.DATABASE_URL && remaining() > 0) {
     try {
-      const dbScope = scope === "country" ? "country" : scope === "city" ? "city" : "all";
+      const dbScope =
+        scope === "country"
+          ? "country"
+          : scope === "city" || scope === "full"
+            ? "city"
+            : "all";
       const dbItems = await dbGeoAutocomplete({ q, limit: remaining(), scope: dbScope });
       mergeUnique(results, dbItems.map(dbItemToGeo), limit);
     } catch (e) {
@@ -111,5 +117,67 @@ export async function resolveGeoAutocomplete(params: {
     mergeUnique(results, nom, limit);
   }
 
-  return results;
+  const withCoords = await ensureCoordinatesOnSuggestions(q, results, lang);
+  return useFull ? sortGeoAutocompleteResults(q, withCoords) : withCoords;
+}
+
+async function ensureCoordinatesOnSuggestions(
+  q: string,
+  items: GeoAutocompleteItem[],
+  acceptLanguage: string,
+): Promise<GeoAutocompleteItem[]> {
+  const hasAny = items.some((i) => i.lat != null && i.lon != null);
+  const lang = acceptLanguage.toLowerCase().startsWith("en") ? "en_US" : "ru_RU";
+
+  if (!hasAny) {
+    try {
+      const { yandexForwardGeocode, isYandexGeocoderConfigured } = await import("./yandex");
+      if (isYandexGeocoderConfigured()) {
+        const hit = await yandexForwardGeocode(q, lang);
+        if (hit) {
+          return [
+            { label: hit.label, lat: hit.lat, lon: hit.lon, kind: "city" as const },
+            ...items,
+          ].slice(0, 15);
+        }
+      }
+    } catch (e) {
+      console.warn("Forward geocode fallback failed.", e);
+    }
+    try {
+      const nom = await nominatimAutocomplete({ q, limit: 1, acceptLanguage });
+      const first = nom[0];
+      if (first?.lat != null && first.lon != null) {
+        return [first, ...items].slice(0, 15);
+      }
+    } catch (e) {
+      console.warn("Nominatim geocode fallback failed.", e);
+    }
+  }
+
+  const enriched: GeoAutocompleteItem[] = [];
+  let forwardUsed = 0;
+  for (const item of items) {
+    if (item.lat != null && item.lon != null) {
+      enriched.push(item);
+      continue;
+    }
+    if (forwardUsed < 4) {
+      forwardUsed += 1;
+      try {
+        const { yandexForwardGeocode, isYandexGeocoderConfigured } = await import("./yandex");
+        if (isYandexGeocoderConfigured()) {
+          const hit = await yandexForwardGeocode(item.label || q, lang);
+          if (hit) {
+            enriched.push({ ...item, label: hit.label, lat: hit.lat, lon: hit.lon });
+            continue;
+          }
+        }
+      } catch {
+        /* keep original */
+      }
+    }
+    enriched.push(item);
+  }
+  return enriched;
 }

@@ -183,6 +183,9 @@ export async function ensureExtendedSchema(db: PgFeaturesDb): Promise<void> {
   `);
   await db.execute(sql`ALTER TABLE private_messages ADD COLUMN IF NOT EXISTS delivered_at timestamp`);
   await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS image_url varchar(500)`);
+  await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS planner_notes text`);
+  await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS chat_room_id uuid`);
+  await db.execute(sql`ALTER TABLE travel_posts ADD COLUMN IF NOT EXISTS trip_id uuid`);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS user_tracks (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

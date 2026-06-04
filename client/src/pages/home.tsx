@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Place, Trip, Event } from "@shared/schema";
+import type { Place, Trip, Event, TripWaypointWithPlace } from "@shared/schema";
 import { motion } from "framer-motion";
 
 export function Home() {
@@ -35,12 +35,19 @@ export function Home() {
   const joinTripMutation = useMutation({
     mutationFn: async (tripId: string) => {
       const res = await apiRequest("POST", `/api/trips/${tripId}/join`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { message?: string }).message ?? "Не удалось присоединиться");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
       toast({ title: "Вы присоединились к поездке" });
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, variant: "destructive" });
     },
   });
 
@@ -49,6 +56,11 @@ export function Home() {
   });
 
   const myTrip = trips[0];
+
+  const { data: myTripWaypoints = [] } = useQuery<TripWaypointWithPlace[]>({
+    queryKey: ["/api/trips", myTrip?.id, "waypoints"],
+    enabled: !!myTrip?.id,
+  });
 
   return (
     <AppLayout immersive contentClassName="p-0">
@@ -76,7 +88,7 @@ export function Home() {
           <HomeQuickActions />
         </motion.section>
 
-        <HomeExplorePlannerSection places={places} trip={myTrip} />
+        <HomeExplorePlannerSection places={places} trip={myTrip} waypoints={myTripWaypoints} />
         <HomeCommunityPreview useLiveData />
         <HomeMobileShowcase />
 

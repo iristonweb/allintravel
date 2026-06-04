@@ -129,6 +129,8 @@ export const trips = pgTable("trips", {
   currentParticipants: integer("current_participants").default(1),
   budgetMin: integer("budget_min"),
   budgetMax: integer("budget_max"),
+  plannerNotes: text("planner_notes"),
+  chatRoomId: uuid("chat_room_id"),
   tags: text("tags").array(),
   imageUrl: varchar("image_url"),
   isActive: boolean("is_active").default(true),
@@ -278,6 +280,7 @@ export const chatRooms = pgTable(
       whoCanPost?: "everyone" | "members";
       autoJoinOnPost?: boolean;
       chatBackground?: string;
+      tripId?: string;
     }>(),
     isLegacy: boolean("is_legacy").default(false),
     createdAt: timestamp("created_at").defaultNow(),
@@ -454,6 +457,7 @@ export const travelPosts = pgTable("travel_posts", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   format: varchar("format", { length: 16 }).notNull().default("post"),
+  tripId: uuid("trip_id").references(() => trips.id, { onDelete: "set null" }),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(),
   images: text("images").array(),
@@ -731,8 +735,33 @@ export const updateTravelPostSchema = z
     isPublic: z.boolean().optional(),
     format: z.enum(["post", "story", "reel", "journal"]).optional(),
     expiresAt: z.coerce.date().nullable().optional(),
+    tripId: z.string().uuid().nullable().optional(),
   })
   .strict();
+
+/** Allowed fields for PUT /api/trips/:id (no userId / id). */
+export const updateTripSchema = z
+  .object({
+    title: z.string().min(3).max(255).optional(),
+    description: z.string().max(8000).nullable().optional(),
+    destination: z.string().min(2).max(255).optional(),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
+    maxParticipants: z.number().int().min(2).max(50).optional(),
+    budgetMin: z.number().int().min(0).nullable().optional(),
+    budgetMax: z.number().int().min(0).nullable().optional(),
+    plannerNotes: z.string().max(16000).nullable().optional(),
+    imageUrl: z.string().max(500).nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .strict()
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) return data.endDate >= data.startDate;
+      return true;
+    },
+    { message: "Дата окончания должна быть не раньше даты начала", path: ["endDate"] },
+  );
 
 /** Allowed fields for PUT /api/profile (no userId / id). */
 export const updateUserProfileSchema = z

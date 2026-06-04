@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, Calendar, Globe, MapPin, Route, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Place, Trip } from "@shared/schema";
+import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
+import { homeDaysFromWaypoints, tripCalendarDayCount } from "@/lib/trip-days";
+import { totalRouteKm } from "@/lib/routeUtils";
 
 const showcaseDestinations = [
   {
@@ -50,7 +52,22 @@ const showcaseDestinations = [
   },
 ];
 
-const DEMO_DAYS = [
+type PlannerDayView = {
+  day: number;
+  title: string;
+  image: string;
+  stops: string[];
+  routeIds: string[];
+  routePlaces?: {
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    type?: string;
+  }[];
+};
+
+const DEMO_DAYS: PlannerDayView[] = [
   {
     day: 1,
     title: "Рейкьявик",
@@ -102,6 +119,7 @@ type MapPlace = {
 type HomeExplorePlannerSectionProps = {
   places: Place[];
   trip?: Trip | null;
+  waypoints?: TripWaypointWithPlace[];
 };
 
 type DesktopWorkspace = "world" | "route";
@@ -110,11 +128,13 @@ function DayList({
   tripTitle,
   selectedDay,
   onSelectDay,
+  days,
   className,
 }: {
   tripTitle: string;
   selectedDay: number;
   onSelectDay: (day: number) => void;
+  days: PlannerDayView[];
   className?: string;
 }) {
   return (
@@ -123,7 +143,7 @@ function DayList({
         <Route className="h-4 w-4 shrink-0" />
         <span className="truncate">{tripTitle}</span>
       </div>
-      {DEMO_DAYS.map((d) => (
+      {days.map((d) => (
         <motion.button
           key={d.day}
           type="button"
@@ -157,9 +177,22 @@ function DayList({
   );
 }
 
-function RouteMapPanel({ selectedDay, className }: { selectedDay: number; className?: string }) {
-  const day = DEMO_DAYS.find((d) => d.day === selectedDay) ?? DEMO_DAYS[0];
-  const routePlaces = DEMO_ROUTE.filter((p) => day.routeIds.includes(p.id));
+function RouteMapPanel({
+  selectedDay,
+  days,
+  fallbackRoute,
+  className,
+}: {
+  selectedDay: number;
+  days: PlannerDayView[];
+  fallbackRoute: typeof DEMO_ROUTE;
+  className?: string;
+}) {
+  const day = days.find((d) => d.day === selectedDay) ?? days[0];
+  const routePlaces =
+    day?.routePlaces && day.routePlaces.length > 0
+      ? day.routePlaces
+      : fallbackRoute.filter((p) => (day?.routeIds ?? []).includes(p.id));
 
   return (
     <GlassCard
@@ -167,7 +200,7 @@ function RouteMapPanel({ selectedDay, className }: { selectedDay: number; classN
       className={cn("p-0 overflow-hidden ait-gradient-border relative h-full min-h-[480px]", className)}
     >
       <TravelMap
-        places={routePlaces.length > 0 ? routePlaces : DEMO_ROUTE}
+        places={routePlaces.length > 0 ? routePlaces : fallbackRoute}
         showRoute
         height="100%"
         className="h-full min-h-[480px] rounded-[24px]"
@@ -270,23 +303,69 @@ function WorkspaceToggle({
   );
 }
 
-export default function HomeExplorePlannerSection({ places, trip }: HomeExplorePlannerSectionProps) {
+export default function HomeExplorePlannerSection({
+  places,
+  trip,
+  waypoints = [],
+}: HomeExplorePlannerSectionProps) {
   const [, navigate] = useLocation();
   const [selectedDay, setSelectedDay] = useState(1);
   const [desktopWorkspace, setDesktopWorkspace] = useState<DesktopWorkspace>("route");
   const tripHref = trip ? `/trips/${trip.id}` : "/trips";
-  const tripTitle = trip?.title ?? "Исландия 2026";
+  const hasRealRoute = !!trip && waypoints.length > 0;
+  const realHomeDays = trip ? homeDaysFromWaypoints(trip, waypoints) : [];
+  const displayDays =
+    hasRealRoute && realHomeDays.length > 0
+      ? realHomeDays.map((d) => ({
+          day: d.day,
+          title: d.title,
+          image: d.image ?? "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=200&q=80",
+          stops: d.stops,
+          routeIds: d.routePlaces.map((p) => p.id),
+          routePlaces: d.routePlaces,
+        }))
+      : DEMO_DAYS;
+  const tripTitle = trip?.title ?? (hasRealRoute ? "Ваш маршрут" : "Создайте поездку");
   const mapPlaces = mapPlacesFromPlaces(places);
+  const totalDays = trip ? tripCalendarDayCount(trip) : 12;
+  const stopCount = waypoints.length;
+  const km = totalRouteKm(
+    waypoints
+      .filter((w) => w.place?.latitude != null)
+      .map((w) => [Number(w.place!.latitude), Number(w.place!.longitude)] as [number, number]),
+  );
+  const budgetLabel = trip?.budgetMax ?? trip?.budgetMin;
 
   const routeSplit = (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,300px)_1fr] gap-4 min-h-[520px] h-[min(70vh,640px)]">
-      <DayList
-        tripTitle={tripTitle}
-        selectedDay={selectedDay}
-        onSelectDay={setSelectedDay}
-        className="max-h-full"
-      />
-      <RouteMapPanel selectedDay={selectedDay} className="min-h-0" />
+      {hasRealRoute ? (
+        <>
+          <DayList
+            tripTitle={tripTitle}
+            selectedDay={selectedDay}
+            onSelectDay={setSelectedDay}
+            days={displayDays}
+            className="max-h-full"
+          />
+          <RouteMapPanel
+            selectedDay={selectedDay}
+            days={displayDays}
+            fallbackRoute={DEMO_ROUTE}
+            className="min-h-0"
+          />
+        </>
+      ) : (
+        <GlassCard strong className="col-span-full p-8 flex flex-col items-center justify-center text-center min-h-[320px]">
+          <Route className="h-10 w-10 text-ait-purple mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Спланируйте первую поездку</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-md">
+            Добавьте остановки в планировщик — здесь появится ваш реальный маршрут по дням, а не демо.
+          </p>
+          <Link href="/trips">
+            <Button variant="premium">Создать поездку</Button>
+          </Link>
+        </GlassCard>
+      )}
     </div>
   );
 
@@ -366,25 +445,27 @@ export default function HomeExplorePlannerSection({ places, trip }: HomeExploreP
         <div className="flex flex-wrap gap-6 text-sm">
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-ait-purple" />
-            <strong className="text-white">12</strong> дней
+            <strong className="text-white">{hasRealRoute ? totalDays : "—"}</strong> дней
           </span>
           <span className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-ait-orange" />
-            <strong className="text-white">8</strong> локаций
+            <strong className="text-white">{hasRealRoute ? stopCount : "—"}</strong> локаций
           </span>
           <span>
-            <strong className="text-white">1240</strong>{" "}
+            <strong className="text-white">{hasRealRoute && km ? km : "—"}</strong>{" "}
             <span className="text-muted-foreground">км</span>
           </span>
           <span>
-            <strong className="text-ait-gold">$2,450</strong>{" "}
+            <strong className="text-ait-gold">
+              {budgetLabel != null ? `$${budgetLabel}` : "—"}
+            </strong>{" "}
             <span className="text-muted-foreground">бюджет</span>
           </span>
         </div>
         <Link href={tripHref}>
           <span className="ait-btn-glow rounded-2xl px-6 py-3 text-sm font-semibold text-white inline-flex items-center gap-2 cursor-pointer hover:opacity-95 transition-opacity">
             <Sparkles className="h-4 w-4" />
-            Оптимизировать маршрут
+            {hasRealRoute ? "Открыть планировщик" : "Создать поездку"}
           </span>
         </Link>
       </GlassCard>

@@ -596,6 +596,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const q = String(req.query.q ?? "").trim();
       if (q.length < 2) return res.json(null);
+      const acceptLanguage =
+        (req.headers["accept-language"] as string | undefined) ??
+        (typeof req.query.lang === "string" ? req.query.lang : undefined);
+      const { resolveGeoAutocomplete } = await import("./geo/resolve-autocomplete");
+      const { pickBestGeoMatch } = await import("./geo/geo-sort");
+      const items = await resolveGeoAutocomplete({
+        q,
+        limit: 10,
+        scope: "full",
+        acceptLanguage,
+      });
+      const best = pickBestGeoMatch(q, items);
+      if (best?.lat != null && best.lon != null) {
+        return res.json({
+          lat: Number(best.lat),
+          lon: Number(best.lon),
+          label: best.label,
+        });
+      }
       const { yandexForwardGeocode } = await import("./geo/yandex");
       const result = await yandexForwardGeocode(q);
       res.json(result);
@@ -638,7 +657,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Укажите адрес и координаты" });
       }
 
-      const name = label.split(",")[0]?.trim() || label;
+      const name =
+        label.length > 255 ? label.slice(0, 255) : label;
       const candidates = await storage.getPlaces({ search: name, limit: 10 });
       let place = candidates.find((p) => {
         const plat = Number(p.latitude);
@@ -731,12 +751,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/trips/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { parseUpdateTripBody } = await import("./trip-validation");
+      const patch = parseUpdateTripBody(req.body);
+      const trip = await storage.updateTrip(req.params.id, patch);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
+      res.json(trip);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const first = error.errors[0]?.message ?? "Invalid trip data";
+        return res.status(400).json({ message: first, errors: error.errors });
+      }
+      console.error("Error updating trip:", error);
+      res.status(500).json({ message: "Failed to update trip" });
+    }
+  });
+
+  app.post("/api/trips/:id/waypoints/distribute-days", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const tripId = req.params.id;
+      if (!(await userCanManageTrip(storage, userId, tripId))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const trip = await storage.getTrip(tripId);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
+      const waypoints = await storage.getTripWaypoints(tripId);
+      if (waypoints.length === 0) return res.json({ updated: 0 });
+      const start = new Date(trip.startDate);
+      const end = new Date(trip.endDate);
+      const totalDays = Math.max(
+        1,
+        Math.floor((end.getTime() - start.getTime()) / 86400000) + 1,
+      );
+      const perDay = Math.max(1, Math.ceil(waypoints.length / totalDays));
+      const sorted = [...waypoints].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      for (let i = 0; i < sorted.length; i++) {
+        const dayNumber = Math.min(totalDays, Math.floor(i / perDay) + 1);
+        await storage.updateTripWaypoint(sorted[i].id, { dayNumber, orderIndex: i });
+      }
+      const refreshed = await storage.getTripWaypoints(tripId);
+      res.json({ updated: sorted.length, waypoints: refreshed });
+    } catch (error) {
+      console.error("Error distributing waypoints:", error);
+      res.status(500).json({ message: "Failed to distribute stops" });
+    }
+  });
+
+  app.get("/api/trips/:id/chat-room", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
+      const isOwner = trip.userId === userId;
+      const isMember = await storage.isTripParticipant(req.params.id, userId);
+      if (!isOwner && !isMember) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { ensureTripChatRoom } = await import("./trip-hub");
+      const withRoom = await ensureTripChatRoom(storage, trip);
+      if (!withRoom.chatRoomId) {
+        return res.status(500).json({ message: "Chat room unavailable" });
+      }
+      const room = await storage.getChatRoom(withRoom.chatRoomId);
+      if (!room) return res.status(404).json({ message: "Chat room not found" });
+      if (!(await storage.getChatRoomMember(room.id, userId))) {
+        await storage.joinChatRoom(room.id, userId, "member");
+      }
+      res.json({ room, slug: room.slug });
+    } catch (error) {
+      console.error("Error fetching trip chat room:", error);
+      res.status(500).json({ message: "Failed to fetch chat room" });
+    }
+  });
+
+  app.get("/api/trips/:id/route-matches", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
+      const canSee =
+        trip.userId === userId || (await storage.isTripParticipant(req.params.id, userId));
+      if (!canSee && !(await userCanManageTrip(storage, userId, req.params.id))) {
+        const joined = await storage.getTripParticipationsByUser(userId);
+        if (!joined.includes(req.params.id) && trip.userId !== userId) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+      const baseWaypoints = await storage.getTripWaypoints(req.params.id);
+      const { computeRouteOverlapPercent } = await import("./geo/trip-route-match");
+      const allTrips = await storage.getTrips({ limit: 80 });
+      const matches: {
+        tripId: string;
+        title: string;
+        destination: string;
+        overlapPercent: number;
+        organizerId: string;
+      }[] = [];
+      for (const other of allTrips) {
+        if (other.id === trip.id) continue;
+        const otherWps = await storage.getTripWaypoints(other.id);
+        if (otherWps.length < 2 || baseWaypoints.length < 2) continue;
+        const overlapPercent = computeRouteOverlapPercent(baseWaypoints, otherWps);
+        if (overlapPercent >= 25) {
+          matches.push({
+            tripId: other.id,
+            title: other.title,
+            destination: other.destination,
+            overlapPercent,
+            organizerId: other.userId,
+          });
+        }
+      }
+      matches.sort((a, b) => b.overlapPercent - a.overlapPercent);
+      res.json({ matches: matches.slice(0, 12) });
+    } catch (error) {
+      console.error("Error computing route matches:", error);
+      res.status(500).json({ message: "Failed to compute route matches" });
+    }
+  });
+
+  app.get("/api/trips/:id/journal-template", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
+      const dayParam = req.query.day != null ? Number(req.query.day) : null;
+      const waypoints = await storage.getTripWaypoints(req.params.id);
+      const sorted = [...waypoints].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      const stops =
+        dayParam != null && Number.isFinite(dayParam)
+          ? sorted.filter((w) => w.dayNumber === dayParam)
+          : sorted;
+      const names = stops.map((w) => w.place?.name).filter(Boolean) as string[];
+      const title =
+        dayParam != null
+          ? `${trip.title} — день ${dayParam}`
+          : `Журнал: ${trip.title}`;
+      const lines = [
+        `# ${title}`,
+        "",
+        `**Направление:** ${trip.destination}`,
+        dayParam != null ? `**День:** ${dayParam}` : "",
+        "",
+        "### Маршрут",
+        ...(names.length ? names.map((n) => `- ${n}`) : ["- (добавьте остановки)"]),
+        "",
+        "### Впечатления",
+        "Расскажите, что запомнилось в этот день…",
+      ].filter(Boolean);
+      res.json({
+        tripId: trip.id,
+        title,
+        content: lines.join("\n"),
+        format: "journal" as const,
+        location: trip.destination,
+      });
+    } catch (error) {
+      console.error("Error building journal template:", error);
+      res.status(500).json({ message: "Failed to build journal template" });
+    }
+  });
+
   app.post('/api/trips', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { parseCreateTripBody } = await import("./trip-validation");
       const tripData = parseCreateTripBody(req.body, userId);
-      const trip = await storage.createTrip(tripData);
+      let trip = await storage.createTrip(tripData);
+      const { ensureTripChatRoom } = await import("./trip-hub");
+      trip = await ensureTripChatRoom(storage, trip);
       res.status(201).json(trip);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -752,13 +944,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const trip = await storage.getTrip(req.params.id);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
       const participant = await storage.joinTrip(req.params.id, userId);
-      if (trip) {
-        const joiner = await storage.getUser(userId);
-        if (joiner) void notifyTripJoin(trip.userId, joiner, trip.id, trip.title);
-      }
+      const joiner = await storage.getUser(userId);
+      if (joiner) void notifyTripJoin(trip.userId, joiner, trip.id, trip.title);
       res.status(201).json(participant);
     } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to join trip";
+      if (msg === "Trip is full") {
+        return res.status(409).json({ message: "В поездке нет свободных мест" });
+      }
+      if (msg === "Trip not found") {
+        return res.status(404).json({ message: "Trip not found" });
+      }
       console.error("Error joining trip:", error);
       res.status(500).json({ message: "Failed to join trip" });
     }

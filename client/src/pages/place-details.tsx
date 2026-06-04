@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Star, MapPin, Phone, Globe, Heart, Share2 } from "lucide-react";
 import { useState } from "react";
 import { shareUrl } from "@/lib/share";
-import PlaceMap from "@/components/PlaceMap";
+import TravelMap from "@/components/maps/TravelMap";
 import type { PlaceWithDetails, FavoriteStatus, Review } from "@shared/schema";
 
 export default function PlaceDetails() {
@@ -270,11 +270,18 @@ export default function PlaceDetails() {
 
               {place?.latitude && place?.longitude && (
                 <div className="mb-6">
-                  <PlaceMap
-                    places={[place]}
-                    center={[Number(place.latitude), Number(place.longitude)]}
-                    zoom={14}
+                  <TravelMap
+                    places={[
+                      {
+                        id: place.id,
+                        name: place.name,
+                        type: place.type ?? undefined,
+                        latitude: place.latitude,
+                        longitude: place.longitude,
+                      },
+                    ]}
                     height="16rem"
+                    className="rounded-xl overflow-hidden"
                   />
                 </div>
               )}

@@ -36,10 +36,24 @@ export function TripDetail() {
     );
   }
 
-  if (tripLoading || !trip) {
+  if (tripLoading) {
     return (
       <AppLayout>
         <div className="h-64 animate-pulse bg-white/5 rounded-2xl" />
+      </AppLayout>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <AppLayout>
+        <p className="text-muted-foreground">Поездка не найдена</p>
+        <Link href="/trips">
+          <Button variant="outline" className="mt-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            К поездкам
+          </Button>
+        </Link>
       </AppLayout>
     );
   }

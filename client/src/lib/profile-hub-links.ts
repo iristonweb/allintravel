@@ -8,7 +8,6 @@ import {
   Music,
   Rss,
   Users,
-  Wallet,
 } from "lucide-react";
 
 export type ProfileHubLink = {
@@ -23,7 +22,6 @@ export const profileHubLinks: ProfileHubLink[] = [
   { href: "/social-feed", label: "Моя лента", icon: Rss, desc: "Посты и сообщество" },
   { href: "/blog", label: "Блог", icon: BookOpen, desc: "Публичные статьи" },
   { href: "/events", label: "События", icon: Calendar, desc: "Мои и ближайшие события" },
-  { href: "/wallet", label: "Криптокошелёк", icon: Wallet, desc: "Demo — без блокчейна", badge: "Demo" },
   { href: "/profile/friends", label: "Друзья", icon: Users, desc: "По направлениям и поиск" },
   { href: "/profile/music", label: "Моя музыка", icon: Music, desc: "Загрузки и фоновый плеер" },
   { href: "/messages", label: "Сообщения", icon: MessageCircle, desc: "Личные чаты" },

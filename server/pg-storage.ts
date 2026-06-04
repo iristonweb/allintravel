@@ -400,7 +400,42 @@ export class PgStorage implements IStorage {
     return row;
   }
 
+  async updateTrip(
+    id: string,
+    data: Partial<Omit<Trip, "id" | "userId" | "createdAt">>,
+  ): Promise<Trip | undefined> {
+    const [row] = await this.db
+      .update(trips)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(trips.id, id))
+      .returning();
+    return row;
+  }
+
+  async isTripParticipant(tripId: string, userId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: tripParticipants.id })
+      .from(tripParticipants)
+      .where(and(eq(tripParticipants.tripId, tripId), eq(tripParticipants.userId, userId)))
+      .limit(1);
+    return !!row;
+  }
+
   async joinTrip(tripId: string, userId: string): Promise<TripParticipant> {
+    const trip = await this.getTrip(tripId);
+    if (!trip) throw new Error("Trip not found");
+    const existing = await this.isTripParticipant(tripId, userId);
+    if (existing) {
+      const [p] = await this.db
+        .select()
+        .from(tripParticipants)
+        .where(and(eq(tripParticipants.tripId, tripId), eq(tripParticipants.userId, userId)))
+        .limit(1);
+      if (p) return p;
+    }
+    const max = trip.maxParticipants ?? 5;
+    const current = trip.currentParticipants ?? 1;
+    if (current >= max) throw new Error("Trip is full");
     const [participant] = await this.db
       .insert(tripParticipants)
       .values({ tripId, userId, status: "confirmed" })
@@ -409,6 +444,9 @@ export class PgStorage implements IStorage {
       .update(trips)
       .set({ currentParticipants: sql`${trips.currentParticipants} + 1`, updatedAt: new Date() })
       .where(eq(trips.id, tripId));
+    if (trip.chatRoomId) {
+      await this.joinChatRoom(trip.chatRoomId, userId, "member");
+    }
     return participant;
   }
 

@@ -61,7 +61,7 @@ function cacheSet(key: string, data: GeoAutocompleteItem[], ttlMs: number) {
  * Token bucket rate limit: each key refills at `ratePerSec`, up to `burst`.
  * Returns true if request is allowed (token consumed).
  */
-export function allowGeoRequest(key: string, ratePerSec = 2, burst = 5): boolean {
+export function allowGeoRequest(key: string, ratePerSec = 4, burst = 12): boolean {
   const t = nowMs();
   const b = buckets.get(key) ?? { tokens: burst, lastRefillMs: t };
 
