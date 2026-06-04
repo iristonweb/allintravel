@@ -338,7 +338,8 @@ export default function AdminPage() {
                     <MessageComposer
                       value={pushBody}
                       onChange={setPushBody}
-                      onSend={(b) => setPushBody(b ?? "")}
+                      onSend={() => {}}
+                      persistAfterMediaSend
                       placeholder="Текст push…"
                       className="w-full mt-1"
                     />

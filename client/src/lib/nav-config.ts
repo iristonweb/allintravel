@@ -49,7 +49,7 @@ export const sidebarDiscoverNav: NavItem[] = [
   { href: "/places", label: "Места" },
   { href: "/events", label: "События" },
   { href: "/blog", label: "Блог" },
-  { href: "/chat", label: "Чаты и комнаты" },
+  { href: "/chat", label: "Чаты и группы" },
   { href: "/profile/music", label: "Моя музыка" },
 ];
 
@@ -85,7 +85,7 @@ export const mobileEcosystemNav: NavItem[] = [
   { href: "/events", label: "События" },
   { href: "/social-feed", label: "Лента" },
   { href: "/friends", label: "Друзья" },
-  { href: "/chat", label: "Комнаты" },
+  { href: "/chat", label: "Группа" },
   { href: "/wallet", label: "AIT Hub" },
   { href: "/profile/music", label: "Музыка" },
   { href: "/profile", label: "Профиль" },

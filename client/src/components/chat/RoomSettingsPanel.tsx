@@ -91,7 +91,7 @@ export default function RoomSettingsPanel({
       return (await res.json()) as ChatRoom;
     },
     onSuccess: () => {
-      toast({ title: "Комната обновлена" });
+      toast({ title: "Группа обновлена" });
       invalidateRoom();
     },
     onError: () => toast({ title: "Не удалось сохранить", variant: "destructive" }),
@@ -116,7 +116,7 @@ export default function RoomSettingsPanel({
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Вы вступили в комнату" });
+      toast({ title: "Вы вступили в группу" });
       invalidateRoom();
     },
     onError: () => toast({ title: "Не удалось вступить", variant: "destructive" }),
@@ -127,7 +127,7 @@ export default function RoomSettingsPanel({
       await apiRequest("POST", `/api/chat/rooms/${room.id}/leave`);
     },
     onSuccess: () => {
-      toast({ title: "Вы покинули комнату" });
+      toast({ title: "Вы покинули группу" });
       invalidateRoom();
       onLeft?.();
       onClose?.();
@@ -254,14 +254,14 @@ export default function RoomSettingsPanel({
       {!isMember && room.visibility === "public" && (
         <Button className="w-full" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending}>
           <UserPlus className="h-4 w-4 mr-2" />
-          Вступить в комнату
+          Вступить в группу
         </Button>
       )}
 
       {isAdmin && (
         <div className="space-y-3 rounded-xl border border-border/40 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Настройки комнаты
+            Настройки группы
           </p>
           <div>
             <Label className="text-xs">Название</Label>
@@ -423,7 +423,7 @@ export default function RoomSettingsPanel({
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                      title="Удалить из комнаты"
+                      title="Удалить из группы"
                       onClick={() => removeMemberMutation.mutate(m.userId)}
                     >
                       <UserMinus className="h-3.5 w-3.5" />
@@ -445,7 +445,7 @@ export default function RoomSettingsPanel({
           disabled={leaveMutation.isPending}
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Покинуть комнату
+          Покинуть группу
         </Button>
       )}
     </div>

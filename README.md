@@ -101,7 +101,7 @@ npm run geo:import
 2. Вставить в `DATABASE_URL` на Vercel (и в локальный `.env` для `db:push` / `db:seed`)
 3. При утечке пароля: Neon → **Reset password** → обновить URL везде
 
-> **Чат на Vercel:** WebSocket недоступен на serverless; комнаты работают через **HTTP** (`POST /api/chat/:room` + опрос истории каждые 4 с). Локально по-прежнему пробуется WebSocket.
+> **Чат на Vercel:** WebSocket недоступен на serverless; группы работают через **HTTP** (`POST /api/chat/:room` + опрос истории каждые 4 с). Локально по-прежнему пробуется WebSocket.
 
 ### Нужен ли второй проект на Vercel?
 
@@ -143,7 +143,7 @@ npm run geo:import
 | Карта | ✅ при `VITE_YANDEX_MAPS_API_KEY` (или Mapbox / Leaflet) |
 | Подсказки городов | ✅ при `YANDEX_GEOSUGGEST_API_KEY` / `YANDEX_GEOCODER_API_KEY` или БД после `geo:import` |
 | Маршрут по дорогам | ✅ при `YANDEX_ROUTER_API_KEY` (вкладка маршрута поездки) |
-| Чат комнат | ✅ HTTP-режим |
+| Чат групп | ✅ HTTP-режим |
 | Google OAuth | ✅ при `GOOGLE_*` + `APP_URL` |
 | Аватар `/api/users/avatar` | ⚠️ файл на диске функции — **сбрасывается** при redeploy; для продакшена нужен S3/Vercel Blob |
 | Web Push | ⚠️ подписки в памяти сервера — не для production без БД |

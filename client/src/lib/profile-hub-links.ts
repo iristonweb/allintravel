@@ -25,7 +25,7 @@ export const profileHubLinks: ProfileHubLink[] = [
   { href: "/profile/friends", label: "Друзья", icon: Users, desc: "По направлениям и поиск" },
   { href: "/profile/music", label: "Моя музыка", icon: Music, desc: "Загрузки и фоновый плеер" },
   { href: "/messages", label: "Сообщения", icon: MessageCircle, desc: "Личные чаты" },
-  { href: "/chat", label: "Мои комнаты", icon: Hash, desc: "Группы и обсуждения" },
+  { href: "/chat", label: "Мои группы", icon: Hash, desc: "Группы и обсуждения" },
 ];
 
 export const profileMapLink: ProfileHubLink = {

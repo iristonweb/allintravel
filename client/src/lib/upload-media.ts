@@ -81,7 +81,7 @@ export async function createChatRoom(payload: CreateChatRoomPayload): Promise<{ 
     });
     const text = await res.text();
     if (!res.ok) {
-      let message = "Не удалось создать комнату";
+      let message = "Не удалось создать группу";
       try {
         const json = JSON.parse(text) as { message?: string };
         if (json.message) message = json.message;
@@ -107,7 +107,7 @@ export async function createChatRoom(payload: CreateChatRoomPayload): Promise<{ 
   });
   if (!res.ok) {
     const text = await res.text();
-    let message = "Не удалось создать комнату";
+    let message = "Не удалось создать группу";
     try {
       const json = JSON.parse(text) as { message?: string };
       if (json.message) message = json.message;

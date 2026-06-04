@@ -222,12 +222,12 @@ export function Chat() {
     onSuccess: ({ room, avatarWarning }) => {
       if (avatarWarning) {
         toast({
-          title: "Комната создана",
+          title: "Группа создана",
           description: avatarWarning,
           variant: "destructive",
         });
       } else {
-        toast({ title: "Комната создана" });
+        toast({ title: "Группа создана" });
       }
       setCreateOpen(false);
       setNewRoom({ title: "", description: "", visibility: "public" });
@@ -432,7 +432,7 @@ export function Chat() {
             const inRoom = data.roomSlug === activeRoom;
             toast({
               title: "Сообщение закреплено",
-              description: inRoom ? "Нажмите на плашку сверху, чтобы перейти" : "Откройте чат комнаты",
+              description: inRoom ? "Нажмите на плашку сверху, чтобы перейти" : "Откройте чат группы",
               action: inRoom ? (
                 <ToastAction
                   altText="Перейти"
@@ -606,7 +606,7 @@ export function Chat() {
         >
           <h1 className="ait-section-title">Чаты</h1>
           <p className="text-muted-foreground mt-1">
-            Групповые комнаты — личные чаты в{" "}
+            Группы — личные чаты в{" "}
             <Link href="/messages" className="text-ait-purple hover:underline">
               Сообщениях
             </Link>
@@ -616,7 +616,7 @@ export function Chat() {
         <ChatFilterTabs
           layoutId="chat-page-filter"
           tabs={[
-            { id: "all", label: "Все комнаты" },
+            { id: "all", label: "Все группы" },
             { id: "unread", label: "Непрочит." },
             { id: "mine", label: "Мои" },
           ]}
@@ -634,7 +634,7 @@ export function Chat() {
               <div className="flex items-center justify-between">
                 <span className="font-semibold flex items-center gap-2">
                   <Hash className="h-4 w-4 text-ait-purple" />
-                  Комнаты
+                  Группа
                 </span>
                 <div className="flex items-center gap-1">
                   <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -645,7 +645,7 @@ export function Chat() {
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Создать комнату</DialogTitle>
+                        <DialogTitle>Создать группу</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
@@ -741,7 +741,7 @@ export function Chat() {
                   <Input
                     value={roomQuery}
                     onChange={(e) => setRoomQuery(e.target.value)}
-                    placeholder="Поиск комнат…"
+                    placeholder="Поиск групп…"
                     className="h-8 pl-8 text-sm bg-background/50"
                   />
                 </div>
@@ -753,10 +753,10 @@ export function Chat() {
                     {roomQuery.trim()
                       ? "Ничего не найдено"
                       : chatTab === "unread"
-                        ? "Нет непрочитанных комнат"
+                        ? "Нет непрочитанных групп"
                         : chatTab === "mine"
-                          ? "Вы ещё не состоите в комнатах"
-                          : "Нет комнат"}
+                          ? "Вы ещё не состоите в группах"
+                          : "Нет групп"}
                   </div>
                 ) : (
                   filteredRooms.map((room) => (
@@ -812,7 +812,7 @@ export function Chat() {
               <Button
                 size="icon"
                 variant="ghost"
-                title="Настройки комнаты"
+                title="Настройки группы"
                 onClick={() => setShowRoomInfo(true)}
               >
                 <Settings className="h-4 w-4" />
@@ -822,7 +822,7 @@ export function Chat() {
             <Sheet open={showRoomInfo} onOpenChange={setShowRoomInfo}>
               <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0">
                 <SheetHeader className="p-4 pb-0">
-                  <SheetTitle>Настройки комнаты</SheetTitle>
+                  <SheetTitle>Настройки группы</SheetTitle>
                 </SheetHeader>
                 {activeRoomMeta && (
                   <RoomSettingsPanel

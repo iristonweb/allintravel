@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useLocation, Link } from "wouter";
 import AppLayout from "@/components/app-layout";
@@ -33,6 +33,8 @@ interface Conversation {
 
 type ReplyTarget = { username: string; label: string; preview: string };
 
+type MsgTab = "personal" | "unread" | "groups";
+
 const isVercelHost =
   typeof window !== "undefined" &&
   (window.location.hostname.includes("vercel.app") || import.meta.env.PROD);
@@ -40,12 +42,12 @@ const isVercelHost =
 export function Messages() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
-  const [msgTab, setMsgTab] = useState<"all" | "unread" | "groups">("all");
+  const [msgTab, setMsgTab] = useState<MsgTab>("personal");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const withUserId =
@@ -57,6 +59,11 @@ export function Messages() {
     queryKey: ["/api/conversations"],
     enabled: isAuthenticated,
     refetchInterval: 30_000,
+  });
+
+  const { data: friends = [] } = useQuery<User[]>({
+    queryKey: ["/api/friends"],
+    enabled: isAuthenticated && msgTab !== "groups",
   });
 
   const { data: chatRooms = [], isLoading: roomsLoading } = useQuery<RoomListItem[]>({
@@ -73,6 +80,7 @@ export function Messages() {
 
   useEffect(() => {
     if (withUserId && withUserId !== user?.id) {
+      setMsgTab("personal");
       if (userToOpen) {
         const existing = conversations.find((c) => c.user.id === userToOpen.id);
         setSelectedConversation(
@@ -80,10 +88,14 @@ export function Messages() {
             user: userToOpen,
             lastMessage: null,
             unreadCount: 0,
-          }
+          },
         );
       }
-    } else if (!withUserId && selectedConversation?.user && !conversations.some((c) => c.user.id === selectedConversation.user.id)) {
+    } else if (
+      !withUserId &&
+      selectedConversation?.user &&
+      !conversations.some((c) => c.user.id === selectedConversation.user.id)
+    ) {
       setSelectedConversation(null);
     }
   }, [withUserId, userToOpen, user?.id, conversations]);
@@ -233,9 +245,22 @@ export function Messages() {
   const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
     setReplyTo(null);
+    setMsgTab("personal");
+    setLocation(`/messages?with=${conversation.user.id}`);
     if (conversation.unreadCount > 0) {
       markAsReadMutation.mutate(conversation.user.id);
     }
+  };
+
+  const openFriendChat = (friend: User) => {
+    const existing = conversations.find((c) => c.user.id === friend.id);
+    handleSelectConversation(
+      existing ?? {
+        user: friend,
+        lastMessage: null,
+        unreadCount: 0,
+      },
+    );
   };
 
   const formatTime = (date: string) => {
@@ -246,12 +271,24 @@ export function Messages() {
     return format(new Date(date), "d MMM", { locale: ru });
   };
 
-  const visibleConversations =
-    msgTab === "groups"
-      ? []
-      : msgTab === "unread"
-        ? conversations.filter((c) => c.unreadCount > 0)
-        : conversations;
+  const visibleConversations = useMemo(() => {
+    if (msgTab === "groups") return [];
+    if (msgTab === "unread") return conversations.filter((c) => c.unreadCount > 0);
+    return conversations;
+  }, [conversations, msgTab]);
+
+  const conversationUserIds = useMemo(
+    () => new Set(conversations.map((c) => c.user.id)),
+    [conversations],
+  );
+
+  const friendsWithoutChat = useMemo(
+    () => friends.filter((f) => f.id !== user?.id && !conversationUserIds.has(f.id)),
+    [friends, conversationUserIds, user?.id],
+  );
+
+  const unreadPersonalCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  const showPersonalThread = msgTab === "personal" || msgTab === "unread";
 
   if (!isAuthenticated) {
     return (
@@ -275,12 +312,33 @@ export function Messages() {
         <ChatFilterTabs
           layoutId="messages-page-filter"
           tabs={[
-            { id: "all", label: "Все" },
-            { id: "unread", label: "Непрочит." },
-            { id: "groups", label: "Комнаты" },
+            {
+              id: "personal",
+              label:
+                conversations.length > 0
+                  ? `Личные (${conversations.length})`
+                  : "Личные",
+            },
+            {
+              id: "unread",
+              label:
+                unreadPersonalCount > 0
+                  ? `Непрочит. (${unreadPersonalCount})`
+                  : "Непрочит.",
+            },
+            {
+              id: "groups",
+              label: myRooms.length > 0 ? `Группа (${myRooms.length})` : "Группа",
+            },
           ]}
           value={msgTab}
-          onChange={setMsgTab}
+          onChange={(tab) => {
+            setMsgTab(tab);
+            if (tab === "groups") {
+              setSelectedConversation(null);
+              setLocation("/messages");
+            }
+          }}
           className="shrink-0 mb-4"
         />
 
@@ -288,8 +346,17 @@ export function Messages() {
             <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
               <div className="ait-chat-panel-header p-4">
                 <h2 className="font-semibold flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5 text-ait-purple" />
-                  Чаты
+                  {msgTab === "groups" ? (
+                    <>
+                      <Hash className="h-5 w-5 text-ait-purple" />
+                      Группа
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="h-5 w-5 text-ait-purple" />
+                      Личные диалоги
+                    </>
+                  )}
                 </h2>
               </div>
               <div className="p-0">
@@ -300,10 +367,10 @@ export function Messages() {
                     ) : myRooms.length === 0 ? (
                       <div className="p-6 text-center text-sm text-muted-foreground space-y-2">
                         <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>Вы ещё не состоите в групповых чатах</p>
+                        <p>Вы ещё не состоите в группах</p>
                         <Link href="/chat">
                           <Button variant="outline" size="sm" className="rounded-full">
-                            Открыть комнаты
+                            Открыть группы
                           </Button>
                         </Link>
                       </div>
@@ -331,17 +398,24 @@ export function Messages() {
                         ))}
                       </div>
                     )
-                  ) : visibleConversations.length === 0 ? (
+                  ) : visibleConversations.length === 0 && friendsWithoutChat.length === 0 ? (
                     <div className="p-4 text-center">
                       <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                       <h3 className="font-semibold mb-2">
-                        {msgTab === "unread" ? "Нет непрочитанных" : "Нет сообщений"}
+                        {msgTab === "unread" ? "Нет непрочитанных" : "Нет личных диалогов"}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mb-4">
                         {msgTab === "unread"
                           ? "Все диалоги прочитаны"
-                          : "Начните общение с друзьями"}
+                          : "Добавьте друзей и начните переписку"}
                       </p>
+                      {msgTab === "personal" && (
+                        <Link href="/friends">
+                          <Button variant="outline" size="sm" className="rounded-full">
+                            Найти друзей
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   ) : (
                     <div className="py-2">
@@ -394,6 +468,46 @@ export function Messages() {
                           </div>
                         </div>
                       ))}
+
+                      {msgTab === "personal" && friendsWithoutChat.length > 0 && (
+                        <>
+                          <p className="px-4 pt-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                            Друзья — начать диалог
+                          </p>
+                          {friendsWithoutChat.map((friend) => (
+                            <div
+                              key={friend.id}
+                              role="button"
+                              tabIndex={0}
+                              className={cn(
+                                "ait-chat-list-item cursor-pointer opacity-90",
+                                selectedConversation?.user.id === friend.id &&
+                                  "ait-chat-list-item--active",
+                              )}
+                              onClick={() => openFriendChat(friend)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") openFriendChat(friend);
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <AvatarWithPresence
+                                  src={friend.profileImageUrl}
+                                  fallback={getUserInitial(friend)}
+                                  className="h-14 w-14"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium truncate">
+                                    {getUserDisplayLabel(friend)}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {getUserHandle(friend) ?? "Написать сообщение"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
                   )}
                 </ScrollArea>
@@ -401,7 +515,22 @@ export function Messages() {
             </div>
 
             <div className="ait-chat-panel overflow-hidden flex flex-col min-h-0">
-              {selectedConversation ? (
+              {!showPersonalThread ? (
+                <div className="flex items-center justify-center flex-1 min-h-[320px] p-8 ait-chat-thread">
+                  <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
+                    <Hash className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
+                    <h3 className="text-lg font-semibold mb-2">Группы</h3>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      Выберите группу слева — откроется в разделе чатов
+                    </p>
+                    <Link href="/chat">
+                      <Button variant="outline" size="sm" className="rounded-full">
+                        Все группы
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : selectedConversation ? (
                 <>
                   <div className="ait-chat-panel-header p-4">
                     <div className="flex items-center gap-3">

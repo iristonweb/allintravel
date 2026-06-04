@@ -173,7 +173,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
   },
   {
     sku: "extra_chat_room",
-    title: "+1 комната",
+    title: "+1 группа",
     description: "Дополнительный слот для своей группы",
     cost: 600,
     category: "social",
@@ -189,8 +189,8 @@ export const AIT_CATALOG: AitCatalogItem[] = [
   },
   {
     sku: "room_spotlight_48h",
-    title: "Spotlight комнаты",
-    description: "Комната выше в каталоге 48 часов",
+    title: "Spotlight группы",
+    description: "Группа выше в каталоге 48 часов",
     cost: 300,
     category: "social",
     durationDays: 2,
@@ -237,7 +237,7 @@ export const WEEKLY_QUESTS: WeeklyQuestDef[] = [
   {
     id: "voice_7",
     title: "Голос недели",
-    description: "7 осмысленных сообщений в комнатах",
+    description: "7 осмысленных сообщений в группах",
     reward: 100,
     ring: "voice",
     target: 7,

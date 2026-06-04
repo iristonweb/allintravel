@@ -62,9 +62,8 @@ export default function AdminBroadcastDialog() {
           <MessageComposer
             value={content}
             onChange={setContent}
-            onSend={(body) => {
-              if (body?.trim()) setContent(body.trim());
-            }}
+            onSend={() => {}}
+            persistAfterMediaSend
             placeholder="Текст объявления…"
             className="w-full"
           />

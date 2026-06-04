@@ -35,6 +35,7 @@ export default function AppShell({
 
   const minimalChrome = chrome === "minimal";
   const effectiveImmersive = immersive || minimalChrome;
+  const transparentChrome = Boolean(immersive && !minimalChrome);
 
   useEffect(() => {
     if (!isAuthenticated || !pushSupported || !vapidReady) return;
@@ -46,8 +47,10 @@ export default function AppShell({
   return (
     <AmbientBackground showOrbs={!effectiveImmersive}>
       <div className="min-h-screen flex flex-col">
-        <AppTopNav minimalChrome={minimalChrome} />
-        {isAuthenticated && <AppIconSidebar minimalChrome={minimalChrome} />}
+        <AppTopNav minimalChrome={minimalChrome} transparentChrome={transparentChrome} />
+        {isAuthenticated && (
+          <AppIconSidebar minimalChrome={minimalChrome} transparentChrome={transparentChrome} />
+        )}
         <AppShellPlayerPadding
             className={cn(
               "flex-1",

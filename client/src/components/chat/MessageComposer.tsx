@@ -100,6 +100,8 @@ type MessageComposerProps = {
   onChange: (value: string) => void;
   /** Pass explicit content for GIF/sticker-only sends */
   onSend: (contentOverride?: string) => void;
+  /** Keep text + media in the field after attach (draft mode: broadcast, push) */
+  persistAfterMediaSend?: boolean;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -112,6 +114,7 @@ export default function MessageComposer({
   value,
   onChange,
   onSend,
+  persistAfterMediaSend = false,
   placeholder = "Сообщение…",
   disabled,
   className,
@@ -139,6 +142,11 @@ export default function MessageComposer({
   const voiceChunksRef = useRef<Blob[]>([]);
   const voiceStartedRef = useRef<number>(0);
   const { toast } = useToast();
+
+  const commitMediaSend = (merged: string) => {
+    onSend(merged);
+    onChange(persistAfterMediaSend ? merged : "");
+  };
 
   useEffect(() => {
     if (!replyTo) return;
@@ -188,8 +196,7 @@ export default function MessageComposer({
 
   const insertSticker = (src: string) => {
     setStickerOpen(false);
-    onSend(mergeTextAndMedia(value, encodeStickerMessage(src)));
-    onChange("");
+    commitMediaSend(mergeTextAndMedia(value, encodeStickerMessage(src)));
   };
 
   const sendMusicTrack = (track: UserTrack) => {
@@ -199,8 +206,7 @@ export default function MessageComposer({
       return;
     }
     setMusicOpen(false);
-    onSend(mergeTextAndMedia(value, encodeAudioMessage(url)));
-    onChange("");
+    commitMediaSend(mergeTextAndMedia(value, encodeAudioMessage(url)));
   };
 
   const handleAttachFile = async (file: File) => {
@@ -218,8 +224,7 @@ export default function MessageComposer({
         toast({ title: "Неподдерживаемый тип файла", variant: "destructive" });
         return;
       }
-      onSend(mergeTextAndMedia(value, token));
-      onChange("");
+      commitMediaSend(mergeTextAndMedia(value, token));
     } catch (err) {
       toast({
         title: "Не удалось загрузить",
@@ -269,8 +274,7 @@ export default function MessageComposer({
             const ext = mimeType.includes("ogg") ? "ogg" : "webm";
             const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
             const url = await uploadMediaFile(file);
-            onSend(mergeTextAndMedia(value, encodeVoiceMessage(url, durationSec)));
-            onChange("");
+            commitMediaSend(mergeTextAndMedia(value, encodeVoiceMessage(url, durationSec)));
           } catch (err) {
             toast({
               title: "Не удалось отправить голосовое",
@@ -512,8 +516,7 @@ export default function MessageComposer({
                   className="rounded-lg bg-transparent p-1 hover:bg-white/8 transition-colors"
                   onClick={() => {
                     setGifOpen(false);
-                    onSend(mergeTextAndMedia(value, encodeGifMessage(g.url)));
-                    onChange("");
+                    commitMediaSend(mergeTextAndMedia(value, encodeGifMessage(g.url)));
                   }}
                 >
                   <img
