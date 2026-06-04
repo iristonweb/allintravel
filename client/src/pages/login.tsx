@@ -37,9 +37,10 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<"invalid" | "server" | null>(
+  const [formError, setFormError] = useState<"invalid" | "server" | "schema" | "session" | "database" | null>(
     urlError === "invalid" ? "invalid" : urlError === "server" ? "server" : null,
   );
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   const { data: authConfig } = useQuery({
     queryKey: ["/api/auth/config"],
@@ -52,51 +53,57 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setErrorDetail(null);
     setSubmitting(true);
 
-    const body = new URLSearchParams();
-    body.set("email", email.trim());
-    body.set("password", password);
-
-    const qs =
-      redirect && redirect !== "/"
-        ? `?redirect=${encodeURIComponent(redirect)}`
-        : "";
-
     try {
-      const res = await fetch(`/api/login${qs}`, {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString(),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          redirect: redirect && redirect !== "/" ? redirect : "/",
+        }),
         credentials: "include",
-        redirect: "manual",
       });
 
-      if (res.status >= 300 && res.status < 400) {
-        const location = res.headers.get("Location") || redirect;
-        const target = location.startsWith("http")
-          ? new URL(location).pathname + new URL(location).search
-          : location;
-        if (target.includes("/login") && target.includes("error=invalid")) {
-          setFormError("invalid");
-          setSubmitting(false);
-          return;
-        }
-        if (target.includes("/login") && target.includes("error=server")) {
-          setFormError("server");
-          setSubmitting(false);
-          return;
-        }
-        window.location.assign(target);
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        redirect?: string;
+        error?: string;
+        code?: string;
+        message?: string;
+      };
+
+      if (res.ok && data.ok) {
+        window.location.assign(data.redirect || redirect || "/");
         return;
       }
 
-      if (res.ok) {
-        window.location.assign(redirect);
+      if (data.error === "invalid" || res.status === 401) {
+        setFormError("invalid");
+        return;
+      }
+
+      if (data.code === "NO_DATABASE") {
+        setFormError("database");
+        setErrorDetail(data.message ?? null);
+        return;
+      }
+      if (data.code === "SCHEMA") {
+        setFormError("schema");
+        setErrorDetail(data.message ?? null);
+        return;
+      }
+      if (data.code === "SESSION") {
+        setFormError("session");
+        setErrorDetail(data.message ?? null);
         return;
       }
 
       setFormError("server");
+      setErrorDetail(data.message ?? null);
     } catch {
       setFormError("server");
     } finally {
@@ -133,10 +140,31 @@ export function Login() {
             {formError === "invalid" && (
               <p className="text-sm text-destructive">Неверный email или пароль.</p>
             )}
+            {formError === "database" && (
+              <p className="text-sm text-destructive">
+                База данных не подключена. В Vercel → Settings → Environment Variables добавьте{" "}
+                <code className="text-ait-purple">DATABASE_URL</code> (Neon) и перезапустите деплой.
+              </p>
+            )}
+            {formError === "schema" && (
+              <p className="text-sm text-destructive">
+                Схема БД устарела. Локально с production URL в <code className="text-ait-purple">.env</code>{" "}
+                выполните <code className="text-ait-purple">npm run db:push</code>.
+              </p>
+            )}
+            {formError === "session" && (
+              <p className="text-sm text-destructive">
+                Не удалось сохранить сессию. Убедитесь, что в БД есть таблица{" "}
+                <code className="text-ait-purple">sessions</code> (<code className="text-ait-purple">npm run db:push</code>
+                ).
+              </p>
+            )}
             {formError === "server" && (
               <p className="text-sm text-destructive">
-                Ошибка сервера при входе. Проверьте DATABASE_URL на Vercel и выполните{" "}
-                <code className="text-ait-purple">npm run db:push</code> для обновления схемы БД.
+                Ошибка сервера при входе. Проверьте DATABASE_URL и SESSION_SECRET на Vercel.
+                {errorDetail ? (
+                  <span className="block mt-1 text-xs opacity-80">{errorDetail}</span>
+                ) : null}
               </p>
             )}
             <div className="space-y-2">

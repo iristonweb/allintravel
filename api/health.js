@@ -472,7 +472,7 @@ function getPool() {
   const url = databaseUrl();
   if (!url) return null;
   if (poolInstance) return poolInstance;
-  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 2 : 10));
+  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 4 : 10));
   return poolInstance;
 }
 function getDb() {

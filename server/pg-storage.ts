@@ -94,6 +94,16 @@ export class PgStorage implements IStorage {
     await this.db.execute(
       sql`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (username) WHERE username IS NOT NULL`,
     );
+    await this.db.execute(sql`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid varchar PRIMARY KEY,
+        sess jsonb NOT NULL,
+        expire timestamp NOT NULL
+      )
+    `);
+    await this.db.execute(
+      sql`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions (expire)`,
+    );
   }
 
   async ensureSeeded(): Promise<void> {

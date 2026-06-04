@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import AppLayout from "@/components/app-layout";
-import GlassCard from "@/components/brand/glass-card";
+import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
 import { Button } from "@/components/ui/button";
 import MessageComposer from "@/components/chat/MessageComposer";
-import MessageContent from "@/components/chat/MessageContent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -233,8 +232,8 @@ export function Chat() {
           className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4"
           style={{ height: "calc(100vh - 220px)", minHeight: "520px" }}
         >
-          <GlassCard strong className="overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-white/10">
+          <div className="ait-chat-panel flex flex-col min-h-0">
+            <div className="ait-chat-panel-header p-4">
               <div className="flex items-center justify-between">
                 <span className="font-semibold flex items-center gap-2">
                   <Hash className="h-4 w-4 text-ait-purple" />
@@ -264,10 +263,10 @@ export function Chat() {
                         type="button"
                         onClick={() => setActiveRoom(room.id)}
                         className={cn(
-                          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all",
+                          "ait-chat-room-item",
                           activeRoom === room.id
-                            ? "ait-nav-active"
-                            : "hover:bg-white/5 text-slate-400",
+                            ? "ait-chat-room-item--active"
+                            : "text-slate-400",
                         )}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -278,7 +277,7 @@ export function Chat() {
                 )}
               </div>
             </ScrollArea>
-            <div className="p-3 border-t border-white/10 text-[10px] text-muted-foreground flex gap-3">
+            <div className="ait-chat-panel-header p-3 text-[10px] text-muted-foreground flex gap-3 border-t border-b-0">
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" /> Геолокация
               </span>
@@ -286,10 +285,10 @@ export function Chat() {
                 <Route className="h-3 w-3" /> Маршруты
               </span>
             </div>
-          </GlassCard>
+          </div>
 
-          <GlassCard strong className="flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-white/10 flex items-center gap-3">
+          <div className="ait-chat-panel flex flex-col overflow-hidden min-h-0">
+            <div className="ait-chat-panel-header p-4 flex items-center gap-3">
               {activeRoomMeta && (() => {
                 const RoomIcon = activeRoomMeta.icon;
                 return <RoomIcon className="h-5 w-5 text-ait-orange" />;
@@ -300,7 +299,7 @@ export function Chat() {
               </div>
             </div>
 
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4 ait-chat-thread">
               {allMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                   <MessageCircle className="h-10 w-10 mb-3 opacity-40" />
@@ -329,27 +328,25 @@ export function Chat() {
                         <div className="h-9 w-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
                           {senderInitial}
                         </div>
-                        <div className={cn("flex flex-col gap-1 max-w-[75%]", isOwn && "items-end")}>
-                          {!isOwn && (
-                            <span className="text-xs text-muted-foreground px-1">{senderName}</span>
-                          )}
-                          <div
-                            className={cn(
-                              "px-4 py-2.5 rounded-2xl text-sm",
-                              isOwn
-                                ? "ait-chat-bubble-own text-white rounded-tr-md"
-                                : "ait-chat-bubble-other rounded-tl-md",
-                            )}
-                          >
-                            <MessageContent content={msg.content} />
-                          </div>
-                          <span className="text-[10px] text-muted-foreground px-1">
-                            {msg.createdAt
-                              ? format(new Date(msg.createdAt as unknown as string), "HH:mm", {
-                                  locale: ru,
-                                })
-                              : ""}
-                          </span>
+                        <div className={cn("flex flex-col max-w-[82%] min-w-0", isOwn && "items-end")}>
+                          <ChatMessageBubble
+                            content={msg.content}
+                            isOwn={isOwn}
+                            senderLabel={
+                              !isOwn ? (
+                                <span className="text-xs text-muted-foreground px-1">{senderName}</span>
+                              ) : undefined
+                            }
+                            timestamp={
+                              <span className="text-[10px] text-muted-foreground px-1">
+                                {msg.createdAt
+                                  ? format(new Date(msg.createdAt as unknown as string), "HH:mm", {
+                                      locale: ru,
+                                    })
+                                  : ""}
+                              </span>
+                            }
+                          />
                         </div>
                       </div>
                     );
@@ -359,7 +356,7 @@ export function Chat() {
               )}
             </ScrollArea>
 
-            <div className="p-4 border-t border-white/10">
+            <div className="ait-chat-panel-header p-4 border-t">
               <div className="flex gap-2 items-center">
                 <MessageComposer
                   value={messageText}
@@ -374,13 +371,13 @@ export function Chat() {
                   size="icon"
                   onClick={() => void handleSend()}
                   disabled={!messageText.trim() || !canSend}
-                  className="rounded-2xl shrink-0"
+                  className="rounded-2xl shrink-0 shadow-lg"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          </GlassCard>
+          </div>
         </div>
       </div>
     </AppLayout>

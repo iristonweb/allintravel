@@ -6,7 +6,6 @@ import * as schema from "@shared/schema";
 type AppDb = ReturnType<typeof drizzleNodePg<typeof schema>>;
 
 let poolInstance: NodePgPool | null = null;
-let sessionPoolInstance: NodePgPool | null = null;
 let dbInstance: AppDb | null = null;
 
 function databaseUrl(): string | null {
@@ -31,14 +30,9 @@ function pgPoolOptions(url: string, max: number) {
   };
 }
 
-/** node-postgres pool for express-session (connect-pg-simple). */
+/** Shared pool for Drizzle + express-session (fewer Neon connections on serverless). */
 export function getSessionPool(): NodePgPool | null {
-  const url = databaseUrl();
-  if (!url) return null;
-  if (sessionPoolInstance) return sessionPoolInstance;
-
-  sessionPoolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 1 : 5));
-  return sessionPoolInstance;
+  return getPool();
 }
 
 export function isDatabaseConfigured(): boolean {
@@ -54,7 +48,7 @@ export function getPool(): NodePgPool | null {
   if (!url) return null;
   if (poolInstance) return poolInstance;
 
-  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 2 : 10));
+  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 4 : 10));
   return poolInstance;
 }
 

@@ -481,11 +481,7 @@ function pgPoolOptions(url, max) {
   };
 }
 function getSessionPool() {
-  const url = databaseUrl();
-  if (!url) return null;
-  if (sessionPoolInstance) return sessionPoolInstance;
-  sessionPoolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 1 : 5));
-  return sessionPoolInstance;
+  return getPool();
 }
 function isDatabaseConfigured() {
   return Boolean(databaseUrl());
@@ -494,7 +490,7 @@ function getPool() {
   const url = databaseUrl();
   if (!url) return null;
   if (poolInstance) return poolInstance;
-  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 2 : 10));
+  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 4 : 10));
   return poolInstance;
 }
 function getDb() {
@@ -505,13 +501,12 @@ function getDb() {
   dbInstance = drizzleNodePg(pool2, { schema: schema_exports });
   return dbInstance;
 }
-var poolInstance, sessionPoolInstance, dbInstance, db, pool;
+var poolInstance, dbInstance, db, pool;
 var init_db = __esm({
   "server/db.ts"() {
     "use strict";
     init_schema();
     poolInstance = null;
-    sessionPoolInstance = null;
     dbInstance = null;
     db = new Proxy({}, {
       get(_target, prop) {
@@ -1641,6 +1636,16 @@ var PgStorage = class {
     );
     await this.db.execute(
       sql2`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (username) WHERE username IS NOT NULL`
+    );
+    await this.db.execute(sql2`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid varchar PRIMARY KEY,
+        sess jsonb NOT NULL,
+        expire timestamp NOT NULL
+      )
+    `);
+    await this.db.execute(
+      sql2`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions (expire)`
     );
   }
   async ensureSeeded() {
@@ -2999,14 +3004,6 @@ function createStorage() {
 }
 var storage = createStorage();
 
-// server/auth.ts
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import createMemoryStore from "memorystore";
-init_db();
-
 // server/google-auth.ts
 import * as client from "openid-client";
 var googleConfig = null;
@@ -3106,8 +3103,8 @@ async function setupGoogleAuth(app) {
           return res.redirect("/login?error=invalid");
         }
         const rawRedirect = typeof req.query.state === "string" ? req.query.state : "/";
-        const safeRedirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
-        res.redirect(safeRedirect);
+        const safeRedirect2 = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
+        res.redirect(safeRedirect2);
       });
     } catch (err) {
       console.error("Google auth callback error:", err);
@@ -3120,26 +3117,12 @@ function isGoogleAuthEnabled() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }
 
-// server/password.ts
-import bcrypt from "bcryptjs";
-var SALT_ROUNDS = 10;
-var MIN_PASSWORD_LENGTH = 8;
-async function hashPassword(plain) {
-  return bcrypt.hash(plain, SALT_ROUNDS);
-}
-async function verifyPassword(plain, hash) {
-  return bcrypt.compare(plain, hash);
-}
-function isPasswordLongEnough(password) {
-  return password.length >= MIN_PASSWORD_LENGTH;
-}
-
-// server/auth.ts
-init_admin();
-async function syncAdminRole(user) {
-  if (!resolveIsAdmin(user.email) || user.isAdmin) return user;
-  return storage.setUserAdmin(user.id, true);
-}
+// server/auth-middleware.ts
+init_db();
+import passport from "passport";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import createMemoryStore from "memorystore";
 var SESSION_SECRET = process.env.SESSION_SECRET || "dev-secret-change-in-production";
 var PgSession = connectPgSimple(session);
 var MemoryStore = createMemoryStore(session);
@@ -3154,7 +3137,7 @@ function getSession() {
     store = pgPool ? new PgSession({
       pool: pgPool,
       tableName: "sessions",
-      createTableIfMissing: true
+      createTableIfMissing: false
     }) : new MemoryStore({ checkPeriod: 864e5 });
   } catch (err) {
     console.error("[auth] session store init failed, using memory:", err);
@@ -3175,6 +3158,38 @@ function getSession() {
   });
   return sessionMiddleware;
 }
+function applyPassportMiddleware(app) {
+  app.set("trust proxy", 1);
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+  passport.serializeUser((user, cb) => cb(null, user));
+  passport.deserializeUser((user, cb) => cb(null, user));
+}
+
+// server/local-auth.ts
+import passport2 from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+init_db();
+
+// server/password.ts
+import bcrypt from "bcryptjs";
+var SALT_ROUNDS = 10;
+var MIN_PASSWORD_LENGTH = 8;
+async function hashPassword(plain) {
+  return bcrypt.hash(plain, SALT_ROUNDS);
+}
+async function verifyPassword(plain, hash) {
+  return bcrypt.compare(plain, hash);
+}
+function isPasswordLongEnough(password) {
+  return password.length >= MIN_PASSWORD_LENGTH;
+}
+
+// server/local-auth.ts
+init_admin();
+
+// server/auth-session.ts
 function toSessionUser(user) {
   return {
     claims: {
@@ -3186,122 +3201,193 @@ function toSessionUser(user) {
     }
   };
 }
-function applyPassportMiddleware(app) {
-  app.set("trust proxy", 1);
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
-  passport.serializeUser((user, cb) => cb(null, user));
-  passport.deserializeUser((user, cb) => cb(null, user));
+
+// server/local-auth.ts
+async function syncAdminRole(user) {
+  if (!resolveIsAdmin(user.email) || user.isAdmin) return user;
+  return storage.setUserAdmin(user.id, true);
 }
+var schemaReady = null;
+async function ensureAuthSchema() {
+  if (!storage.ensureSchema) return;
+  if (!schemaReady) {
+    schemaReady = storage.ensureSchema().catch((e) => {
+      schemaReady = null;
+      throw e;
+    });
+  }
+  await schemaReady;
+}
+async function authenticateLocal(email, password) {
+  if (!isDatabaseConfigured()) {
+    return {
+      ok: false,
+      reason: "error",
+      message: "\u0411\u0430\u0437\u0430 \u0434\u0430\u043D\u043D\u044B\u0445 \u043D\u0435 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0430 (DATABASE_URL \u043D\u0430 Vercel)",
+      code: "NO_DATABASE"
+    };
+  }
+  try {
+    await ensureAuthSchema();
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      return { ok: false, reason: "invalid" };
+    }
+    if (!isPasswordLongEnough(password)) {
+      return { ok: false, reason: "invalid" };
+    }
+    let user = await storage.getUserByEmail(trimmed);
+    if (!user) {
+      const id = crypto.randomUUID();
+      const passwordHash = await hashPassword(password);
+      const { generateUniqueUsername: generateUniqueUsername2 } = await Promise.resolve().then(() => (init_user_utils(), user_utils_exports));
+      const username = await generateUniqueUsername2(storage, trimmed);
+      user = await storage.upsertUser({
+        id,
+        email: trimmed,
+        username,
+        firstName: null,
+        lastName: null,
+        profileImageUrl: null,
+        passwordHash
+      });
+      user = await syncAdminRole(user);
+      return { ok: true, user: toSessionUser(user) };
+    }
+    if (!user.passwordHash) {
+      const passwordHash = await hashPassword(password);
+      user = await storage.setUserPassword(user.id, passwordHash);
+      user = await syncAdminRole(user);
+      return { ok: true, user: toSessionUser(user) };
+    }
+    const valid = await verifyPassword(password, user.passwordHash);
+    if (!valid) {
+      return { ok: false, reason: "invalid" };
+    }
+    user = await syncAdminRole(user);
+    return { ok: true, user: toSessionUser(user) };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[auth] authenticateLocal:", message);
+    const code = message.includes("password_hash") || message.includes("column") ? "SCHEMA" : message.includes("connect") || message.includes("timeout") ? "DB_CONNECT" : "UNKNOWN";
+    return { ok: false, reason: "error", message, code };
+  }
+}
+var localStrategyReady = false;
+function registerLocalPassportStrategy() {
+  if (localStrategyReady) return;
+  localStrategyReady = true;
+  passport2.use(
+    new LocalStrategy(
+      { usernameField: "email", passwordField: "password" },
+      async (email, password, done) => {
+        const result = await authenticateLocal(String(email ?? ""), String(password ?? ""));
+        if (result.ok) return done(null, result.user);
+        if (result.reason === "invalid") {
+          return done(null, false, { message: "Invalid email or password" });
+        }
+        return done(new Error(result.message));
+      }
+    )
+  );
+}
+function safeRedirect(raw) {
+  const r = raw ?? "/";
+  return r.startsWith("/") && !r.startsWith("//") && !r.includes("://") ? r : "/";
+}
+function promisifyLogin(req, user) {
+  return new Promise((resolve, reject) => {
+    req.logIn(user, (err) => err ? reject(err) : resolve());
+  });
+}
+function registerLoginRoutes(app) {
+  app.get("/api/login", (_req, res) => {
+    res.redirect("/login");
+  });
+  app.post("/api/auth/login", async (req, res) => {
+    const email = String(req.body?.email ?? "").trim();
+    const password = String(req.body?.password ?? "");
+    const redirectTo = safeRedirect(
+      typeof req.body?.redirect === "string" ? req.body.redirect : void 0
+    );
+    const result = await authenticateLocal(email, password);
+    if (!result.ok) {
+      if (result.reason === "invalid") {
+        return res.status(401).json({ ok: false, error: "invalid", message: "\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 email \u0438\u043B\u0438 \u043F\u0430\u0440\u043E\u043B\u044C" });
+      }
+      return res.status(500).json({
+        ok: false,
+        error: "server",
+        code: result.code ?? "UNKNOWN",
+        message: result.message
+      });
+    }
+    try {
+      await promisifyLogin(req, result.user);
+      return res.json({ ok: true, redirect: redirectTo });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[auth] session save failed:", message);
+      return res.status(500).json({
+        ok: false,
+        error: "server",
+        code: "SESSION",
+        message: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0441\u0435\u0441\u0441\u0438\u044E. \u041F\u0440\u043E\u0432\u0435\u0440\u044C\u0442\u0435 \u0442\u0430\u0431\u043B\u0438\u0446\u0443 sessions \u0432 \u0411\u0414."
+      });
+    }
+  });
+  app.post("/api/login", (req, res, next) => {
+    const redirectTo = safeRedirect(
+      typeof req.query.redirect === "string" ? req.query.redirect : "/"
+    );
+    passport2.authenticate("local", (err, user) => {
+      if (err) {
+        console.error("[auth] POST /api/login authenticate:", err);
+        const q = new URLSearchParams({ error: "server" });
+        if (redirectTo !== "/") q.set("redirect", redirectTo);
+        return res.redirect(`/login?${q.toString()}`);
+      }
+      if (!user) {
+        const q = new URLSearchParams({ error: "invalid" });
+        if (redirectTo !== "/") q.set("redirect", redirectTo);
+        return res.redirect(`/login?${q.toString()}`);
+      }
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error("[auth] session save failed:", loginErr);
+          const q = new URLSearchParams({ error: "server" });
+          if (redirectTo !== "/") q.set("redirect", redirectTo);
+          return res.redirect(`/login?${q.toString()}`);
+        }
+        return res.redirect(redirectTo);
+      });
+    })(req, res, next);
+  });
+}
+
+// server/auth.ts
 async function setupAuth(app) {
   applyPassportMiddleware(app);
+  registerLocalPassportStrategy();
+  registerLoginRoutes(app);
   const googleSetup = setupGoogleAuth(app).catch((err) => {
     console.error("[auth] Google OAuth setup skipped:", err);
   });
   if (!process.env.VERCEL) {
-    const googleTimeoutMs = 1e4;
     try {
       await Promise.race([
         googleSetup,
         new Promise(
-          (_, reject) => setTimeout(() => reject(new Error("Google OAuth setup timeout")), googleTimeoutMs)
+          (_, reject) => setTimeout(() => reject(new Error("Google OAuth setup timeout")), 1e4)
         )
       ]);
     } catch (err) {
       console.error("[auth] Google OAuth setup skipped:", err);
     }
   }
-  passport.use(
-    new LocalStrategy(
-      { usernameField: "email", passwordField: "password" },
-      async (email, _password, done) => {
-        try {
-          if (storage.ensureSchema) {
-            await storage.ensureSchema();
-          }
-          const trimmed = (email || "").trim().toLowerCase();
-          const password = String(_password ?? "");
-          if (!trimmed) {
-            return done(null, false, { message: "Email is required" });
-          }
-          if (!isPasswordLongEnough(password)) {
-            return done(null, false, { message: "Invalid email or password" });
-          }
-          let user = await storage.getUserByEmail(trimmed);
-          if (!user) {
-            const id = crypto.randomUUID();
-            const passwordHash = await hashPassword(password);
-            const { generateUniqueUsername: generateUniqueUsername2 } = await Promise.resolve().then(() => (init_user_utils(), user_utils_exports));
-            const username = await generateUniqueUsername2(storage, trimmed);
-            user = await storage.upsertUser({
-              id,
-              email: trimmed,
-              username,
-              firstName: null,
-              lastName: null,
-              profileImageUrl: null,
-              passwordHash
-            });
-            user = await syncAdminRole(user);
-            return done(null, toSessionUser(user));
-          }
-          if (!user.passwordHash) {
-            const passwordHash = await hashPassword(password);
-            user = await storage.setUserPassword(user.id, passwordHash);
-            user = await syncAdminRole(user);
-            return done(null, toSessionUser(user));
-          }
-          const valid = await verifyPassword(password, user.passwordHash);
-          if (!valid) {
-            return done(null, false, { message: "Invalid email or password" });
-          }
-          user = await syncAdminRole(user);
-          return done(null, toSessionUser(user));
-        } catch (err) {
-          console.error("[auth] local strategy error:", err);
-          return done(err);
-        }
-      }
-    )
-  );
-  app.get("/api/login", (_req, res) => {
-    res.redirect("/login");
-  });
-  app.post(
-    "/api/login",
-    (req, res, next) => {
-      const rawRedirect = typeof req.query.redirect === "string" ? req.query.redirect : "/";
-      const safeRedirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") && !rawRedirect.includes("://") ? rawRedirect : "/";
-      passport.authenticate("local", (err, user) => {
-        if (err) {
-          console.error("[auth] POST /api/login authenticate:", err);
-          const q = new URLSearchParams({ error: "server" });
-          if (safeRedirect !== "/") q.set("redirect", safeRedirect);
-          return res.redirect(`/login?${q.toString()}`);
-        }
-        if (!user) {
-          const q = new URLSearchParams({ error: "invalid" });
-          if (safeRedirect !== "/") q.set("redirect", safeRedirect);
-          return res.redirect(`/login?${q.toString()}`);
-        }
-        req.logIn(user, (loginErr) => {
-          if (loginErr) {
-            console.error("[auth] session save failed:", loginErr);
-            const q = new URLSearchParams({ error: "server" });
-            if (safeRedirect !== "/") q.set("redirect", safeRedirect);
-            return res.redirect(`/login?${q.toString()}`);
-          }
-          return res.redirect(safeRedirect);
-        });
-      })(req, res, next);
-    }
-  );
   const handleLogout = (req, res) => {
     req.logout((err) => {
-      if (err) {
-        return res.redirect("/");
-      }
+      if (err) return res.redirect("/");
       res.redirect("/");
     });
   };
@@ -3324,7 +3410,7 @@ init_nominatim();
 init_schema();
 init_username();
 init_user_utils();
-import passport2 from "passport";
+import passport3 from "passport";
 import { z } from "zod";
 var updateUserMeSchema = z.object({
   displayName: z.string().max(64).nullable().optional(),
@@ -4435,8 +4521,8 @@ async function registerRoutes(app) {
       let authenticatedUserId = null;
       const runSession = (cb) => {
         sessionParser(req, {}, () => {
-          passport2.initialize()(req, {}, () => {
-            passport2.session()(req, {}, cb);
+          passport3.initialize()(req, {}, () => {
+            passport3.session()(req, {}, cb);
           });
         });
       };
@@ -4812,12 +4898,65 @@ async function createApp() {
   return { app, server };
 }
 
-// server/vercel/media-upload-app.ts
+// server/vercel/auth-app.ts
 import express3 from "express";
+var authApp = null;
+function getAuthApp() {
+  if (authApp) return authApp;
+  const app = express3();
+  app.set("trust proxy", 1);
+  app.use(express3.json());
+  app.use(express3.urlencoded({ extended: false }));
+  applyPassportMiddleware(app);
+  registerLocalPassportStrategy();
+  registerLoginRoutes(app);
+  authApp = app;
+  return app;
+}
+function isAuthLoginPath(method, url) {
+  if (method !== "POST" || !url) return false;
+  const path2 = url.split("?")[0] ?? "";
+  return path2 === "/api/login" || path2 === "/api/auth/login";
+}
+function runAuthApp(req, res) {
+  const app = getAuthApp();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    res.once("finish", done);
+    res.once("close", done);
+    res.once("error", (err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
+    try {
+      app(req, res, (err) => {
+        if (err && !settled) {
+          settled = true;
+          reject(err);
+        }
+      });
+    } catch (err) {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    }
+  });
+}
+
+// server/vercel/media-upload-app.ts
+import express4 from "express";
 var uploadApp = null;
 function getMediaUploadApp() {
   if (uploadApp) return uploadApp;
-  const app = express3();
+  const app = express4();
   app.set("trust proxy", 1);
   applyPassportMiddleware(app);
   mountUploadRoutes(app, { serveStatic: false });
@@ -4908,6 +5047,10 @@ function runExpress(app, req, res) {
 }
 async function handler(req, res) {
   try {
+    if (process.env.VERCEL && isAuthLoginPath(req.method, req.url)) {
+      await runAuthApp(req, res);
+      return;
+    }
     if (process.env.VERCEL && isMediaUploadPath(req.method, req.url)) {
       await runMediaUploadApp(req, res);
       return;

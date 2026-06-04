@@ -31,12 +31,22 @@ async function searchGiphy(query: string): Promise<GiphyGif[]> {
   const res = await fetch(`https://api.giphy.com/v1/gifs/search?${params}`);
   if (!res.ok) return [];
   const json = await res.json();
-  return (json.data ?? []).map((item: { id: string; title: string; images: { fixed_height: { url: string }; preview_gif: { url: string } } }) => ({
-    id: item.id,
-    title: item.title,
-    url: item.images.fixed_height.url,
-    preview: item.images.preview_gif.url,
-  }));
+  return (json.data ?? []).map(
+    (item: {
+      id: string;
+      title: string;
+      images: {
+        downsized?: { url: string };
+        fixed_height: { url: string };
+        preview_gif: { url: string };
+      };
+    }) => ({
+      id: item.id,
+      title: item.title,
+      url: item.images.downsized?.url ?? item.images.fixed_height.url,
+      preview: item.images.preview_gif.url,
+    }),
+  );
 }
 
 type MessageComposerProps = {
@@ -92,14 +102,14 @@ export default function MessageComposer({
   };
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("ait-chat-composer-bar flex items-center gap-1.5", className)}>
       <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
         <PopoverTrigger asChild>
           <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={disabled}>
             <Smile className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 border-0" align="start" side="top">
+        <PopoverContent className="w-auto p-0 border-0 ait-glass-ios" align="start" side="top">
           <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.DARK} width={320} height={360} />
         </PopoverContent>
       </Popover>
@@ -110,7 +120,7 @@ export default function MessageComposer({
             <Sticker className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-3" align="start" side="top">
+        <PopoverContent className="w-64 p-3 ait-glass-ios border-white/15" align="start" side="top">
           <p className="text-xs text-muted-foreground mb-2">Стикеры</p>
           <div className="grid grid-cols-3 gap-2">
             {STICKERS.map((s) => (
@@ -135,7 +145,7 @@ export default function MessageComposer({
               <ImageIcon className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-3" align="start" side="top">
+          <PopoverContent className="w-80 p-3 ait-glass-ios border-white/15" align="start" side="top">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium">GIF</p>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setGifOpen(false)}>
@@ -149,18 +159,22 @@ export default function MessageComposer({
               className="mb-2 h-8"
             />
             {gifLoading && <p className="text-xs text-muted-foreground">Загрузка…</p>}
-            <div className="grid grid-cols-3 gap-1 max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
               {gifResults.map((g) => (
                 <button
                   key={g.id}
                   type="button"
-                  className="rounded overflow-hidden hover:ring-2 ring-primary"
+                  className="rounded-lg bg-transparent p-1 hover:bg-white/8 transition-colors"
                   onClick={() => {
                     setGifOpen(false);
                     onSend(encodeGifMessage(g.url));
                   }}
                 >
-                  <img src={g.preview} alt={g.title} className="w-full h-16 object-cover" />
+                  <img
+                    src={g.preview}
+                    alt={g.title}
+                    className="w-full h-16 object-contain bg-transparent"
+                  />
                 </button>
               ))}
             </div>
@@ -173,7 +187,7 @@ export default function MessageComposer({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        className="flex-1"
+        className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();

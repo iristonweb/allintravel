@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import AppLayout from "@/components/app-layout";
-import GlassCard from "@/components/brand/glass-card";
+import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
+import MessageContent from "@/components/chat/MessageContent";
 import { Button } from "@/components/ui/button";
 import MessageComposer from "@/components/chat/MessageComposer";
-import MessageContent from "@/components/chat/MessageContent";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -151,9 +151,9 @@ export function Messages() {
           ))}
         </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-220px)]">
-            <GlassCard strong className="lg:col-span-1 overflow-hidden">
-              <div className="p-4 border-b border-white/10">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-4 h-[calc(100vh-200px)] min-h-[520px]">
+            <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
+              <div className="ait-chat-panel-header p-4">
                 <h2 className="font-semibold flex items-center gap-2">
                   <MessageCircle className="h-5 w-5 text-ait-purple" />
                   Чаты
@@ -170,16 +170,21 @@ export function Messages() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-1">
+                    <div className="py-2">
                       {conversations.map((conversation) => (
                         <div
                           key={conversation.user.id}
-                          className={`p-4 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5 ${
-                            selectedConversation?.user.id === conversation.user.id
-                              ? "bg-ait-purple/15"
-                              : ""
-                          }`}
+                          role="button"
+                          tabIndex={0}
+                          className={cn(
+                            "ait-chat-list-item cursor-pointer",
+                            selectedConversation?.user.id === conversation.user.id &&
+                              "ait-chat-list-item--active",
+                          )}
                           onClick={() => handleSelectConversation(conversation)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSelectConversation(conversation);
+                          }}
                         >
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10">
@@ -200,7 +205,11 @@ export function Messages() {
                                 </span>
                               </div>
                               <p className="text-sm text-muted-foreground truncate">
-                                {conversation.lastMessage?.content ?? "Нет сообщений"}
+                                {conversation.lastMessage?.content ? (
+                                  <MessageContent content={conversation.lastMessage.content} compact />
+                                ) : (
+                                  "Нет сообщений"
+                                )}
                               </p>
                               {conversation.unreadCount > 0 && (
                                 <Badge className="mt-1 bg-ait-orange border-0">
@@ -215,12 +224,12 @@ export function Messages() {
                   )}
                 </ScrollArea>
               </div>
-            </GlassCard>
+            </div>
 
-            <GlassCard strong className="lg:col-span-2 overflow-hidden flex flex-col">
+            <div className="ait-chat-panel overflow-hidden flex flex-col min-h-0">
               {selectedConversation ? (
                 <>
-                  <div className="p-4 border-b border-white/10">
+                  <div className="ait-chat-panel-header p-4">
                     <div className="flex items-center gap-3">
                       <Button
                         variant="ghost"
@@ -250,40 +259,46 @@ export function Messages() {
                   </div>
 
                   <div className="flex flex-col flex-1 min-h-0">
-                    <ScrollArea className="flex-1 p-4">
-                      <div className="space-y-4">
+                    <ScrollArea className="flex-1 p-4 md:p-6 ait-chat-thread">
+                      <div className="space-y-5">
                         {messages.map((message) => {
                           const isOwn = message.senderId === user?.id;
                           return (
                             <div
                               key={message.id}
-                              className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                              className={cn("flex gap-2", isOwn ? "flex-row-reverse" : "flex-row")}
                             >
-                              <div
-                                className={cn(
-                                  "max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-sm",
-                                  isOwn
-                                    ? "ait-chat-bubble-own text-white rounded-tr-md"
-                                    : "ait-chat-bubble-other rounded-tl-md",
-                                )}
-                              >
-                                <MessageContent content={message.content} />
-                                <p
-                                  className={cn(
-                                    "text-[10px] mt-1",
-                                    isOwn ? "text-white/70" : "text-muted-foreground",
-                                  )}
-                                >
-                                  {formatTime(message.createdAt as unknown as string)}
-                                </p>
-                              </div>
+                              {!isOwn && (
+                                <Avatar className="h-8 w-8 shrink-0 border border-white/15">
+                                  <AvatarImage
+                                    src={selectedConversation.user.profileImageUrl ?? undefined}
+                                  />
+                                  <AvatarFallback className="text-xs">
+                                    {getUserInitial(selectedConversation.user)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                              <ChatMessageBubble
+                                content={message.content}
+                                isOwn={isOwn}
+                                timestamp={
+                                  <span
+                                    className={cn(
+                                      "text-[10px] px-1",
+                                      isOwn ? "text-muted-foreground" : "text-muted-foreground",
+                                    )}
+                                  >
+                                    {formatTime(message.createdAt as unknown as string)}
+                                  </span>
+                                }
+                              />
                             </div>
                           );
                         })}
                       </div>
                     </ScrollArea>
 
-                    <div className="border-t border-white/10 p-4 mt-auto">
+                    <div className="ait-chat-panel-header p-4 mt-auto border-t">
                       <div className="flex gap-2 items-center">
                         <MessageComposer
                           value={newMessage}
@@ -298,7 +313,7 @@ export function Messages() {
                           size="icon"
                           onClick={() => handleSendMessage()}
                           disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                          className="rounded-2xl shrink-0"
+                          className="rounded-2xl shrink-0 shadow-lg"
                         >
                           <Send className="h-4 w-4" />
                         </Button>
@@ -307,17 +322,17 @@ export function Messages() {
                   </div>
                 </>
               ) : (
-                <div className="flex items-center justify-center flex-1 min-h-[320px] p-8">
-                  <div className="text-center">
-                    <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <div className="flex items-center justify-center flex-1 min-h-[320px] p-8 ait-chat-thread">
+                  <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
+                    <MessageCircle className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
                     <h3 className="text-lg font-semibold mb-2">Выберите диалог</h3>
-                    <p className="text-muted-foreground">
-                      Выберите диалог из списка, чтобы начать общение
+                    <p className="text-muted-foreground text-sm">
+                      Выберите чат слева, чтобы начать переписку
                     </p>
                   </div>
                 </div>
               )}
-            </GlassCard>
+            </div>
           </div>
       </div>
     </AppLayout>

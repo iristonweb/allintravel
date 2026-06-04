@@ -60,3 +60,16 @@ export function parseChatMessage(content: string): ParsedChatMessage[] {
 export function isRichChatMessage(content: string): boolean {
   return content.includes(GIF_PREFIX) || content.includes(STICKER_PREFIX);
 }
+
+export function hasMediaParts(content: string): boolean {
+  return parseChatMessage(content).some((p) => p.type === "gif" || p.type === "sticker");
+}
+
+/** Сообщение только из GIF/стикеров — без текстового пузыря. */
+export function isMediaOnlyMessage(content: string): boolean {
+  const parts = parseChatMessage(content);
+  return (
+    parts.some((p) => p.type === "gif" || p.type === "sticker") &&
+    parts.every((p) => p.type !== "text" || !p.text.trim())
+  );
+}
