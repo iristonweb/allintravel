@@ -28,6 +28,8 @@ import MentionAutocomplete, {
 import type { User, UserTrack } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import FormatToolbar from "@/components/rich-text/FormatToolbar";
+import { mergeTextAndMedia } from "@/lib/rich-text";
 
 const STICKERS = [
   { id: "plane", src: "/stickers/plane.svg", label: "Самолёт" },
@@ -180,7 +182,8 @@ export default function MessageComposer({
 
   const insertSticker = (src: string) => {
     setStickerOpen(false);
-    onSend(encodeStickerMessage(src));
+    onSend(mergeTextAndMedia(value, encodeStickerMessage(src)));
+    onChange("");
   };
 
   const sendMusicTrack = (track: UserTrack) => {
@@ -190,22 +193,27 @@ export default function MessageComposer({
       return;
     }
     setMusicOpen(false);
-    onSend(encodeAudioMessage(url));
+    onSend(mergeTextAndMedia(value, encodeAudioMessage(url)));
+    onChange("");
   };
 
   const handleAttachFile = async (file: File) => {
     setUploading(true);
     try {
       const url = await uploadMediaFile(file);
+      let token: string;
       if (isImageFile(file)) {
-        onSend(encodeImageMessage(url));
+        token = encodeImageMessage(url);
       } else if (isVideoFile(file)) {
-        onSend(encodeVideoMessage(url));
+        token = encodeVideoMessage(url);
       } else if (isAudioFile(file)) {
-        onSend(encodeAudioMessage(url));
+        token = encodeAudioMessage(url);
       } else {
         toast({ title: "Неподдерживаемый тип файла", variant: "destructive" });
+        return;
       }
+      onSend(mergeTextAndMedia(value, token));
+      onChange("");
     } catch (err) {
       toast({
         title: "Не удалось загрузить",
@@ -255,7 +263,8 @@ export default function MessageComposer({
             const ext = mimeType.includes("ogg") ? "ogg" : "webm";
             const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
             const url = await uploadMediaFile(file);
-            onSend(encodeVoiceMessage(url, durationSec));
+            onSend(mergeTextAndMedia(value, encodeVoiceMessage(url, durationSec)));
+            onChange("");
           } catch (err) {
             toast({
               title: "Не удалось отправить голосовое",
@@ -346,6 +355,14 @@ export default function MessageComposer({
           )}
         </div>
       )}
+      <FormatToolbar
+        value={value}
+        onChange={onChange}
+        inputRef={inputRef}
+        disabled={composerDisabled}
+        compact
+        className="px-1"
+      />
     <div className="ait-chat-composer-bar flex items-center gap-1.5 min-w-0">
       <input
         ref={fileInputRef}
@@ -489,7 +506,8 @@ export default function MessageComposer({
                   className="rounded-lg bg-transparent p-1 hover:bg-white/8 transition-colors"
                   onClick={() => {
                     setGifOpen(false);
-                    onSend(encodeGifMessage(g.url));
+                    onSend(mergeTextAndMedia(value, encodeGifMessage(g.url)));
+                    onChange("");
                   }}
                 >
                   <img

@@ -37,6 +37,8 @@ import PostComments from "@/components/social/PostComments";
 import { shareUrl } from "@/lib/share";
 import { uploadMediaFile, isVideoUrl } from "@/lib/upload-media";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import FormatToolbar from "@/components/rich-text/FormatToolbar";
+import { renderRichText } from "@/lib/rich-text";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { PostFormat } from "@shared/post-formats";
@@ -93,6 +95,7 @@ export function SocialFeed() {
   });
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+  const postContentRef = useRef<HTMLTextAreaElement>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [storyView, setStoryView] = useState<{
@@ -402,18 +405,26 @@ export function SocialFeed() {
                         />
                       )}
                       {contentFormat !== "stories" && (
-                        <Textarea
-                          placeholder={
-                            contentFormat === "journals"
-                              ? "Длинная запись (мин. 80 символов)..."
-                              : contentFormat === "reels"
-                                ? "Подпись к Reel (необязательно)"
-                                : "Расскажите о путешествии..."
-                          }
-                          value={newPost.content}
-                          onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                          rows={contentFormat === "journals" ? 8 : 4}
-                        />
+                        <div className="space-y-1">
+                          <FormatToolbar
+                            value={newPost.content}
+                            onChange={(content) => setNewPost({ ...newPost, content })}
+                            inputRef={postContentRef}
+                          />
+                          <Textarea
+                            ref={postContentRef}
+                            placeholder={
+                              contentFormat === "journals"
+                                ? "Длинная запись (мин. 80 символов)..."
+                                : contentFormat === "reels"
+                                  ? "Подпись к Reel (необязательно)"
+                                  : "Расскажите о путешествии..."
+                            }
+                            value={newPost.content}
+                            onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                            rows={contentFormat === "journals" ? 8 : 4}
+                          />
+                        </div>
                       )}
                       {contentFormat === "feed" && (
                         <>
@@ -623,7 +634,9 @@ export function SocialFeed() {
                   <div className="px-4 pb-4 space-y-4">
                     <div>
                       <h3 className="font-semibold text-lg mb-1">{post.title}</h3>
-                      <p className="text-muted-foreground leading-relaxed">{post.content}</p>
+                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                        {renderRichText(post.content)}
+                      </p>
                     </div>
 
                     {post.images && post.images.length > 0 && resolveMediaUrl(post.images[0]) ? (

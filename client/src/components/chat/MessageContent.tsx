@@ -2,6 +2,7 @@ import { compactMessageLabel, parseChatMessage } from "@/lib/chat-message";
 import ReplyQuote from "@/components/chat/ReplyQuote";
 import { isSafeChatMediaUrl } from "@/lib/safe-media-url";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { renderRichText } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
 
 type MessageContentProps = {
@@ -38,7 +39,12 @@ export default function MessageContent({ content, className, compact }: MessageC
           );
         }
         if (part.type === "text") {
-          return part.text ? <span key={i}>{part.text}</span> : null;
+          if (!part.text) return null;
+          return (
+            <span key={i} className="text-foreground whitespace-pre-wrap">
+              {renderRichText(part.text)}
+            </span>
+          );
         }
 
         const src = "url" in part ? safeUrl(part.url) : undefined;

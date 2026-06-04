@@ -42,7 +42,7 @@ export function Messages() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
-  const [msgTab, setMsgTab] = useState<"all" | "personal" | "groups">("all");
+  const [msgTab, setMsgTab] = useState<"all" | "unread" | "groups">("all");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const withUserId =
@@ -222,7 +222,9 @@ export function Messages() {
   const visibleConversations =
     msgTab === "groups"
       ? []
-      : conversations;
+      : msgTab === "unread"
+        ? conversations.filter((c) => c.unreadCount > 0)
+        : conversations;
 
   if (!isAuthenticated) {
     return (
@@ -245,8 +247,8 @@ export function Messages() {
           layoutId="messages-page-filter"
           tabs={[
             { id: "all", label: "Все" },
-            { id: "personal", label: "Личные" },
-            { id: "groups", label: "Группы" },
+            { id: "unread", label: "Непрочит." },
+            { id: "groups", label: "Комнаты" },
           ]}
           value={msgTab}
           onChange={setMsgTab}
@@ -274,9 +276,13 @@ export function Messages() {
                   ) : visibleConversations.length === 0 ? (
                     <div className="p-4 text-center">
                       <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">Нет сообщений</h3>
+                      <h3 className="font-semibold mb-2">
+                        {msgTab === "unread" ? "Нет непрочитанных" : "Нет сообщений"}
+                      </h3>
                       <p className="text-sm text-muted-foreground">
-                        Начните общение с друзьями
+                        {msgTab === "unread"
+                          ? "Все диалоги прочитаны"
+                          : "Начните общение с друзьями"}
                       </p>
                     </div>
                   ) : (

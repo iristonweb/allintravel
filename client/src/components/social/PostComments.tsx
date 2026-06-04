@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { renderRichText } from "@/lib/rich-text";
 import type { PostComment } from "@shared/schema";
 
 type PostCommentsProps = {
@@ -39,7 +40,9 @@ export default function PostComments({ postId, enabled }: PostCommentsProps) {
                 {format(new Date(comment.createdAt as unknown as string), "d MMM, HH:mm", { locale: ru })}
               </span>
             </div>
-            <p className="text-sm text-foreground/90">{comment.content}</p>
+            <p className="text-sm text-foreground/90 whitespace-pre-wrap">
+              {renderRichText(comment.content)}
+            </p>
           </div>
         </div>
       ))}

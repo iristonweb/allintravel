@@ -7,6 +7,7 @@ import AppLayout from "@/components/app-layout";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { renderRichText } from "@/lib/rich-text";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 
@@ -80,7 +81,7 @@ export function BlogPostPage() {
               </p>
             )}
             <div className="prose prose-invert max-w-none text-foreground/90 whitespace-pre-wrap">
-              {post.content}
+              {renderRichText(post.content)}
             </div>
           </article>
         )}

@@ -55,8 +55,8 @@ export default function BroadcastModal() {
           <DialogTitle>Сообщение от команды</DialogTitle>
           <DialogDescription className="sr-only">Объявление для всех пользователей</DialogDescription>
         </DialogHeader>
-        <div className="px-5 py-3 overflow-y-auto flex-1 min-h-0 text-sm leading-relaxed">
-          <MessageContent content={broadcast.content} className="block space-y-2" />
+        <div className="px-5 py-3 overflow-y-auto flex-1 min-h-0 text-sm leading-relaxed text-foreground">
+          <MessageContent content={broadcast.content} className="block space-y-3" />
         </div>
         <div className="px-5 pb-5 pt-2 flex flex-wrap gap-2 justify-center shrink-0 border-t border-white/10">
           <Button

@@ -60,7 +60,7 @@ import type { UserLabelFields } from "@shared/user-display";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
-type ChatTab = "all" | "personal" | "mine";
+type ChatTab = "all" | "mine";
 
 type ReplyTarget = { username: string; label: string; preview: string };
 
@@ -148,7 +148,6 @@ export function Chat() {
 
   const filteredRooms = rooms.filter((r) => {
     if (chatTab === "mine") return r.myRole != null;
-    if (chatTab === "personal") return false;
     return true;
   }).filter((r) => {
     const q = roomQuery.trim().toLowerCase();
@@ -559,15 +558,17 @@ export function Chat() {
         >
           <h1 className="ait-section-title">Чаты</h1>
           <p className="text-muted-foreground mt-1">
-            Открытые и закрытые комнаты — как супергруппы в Telegram
+            Групповые комнаты — личные чаты в{" "}
+            <Link href="/messages" className="text-ait-purple hover:underline">
+              Сообщениях
+            </Link>
           </p>
         </motion.div>
 
         <ChatFilterTabs
           layoutId="chat-page-filter"
           tabs={[
-            { id: "all", label: "Все" },
-            { id: "personal", label: "Личные" },
+            { id: "all", label: "Все комнаты" },
             { id: "mine", label: "Мои" },
           ]}
           value={chatTab}
@@ -685,9 +686,8 @@ export function Chat() {
                 </div>
               </div>
             </div>
-            {chatTab !== "personal" && (
-              <div className="px-3 pb-2">
-                <div className="relative">
+            <div className="px-3 pb-2">
+              <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     value={roomQuery}
@@ -697,18 +697,9 @@ export function Chat() {
                   />
                 </div>
               </div>
-            )}
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-1">
-                {chatTab === "personal" ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">
-                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    Личные чаты — в разделе{" "}
-                    <a href="/messages" className="text-ait-purple hover:underline">
-                      Сообщения
-                    </a>
-                  </div>
-                ) : filteredRooms.length === 0 ? (
+                {filteredRooms.length === 0 ? (
                   <div className="p-6 text-center text-sm text-muted-foreground">
                     {roomQuery.trim() ? "Ничего не найдено" : "Нет комнат"}
                   </div>

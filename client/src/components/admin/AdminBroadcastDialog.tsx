@@ -62,9 +62,8 @@ export default function AdminBroadcastDialog() {
           <MessageComposer
             value={content}
             onChange={setContent}
-            onSend={(override) => {
-              const body = (override ?? content).trim();
-              if (body) setContent(body);
+            onSend={(body) => {
+              if (body?.trim()) setContent(body.trim());
             }}
             placeholder="Текст объявления…"
             className="w-full"
