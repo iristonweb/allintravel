@@ -11,10 +11,6 @@ export const BRAND_LOGO_SRC = "/brand/logo-ait.png";
 /** Compact mark for favicons and icon-only slots */
 export const BRAND_ICON_SRC = "/brand/logo.svg";
 
-/** Cinematic home hero — воздушные шары над озером (Unsplash) */
-export const HERO_CINEMATIC_SRC =
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=2400&q=90";
-
 /** App store links — empty string = show "Скоро" */
 export const APP_STORE_URL = "";
 export const PLAY_STORE_URL = "";

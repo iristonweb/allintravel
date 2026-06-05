@@ -4,7 +4,7 @@ import NextAdventureCard from "@/components/home/next-adventure-card";
 import GlobalSearchPanel from "@/components/search/GlobalSearchPanel";
 import HeroStats from "@/components/home/hero-stats";
 import type { Trip } from "@shared/schema";
-import { HERO_CINEMATIC_SRC } from "@/lib/site-meta";
+import { HERO_MAIN_SRC } from "@/lib/marketing-images";
 import { useRef } from "react";
 
 const ANCHOR_PILLS = [
@@ -38,8 +38,8 @@ export default function CinematicHero({
     <section ref={ref} className="relative min-h-[100svh] flex flex-col overflow-hidden">
       <motion.div className="absolute inset-0 z-0" style={{ y: imageY }}>
         <img
-          src={HERO_CINEMATIC_SRC}
-          alt="Путешествия — воздушные шары над горами"
+          src={HERO_MAIN_SRC}
+          alt="Путешествия — горы, вода и лодки"
           className="h-full w-full object-cover object-[center_35%] scale-105"
           referrerPolicy="no-referrer"
         />

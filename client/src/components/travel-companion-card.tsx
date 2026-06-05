@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { Trip } from "@shared/schema";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { TRIP_CARD_FALLBACK_SRC } from "@/lib/marketing-images";
 import { cn } from "@/lib/utils";
 
 interface TravelCompanionCardProps {
@@ -33,7 +34,7 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
   const participantsCount = trip.currentParticipants || 1;
   const maxParticipants = trip.maxParticipants || 5;
   const spotsLeft = maxParticipants - participantsCount;
-  const coverUrl = trip.imageUrl ? resolveMediaUrl(trip.imageUrl) : null;
+  const coverUrl = trip.imageUrl ? resolveMediaUrl(trip.imageUrl) : TRIP_CARD_FALLBACK_SRC;
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -43,13 +44,7 @@ export function TravelCompanionCard({ trip, onJoin, isJoined = false }: TravelCo
           !coverUrl && "bg-gradient-to-br from-primary/20 via-ait-purple/15 to-ait-orange/10",
         )}
       >
-        {coverUrl ? (
-          <img src={coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <MapPin className="h-10 w-10 text-primary/40" />
-          </div>
-        )}
+        <img src={coverUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
         <Badge
           variant={trip.isActive ? "default" : "secondary"}
           className={cn(

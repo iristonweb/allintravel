@@ -1,4 +1,11 @@
 import type { FeedMode } from "@/lib/feed-utils";
+import {
+  COMMUNITY_TRAVEL_SRC,
+  DEST_BALI_SRC,
+  DEST_ICELAND_SRC,
+  DEST_ITALY_SRC,
+  DEST_JAPAN_SRC,
+} from "@/lib/marketing-images";
 
 export type DemoCommunityPost = {
   id: string;
@@ -17,7 +24,7 @@ const allPosts: DemoCommunityPost[] = [
     authorName: "Мария Петрова",
     authorAvatar: "https://i.pravatar.cc/120?img=5",
     location: "Бали, Индонезия",
-    imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=85",
+    imageUrl: DEST_BALI_SRC,
     excerpt:
       "Рассвет у вулкана Батур — одно из самых сильных впечатлений в жизни. Кто был на Бали — поймёт 🌋",
     likesCount: 2400,
@@ -28,7 +35,7 @@ const allPosts: DemoCommunityPost[] = [
     authorName: "Алексей Ким",
     authorAvatar: "https://i.pravatar.cc/120?img=12",
     location: "Токио, Япония",
-    imageUrl: "https://images.unsplash.com/photo-1493976040374-85c8e912f437?w=1200&q=85",
+    imageUrl: DEST_JAPAN_SRC,
     excerpt: "Синдзюку ночью — это отдельная вселенная. Лучший стрит-фуд за углом от отеля.",
     likesCount: 890,
     commentsCount: 64,
@@ -38,7 +45,7 @@ const allPosts: DemoCommunityPost[] = [
     authorName: "София Ларссон",
     authorAvatar: "https://i.pravatar.cc/120?img=32",
     location: "Рейкьявик, Исландия",
-    imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=1200&q=85",
+    imageUrl: DEST_ICELAND_SRC,
     excerpt: "Северное сияние в первый же вечер — повезло с погодой. Берите термобель!",
     likesCount: 3100,
     commentsCount: 241,
@@ -51,7 +58,7 @@ const followingPosts: DemoCommunityPost[] = [
     authorName: "Иван Орлов",
     authorAvatar: "https://i.pravatar.cc/120?img=8",
     location: "Лиссабон, Португалия",
-    imageUrl: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=1200&q=85",
+    imageUrl: DEST_ITALY_SRC,
     excerpt: "Трамвай 28 в 7 утра — без очередей и с идеальным светом для фото.",
     likesCount: 412,
     commentsCount: 28,
@@ -61,7 +68,7 @@ const followingPosts: DemoCommunityPost[] = [
     authorName: "Елена Вольф",
     authorAvatar: "https://i.pravatar.cc/120?img=25",
     location: "Каппадокия, Турция",
-    imageUrl: "https://images.unsplash.com/photo-1504196606670-a1655d892781?w=1200&q=85",
+    imageUrl: COMMUNITY_TRAVEL_SRC,
     excerpt: "Полёт на рассвете забронировала через приложение — всё срослось идеально.",
     likesCount: 1205,
     commentsCount: 97,

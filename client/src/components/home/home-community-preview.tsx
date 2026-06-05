@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import HomeSectionHeader from "@/components/home/home-section-header";
 import { Bookmark, Heart, MapPin, MessageCircle, Share2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
 import {
   type FeedMode,
   FEED_MODE_LABELS,
@@ -88,9 +89,7 @@ function apiPostToDemo(post: TravelPostWithAuthor): DemoCommunityPost {
       : "Путешественник",
     authorAvatar: post.author?.profileImageUrl ?? "https://i.pravatar.cc/120?img=1",
     location: post.location ?? "В пути",
-    imageUrl:
-      post.images?.[0] ??
-      "https://images.unsplash.com/photo-1469854523086-cc02afe5c88?w=1200&q=85",
+    imageUrl: post.images?.[0] ?? COMMUNITY_TRAVEL_SRC,
     excerpt: post.content?.slice(0, 160) ?? post.title ?? "",
     likesCount: post.likesCount ?? 0,
     commentsCount: post.commentsCount ?? 0,

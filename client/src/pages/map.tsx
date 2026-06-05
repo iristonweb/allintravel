@@ -17,68 +17,9 @@ import MapSearchPanel from "@/components/map/MapSearchPanel";
 import { resolveMapHref } from "@/lib/map-navigate";
 
 import type { Place } from "@shared/schema";
+import { MAP_SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
 
-
-
-const showcaseDestinations = [
-
-  {
-
-    id: "bali",
-
-    name: "Бали",
-
-    imageUrl: "https://images.unsplash.com/photo-1537996195241-795aa0a07e0f?w=500&q=85",
-
-    placesCount: 342,
-
-    rating: 4.8,
-
-  },
-
-  {
-
-    id: "iceland",
-
-    name: "Исландия",
-
-    imageUrl: "https://images.unsplash.com/photo-1504829857797-ddff29c27927?w=500&q=85",
-
-    placesCount: 128,
-
-    rating: 4.9,
-
-  },
-
-  {
-
-    id: "norway",
-
-    name: "Норвегия",
-
-    imageUrl: "https://images.unsplash.com/photo-1518837695005-2083099ee35b?w=500&q=85",
-
-    placesCount: 96,
-
-    rating: 4.8,
-
-  },
-
-  {
-
-    id: "japan",
-
-    name: "Япония",
-
-    imageUrl: "https://images.unsplash.com/photo-1493976040374-85c8e912f437?w=500&q=85",
-
-    placesCount: 276,
-
-    rating: 4.9,
-
-  },
-
-];
+const showcaseDestinations = [...MAP_SHOWCASE_DESTINATIONS];
 
 
 
