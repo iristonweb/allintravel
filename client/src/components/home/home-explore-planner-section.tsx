@@ -274,7 +274,7 @@ export default function HomeExplorePlannerSection({
 }: HomeExplorePlannerSectionProps) {
   const [, navigate] = useLocation();
   const [selectedDay, setSelectedDay] = useState(1);
-  const [desktopWorkspace, setDesktopWorkspace] = useState<DesktopWorkspace>("route");
+  const [desktopWorkspace, setDesktopWorkspace] = useState<DesktopWorkspace>("world");
   const tripHref = trip ? `/trips/${trip.id}` : "/trips";
   const hasRealRoute = !!trip && waypoints.length > 0;
   const realHomeDays = trip ? homeDaysFromWaypoints(trip, waypoints) : [];

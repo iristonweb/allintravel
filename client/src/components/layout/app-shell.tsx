@@ -1,7 +1,6 @@
 import AppTopNav from "@/components/layout/app-top-nav";
 import AppIconSidebar from "@/components/layout/app-icon-sidebar";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
-import AmbientBackground from "@/components/premium/AmbientBackground";
 import PremiumBackground from "@/components/premium/PremiumBackground";
 import { PAGE_BG_SRC } from "@/lib/marketing-images";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,12 +76,8 @@ export default function AppShell({
     </div>
   );
 
-  if (effectiveImmersive) {
-    return <AmbientBackground showOrbs={false} showNoise={false}>{shell}</AmbientBackground>;
-  }
-
   return (
-    <PremiumBackground enableVideo={false} imageSrc={PAGE_BG_SRC}>
+    <PremiumBackground enableVideo={false} imageSrc={PAGE_BG_SRC} enableInteractive={!effectiveImmersive}>
       {shell}
     </PremiumBackground>
   );

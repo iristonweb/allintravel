@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import AmbientBackground from "@/components/premium/AmbientBackground";
+import PremiumBackground from "@/components/premium/PremiumBackground";
+import { PAGE_BG_SRC } from "@/lib/marketing-images";
 import BrandLogo from "@/components/brand/brand-logo";
 import { SITE_DESCRIPTION_SHORT, SITE_TAGLINE } from "@/lib/site-meta";
 import { useQuery } from "@tanstack/react-query";
@@ -112,7 +113,11 @@ export function Login() {
   };
 
   return (
-    <AmbientBackground className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+    <PremiumBackground
+      enableVideo={false}
+      imageSrc={PAGE_BG_SRC}
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-8"
+    >
       <div className="w-full max-w-md mb-4">
         <Link href="/" className="text-sm text-slate-400 hover:text-ait-purple transition-colors">
           ← На главную
@@ -248,7 +253,7 @@ export function Login() {
           </p>
         </CardContent>
       </Card>
-    </AmbientBackground>
+    </PremiumBackground>
   );
 }
 

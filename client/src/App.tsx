@@ -31,6 +31,7 @@ import { Wallet } from "@/pages/wallet";
 import { Privacy } from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 import PremiumBackground from "@/components/premium/PremiumBackground";
+import { PAGE_BG_SRC } from "@/lib/marketing-images";
 import ErrorBoundary from "@/components/error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
 import AitGrantListener from "@/components/ait/AitGrantListener";
@@ -62,7 +63,7 @@ function Router() {
   // Show loading while checking auth status
   if (isLoading) {
     return (
-      <PremiumBackground contentClassName="min-h-screen flex items-center justify-center">
+      <PremiumBackground enableVideo={false} imageSrc={PAGE_BG_SRC} contentClassName="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="loading-spinner mx-auto mb-4" />
           <p className="text-muted-foreground">Загрузка...</p>
