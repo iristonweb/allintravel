@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { PAGE_BG_SRC } from "@/lib/marketing-images";
 
 type PremiumBackgroundProps = {
   children: ReactNode;
@@ -132,7 +131,7 @@ export default function PremiumBackground({
   children,
   className,
   contentClassName,
-  imageSrc = PAGE_BG_SRC,
+  imageSrc = "/backgrounds/resort-ultrawide-01.jpg",
   videoWebmSrc = "/media/resort-loop.webm",
   videoMp4Src = "/media/resort-loop.mp4",
   enableVideo = true,

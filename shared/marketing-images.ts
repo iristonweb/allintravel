@@ -1,8 +1,6 @@
 /** Public marketing image paths (served from client/public/marketing) */
 
 export const HERO_MAIN_SRC = "/marketing/hero-main.jpg";
-/** Full-page background — same hero photo as on the home page */
-export const PAGE_BG_SRC = HERO_MAIN_SRC;
 
 export const DEST_BALI_SRC = "/marketing/dest-bali.jpg";
 export const DEST_ICELAND_SRC = "/marketing/dest-iceland.jpg";

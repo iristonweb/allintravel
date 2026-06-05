@@ -1,8 +1,7 @@
 import AppTopNav from "@/components/layout/app-top-nav";
 import AppIconSidebar from "@/components/layout/app-icon-sidebar";
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav";
-import PremiumBackground from "@/components/premium/PremiumBackground";
-import { PAGE_BG_SRC } from "@/lib/marketing-images";
+import AmbientBackground from "@/components/premium/AmbientBackground";
 import { useAuth } from "@/hooks/useAuth";
 import { usePresenceHeartbeat } from "@/hooks/usePresence";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
@@ -77,8 +76,8 @@ export default function AppShell({
   );
 
   return (
-    <PremiumBackground enableVideo={false} imageSrc={PAGE_BG_SRC} enableInteractive={!effectiveImmersive}>
+    <AmbientBackground showOrbs={!effectiveImmersive} showNoise={!effectiveImmersive}>
       {shell}
-    </PremiumBackground>
+    </AmbientBackground>
   );
 }
