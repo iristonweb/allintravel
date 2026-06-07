@@ -15,11 +15,8 @@ import {
   guestAnchors,
   sidebarDiscoverNav,
   sidebarPrimaryNav,
-  sidebarChatsNav,
-  isSidebarNavHrefActive,
   scrollToAnchor,
 } from "@/lib/nav-config";
-import { useSearch } from "wouter";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 import WalletHeaderButton from "@/components/layout/wallet-header-button";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
@@ -59,7 +56,6 @@ type AppTopNavProps = {
 export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { user, isAuthenticated } = useAuth();
   const [location, navigate] = useLocation();
-  const search = useSearch();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const queryClient = useQueryClient();
@@ -137,7 +133,6 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
 
   const menuSections = [
     { title: "Основное", items: sidebarPrimaryNav },
-    { title: sidebarChatsNav.label, items: sidebarChatsNav.items },
     { title: "Каталог", items: sidebarDiscoverNav },
   ].filter((section) => section.items.length > 0);
 
@@ -227,8 +222,8 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
               </p>
               {section.items.map((item) => {
                 const active =
-                  section.title === sidebarChatsNav.label
-                    ? isSidebarNavHrefActive(item.href, location, search)
+                  item.href === "/chat"
+                    ? location.startsWith("/chat") || location.startsWith("/messages")
                     : isActive(item.href);
                 return (
                   <Link

@@ -41,11 +41,13 @@ import { cn } from "@/lib/utils";
 import { createChatRoom } from "@/lib/upload-media";
 import RoomAvatar from "@/components/chat/RoomAvatar";
 import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
+import { AvatarWithPresence } from "@/components/PresenceDot";
 import type {
   ChatMessage,
   ChatRoom,
   MessageReactionMeta,
   MessageReadMeta,
+  PrivateMessage,
   Trip,
   User,
 } from "@shared/schema";
@@ -59,9 +61,15 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useTranslation } from "react-i18next";
 
-type ChatTab = "all" | "mine" | "unread";
+type ChatTab = "all" | "mine" | "unread" | "personal";
 
 type ReplyTarget = { username: string; label: string; preview: string };
+
+interface Conversation {
+  user: User & { isOnline?: boolean };
+  lastMessage: PrivateMessage | null;
+  unreadCount: number;
+}
 
 type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number };
 
@@ -118,7 +126,7 @@ export function Chat() {
   const searchString = useSearch();
   const urlChatTab = useMemo((): ChatTab => {
     const tab = new URLSearchParams(searchString).get("tab");
-    if (tab === "unread" || tab === "mine") return tab;
+    if (tab === "unread" || tab === "mine" || tab === "personal") return tab;
     return "all";
   }, [searchString]);
   const [chatTab, setChatTab] = useState<ChatTab>(urlChatTab);
@@ -198,6 +206,17 @@ export function Chat() {
     enabled: isAuthenticated,
   });
 
+  const {
+    data: conversations = [],
+    isLoading: conversationsLoading,
+    isError: conversationsError,
+    refetch: refetchConversations,
+  } = useQuery<Conversation[]>({
+    queryKey: ["/api/conversations"],
+    enabled: isAuthenticated,
+    refetchInterval: 30_000,
+  });
+
   const discoverSearch = roomQuery.trim();
   const { data: discoverRooms = [], isFetching: discoverLoading } = useQuery<DiscoverRoom[]>({
     queryKey: ["/api/chat/rooms/discover", discoverSearch],
@@ -225,19 +244,36 @@ export function Chat() {
     }
   }, [isAuthenticated, queryClient, toast, t]);
 
+  const unreadPersonalCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  const unreadGroupCount = rooms.reduce((sum, r) => sum + (r.unreadCount ?? 0), 0);
+  const totalUnreadCount = unreadPersonalCount + unreadGroupCount;
+
+  const matchQuery = (text: string) => {
+    const q = roomQuery.trim().toLowerCase();
+    return !q || text.toLowerCase().includes(q);
+  };
+
   const filteredRooms = rooms
     .filter((r) => {
+      if (chatTab === "personal") return false;
       if (chatTab === "mine") return r.myRole != null;
       if (chatTab === "unread") return (r.unreadCount ?? 0) > 0;
       return true;
     })
-    .filter((r) => {
-      const q = roomQuery.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        r.title.toLowerCase().includes(q) || (r.description?.toLowerCase().includes(q) ?? false)
-      );
-    });
+    .filter(
+      (r) =>
+        matchQuery(r.title) || (r.description ? matchQuery(r.description) : false),
+    );
+
+  const visibleConversations = useMemo(() => {
+    const list =
+      chatTab === "unread"
+        ? conversations.filter((c) => c.unreadCount > 0)
+        : chatTab === "personal"
+          ? conversations
+          : [];
+    return list.filter((c) => matchQuery(getUserDisplayLabel(c.user)));
+  }, [conversations, chatTab, roomQuery]);
 
   const historyKey = useMemo(() => [`/api/chat/${activeRoom}`] as const, [activeRoom]);
 
@@ -730,20 +766,26 @@ export function Chat() {
       <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <h1 className="ait-section-title">Чаты</h1>
-          <p className="text-muted-foreground mt-1">
-            Группы — личные чаты в разделе{" "}
-            <Link href="/messages" className="text-ait-purple hover:underline">
-              Личные
-            </Link>
-          </p>
+          <p className="text-muted-foreground mt-1">Группы и личные сообщения в одном месте</p>
         </motion.div>
 
         <ChatFilterTabs
           layoutId="chat-page-filter"
           tabs={[
             { id: "all", label: "Мои группы" },
-            { id: "unread", label: "Непрочитанные" },
+            {
+              id: "unread",
+              label:
+                totalUnreadCount > 0
+                  ? `Непрочитанные (${totalUnreadCount})`
+                  : "Непрочитанные",
+            },
             { id: "mine", label: "Участник" },
+            {
+              id: "personal",
+              label:
+                conversations.length > 0 ? `Личные (${conversations.length})` : "Личные",
+            },
           ]}
           value={chatTab}
           onChange={handleChatTabChange}
@@ -758,10 +800,20 @@ export function Chat() {
             <div className="ait-chat-panel-header p-4">
               <div className="flex items-center justify-between">
                 <span className="font-semibold flex items-center gap-2">
-                  <Hash className="h-4 w-4 text-ait-purple" />
-                  Группа
+                  {chatTab === "personal" || chatTab === "unread" ? (
+                    <>
+                      <MessageCircle className="h-4 w-4 text-ait-purple" />
+                      {chatTab === "unread" ? "Непрочитанные" : "Личные"}
+                    </>
+                  ) : (
+                    <>
+                      <Hash className="h-4 w-4 text-ait-purple" />
+                      Группа
+                    </>
+                  )}
                 </span>
                 <div className="flex items-center gap-1">
+                  {chatTab !== "personal" && chatTab !== "unread" && (
                   <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                     <DialogTrigger asChild>
                       <Button
@@ -867,6 +919,7 @@ export function Chat() {
                       </div>
                     </DialogContent>
                   </Dialog>
+                  )}
                   <Badge variant="secondary" className="text-[10px] ait-glass">
                     {statusLabel}
                   </Badge>
@@ -902,72 +955,173 @@ export function Chat() {
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-1">
-                {roomsLoading ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                    Загрузка групп…
-                  </div>
-                ) : roomsError ? (
-                  <div className="p-6 text-center text-sm space-y-2">
-                    <p className="text-muted-foreground">Не удалось загрузить группы</p>
-                    <Button variant="outline" size="sm" onClick={() => refetchRooms()}>
-                      Повторить
-                    </Button>
-                  </div>
-                ) : filteredRooms.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">
-                    {roomQuery.trim()
-                      ? discoverSearch.length >= 2
-                        ? "В ваших группах ничего не найдено — смотрите результаты в поиске выше"
-                        : "В ваших группах ничего не найдено"
-                      : chatTab === "unread"
-                        ? "Нет непрочитанных групп"
-                        : chatTab === "mine"
-                          ? "Вы ещё не состоите в группах"
-                          : "Нет групп — создайте или найдите через поиск"}
-                  </div>
-                ) : (
+                {(chatTab === "personal" || chatTab === "unread") && (
                   <>
-                    {filteredRooms.map((room) => (
-                      <button
-                        key={room.id}
-                        type="button"
-                        onClick={() => setActiveRoom(room.slug)}
-                        className={cn(
-                          "ait-chat-room-item w-full text-left",
-                          activeRoom === room.slug
-                            ? "ait-chat-room-item--active"
-                            : "text-slate-400",
-                        )}
-                      >
-                        <RoomAvatar
-                          title={room.title}
-                          avatarUrl={room.avatarUrl}
-                          className="h-14 w-14"
-                        />
-                        <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
-                        {(room.unreadCount ?? 0) > 0 && (
-                          <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
-                            {room.unreadCount > 99 ? "99+" : room.unreadCount}
-                          </Badge>
-                        )}
-                        {room.visibility === "private" && (
-                          <Lock className="h-3 w-3 shrink-0 opacity-60" />
-                        )}
-                        {room.isLegacy && (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0">
-                            {t("chat.legacy.badge")}
-                          </Badge>
-                        )}
-                      </button>
-                    ))}
+                    {chatTab === "unread" && visibleConversations.length > 0 && (
+                      <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        Личные
+                      </p>
+                    )}
+                    {conversationsLoading ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                        Загрузка диалогов…
+                      </div>
+                    ) : conversationsError ? (
+                      <div className="py-4 text-center text-sm space-y-2">
+                        <p className="text-muted-foreground">Не удалось загрузить диалоги</p>
+                        <Button variant="outline" size="sm" onClick={() => refetchConversations()}>
+                          Повторить
+                        </Button>
+                      </div>
+                    ) : (
+                      visibleConversations.map((conversation) => (
+                        <Link
+                          key={conversation.user.id}
+                          href={`/messages?with=${conversation.user.id}`}
+                          className={cn(
+                            "ait-chat-room-item w-full text-left",
+                            "text-slate-400 hover:text-slate-200",
+                          )}
+                        >
+                          <AvatarWithPresence
+                            src={conversation.user.profileImageUrl}
+                            fallback={getUserInitial(conversation.user)}
+                            isOnline={conversation.user.isOnline}
+                            className="h-14 w-14"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium block truncate">
+                              {getUserDisplayLabel(conversation.user)}
+                            </span>
+                            {conversation.lastMessage && (
+                              <span className="text-[11px] text-muted-foreground block truncate">
+                                <MessageContent
+                                  content={conversation.lastMessage.content}
+                                  compact
+                                />
+                              </span>
+                            )}
+                          </div>
+                          {conversation.unreadCount > 0 && (
+                            <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
+                              {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+                            </Badge>
+                          )}
+                        </Link>
+                      ))
+                    )}
+                    {chatTab === "unread" && visibleConversations.length > 0 && filteredRooms.length > 0 && (
+                      <p className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        Группы
+                      </p>
+                    )}
                   </>
                 )}
+
+                {chatTab !== "personal" && (
+                  <>
+                    {roomsLoading ? (
+                      <div className="p-6 text-center text-sm text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        Загрузка групп…
+                      </div>
+                    ) : roomsError ? (
+                      <div className="p-6 text-center text-sm space-y-2">
+                        <p className="text-muted-foreground">Не удалось загрузить группы</p>
+                        <Button variant="outline" size="sm" onClick={() => refetchRooms()}>
+                          Повторить
+                        </Button>
+                      </div>
+                    ) : filteredRooms.length === 0 ? (
+                      chatTab === "unread" && visibleConversations.length > 0 ? null : (
+                        <div className="p-6 text-center text-sm text-muted-foreground">
+                          {roomQuery.trim()
+                            ? discoverSearch.length >= 2
+                              ? "В ваших группах ничего не найдено — смотрите результаты в поиске выше"
+                              : "В ваших группах ничего не найдено"
+                            : chatTab === "mine"
+                              ? "Вы ещё не состоите в группах"
+                              : chatTab === "unread"
+                                ? "Нет непрочитанных групп"
+                                : "Нет групп — создайте или найдите через поиск"}
+                        </div>
+                      )
+                    ) : (
+                      filteredRooms.map((room) => (
+                        <button
+                          key={room.id}
+                          type="button"
+                          onClick={() => setActiveRoom(room.slug)}
+                          className={cn(
+                            "ait-chat-room-item w-full text-left",
+                            activeRoom === room.slug
+                              ? "ait-chat-room-item--active"
+                              : "text-slate-400",
+                          )}
+                        >
+                          <RoomAvatar
+                            title={room.title}
+                            avatarUrl={room.avatarUrl}
+                            className="h-14 w-14"
+                          />
+                          <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
+                          {(room.unreadCount ?? 0) > 0 && (
+                            <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
+                              {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                            </Badge>
+                          )}
+                          {room.visibility === "private" && (
+                            <Lock className="h-3 w-3 shrink-0 opacity-60" />
+                          )}
+                          {room.isLegacy && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                              {t("chat.legacy.badge")}
+                            </Badge>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </>
+                )}
+
+                {chatTab === "personal" &&
+                  !conversationsLoading &&
+                  !conversationsError &&
+                  visibleConversations.length === 0 && (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      {roomQuery.trim()
+                        ? "Диалоги не найдены"
+                        : "Нет личных диалогов — напишите другу из раздела «Друзья»"}
+                    </div>
+                  )}
+
+                {chatTab === "unread" &&
+                  !conversationsLoading &&
+                  !roomsLoading &&
+                  visibleConversations.length === 0 &&
+                  filteredRooms.length === 0 && (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      Нет непрочитанных
+                    </div>
+                  )}
               </div>
             </ScrollArea>
           </div>
 
           <div className="ait-chat-panel flex flex-col overflow-hidden min-h-0">
+            {chatTab === "personal" ? (
+              <div className="flex flex-1 items-center justify-center p-8 ait-chat-thread">
+                <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
+                  <MessageCircle className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
+                  <h3 className="text-lg font-semibold mb-2">Личные сообщения</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Выберите диалог слева — откроется в отдельном окне переписки
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
             {roomBreadcrumbs && (
               <div className="px-4 pt-3 pb-0 border-b border-white/5">
                 <AppBreadcrumbs items={roomBreadcrumbs} className="mb-0" />
@@ -1202,6 +1356,8 @@ export function Chat() {
                   </Button>
                 </div>
               </div>
+            )}
+              </>
             )}
           </div>
         </div>

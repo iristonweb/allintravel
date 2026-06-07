@@ -109,7 +109,7 @@ export default function HeaderQuickActions({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Link href="/messages" title="Личные сообщения">
+        <Link href="/chat?tab=unread" title="Непрочитанные">
           <Button
             variant="ghost"
             size="icon"
