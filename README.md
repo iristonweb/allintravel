@@ -74,13 +74,21 @@ npm run geo:import
 4. После первого `DATABASE_URL` один раз локально: `npm run db:push` и `npm run db:seed`
 5. Redeploy
 
+### Домен allintravel.online (reg.ru)
+
+1. **reg.ru → DNS:** `A` запись `@` → `76.76.21.21`; `CNAME` `www` → `cname.vercel-dns.com`
+2. **Vercel → Settings → Domains:** добавить `allintravel.online` и `www.allintravel.online` к проекту **allintravel** (без этого будет `DEPLOYMENT_NOT_FOUND`, даже если A-запись верная)
+3. **Vercel → Environment Variables:** `APP_URL` = `https://www.allintravel.online` (канонический URL после редиректа с корня)
+4. Если включён Google OAuth — в Google Cloud добавить redirect URI: `https://www.allintravel.online/api/auth/google/callback`
+5. Redeploy
+
 ### Переменные для Vercel (Production)
 
 | Переменная | Обязательно | Значение |
 |------------|-------------|----------|
 | `DATABASE_URL` | да | Connection string из Neon (Dashboard → Connect) |
 | `SESSION_SECRET` | да | Случайная длинная строка (hex 64 символа) |
-| `APP_URL` | да для Google | `https://allintravel.vercel.app` |
+| `APP_URL` | да для Google | `https://www.allintravel.online` |
 | `GOOGLE_CLIENT_ID` | нет | Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | нет | Google Cloud Console |
 | `VAPID_PUBLIC_KEY` | нет | `npx web-push generate-vapid-keys` |
@@ -113,7 +121,7 @@ npm run geo:import
 | API (`/api/*`) | `api/index.ts` → Express |
 | Загрузки `/uploads` | Тот же serverless handler |
 
-Второй проект имеет смысл только если вы **намеренно** выносите API на отдельный домен (тогда в Vercel задайте `VITE_API_ORIGIN=https://api.example.com` и настройте CORS/cookies). Для `allintravel.vercel.app` это не требуется.
+Второй проект имеет смысл только если вы **намеренно** выносите API на отдельный домен (тогда в Vercel задайте `VITE_API_ORIGIN=https://api.example.com` и настройте CORS/cookies). Для `www.allintravel.online` это не требуется.
 
 ### Вход и регистрация по email
 

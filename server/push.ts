@@ -11,7 +11,7 @@ type PushSubscriptionBody = {
 export function setupPushRoutes(app: Express): void {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:admin@allintravel.app";
+  const subject = process.env.VAPID_SUBJECT || "mailto:admin@allintravel.online";
 
   if (publicKey && privateKey) {
     webpush.setVapidDetails(subject, publicKey, privateKey);
