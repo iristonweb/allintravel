@@ -44,6 +44,9 @@ const resources = {
           badge: "Офиц.",
           joinHint: "Официальный канал — напишите сообщение, чтобы присоединиться к обсуждению.",
         },
+        sidebar: {
+          searchPlaceholder: "Поиск групп",
+        },
         discover: {
           header: "Найти публичные группы",
           empty: "Похожих групп не найдено. Попробуйте другое название.",
@@ -133,6 +136,9 @@ const resources = {
         legacy: {
           badge: "Official",
           joinHint: "Official channel — send a message to join the discussion.",
+        },
+        sidebar: {
+          searchPlaceholder: "Search groups",
         },
         discover: {
           header: "Find public groups",

@@ -4,11 +4,13 @@ import { isSafeChatMediaUrl } from "@/lib/safe-media-url";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { renderRichText } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
+import VoiceMessagePlayer from "@/components/chat/VoiceMessagePlayer";
 
 type MessageContentProps = {
   content: string;
   className?: string;
   compact?: boolean;
+  isOwn?: boolean;
 };
 
 function safeUrl(url: string): string | undefined {
@@ -16,7 +18,12 @@ function safeUrl(url: string): string | undefined {
   return isSafeChatMediaUrl(resolved) ? resolved : undefined;
 }
 
-export default function MessageContent({ content, className, compact }: MessageContentProps) {
+export default function MessageContent({
+  content,
+  className,
+  compact,
+  isOwn = false,
+}: MessageContentProps) {
   if (compact) {
     const label = compactMessageLabel(content);
     if (label) return <span className={cn("break-words", className)}>{label}</span>;
@@ -94,7 +101,18 @@ export default function MessageContent({ content, className, compact }: MessageC
             />
           );
         }
-        if (part.type === "audio" || part.type === "voice") {
+        if (part.type === "voice") {
+          return (
+            <VoiceMessagePlayer
+              key={i}
+              src={src}
+              durationSec={part.durationSec}
+              variant={isOwn ? "own" : "other"}
+              className="block"
+            />
+          );
+        }
+        if (part.type === "audio") {
           return (
             <audio
               key={i}

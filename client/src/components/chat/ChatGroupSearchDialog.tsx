@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Hash, Loader2, MapPin, Search } from "lucide-react";
+import { Hash, MapPin, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,10 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import RoomAvatar from "@/components/chat/RoomAvatar";
-import type { ChatRoom } from "@shared/schema";
-
-type DiscoverRoom = ChatRoom & { memberCount: number; matchScore: number };
+import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
+import type { DiscoverRoom } from "@/components/chat/GroupSearchPreview";
 
 type ChatGroupSearchDialogProps = {
   open: boolean;
@@ -104,43 +102,19 @@ export default function ChatGroupSearchDialog({
             </div>
             {search.length < 2 ? (
               <p className="text-sm text-muted-foreground px-1">{t("chat.searchDialog.hint")}</p>
-            ) : isFetching ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-ait-purple" />
-              </div>
-            ) : groups.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-1">{t("chat.searchDialog.empty")}</p>
             ) : (
-              <ul className="space-y-1 max-h-[min(50vh,320px)] overflow-y-auto">
-                {groups.map((room) => (
-                  <li
-                    key={room.id}
-                    className="flex items-center gap-3 rounded-xl p-2 hover:bg-white/[0.05]"
-                  >
-                    <RoomAvatar
-                      title={room.title}
-                      avatarUrl={room.avatarUrl}
-                      className="h-11 w-11"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{room.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {t("chat.searchDialog.memberCount", { count: room.memberCount })}
-                        {room.description ? ` · ${room.description}` : ""}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={joinMutation.isPending}
-                      onClick={() => joinMutation.mutate(room)}
-                    >
-                      {t("chat.searchDialog.join")}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+              <div className="ait-glass-strong rounded-2xl border border-white/10 max-h-[min(50vh,320px)] overflow-y-auto">
+                <GroupSearchPreview
+                  rooms={groups}
+                  loading={isFetching}
+                  empty={!isFetching && groups.length === 0}
+                  onJoin={(room) => joinMutation.mutate(room)}
+                  joinPending={joinMutation.isPending}
+                  memberCountKey="chat.searchDialog.memberCount"
+                  joinLabelKey="chat.searchDialog.join"
+                  emptyKey="chat.searchDialog.empty"
+                />
+              </div>
             )}
           </TabsContent>
 

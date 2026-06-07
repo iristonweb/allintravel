@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import ChatMessageRow from "@/components/chat/ChatMessageRow";
@@ -43,12 +43,35 @@ export function Messages() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
+  const searchString = useSearch();
   const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
-  const [msgTab, setMsgTab] = useState<MsgTab>("personal");
+  const urlMsgTab = useMemo((): MsgTab => {
+    const tab = new URLSearchParams(searchString).get("tab");
+    if (tab === "unread" || tab === "groups") return tab;
+    return "personal";
+  }, [searchString]);
+  const [msgTab, setMsgTab] = useState<MsgTab>(urlMsgTab);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMsgTab(urlMsgTab);
+  }, [urlMsgTab]);
+
+  const handleMsgTabChange = useCallback(
+    (tab: MsgTab) => {
+      setMsgTab(tab);
+      if (tab === "groups") setSelectedConversation(null);
+      const params = new URLSearchParams(searchString);
+      if (tab === "personal") params.delete("tab");
+      else params.set("tab", tab);
+      const qs = params.toString();
+      setLocation(`/messages${qs ? `?${qs}` : ""}`);
+    },
+    [searchString, setLocation],
+  );
 
   const withUserId =
     location === "/messages" && typeof window !== "undefined"
@@ -322,7 +345,7 @@ export function Messages() {
     <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-2 md:p-4">
       <div className="max-w-[1600px] mx-auto flex flex-col min-h-0 h-[calc(100dvh-var(--ait-header-h,5rem)-1rem)] md:h-[calc(100dvh-var(--ait-header-h,5rem)-2rem)]">
         <div className="shrink-0 mb-4">
-          <h1 className="ait-section-title text-2xl md:text-3xl">Сообщения</h1>
+          <h1 className="ait-section-title text-2xl md:text-3xl">Личные</h1>
           <p className="text-muted-foreground mt-1">Личные чаты и групповые поездки</p>
         </div>
 
@@ -335,7 +358,10 @@ export function Messages() {
             },
             {
               id: "unread",
-              label: unreadPersonalCount > 0 ? `Непрочит. (${unreadPersonalCount})` : "Непрочит.",
+              label:
+                unreadPersonalCount > 0
+                  ? `Непрочитанные (${unreadPersonalCount})`
+                  : "Непрочитанные",
             },
             {
               id: "groups",
@@ -343,13 +369,7 @@ export function Messages() {
             },
           ]}
           value={msgTab}
-          onChange={(tab) => {
-            setMsgTab(tab);
-            if (tab === "groups") {
-              setSelectedConversation(null);
-              setLocation("/messages");
-            }
-          }}
+          onChange={handleMsgTabChange}
           className="shrink-0 mb-4"
         />
 

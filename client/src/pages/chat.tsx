@@ -40,6 +40,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { createChatRoom } from "@/lib/upload-media";
 import RoomAvatar from "@/components/chat/RoomAvatar";
+import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
 import type {
   ChatMessage,
   ChatRoom,
@@ -113,17 +114,42 @@ export function Chat() {
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [location] = useLocation();
+  const [, navigate] = useLocation();
   const searchString = useSearch();
-  const [chatTab, setChatTab] = useState<ChatTab>("all");
+  const urlChatTab = useMemo((): ChatTab => {
+    const tab = new URLSearchParams(searchString).get("tab");
+    if (tab === "unread" || tab === "mine") return tab;
+    return "all";
+  }, [searchString]);
+  const [chatTab, setChatTab] = useState<ChatTab>(urlChatTab);
+
+  useEffect(() => {
+    setChatTab(urlChatTab);
+  }, [urlChatTab]);
+
+  const handleChatTabChange = useCallback(
+    (tab: ChatTab) => {
+      setChatTab(tab);
+      const params = new URLSearchParams(searchString);
+      if (tab === "all") params.delete("tab");
+      else params.set("tab", tab);
+      const qs = params.toString();
+      navigate(`/chat${qs ? `?${qs}` : ""}`);
+    },
+    [navigate, searchString],
+  );
   const urlDiscoverQ = useMemo(() => {
     const params = new URLSearchParams(searchString);
     return params.get("q")?.trim() ?? "";
   }, [searchString]);
   const [roomQuery, setRoomQuery] = useState(urlDiscoverQ);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
-    if (urlDiscoverQ) setRoomQuery(urlDiscoverQ);
+    if (urlDiscoverQ) {
+      setRoomQuery(urlDiscoverQ);
+      if (urlDiscoverQ.length >= 2) setSearchFocused(true);
+    }
   }, [urlDiscoverQ]);
   const [activeRoom, setActiveRoom] = useState("general");
   const [showRoomInfo, setShowRoomInfo] = useState(false);
@@ -186,7 +212,7 @@ export function Chat() {
   });
 
   useEffect(() => {
-    const joinMatch = location.match(/^\/chat\/join\/([^/]+)/);
+    const joinMatch = window.location.pathname.match(/^\/chat\/join\/([^/]+)/);
     if (joinMatch && isAuthenticated) {
       apiRequest("POST", `/api/chat/join/${joinMatch[1]}`)
         .then((r) => r.json())
@@ -197,7 +223,7 @@ export function Chat() {
         })
         .catch(() => toast({ title: t("chat.joinGate.joinError"), variant: "destructive" }));
     }
-  }, [location, isAuthenticated, queryClient, toast, t]);
+  }, [isAuthenticated, queryClient, toast, t]);
 
   const filteredRooms = rooms
     .filter((r) => {
@@ -705,9 +731,9 @@ export function Chat() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <h1 className="ait-section-title">Чаты</h1>
           <p className="text-muted-foreground mt-1">
-            Группы — личные чаты в{" "}
+            Группы — личные чаты в разделе{" "}
             <Link href="/messages" className="text-ait-purple hover:underline">
-              Сообщениях
+              Личные
             </Link>
           </p>
         </motion.div>
@@ -716,11 +742,11 @@ export function Chat() {
           layoutId="chat-page-filter"
           tabs={[
             { id: "all", label: "Мои группы" },
-            { id: "unread", label: "Непрочит." },
+            { id: "unread", label: "Непрочитанные" },
             { id: "mine", label: "Участник" },
           ]}
           value={chatTab}
-          onChange={setChatTab}
+          onChange={handleChatTabChange}
           className="mb-4"
         />
 
@@ -847,15 +873,31 @@ export function Chat() {
                 </div>
               </div>
             </div>
-            <div className="px-3 pb-2">
+            <div className="border-t border-white/5 mt-1 px-3 pt-3 pb-3">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   value={roomQuery}
                   onChange={(e) => setRoomQuery(e.target.value)}
-                  placeholder="Поиск групп (умный, от 2 символов)…"
-                  className="h-8 pl-8 text-sm bg-background/50"
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+                  placeholder={t("chat.sidebar.searchPlaceholder")}
+                  className="h-9 pl-9 text-sm rounded-2xl ait-glass border-white/10 bg-transparent"
                 />
+                {discoverSearch.length >= 2 && (searchFocused || urlDiscoverQ.length >= 2) && (
+                  <div
+                    className="absolute top-full left-0 right-0 z-20 mt-1.5 ait-glass-strong rounded-2xl border border-white/10 shadow-xl overflow-hidden max-h-[min(50vh,320px)] overflow-y-auto"
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    <GroupSearchPreview
+                      rooms={discoverRooms}
+                      loading={discoverLoading}
+                      empty={!discoverLoading && discoverRooms.length === 0}
+                      onJoin={(room) => joinRoomMutation.mutate(room.id)}
+                      joinPending={joinRoomMutation.isPending}
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <ScrollArea className="flex-1">
@@ -872,10 +914,12 @@ export function Chat() {
                       Повторить
                     </Button>
                   </div>
-                ) : filteredRooms.length === 0 && discoverSearch.length < 2 ? (
+                ) : filteredRooms.length === 0 ? (
                   <div className="p-6 text-center text-sm text-muted-foreground">
                     {roomQuery.trim()
-                      ? "В ваших группах ничего не найдено"
+                      ? discoverSearch.length >= 2
+                        ? "В ваших группах ничего не найдено — смотрите результаты в поиске выше"
+                        : "В ваших группах ничего не найдено"
                       : chatTab === "unread"
                         ? "Нет непрочитанных групп"
                         : chatTab === "mine"
@@ -917,53 +961,6 @@ export function Chat() {
                         )}
                       </button>
                     ))}
-
-                    {discoverSearch.length >= 2 && (
-                      <div className="pt-3 mt-2 border-t border-white/10 space-y-1">
-                        <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                          {t("chat.discover.header")}
-                        </p>
-                        {discoverLoading ? (
-                          <div className="py-4 flex justify-center">
-                            <Loader2 className="h-5 w-5 animate-spin text-ait-purple" />
-                          </div>
-                        ) : discoverRooms.length === 0 ? (
-                          <p className="px-2 py-2 text-xs text-muted-foreground">
-                            {t("chat.discover.empty")}
-                          </p>
-                        ) : (
-                          discoverRooms.map((room) => (
-                            <div
-                              key={room.id}
-                              className="flex items-center gap-2 rounded-xl p-2 hover:bg-white/[0.04]"
-                            >
-                              <RoomAvatar
-                                title={room.title}
-                                avatarUrl={room.avatarUrl}
-                                className="h-10 w-10 shrink-0"
-                              />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium truncate">{room.title}</p>
-                                <p className="text-[10px] text-muted-foreground truncate">
-                                  {t("chat.discover.memberCount", { count: room.memberCount })}
-                                  {room.description ? ` · ${room.description}` : ""}
-                                </p>
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="shrink-0 h-8 text-xs"
-                                disabled={joinRoomMutation.isPending}
-                                onClick={() => joinRoomMutation.mutate(room.id)}
-                              >
-                                {t("chat.discover.join")}
-                              </Button>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
                   </>
                 )}
               </div>

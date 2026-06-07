@@ -1,19 +1,26 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   Calendar,
   Home,
   Map,
   MapPin,
-  MessageCircle,
   Users,
   BookOpen,
   Sparkles,
   MessageSquare,
   Music,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { sidebarPrimaryNav, sidebarDiscoverNav } from "@/lib/nav-config";
+import {
+  sidebarPrimaryNav,
+  sidebarDiscoverNav,
+  sidebarChatsNav,
+  isSidebarNavHrefActive,
+} from "@/lib/nav-config";
 import type { LucideIcon } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useEffect, useState } from "react";
 
 export const SIDEBAR_WIDTH_COLLAPSED = 72;
 export const SIDEBAR_WIDTH_EXPANDED = 220;
@@ -24,7 +31,7 @@ const iconByHref: Record<string, LucideIcon> = {
   "/trips": Calendar,
   "/social-feed": Users,
   "/friends": Users,
-  "/messages": MessageCircle,
+  "/messages": MessageSquare,
   "/places": MapPin,
   "/events": Sparkles,
   "/blog": BookOpen,
@@ -80,6 +87,97 @@ function NavItem({ item, active }: { item: NavItemWithMeta; active: boolean }) {
         )}
       </span>
     </Link>
+  );
+}
+
+function NavChatsGroup() {
+  const [location] = useLocation();
+  const search = useSearch();
+  const isChatsRoute =
+    location.startsWith("/chat") || location.startsWith("/messages");
+  const [open, setOpen] = useState(isChatsRoute);
+
+  useEffect(() => {
+    if (isChatsRoute) setOpen(true);
+  }, [isChatsRoute]);
+
+  const groupActive = sidebarChatsNav.items.some((item) =>
+    isSidebarNavHrefActive(item.href, location, search),
+  );
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div
+        className={cn(
+          "relative flex h-11 w-full items-center gap-3 rounded-xl px-2.5 transition-colors",
+          groupActive
+            ? "text-white bg-white/12 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+            : "text-slate-300 hover:bg-white/8 hover:text-white group-hover/sidebar:hover:bg-white/8 group-hover/sidebar:hover:text-white",
+          groupActive &&
+            "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-7 before:w-1 before:rounded-full before:bg-ait-purple before:content-['']",
+        )}
+      >
+        <Link href="/chat" className="shrink-0" title={sidebarChatsNav.label}>
+          <span
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-xl transition-colors",
+              groupActive ? "bg-ait-purple/25 text-white" : "bg-white/[0.07] text-slate-200",
+            )}
+          >
+            <MessageSquare className="h-[18px] w-[18px]" aria-hidden />
+          </span>
+        </Link>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-2 text-left",
+              "opacity-0 max-w-0 overflow-hidden pointer-events-none",
+              "group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[160px] group-hover/sidebar:pointer-events-auto",
+              "group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:pointer-events-auto",
+            )}
+            aria-expanded={open}
+          >
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              {sidebarChatsNav.label}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent className="overflow-hidden data-[state=closed]:hidden">
+        <div
+          className={cn(
+            "mt-0.5 flex-col gap-0.5 pl-3",
+            "hidden group-hover/sidebar:flex group-focus-within/sidebar:flex",
+          )}
+        >
+          {sidebarChatsNav.items.map((item) => {
+            const active = isSidebarNavHrefActive(item.href, location, search);
+            return (
+              <Link key={item.href} href={item.href}>
+                <span
+                  className={cn(
+                    "flex h-8 w-full items-center rounded-lg px-2.5 text-xs font-medium transition-colors truncate",
+                    active
+                      ? "text-white bg-ait-purple/20"
+                      : "text-slate-400 hover:bg-white/6 hover:text-slate-200",
+                  )}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -155,6 +253,9 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
       aria-label="Основная навигация"
     >
       <NavSection items={sidebarPrimaryNav} activeFn={isActive} />
+      <div className="mt-0.5">
+        <NavChatsGroup />
+      </div>
       <SectionDivider />
       <NavSection label="Каталог" items={sidebarDiscoverNav} activeFn={isActive} />
     </aside>

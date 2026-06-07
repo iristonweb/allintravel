@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import MessageReactionBar from "@/components/chat/MessageReactionBar";
 import MessageStatusTicks from "@/components/chat/MessageStatusTicks";
+import VoiceMessagePlayer from "@/components/chat/VoiceMessagePlayer";
 import { QUICK_REACTION_EMOJIS } from "@/lib/message-reactions";
 import type { MessageDeliveryStatus, ReactionSummary } from "@shared/schema";
 
@@ -61,7 +62,7 @@ function safeUrl(url: string): string | undefined {
   return isSafeChatMediaUrl(resolved) ? resolved : undefined;
 }
 
-function MediaPart({ part }: { part: ParsedChatMessage }) {
+function MediaPart({ part, isOwn }: { part: ParsedChatMessage; isOwn: boolean }) {
   if (part.type === "text") return null;
 
   if (part.type === "gif" || part.type === "sticker") {
@@ -119,12 +120,11 @@ function MediaPart({ part }: { part: ParsedChatMessage }) {
     const src = safeUrl(part.url);
     if (!src) return <span className="text-xs text-muted-foreground">[голосовое]</span>;
     return (
-      <div className="flex items-center gap-2 rounded-2xl bg-white/8 px-3 py-2 min-w-[200px]">
-        <audio src={src} controls className="h-8 flex-1 min-w-0" preload="metadata" />
-        {part.durationSec > 0 && (
-          <span className="text-[10px] text-muted-foreground shrink-0">{part.durationSec}с</span>
-        )}
-      </div>
+      <VoiceMessagePlayer
+        src={src}
+        durationSec={part.durationSec}
+        variant={isOwn ? "own" : "other"}
+      />
     );
   }
 
@@ -160,7 +160,7 @@ export default function ChatMessageBubble({
         <ReplyQuote username={replyPart.username} preview={replyPart.preview} isOwn={isOwn} />
       )}
       {mediaParts.map((part, i) => (
-        <MediaPart key={`m-${i}`} part={part} />
+        <MediaPart key={`m-${i}`} part={part} isOwn={isOwn} />
       ))}
       {textContent.trim() ? (
         <div

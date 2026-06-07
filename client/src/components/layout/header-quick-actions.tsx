@@ -109,12 +109,12 @@ export default function HeaderQuickActions({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Link href="/messages" title="Сообщения">
+        <Link href="/messages" title="Личные сообщения">
           <Button
             variant="ghost"
             size="icon"
             className="relative h-10 w-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
-            aria-label="Сообщения"
+            aria-label="Личные сообщения"
           >
             <MessageCircle className="h-5 w-5" />
             {unreadMessageCount > 0 && (

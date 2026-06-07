@@ -15,8 +15,11 @@ import {
   guestAnchors,
   sidebarDiscoverNav,
   sidebarPrimaryNav,
+  sidebarChatsNav,
+  isSidebarNavHrefActive,
   scrollToAnchor,
 } from "@/lib/nav-config";
+import { useSearch } from "wouter";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 import WalletHeaderButton from "@/components/layout/wallet-header-button";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
@@ -28,7 +31,7 @@ const pageTitles: Record<string, string> = {
   "/trips": "Поездки",
   "/social-feed": "Сообщество",
   "/friends": "Друзья",
-  "/messages": "Сообщения",
+  "/messages": "Личные",
   "/profile": "Профиль",
   "/profile/music": "Моя музыка",
   "/music": "Моя музыка",
@@ -56,6 +59,7 @@ type AppTopNavProps = {
 export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { user, isAuthenticated } = useAuth();
   const [location, navigate] = useLocation();
+  const search = useSearch();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const queryClient = useQueryClient();
@@ -133,6 +137,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
 
   const menuSections = [
     { title: "Основное", items: sidebarPrimaryNav },
+    { title: sidebarChatsNav.label, items: sidebarChatsNav.items },
     { title: "Каталог", items: sidebarDiscoverNav },
   ].filter((section) => section.items.length > 0);
 
@@ -220,22 +225,28 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
               <p className="text-[10px] uppercase tracking-wider text-slate-500 px-3 mb-1">
                 {section.title}
               </p>
-              {section.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={cn(
-                    "w-full inline-flex items-center justify-start rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-white/8 hover:text-white",
-                    isActive(item.href) && "ait-nav-active text-white bg-white/10",
-                  )}
-                >
-                  {item.label}
-                  {item.href === "/wallet" && (
-                    <span className="ml-auto text-[10px] font-bold text-ait-orange">AIT</span>
-                  )}
-                </Link>
-              ))}
+              {section.items.map((item) => {
+                const active =
+                  section.title === sidebarChatsNav.label
+                    ? isSidebarNavHrefActive(item.href, location, search)
+                    : isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      "w-full inline-flex items-center justify-start rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-white/8 hover:text-white",
+                      active && "ait-nav-active text-white bg-white/10",
+                    )}
+                  >
+                    {item.label}
+                    {item.href === "/wallet" && (
+                      <span className="ml-auto text-[10px] font-bold text-ait-orange">AIT</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </motion.nav>
