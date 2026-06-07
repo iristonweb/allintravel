@@ -220,6 +220,11 @@ export interface IStorage {
   listChatRoomsForUser(
     userId: string,
   ): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]>;
+  discoverChatRooms(
+    userId: string,
+    query: string,
+    limit?: number,
+  ): Promise<(ChatRoom & { memberCount: number; matchScore: number })[]>;
   createChatRoom(data: {
     slug?: string;
     title: string;
@@ -1619,12 +1624,12 @@ export class MemStorage implements IStorage {
     this.ensureMemLegacyRooms();
     return Array.from(this.memChatRooms.values())
       .filter((room) => {
-        if (room.visibility === "private") {
-          const my = Array.from(this.memChatMembers.values()).find(
-            (m) => m.roomId === room.id && m.userId === userId && m.status === "active",
-          );
-          if (!my) return false;
-        }
+        const my = Array.from(this.memChatMembers.values()).find(
+          (m) => m.roomId === room.id && m.userId === userId && m.status === "active",
+        );
+        const isMember = Boolean(my);
+        if (room.visibility === "private" && !isMember) return false;
+        if (!isMember && !room.isLegacy) return false;
         return true;
       })
       .map((room) => {
@@ -1651,6 +1656,28 @@ export class MemStorage implements IStorage {
           unreadCount,
         };
       });
+  }
+
+  async discoverChatRooms(userId: string, query: string, limit = 15) {
+    this.ensureMemLegacyRooms();
+    const { scoreChatRoomMatch } = await import("@shared/chat-room-search");
+    const memberIds = new Set(
+      Array.from(this.memChatMembers.values())
+        .filter((m) => m.userId === userId && m.status === "active")
+        .map((m) => m.roomId),
+    );
+    const scored = Array.from(this.memChatRooms.values())
+      .filter((r) => r.visibility === "public" && !r.isLegacy && !memberIds.has(r.id))
+      .map((room) => ({
+        ...room,
+        memberCount: Array.from(this.memChatMembers.values()).filter(
+          (m) => m.roomId === room.id && m.status === "active",
+        ).length,
+        matchScore: scoreChatRoomMatch(query, room),
+      }))
+      .filter((r) => r.matchScore > 0)
+      .sort((a, b) => b.matchScore - a.matchScore || b.memberCount - a.memberCount);
+    return scored.slice(0, limit);
   }
 
   async createChatRoom(data: {

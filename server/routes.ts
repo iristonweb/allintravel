@@ -1715,6 +1715,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/chat/rooms/discover", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const q = String(req.query.q ?? "").trim();
+      const limitRaw = parseInt(String(req.query.limit ?? "15"), 10);
+      const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 30) : 15;
+      if (q.length < 2) {
+        return res.json([]);
+      }
+      const rooms = await storage.discoverChatRooms(userId, q, limit);
+      res.json(rooms);
+    } catch (error) {
+      console.error("Error discovering chat rooms:", error);
+      res.status(500).json({ message: "Failed to search rooms" });
+    }
+  });
+
   const roomAvatarUpload = createUploadMiddleware();
 
   async function saveRoomAvatarFromFile(file: Express.Multer.File): Promise<string> {

@@ -226,10 +226,9 @@ export function Messages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
-    onError: () => {
-      toast({ title: "Не удалось отметить прочитанным", variant: "destructive" });
-    },
   });
+
+  const lastMarkedSenderRef = useRef<string | null>(null);
 
   const handleSendMessage = (contentOverride?: string) => {
     let content = (contentOverride ?? newMessage).trim();
@@ -266,7 +265,8 @@ export function Messages() {
     setReplyTo(null);
     setMsgTab("personal");
     setLocation(`/messages?with=${conversation.user.id}`);
-    if (conversation.unreadCount > 0) {
+    if (conversation.unreadCount > 0 && lastMarkedSenderRef.current !== conversation.user.id) {
+      lastMarkedSenderRef.current = conversation.user.id;
       markAsReadMutation.mutate(conversation.user.id);
     }
   };

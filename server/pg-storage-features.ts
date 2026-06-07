@@ -4,6 +4,7 @@
  */
 import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { UserPrivacySettings } from "@shared/privacy";
+import { scoreChatRoomMatch } from "@shared/chat-room-search";
 import type {
   ChatMessage,
   ChatRoom,
@@ -983,7 +984,9 @@ export async function listChatRoomsForUserDb(
       .from(chatRoomMembers)
       .where(and(eq(chatRoomMembers.roomId, room.id), eq(chatRoomMembers.userId, userId)))
       .limit(1);
-    if (room.visibility === "private" && (!my || my.status !== "active")) continue;
+    const isMember = my?.status === "active";
+    if (room.visibility === "private" && !isMember) continue;
+    if (!isMember && !room.isLegacy) continue;
     const unreadCount = await countUnreadInRoomDb(db, room.slug, room.id, userId);
     result.push({
       ...room,
@@ -993,6 +996,40 @@ export async function listChatRoomsForUserDb(
     });
   }
   return result;
+}
+
+export async function discoverChatRoomsDb(
+  db: PgFeaturesDb,
+  userId: string,
+  query: string,
+  limit = 15,
+): Promise<(ChatRoom & { memberCount: number; matchScore: number })[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const [allPublic, myMemberships] = await Promise.all([
+    db.select().from(chatRooms).where(eq(chatRooms.visibility, "public")),
+    db
+      .select({ roomId: chatRoomMembers.roomId })
+      .from(chatRoomMembers)
+      .where(and(eq(chatRoomMembers.userId, userId), eq(chatRoomMembers.status, "active"))),
+  ]);
+  const memberIds = new Set(myMemberships.map((m) => m.roomId));
+
+  const scored: (ChatRoom & { memberCount: number; matchScore: number })[] = [];
+  for (const room of allPublic) {
+    if (memberIds.has(room.id) || room.isLegacy) continue;
+    const score = scoreChatRoomMatch(q, room);
+    if (score <= 0) continue;
+    const [{ value: memberCount }] = await db
+      .select({ value: count() })
+      .from(chatRoomMembers)
+      .where(and(eq(chatRoomMembers.roomId, room.id), eq(chatRoomMembers.status, "active")));
+    scored.push({ ...room, memberCount: Number(memberCount), matchScore: score });
+  }
+
+  scored.sort((a, b) => b.matchScore - a.matchScore || b.memberCount - a.memberCount);
+  return scored.slice(0, Math.min(Math.max(limit, 1), 30));
 }
 
 export async function createChatRoomDb(

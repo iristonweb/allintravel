@@ -1000,6 +1000,10 @@ export class PgStorage implements IStorage {
     return features.listChatRoomsForUserDb(this.db, userId);
   }
 
+  async discoverChatRooms(userId: string, query: string, limit = 15) {
+    return features.discoverChatRoomsDb(this.db, userId, query, limit);
+  }
+
   async createChatRoom(data: Parameters<typeof features.createChatRoomDb>[1]) {
     return features.createChatRoomDb(this.db, data);
   }

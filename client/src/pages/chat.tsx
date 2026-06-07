@@ -73,6 +73,10 @@ const isVercelHost =
   typeof window !== "undefined" &&
   (window.location.hostname.includes("vercel.app") || import.meta.env.PROD);
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type DiscoverRoom = ChatRoom & { memberCount: number; matchScore: number };
+
 type ChatHistoryPayload = {
   messages?: ChatMessageWithSender[];
   pinnedMessageIds?: string[];
@@ -132,6 +136,38 @@ export function Chat() {
   } = useQuery<RoomListItem[]>({
     queryKey: ["/api/chat/rooms"],
     enabled: isAuthenticated,
+  });
+
+  const discoverSearch = roomQuery.trim();
+  const { data: discoverRooms = [], isFetching: discoverLoading } = useQuery<DiscoverRoom[]>({
+    queryKey: ["/api/chat/rooms/discover", discoverSearch],
+    queryFn: async () => {
+      const params = new URLSearchParams({ q: discoverSearch, limit: "12" });
+      const res = await fetch(`/api/chat/rooms/discover?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to discover rooms");
+      return res.json() as Promise<DiscoverRoom[]>;
+    },
+    enabled: isAuthenticated && discoverSearch.length >= 2,
+    staleTime: 30_000,
+  });
+
+  const joinRoomMutation = useMutation({
+    mutationFn: async (roomId: string) => {
+      await apiRequest("POST", `/api/chat/rooms/${roomId}/join`);
+    },
+    onSuccess: (_data, roomId) => {
+      const joined = discoverRooms.find((r) => r.id === roomId);
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms/discover"] });
+      if (joined) {
+        setActiveRoom(joined.slug);
+        setRoomQuery("");
+        toast({ title: `Вы вступили в «${joined.title}»` });
+      }
+    },
+    onError: () => {
+      toast({ title: "Не удалось вступить в группу", variant: "destructive" });
+    },
   });
 
   useEffect(() => {
@@ -323,16 +359,15 @@ export function Chat() {
 
   const markRoomReadMutation = useMutation({
     mutationFn: async (messageId: string) => {
-      if (!roomId) return;
+      if (!roomId || !UUID_RE.test(messageId)) return;
       await apiRequest("POST", `/api/chat/rooms/${roomId}/read`, { messageId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
     },
-    onError: () => {
-      toast({ title: "Не удалось отметить прочитанным", variant: "destructive" });
-    },
   });
+
+  const lastMarkedReadRef = useRef<Record<string, string>>({});
 
   const pinMutation = useMutation({
     mutationFn: async ({ messageId, pin }: { messageId: string; pin: boolean }) => {
@@ -497,11 +532,20 @@ export function Chat() {
     }
   }, [allMessages.length, activeRoom]);
 
+  const lastReadableId = useMemo(() => {
+    for (let i = allMessages.length - 1; i >= 0; i--) {
+      const id = allMessages[i]?.id;
+      if (id && UUID_RE.test(String(id))) return String(id);
+    }
+    return null;
+  }, [allMessages]);
+
   useEffect(() => {
-    if (!roomId || allMessages.length === 0) return;
-    const last = [...allMessages].reverse().find((m) => m.id && !String(m.id).startsWith("temp-"));
-    if (last?.id) markRoomReadMutation.mutate(last.id);
-  }, [roomId, allMessages, markRoomReadMutation]);
+    if (!roomId || !lastReadableId) return;
+    if (lastMarkedReadRef.current[roomId] === lastReadableId) return;
+    lastMarkedReadRef.current[roomId] = lastReadableId;
+    markRoomReadMutation.mutate(lastReadableId);
+  }, [roomId, lastReadableId, markRoomReadMutation]);
   const pinnedMessages = allMessages.filter((m) => m.id && pinnedIds.includes(m.id));
   const latestPinned = pinnedMessages[pinnedMessages.length - 1];
 
@@ -619,9 +663,9 @@ export function Chat() {
         <ChatFilterTabs
           layoutId="chat-page-filter"
           tabs={[
-            { id: "all", label: "Все группы" },
+            { id: "all", label: "Мои группы" },
             { id: "unread", label: "Непрочит." },
-            { id: "mine", label: "Мои" },
+            { id: "mine", label: "Участник" },
           ]}
           value={chatTab}
           onChange={setChatTab}
@@ -729,6 +773,12 @@ export function Chat() {
                             Закрытая
                           </Button>
                         </div>
+                        {newRoom.visibility === "public" && (
+                          <p className="text-xs text-muted-foreground">
+                            Открытая группа не появится у всех в списке — её можно найти через поиск
+                            (как в Telegram).
+                          </p>
+                        )}
                         <Button
                           className="w-full"
                           onClick={() => createRoomMutation.mutate()}
@@ -751,7 +801,7 @@ export function Chat() {
                 <Input
                   value={roomQuery}
                   onChange={(e) => setRoomQuery(e.target.value)}
-                  placeholder="Поиск групп…"
+                  placeholder="Поиск групп (умный, от 2 символов)…"
                   className="h-8 pl-8 text-sm bg-background/50"
                 />
               </div>
@@ -770,48 +820,99 @@ export function Chat() {
                       Повторить
                     </Button>
                   </div>
-                ) : filteredRooms.length === 0 ? (
+                ) : filteredRooms.length === 0 && discoverSearch.length < 2 ? (
                   <div className="p-6 text-center text-sm text-muted-foreground">
                     {roomQuery.trim()
-                      ? "Ничего не найдено"
+                      ? "В ваших группах ничего не найдено"
                       : chatTab === "unread"
                         ? "Нет непрочитанных групп"
                         : chatTab === "mine"
                           ? "Вы ещё не состоите в группах"
-                          : "Нет групп"}
+                          : "Нет групп — создайте или найдите через поиск"}
                   </div>
                 ) : (
-                  filteredRooms.map((room) => (
-                    <button
-                      key={room.id}
-                      type="button"
-                      onClick={() => setActiveRoom(room.slug)}
-                      className={cn(
-                        "ait-chat-room-item w-full text-left",
-                        activeRoom === room.slug ? "ait-chat-room-item--active" : "text-slate-400",
-                      )}
-                    >
-                      <RoomAvatar
-                        title={room.title}
-                        avatarUrl={room.avatarUrl}
-                        className="h-14 w-14"
-                      />
-                      <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
-                      {(room.unreadCount ?? 0) > 0 && (
-                        <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
-                          {room.unreadCount > 99 ? "99+" : room.unreadCount}
-                        </Badge>
-                      )}
-                      {room.visibility === "private" && (
-                        <Lock className="h-3 w-3 shrink-0 opacity-60" />
-                      )}
-                      {room.isLegacy && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0">
-                          Офиц.
-                        </Badge>
-                      )}
-                    </button>
-                  ))
+                  <>
+                    {filteredRooms.map((room) => (
+                      <button
+                        key={room.id}
+                        type="button"
+                        onClick={() => setActiveRoom(room.slug)}
+                        className={cn(
+                          "ait-chat-room-item w-full text-left",
+                          activeRoom === room.slug
+                            ? "ait-chat-room-item--active"
+                            : "text-slate-400",
+                        )}
+                      >
+                        <RoomAvatar
+                          title={room.title}
+                          avatarUrl={room.avatarUrl}
+                          className="h-14 w-14"
+                        />
+                        <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
+                        {(room.unreadCount ?? 0) > 0 && (
+                          <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
+                            {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                          </Badge>
+                        )}
+                        {room.visibility === "private" && (
+                          <Lock className="h-3 w-3 shrink-0 opacity-60" />
+                        )}
+                        {room.isLegacy && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0">
+                            Офиц.
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
+
+                    {discoverSearch.length >= 2 && (
+                      <div className="pt-3 mt-2 border-t border-white/10 space-y-1">
+                        <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          Найти публичные группы
+                        </p>
+                        {discoverLoading ? (
+                          <div className="py-4 flex justify-center">
+                            <Loader2 className="h-5 w-5 animate-spin text-ait-purple" />
+                          </div>
+                        ) : discoverRooms.length === 0 ? (
+                          <p className="px-2 py-2 text-xs text-muted-foreground">
+                            Похожих групп не найдено. Попробуйте другое название.
+                          </p>
+                        ) : (
+                          discoverRooms.map((room) => (
+                            <div
+                              key={room.id}
+                              className="flex items-center gap-2 rounded-xl p-2 hover:bg-white/[0.04]"
+                            >
+                              <RoomAvatar
+                                title={room.title}
+                                avatarUrl={room.avatarUrl}
+                                className="h-10 w-10 shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{room.title}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {room.memberCount} участн.
+                                  {room.description ? ` · ${room.description}` : ""}
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="shrink-0 h-8 text-xs"
+                                disabled={joinRoomMutation.isPending}
+                                onClick={() => joinRoomMutation.mutate(room.id)}
+                              >
+                                Вступить
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </ScrollArea>
