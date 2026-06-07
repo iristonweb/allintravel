@@ -23,11 +23,11 @@
     }
   ],
   "functions": {
-    "api/index.js": {
+    "api/index.ts": {
       "maxDuration": 60,
       "memory": 1024
     },
-    "api/health.js": {
+    "api/health.ts": {
       "maxDuration": 30,
       "memory": 512
     }

@@ -13,7 +13,7 @@ async function getApp(): Promise<Express> {
   return appPromise;
 }
 
-/** Vercel reads this from the built api/index.js */
+/** Vercel serverless entry (see api/index.ts) */
 export const config = {
   maxDuration: 60,
   memory: 1024,

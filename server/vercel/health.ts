@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { sql } from "drizzle-orm";
 import { getDb } from "../db";
 
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: 30, memory: 512 };
 
 export default async function handler(_req: Request, res: Response) {
   let database = false;
