@@ -237,7 +237,7 @@ export function Friends() {
                   <div key={friend.id} className="flex flex-col gap-2">
                     <UserPreviewCell user={friend} />
                     <div className="flex gap-1 justify-center">
-                      <Link href={`/messages?with=${friend.id}`}>
+                      <Link href={`/chat?with=${friend.id}&tab=personal`}>
                         <Button
                           size="sm"
                           variant="outline"

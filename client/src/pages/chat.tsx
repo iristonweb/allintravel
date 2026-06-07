@@ -32,6 +32,7 @@ import {
   Camera,
   Search,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { createChatRoom } from "@/lib/upload-media";
 import RoomAvatar from "@/components/chat/RoomAvatar";
 import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
+import PersonalChatThread from "@/components/chat/PersonalChatThread";
 import { AvatarWithPresence } from "@/components/PresenceDot";
 import type {
   ChatMessage,
@@ -130,10 +132,35 @@ export function Chat() {
     return "all";
   }, [searchString]);
   const [chatTab, setChatTab] = useState<ChatTab>(urlChatTab);
+  const urlWithUserId = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return params.get("with")?.trim() || null;
+  }, [searchString]);
+  const urlRoom = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return params.get("room")?.trim() || null;
+  }, [searchString]);
 
   useEffect(() => {
     setChatTab(urlChatTab);
   }, [urlChatTab]);
+
+  useEffect(() => {
+    if (!urlWithUserId) return;
+    if (chatTab === "personal" || chatTab === "unread") return;
+    const params = new URLSearchParams(searchString);
+    params.set("tab", "personal");
+    navigate(`/chat?${params.toString()}`);
+  }, [urlWithUserId, chatTab, searchString, navigate]);
+
+  useEffect(() => {
+    if (chatTab !== "personal" || !urlRoom || urlWithUserId) return;
+    const params = new URLSearchParams(searchString);
+    params.delete("room");
+    params.delete("message");
+    const qs = params.toString();
+    navigate(`/chat?${qs ? `?${qs}` : ""}`);
+  }, [chatTab, urlRoom, urlWithUserId, searchString, navigate]);
 
   const handleChatTabChange = useCallback(
     (tab: ChatTab) => {
@@ -144,12 +171,56 @@ export function Chat() {
       if (tab === "personal" || tab === "unread") {
         params.delete("room");
         params.delete("message");
+      } else {
+        params.delete("with");
       }
       const qs = params.toString();
       navigate(`/chat${qs ? `?${qs}` : ""}`);
     },
     [navigate, searchString],
   );
+
+  const openPersonalChat = useCallback(
+    (userId: string) => {
+      const params = new URLSearchParams(searchString);
+      const tab = chatTab === "unread" ? "unread" : "personal";
+      params.set("tab", tab);
+      params.set("with", userId);
+      params.delete("room");
+      params.delete("message");
+      navigate(`/chat?${params.toString()}`);
+    },
+    [navigate, searchString, chatTab],
+  );
+
+  const selectRoom = useCallback(
+    (slug: string) => {
+      setActiveRoom(slug);
+      const params = new URLSearchParams(searchString);
+      if (slug === "general") params.delete("room");
+      else params.set("room", slug);
+      params.delete("with");
+      params.delete("message");
+      const qs = params.toString();
+      navigate(`/chat${qs ? `?${qs}` : ""}`);
+    },
+    [navigate, searchString],
+  );
+
+  const clearThreadSelection = useCallback(() => {
+    const params = new URLSearchParams(searchString);
+    params.delete("with");
+    params.delete("room");
+    params.delete("message");
+    const qs = params.toString();
+    navigate(`/chat${qs ? `?${qs}` : ""}`);
+  }, [navigate, searchString]);
+
+  const mobileThreadOpen = Boolean(urlWithUserId) || (chatTab === "unread" && Boolean(urlRoom));
+  const showChatPlaceholder =
+    !urlWithUserId &&
+    ((chatTab === "personal" && !urlRoom) ||
+      (chatTab === "unread" && !urlRoom));
 
   const searchPlaceholder = useMemo(() => {
     if (chatTab === "personal" || chatTab === "unread") {
@@ -398,7 +469,7 @@ export function Chat() {
       setNewRoomAvatarFile(null);
       setNewRoomAvatarPreview(null);
       queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      setActiveRoom(room.slug);
+      selectRoom(room.slug);
     },
     onError: (err) =>
       toast({
@@ -807,7 +878,12 @@ export function Chat() {
           className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3"
           style={{ height: "calc(100dvh - var(--ait-header-h, 5rem))", minHeight: "560px" }}
         >
-          <div className="ait-chat-panel flex flex-col min-h-0">
+          <div
+            className={cn(
+              "ait-chat-panel flex flex-col min-h-0",
+              mobileThreadOpen && "hidden lg:flex",
+            )}
+          >
             <div className="ait-chat-panel-header p-4">
               <div className="flex items-center justify-between">
                 <span className="font-semibold flex items-center gap-2">
@@ -977,7 +1053,12 @@ export function Chat() {
                         Личные
                       </p>
                     )}
-                    {conversationsLoading ? (
+                    {chatTab === "unread" && conversationsLoading && roomsLoading ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        Загрузка…
+                      </div>
+                    ) : conversationsLoading ? (
                       <div className="py-4 text-center text-sm text-muted-foreground">
                         <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                         Загрузка диалогов…
@@ -991,12 +1072,15 @@ export function Chat() {
                       </div>
                     ) : (
                       visibleConversations.map((conversation) => (
-                        <Link
+                        <button
                           key={conversation.user.id}
-                          href={`/messages?with=${conversation.user.id}&from=${chatTab === "unread" ? "unread" : "personal"}`}
+                          type="button"
+                          onClick={() => openPersonalChat(conversation.user.id)}
                           className={cn(
                             "ait-chat-room-item w-full text-left",
-                            "text-slate-400 hover:text-slate-200",
+                            urlWithUserId === conversation.user.id
+                              ? "ait-chat-room-item--active"
+                              : "text-slate-400 hover:text-slate-200",
                           )}
                         >
                           <AvatarWithPresence
@@ -1023,7 +1107,7 @@ export function Chat() {
                               {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
                             </Badge>
                           )}
-                        </Link>
+                        </button>
                       ))
                     )}
                     {chatTab === "unread" && visibleConversations.length > 0 && filteredRooms.length > 0 && (
@@ -1036,7 +1120,7 @@ export function Chat() {
 
                 {chatTab !== "personal" && (
                   <>
-                    {roomsLoading ? (
+                    {chatTab === "unread" && conversationsLoading && roomsLoading ? null : roomsLoading ? (
                       <div className="p-6 text-center text-sm text-muted-foreground">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                         Загрузка групп…
@@ -1067,7 +1151,7 @@ export function Chat() {
                         <button
                           key={room.id}
                           type="button"
-                          onClick={() => setActiveRoom(room.slug)}
+                          onClick={() => selectRoom(room.slug)}
                           className={cn(
                             "ait-chat-room-item w-full text-left",
                             activeRoom === room.slug
@@ -1133,14 +1217,26 @@ export function Chat() {
             </ScrollArea>
           </div>
 
-          <div className="ait-chat-panel flex flex-col overflow-hidden min-h-0">
-            {chatTab === "personal" ? (
+          <div
+            className={cn(
+              "ait-chat-panel flex flex-col overflow-hidden min-h-0",
+              !mobileThreadOpen && showChatPlaceholder && "hidden lg:flex",
+            )}
+          >
+            {urlWithUserId ? (
+              <PersonalChatThread
+                peerUserId={urlWithUserId}
+                onBack={mobileThreadOpen ? clearThreadSelection : undefined}
+              />
+            ) : showChatPlaceholder ? (
               <div className="flex flex-1 items-center justify-center p-8 ait-chat-thread">
                 <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
                   <MessageCircle className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
-                  <h3 className="text-lg font-semibold mb-2">Личные сообщения</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {chatTab === "unread" ? "Непрочитанные" : "Личные сообщения"}
+                  </h3>
                   <p className="text-muted-foreground text-sm">
-                    Выберите диалог слева — откроется в отдельном окне переписки
+                    Выберите диалог слева, чтобы начать переписку
                   </p>
                 </div>
               </div>
@@ -1152,6 +1248,18 @@ export function Chat() {
               </div>
             )}
             <div className="ait-chat-panel-header p-4 flex items-center gap-3">
+              {mobileThreadOpen && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 lg:hidden"
+                  aria-label="Назад к списку"
+                  onClick={clearThreadSelection}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
               <RoomAvatar
                 title={activeRoomMeta?.title ?? activeRoom}
                 avatarUrl={activeRoomMeta?.avatarUrl}
@@ -1186,7 +1294,7 @@ export function Chat() {
                     onClose={() => setShowRoomInfo(false)}
                     onLeft={() => {
                       setShowRoomInfo(false);
-                      setActiveRoom("general");
+                      selectRoom("general");
                     }}
                   />
                 )}

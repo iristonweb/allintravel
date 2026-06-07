@@ -180,7 +180,7 @@ export function Profile() {
                   {searchResults.map((u) => (
                     <Link
                       key={u.id}
-                      href={u.username ? `/u/${u.username}` : `/messages?with=${u.id}`}
+                      href={u.username ? `/u/${u.username}` : `/chat?with=${u.id}&tab=personal`}
                       className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50"
                     >
                       <Avatar className="h-8 w-8">

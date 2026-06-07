@@ -205,7 +205,7 @@ export function UserPublicProfile() {
         )}
         <div className="flex flex-wrap gap-2 mt-6">
           <Button asChild size="sm">
-            <Link href={`/messages?with=${publicUser.id}`}>
+            <Link href={`/chat?with=${publicUser.id}&tab=personal`}>
               <MessageCircle className="h-4 w-4 mr-1" />
               Написать
             </Link>

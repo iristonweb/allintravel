@@ -64,7 +64,7 @@ export default function ChatGroupSearchDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
       toast({ title: t("chat.joinGate.joinedToast", { title: room.title }) });
       onOpenChange(false);
-      navigate(`/chat?room=${encodeURIComponent(room.slug)}`);
+      navigate(`/chat?room=${encodeURIComponent(room.slug)}&tab=all`);
     },
     onError: () => toast({ title: t("chat.joinGate.joinError"), variant: "destructive" }),
   });
