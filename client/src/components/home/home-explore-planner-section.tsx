@@ -15,11 +15,7 @@ import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
 import { homeDaysFromWaypoints, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
 import { fetchBuiltRoute } from "@/lib/fetch-route";
-import {
-  DEMO_PLANNER_DAYS,
-  DEST_ICELAND_SRC,
-  SHOWCASE_DESTINATIONS,
-} from "@/lib/marketing-images";
+import { DEMO_PLANNER_DAYS, DEST_ICELAND_SRC, SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
 
 const showcaseDestinations = [...SHOWCASE_DESTINATIONS];
 
@@ -48,8 +44,7 @@ const DEMO_DAYS: PlannerDayView[] = DEMO_PLANNER_DAYS.map((d) => ({
         : d.day === 3
           ? ["Сельяландсфосс", "Скóгафосс"]
           : ["Айсберги", "Алмазный пляж"],
-  routeIds:
-    d.day === 1 ? ["1"] : d.day === 2 ? ["1", "2"] : d.day === 3 ? ["2", "3"] : ["3", "4"],
+  routeIds: d.day === 1 ? ["1"] : d.day === 2 ? ["1", "2"] : d.day === 3 ? ["2", "3"] : ["3", "4"],
 }));
 
 const DEMO_ROUTE = [
@@ -160,7 +155,10 @@ function RouteMapPanel({
   return (
     <GlassCard
       strong
-      className={cn("p-0 overflow-hidden ait-gradient-border relative h-full min-h-[480px]", className)}
+      className={cn(
+        "p-0 overflow-hidden ait-gradient-border relative h-full min-h-[480px]",
+        className,
+      )}
     >
       <TravelMap
         places={routePlaces.length > 0 ? routePlaces : fallbackRoute}
@@ -319,11 +317,15 @@ export default function HomeExplorePlannerSection({
           />
         </>
       ) : (
-        <GlassCard strong className="col-span-full p-8 flex flex-col items-center justify-center text-center min-h-[320px]">
+        <GlassCard
+          strong
+          className="col-span-full p-8 flex flex-col items-center justify-center text-center min-h-[320px]"
+        >
           <Route className="h-10 w-10 text-ait-purple mb-4" />
           <h3 className="text-lg font-semibold mb-2">Спланируйте первую поездку</h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-md">
-            Добавьте остановки в планировщик — здесь появится ваш реальный маршрут по дням, а не демо.
+            Добавьте остановки в планировщик — здесь появится ваш реальный маршрут по дням, а не
+            демо.
           </p>
           <Link href="/trips">
             <Button variant="premium">Создать поездку</Button>

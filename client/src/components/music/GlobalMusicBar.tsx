@@ -32,9 +32,12 @@ export default function GlobalMusicBar() {
   } = useMusicPlayer();
 
   const panelRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(
-    null,
-  );
+  const dragState = useRef<{
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [pos, setPos] = useState(playerPosition);
 
@@ -85,8 +88,7 @@ export default function GlobalMusicBar() {
   const positionLabel =
     queue.length > 1 ? `Трек ${trackIndex + 1} из ${queue.length}` : "Моя музыка";
 
-  const glassClass =
-    "ait-glass bg-black/30 backdrop-blur-xl border border-white/10 shadow-2xl";
+  const glassClass = "ait-glass bg-black/30 backdrop-blur-xl border border-white/10 shadow-2xl";
 
   const anchored = !pos;
 
@@ -101,8 +103,19 @@ export default function GlobalMusicBar() {
       )}
       style={
         pos
-          ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto", width: playerUi === "collapsed" ? 280 : 420, maxWidth: "calc(100vw - 1rem)" }
-          : { maxWidth: playerUi === "collapsed" ? 320 : 640, marginLeft: "auto", marginRight: "auto" }
+          ? {
+              left: pos.x,
+              top: pos.y,
+              right: "auto",
+              bottom: "auto",
+              width: playerUi === "collapsed" ? 280 : 420,
+              maxWidth: "calc(100vw - 1rem)",
+            }
+          : {
+              maxWidth: playerUi === "collapsed" ? 320 : 640,
+              marginLeft: "auto",
+              marginRight: "auto",
+            }
       }
     >
       <div className={cn(glassClass, playerUi === "collapsed" ? "rounded-full" : "rounded-2xl")}>
@@ -123,13 +136,34 @@ export default function GlobalMusicBar() {
               <Music2 className="h-3.5 w-3.5 text-primary" />
             </div>
             <p className="text-xs font-medium truncate flex-1 min-w-0">{currentTrack.title}</p>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={togglePlay}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={togglePlay}
+              aria-label={isPlaying ? "Пауза" : "Воспроизведение"}
+            >
               {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={expandPlayer}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={expandPlayer}
+              aria-label="Развернуть плеер"
+            >
               <ChevronUp className="h-3.5 w-3.5" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={dismissPlayer}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={dismissPlayer}
+              aria-label="Закрыть плеер"
+            >
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -143,19 +177,54 @@ export default function GlobalMusicBar() {
               <p className="text-[10px] text-muted-foreground truncate">{positionLabel}</p>
             </div>
             <div className="flex items-center gap-0.5 shrink-0">
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={prev}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={prev}
+                aria-label="Предыдущий трек"
+              >
                 <SkipBack className="h-4 w-4" />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={togglePlay}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={togglePlay}
+                aria-label={isPlaying ? "Пауза" : "Воспроизведение"}
+              >
                 {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={next}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={next}
+                aria-label="Следующий трек"
+              >
                 <SkipForward className="h-4 w-4" />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={collapsePlayer}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={collapsePlayer}
+                aria-label="Свернуть плеер"
+              >
                 <ChevronDown className="h-4 w-4" />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={dismissPlayer}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={dismissPlayer}
+                aria-label="Закрыть плеер"
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>

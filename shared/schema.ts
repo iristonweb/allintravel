@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { sql } from "drizzle-orm";
 import {
   index,
   jsonb,
@@ -66,7 +66,9 @@ export const sessions = pgTable(
 
 // User storage table.
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
   username: varchar("username", { length: 30 }).unique(),
   displayName: varchar("display_name", { length: 64 }),
@@ -82,7 +84,9 @@ export const users = pgTable("users", {
 
 // Places table (restaurants, hotels, attractions)
 export const places = pgTable("places", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   type: varchar("type", { length: 50 }).notNull(), // restaurant, hotel, attraction
@@ -104,9 +108,15 @@ export const places = pgTable("places", {
 
 // Reviews table
 export const reviews = pgTable("reviews", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  placeId: uuid("place_id").notNull().references(() => places.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  placeId: uuid("place_id")
+    .notNull()
+    .references(() => places.id, { onDelete: "cascade" }),
   rating: integer("rating").notNull(), // 1-5 stars
   title: varchar("title", { length: 255 }),
   content: text("content"),
@@ -118,8 +128,12 @@ export const reviews = pgTable("reviews", {
 
 // Travel companions/trips table
 export const trips = pgTable("trips", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   destination: varchar("destination", { length: 255 }).notNull(),
@@ -140,18 +154,30 @@ export const trips = pgTable("trips", {
 
 // Trip participants table
 export const tripParticipants = pgTable("trip_participants", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  tripId: uuid("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tripId: uuid("trip_id")
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 20 }).default("pending"), // pending, accepted, rejected
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
 // Trip waypoints (stops/places in a trip route)
 export const tripWaypoints = pgTable("trip_waypoints", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  tripId: uuid("trip_id").notNull().references(() => trips.id, { onDelete: "cascade" }),
-  placeId: uuid("place_id").notNull().references(() => places.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tripId: uuid("trip_id")
+    .notNull()
+    .references(() => trips.id, { onDelete: "cascade" }),
+  placeId: uuid("place_id")
+    .notNull()
+    .references(() => places.id, { onDelete: "cascade" }),
   orderIndex: integer("order_index").notNull().default(0),
   dayNumber: integer("day_number"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -159,7 +185,9 @@ export const tripWaypoints = pgTable("trip_waypoints", {
 
 // Events table
 export const events = pgTable("events", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   type: varchar("type", { length: 50 }).notNull(), // festival, food, music, etc.
@@ -176,16 +204,26 @@ export const events = pgTable("events", {
 
 // Event registrations (RSVP)
 export const eventRegistrations = pgTable("event_registrations", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  eventId: uuid("event_id")
+    .notNull()
+    .references(() => events.id, { onDelete: "cascade" }),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Chat messages table
 export const chatMessages = pgTable("chat_messages", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   chatRoom: varchar("chat_room", { length: 100 }).notNull(), // e.g., "general", "rome", "paris"
   createdAt: timestamp("created_at").defaultNow(),
@@ -226,17 +264,29 @@ export const chatMessageReactions = pgTable(
 
 // User favorites table
 export const userFavorites = pgTable("user_favorites", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  placeId: uuid("place_id").notNull().references(() => places.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  placeId: uuid("place_id")
+    .notNull()
+    .references(() => places.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Friends/Connections table
 export const friendships = pgTable("friendships", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  addresseeId: varchar("addressee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  requesterId: varchar("requester_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  addresseeId: varchar("addressee_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   status: varchar("status", { length: 20 }).default("pending"), // pending, accepted, blocked
   direction: varchar("direction", { length: 32 }), // travel direction tag when accepted
   createdAt: timestamp("created_at").defaultNow(),
@@ -245,12 +295,16 @@ export const friendships = pgTable("friendships", {
 
 // Privacy settings (1:1 with user)
 export const userPrivacySettings = pgTable("user_privacy_settings", {
-  userId: varchar("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
   isPrivateAccount: boolean("is_private_account").default(false).notNull(),
   showOnlineStatus: varchar("show_online_status", { length: 20 }).default("friends").notNull(),
   showLastSeen: boolean("show_last_seen").default(true).notNull(),
   allowDmFrom: varchar("allow_dm_from", { length: 20 }).default("friends").notNull(),
-  allowFriendRequestsFrom: varchar("allow_friend_requests_from", { length: 20 }).default("everyone").notNull(),
+  allowFriendRequestsFrom: varchar("allow_friend_requests_from", { length: 20 })
+    .default("everyone")
+    .notNull(),
   showProfileTo: varchar("show_profile_to", { length: 20 }).default("everyone").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -258,7 +312,9 @@ export const userPrivacySettings = pgTable("user_privacy_settings", {
 
 // Online presence
 export const userPresence = pgTable("user_presence", {
-  userId: varchar("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
   isOnline: boolean("is_online").default(false).notNull(),
   lastSeenAt: timestamp("last_seen_at").defaultNow(),
 });
@@ -267,7 +323,9 @@ export const userPresence = pgTable("user_presence", {
 export const chatRooms = pgTable(
   "chat_rooms",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     slug: varchar("slug", { length: 100 }).notNull().unique(),
     title: varchar("title", { length: 120 }).notNull(),
     description: text("description"),
@@ -292,9 +350,15 @@ export const chatRooms = pgTable(
 export const chatRoomMembers = pgTable(
   "chat_room_members",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    roomId: uuid("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
-    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => chatRooms.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     role: varchar("role", { length: 20 }).default("member").notNull(), // owner | admin | member
     status: varchar("status", { length: 20 }).default("active").notNull(), // active | banned
     joinedAt: timestamp("joined_at").defaultNow(),
@@ -323,10 +387,16 @@ export const chatRoomReadCursors = pgTable(
 );
 
 export const chatRoomInvites = pgTable("chat_room_invites", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  roomId: uuid("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  roomId: uuid("room_id")
+    .notNull()
+    .references(() => chatRooms.id, { onDelete: "cascade" }),
   token: varchar("token", { length: 64 }).notNull().unique(),
-  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdBy: varchar("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at"),
   maxUses: integer("max_uses"),
   useCount: integer("use_count").default(0),
@@ -334,10 +404,18 @@ export const chatRoomInvites = pgTable("chat_room_invites", {
 });
 
 export const chatPinnedMessages = pgTable("chat_pinned_messages", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  roomId: uuid("room_id").notNull().references(() => chatRooms.id, { onDelete: "cascade" }),
-  messageId: uuid("message_id").notNull().references(() => chatMessages.id, { onDelete: "cascade" }),
-  pinnedBy: varchar("pinned_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  roomId: uuid("room_id")
+    .notNull()
+    .references(() => chatRooms.id, { onDelete: "cascade" }),
+  messageId: uuid("message_id")
+    .notNull()
+    .references(() => chatMessages.id, { onDelete: "cascade" }),
+  pinnedBy: varchar("pinned_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   pinnedAt: timestamp("pinned_at").defaultNow(),
 });
 
@@ -345,8 +423,12 @@ export const chatPinnedMessages = pgTable("chat_pinned_messages", {
 export const notifications = pgTable(
   "notifications",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     type: varchar("type", { length: 40 }).notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     body: text("body").notNull(),
@@ -366,8 +448,12 @@ export const notifications = pgTable(
 export const pushSubscriptions = pgTable(
   "push_subscriptions",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     endpoint: text("endpoint").notNull().unique(),
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
@@ -378,8 +464,12 @@ export const pushSubscriptions = pgTable(
 
 // Admin broadcast announcements (modal for all users)
 export const adminBroadcasts = pgTable("admin_broadcasts", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  createdBy: varchar("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   expiresAt: timestamp("expires_at"),
@@ -389,11 +479,15 @@ export const adminBroadcasts = pgTable("admin_broadcasts", {
 export const adminBroadcastDismissals = pgTable(
   "admin_broadcast_dismissals",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     broadcastId: uuid("broadcast_id")
       .notNull()
       .references(() => adminBroadcasts.id, { onDelete: "cascade" }),
-    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     action: varchar("action", { length: 20 }).notNull(),
     dismissedAt: timestamp("dismissed_at").defaultNow(),
   },
@@ -402,17 +496,29 @@ export const adminBroadcastDismissals = pgTable(
 
 // User follows table
 export const userFollows = pgTable("user_follows", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  followerId: varchar("follower_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  followingId: varchar("following_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  followerId: varchar("follower_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  followingId: varchar("following_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Private messages table
 export const privateMessages = pgTable("private_messages", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  receiverId: varchar("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  senderId: varchar("sender_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  receiverId: varchar("receiver_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   isRead: boolean("is_read").default(false),
   deliveredAt: timestamp("delivered_at"),
@@ -454,8 +560,12 @@ export const privateMessageReactions = pgTable(
 
 // Travel posts — format: post | story | reel | journal
 export const travelPosts = pgTable("travel_posts", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   format: varchar("format", { length: 16 }).notNull().default("post"),
   tripId: uuid("trip_id").references(() => trips.id, { onDelete: "set null" }),
   title: varchar("title", { length: 255 }).notNull(),
@@ -473,17 +583,29 @@ export const travelPosts = pgTable("travel_posts", {
 
 // Post likes table
 export const postLikes = pgTable("post_likes", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  postId: uuid("post_id").notNull().references(() => travelPosts.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  postId: uuid("post_id")
+    .notNull()
+    .references(() => travelPosts.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Post comments table
 export const postComments = pgTable("post_comments", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  postId: uuid("post_id").notNull().references(() => travelPosts.id, { onDelete: "cascade" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  postId: uuid("post_id")
+    .notNull()
+    .references(() => travelPosts.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -491,8 +613,13 @@ export const postComments = pgTable("post_comments", {
 
 // User profile extensions
 export const userProfiles = pgTable("user_profiles", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
   bio: text("bio"),
   location: varchar("location", { length: 255 }),
   website: varchar("website"),
@@ -509,8 +636,12 @@ export const userProfiles = pgTable("user_profiles", {
 export const userTracks = pgTable(
   "user_tracks",
   {
-    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 200 }).notNull(),
     fileUrl: varchar("file_url", { length: 500 }).notNull(),
     mimeType: varchar("mime_type", { length: 50 }),
@@ -603,18 +734,42 @@ export const userFavoritesRelations = relations(userFavorites, ({ one }) => ({
 }));
 
 export const friendshipsRelations = relations(friendships, ({ one }) => ({
-  requester: one(users, { fields: [friendships.requesterId], references: [users.id], relationName: "requester" }),
-  addressee: one(users, { fields: [friendships.addresseeId], references: [users.id], relationName: "addressee" }),
+  requester: one(users, {
+    fields: [friendships.requesterId],
+    references: [users.id],
+    relationName: "requester",
+  }),
+  addressee: one(users, {
+    fields: [friendships.addresseeId],
+    references: [users.id],
+    relationName: "addressee",
+  }),
 }));
 
 export const userFollowsRelations = relations(userFollows, ({ one }) => ({
-  follower: one(users, { fields: [userFollows.followerId], references: [users.id], relationName: "follower" }),
-  following: one(users, { fields: [userFollows.followingId], references: [users.id], relationName: "following" }),
+  follower: one(users, {
+    fields: [userFollows.followerId],
+    references: [users.id],
+    relationName: "follower",
+  }),
+  following: one(users, {
+    fields: [userFollows.followingId],
+    references: [users.id],
+    relationName: "following",
+  }),
 }));
 
 export const privateMessagesRelations = relations(privateMessages, ({ one }) => ({
-  sender: one(users, { fields: [privateMessages.senderId], references: [users.id], relationName: "sender" }),
-  receiver: one(users, { fields: [privateMessages.receiverId], references: [users.id], relationName: "receiver" }),
+  sender: one(users, {
+    fields: [privateMessages.senderId],
+    references: [users.id],
+    relationName: "sender",
+  }),
+  receiver: one(users, {
+    fields: [privateMessages.receiverId],
+    references: [users.id],
+    relationName: "receiver",
+  }),
 }));
 
 export const travelPostsRelations = relations(travelPosts, ({ one, many }) => ({
@@ -851,7 +1006,7 @@ export interface FavoriteStatus {
 }
 
 export interface TravelPostWithAuthor extends TravelPost {
-  author: Pick<User, 'id' | 'firstName' | 'lastName' | 'profileImageUrl'> | null;
+  author: Pick<User, "id" | "firstName" | "lastName" | "profileImageUrl"> | null;
   likesCount: number;
   commentsCount: number;
   isLiked: boolean;

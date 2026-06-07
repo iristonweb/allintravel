@@ -25,7 +25,9 @@ function mergeUnique(target: GeoAutocompleteItem[], incoming: GeoAutocompleteIte
   }
 }
 
-function dbItemToGeo(item: Awaited<ReturnType<typeof dbGeoAutocomplete>>[number]): GeoAutocompleteItem {
+function dbItemToGeo(
+  item: Awaited<ReturnType<typeof dbGeoAutocomplete>>[number],
+): GeoAutocompleteItem {
   if (item.kind === "country") {
     return {
       kind: "country",
@@ -100,11 +102,7 @@ export async function resolveGeoAutocomplete(params: {
   if (process.env.DATABASE_URL && remaining() > 0) {
     try {
       const dbScope =
-        scope === "country"
-          ? "country"
-          : scope === "city" || scope === "full"
-            ? "city"
-            : "all";
+        scope === "country" ? "country" : scope === "city" || scope === "full" ? "city" : "all";
       const dbItems = await dbGeoAutocomplete({ q, limit: remaining(), scope: dbScope });
       mergeUnique(results, dbItems.map(dbItemToGeo), limit);
     } catch (e) {

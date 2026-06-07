@@ -84,7 +84,9 @@ export default function MobileBottomNav() {
                 )}
               >
                 <Icon className={cn("h-5 w-5", active && "text-[#8b5cf6]")} />
-                <span className="text-[9px] font-medium truncate max-w-full px-0.5">{item.label}</span>
+                <span className="text-[9px] font-medium truncate max-w-full px-0.5">
+                  {item.label}
+                </span>
               </span>
             </Link>
           );

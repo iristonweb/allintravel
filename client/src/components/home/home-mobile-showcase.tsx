@@ -61,8 +61,7 @@ export default function HomeMobileShowcase() {
 
           <div className="flex-1 text-center lg:text-left max-w-lg">
             <h2 className="ait-section-title">
-              Приложения для{" "}
-              <span className="ait-gradient-text">iOS, Android и Windows</span>
+              Приложения для <span className="ait-gradient-text">iOS, Android и Windows</span>
             </h2>
             <p className="text-muted-foreground mt-4 leading-relaxed">
               Те же интерактивная карта, планировщик маршрутов и чаты путешествий — в нативном

@@ -44,7 +44,9 @@ export default function CreatorFundCard() {
               </div>
               <div className="ait-glass rounded-xl p-3">
                 <p className="text-xs text-muted-foreground">Оценка доли</p>
-                <p className="text-xl font-bold text-ait-cyan tabular-nums">~{data.estimatedShare} AIT</p>
+                <p className="text-xl font-bold text-ait-cyan tabular-nums">
+                  ~{data.estimatedShare} AIT
+                </p>
               </div>
             </div>
           ) : (
@@ -55,7 +57,9 @@ export default function CreatorFundCard() {
           {data.lastMonth.yourPayout > 0 && (
             <p className="text-xs text-muted-foreground pt-1">
               Выплата за {data.lastMonth.monthKey}:{" "}
-              <span className="text-emerald-400 font-semibold">+{data.lastMonth.yourPayout} AIT</span>
+              <span className="text-emerald-400 font-semibold">
+                +{data.lastMonth.yourPayout} AIT
+              </span>
             </p>
           )}
           <p className="text-[10px] text-muted-foreground">

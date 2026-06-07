@@ -17,7 +17,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Download, Route, Calendar, Users, BookOpen, GripVertical, Film, MapPin, Share2, Car, Footprints, Bus } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Download,
+  Route,
+  Calendar,
+  Users,
+  BookOpen,
+  GripVertical,
+  Film,
+  MapPin,
+  Share2,
+  Car,
+  Footprints,
+  Bus,
+} from "lucide-react";
 import TripCinema from "@/components/trips/TripCinema";
 import { apiRequest, apiRequestJson, toApiUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -69,7 +84,13 @@ export default function TripPlannerLayout({
   const totalDays = tripCalendarDayCount(trip);
 
   useEffect(() => {
-    setBudgetMax(trip.budgetMax != null ? String(trip.budgetMax) : trip.budgetMin != null ? String(trip.budgetMin) : "");
+    setBudgetMax(
+      trip.budgetMax != null
+        ? String(trip.budgetMax)
+        : trip.budgetMin != null
+          ? String(trip.budgetMin)
+          : "",
+    );
     setNotes(trip.plannerNotes ?? "");
   }, [trip.id, trip.budgetMax, trip.budgetMin, trip.plannerNotes]);
 
@@ -92,19 +113,13 @@ export default function TripPlannerLayout({
       }));
   }, [waypoints, waypointsByDay, selectedDay]);
 
-  const allRoutePlacesCount = useMemo(
-    () => waypoints.filter((w) => w.place).length,
-    [waypoints],
-  );
+  const allRoutePlacesCount = useMemo(() => waypoints.filter((w) => w.place).length, [waypoints]);
 
   const routeScopeHasDay = (waypointsByDay.get(selectedDay) ?? []).some((w) => w.place);
   const yandexRouteDayKey = routeScopeHasDay ? selectedDay : "all";
 
   const routeCoords = useMemo(
-    () =>
-      routePlaces.map(
-        (p) => [Number(p.latitude), Number(p.longitude)] as [number, number],
-      ),
+    () => routePlaces.map((p) => [Number(p.latitude), Number(p.longitude)] as [number, number]),
     [routePlaces],
   );
 
@@ -381,11 +396,13 @@ export default function TripPlannerLayout({
             variant="outline"
             className="gap-2 rounded-2xl"
             onClick={() => {
-              void apiRequestJson("POST", `/api/trips/${tripId}/checkin`).then((r) => {
-                if ((r as { alreadyCheckedIn?: boolean }).alreadyCheckedIn) {
-                  toast({ title: "Check-in уже был сегодня" });
-                }
-              }).catch((e: Error) => toast({ title: e.message, variant: "destructive" }));
+              void apiRequestJson("POST", `/api/trips/${tripId}/checkin`)
+                .then((r) => {
+                  if ((r as { alreadyCheckedIn?: boolean }).alreadyCheckedIn) {
+                    toast({ title: "Check-in уже был сегодня" });
+                  }
+                })
+                .catch((e: Error) => toast({ title: e.message, variant: "destructive" }));
             }}
           >
             <MapPin className="h-4 w-4" />
@@ -520,12 +537,18 @@ export default function TripPlannerLayout({
                         onDrop={() => handleDropOnDay(day)}
                         className={cn(
                           "rounded-xl border border-dashed p-2 min-h-[48px]",
-                          selectedDay === day ? "border-ait-purple/40 bg-ait-purple/5" : "border-white/10",
+                          selectedDay === day
+                            ? "border-ait-purple/40 bg-ait-purple/5"
+                            : "border-white/10",
                         )}
                       >
-                        <div className="text-xs font-medium text-ait-orange mb-2">{dayLabel(trip, day)}</div>
+                        <div className="text-xs font-medium text-ait-orange mb-2">
+                          {dayLabel(trip, day)}
+                        </div>
                         {dayStops.length === 0 ? (
-                          <p className="text-xs text-muted-foreground px-1">Перетащите остановку сюда</p>
+                          <p className="text-xs text-muted-foreground px-1">
+                            Перетащите остановку сюда
+                          </p>
                         ) : (
                           <ul className="space-y-2">
                             {dayStops.map((w) => (
@@ -548,7 +571,9 @@ export default function TripPlannerLayout({
                                 <div className="flex-1 min-w-0">
                                   {w.place ? (
                                     <Link href={`/place/${w.place.id}`}>
-                                      <span className="font-medium text-sm hover:underline">{w.place.name}</span>
+                                      <span className="font-medium text-sm hover:underline">
+                                        {w.place.name}
+                                      </span>
                                     </Link>
                                   ) : (
                                     <span className="text-sm text-muted-foreground">—</span>
@@ -558,6 +583,7 @@ export default function TripPlannerLayout({
                                   variant="ghost"
                                   size="icon"
                                   className="shrink-0"
+                                  aria-label="Удалить точку маршрута"
                                   onClick={() => removeWaypointMutation.mutate(w.id)}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -621,7 +647,11 @@ export default function TripPlannerLayout({
               onBlur={persistPlannerFields}
               className="mt-2"
             />
-            <Button variant="premium" onClick={persistPlannerFields} disabled={saveTripMutation.isPending}>
+            <Button
+              variant="premium"
+              onClick={persistPlannerFields}
+              disabled={saveTripMutation.isPending}
+            >
               Сохранить
             </Button>
           </GlassCard>
@@ -636,7 +666,11 @@ export default function TripPlannerLayout({
               onBlur={persistPlannerFields}
               rows={8}
             />
-            <Button variant="premium" onClick={persistPlannerFields} disabled={saveTripMutation.isPending}>
+            <Button
+              variant="premium"
+              onClick={persistPlannerFields}
+              disabled={saveTripMutation.isPending}
+            >
               Сохранить заметки
             </Button>
           </GlassCard>
@@ -649,8 +683,9 @@ export default function TripPlannerLayout({
               <h3 className="font-semibold">Чат группы</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              При создании поездки автоматически открывается приватный чат группы. Участников можно было
-              пригласить через @ник; новые попутчики из каталога тоже попадают в чат при присоединении.
+              При создании поездки автоматически открывается приватный чат группы. Участников можно
+              было пригласить через @ник; новые попутчики из каталога тоже попадают в чат при
+              присоединении.
             </p>
             <Link href={chatHref}>
               <Button variant="premium">Открыть чат поездки</Button>
@@ -665,18 +700,25 @@ export default function TripPlannerLayout({
               Поездки с пересечением остановок (в радиусе ~35 км) — потенциальные попутчики.
             </p>
             {(routeMatchesData?.matches ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Добавьте минимум 2 остановки для поиска совпадений.</p>
+              <p className="text-sm text-muted-foreground">
+                Добавьте минимум 2 остановки для поиска совпадений.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {routeMatchesData!.matches.map((m) => (
-                  <li key={m.tripId} className="flex items-center justify-between p-3 rounded-xl border border-white/10">
+                  <li
+                    key={m.tripId}
+                    className="flex items-center justify-between p-3 rounded-xl border border-white/10"
+                  >
                     <div>
                       <Link href={`/trips/${m.tripId}`} className="font-medium hover:underline">
                         {m.title}
                       </Link>
                       <p className="text-xs text-muted-foreground">{m.destination}</p>
                     </div>
-                    <span className="text-sm font-semibold text-ait-purple">{m.overlapPercent}%</span>
+                    <span className="text-sm font-semibold text-ait-purple">
+                      {m.overlapPercent}%
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -707,7 +749,9 @@ export default function TripPlannerLayout({
           </span>
           <span>
             <strong>{km || "—"}</strong> км
-            {yandexRoute ? ` (${ROUTE_MODES.find((m) => m.id === routeMode)?.label ?? "маршрут"})` : ""}
+            {yandexRoute
+              ? ` (${ROUTE_MODES.find((m) => m.id === routeMode)?.label ?? "маршрут"})`
+              : ""}
           </span>
           {yandexRoute?.durationMin != null && (
             <span>
@@ -718,7 +762,10 @@ export default function TripPlannerLayout({
             <strong>${budgetMax || "—"}</strong> бюджет
           </span>
         </div>
-        <GradientButton onClick={handleOptimize} disabled={allRoutePlacesCount < 2 || reorderMutation.isPending}>
+        <GradientButton
+          onClick={handleOptimize}
+          disabled={allRoutePlacesCount < 2 || reorderMutation.isPending}
+        >
           {reorderMutation.isPending ? "Оптимизация…" : "Оптимизировать порядок"}
         </GradientButton>
       </div>

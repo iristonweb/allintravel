@@ -1,22 +1,7 @@
 /** Shared navigation config — single source of truth for app shell nav */
 
 import type { LucideIcon } from "lucide-react";
-import {
-  BookOpen,
-  Calendar,
-  Hash,
-  Home,
-  Map,
-  MapPin,
-  MessageCircle,
-  Music,
-  Settings,
-  Sparkles,
-  User,
-  PenLine,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { Settings, User, PenLine } from "lucide-react";
 
 export type NavItem = { href: string; label: string; badge?: string };
 
@@ -54,9 +39,7 @@ export const sidebarDiscoverNav: NavItem[] = [
 ];
 
 /** Sidebar: AIT */
-export const sidebarExtraNav: NavItem[] = [
-  { href: "/wallet", label: "AIT Hub", badge: "AIT" },
-];
+export const sidebarExtraNav: NavItem[] = [{ href: "/wallet", label: "AIT Hub", badge: "AIT" }];
 
 /** Sidebar: аккаунт (без дублирования ссылок из ленты) */
 export const sidebarAccountNav: SidebarNavItem[] = [

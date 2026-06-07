@@ -33,7 +33,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Search, MapPin, Trash2 } from "lucide-react";
+import { Plus, Search, MapPin, Trash2, AlertCircle } from "lucide-react";
 import {
   addTripStopsFromDrafts,
   geoItemHasCoords,
@@ -46,7 +46,7 @@ import StatPill from "@/components/brand/stat-pill";
 import FilterChipRow from "@/components/filters/FilterChipRow";
 import { TRIP_AVAILABILITY_FILTERS } from "@/lib/filter-config";
 import { cn } from "@/lib/utils";
-import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTripSchema, type Trip, type User } from "@shared/schema";
 import TripInvitePicker from "@/components/trips/TripInvitePicker";
@@ -60,13 +60,12 @@ function destinationKeywords(destination: string): string[] {
 function tripMatchesSearch(trip: Trip, query: string): boolean {
   const q = query.toLowerCase();
   if (trip.title.toLowerCase().includes(q)) return true;
-  return destinationKeywords(trip.destination).some((kw) =>
-    kw.includes(q) || q.includes(kw),
-  );
+  return destinationKeywords(trip.destination).some((kw) => kw.includes(q) || q.includes(kw));
 }
 
 const optionalBudgetField = z.preprocess(
-  (v) => (v === "" || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+  (v) =>
+    v === "" || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v),
   z.number().int().min(0).optional(),
 );
 
@@ -119,7 +118,13 @@ export function Trips() {
     setSearch(new URLSearchParams(searchString).get("search") ?? "");
   }, [searchString]);
 
-  const { data: trips = [], isLoading } = useQuery<Trip[]>({
+  const {
+    data: trips = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<Trip[]>({
     queryKey: ["/api/trips", { limit: 20 }],
   });
 
@@ -129,9 +134,7 @@ export function Trips() {
   });
 
   const primaryTripId =
-    trips.find((t) => t.userId === user?.id)?.id ??
-    participations.tripIds[0] ??
-    trips[0]?.id;
+    trips.find((t) => t.userId === user?.id)?.id ?? participations.tripIds[0] ?? trips[0]?.id;
 
   const form = useForm<CreateTripForm>({
     resolver: zodResolver(createTripSchema),
@@ -180,7 +183,8 @@ export function Trips() {
         } catch {
           toast({
             title: "Поездка создана",
-            description: "Не все остановки маршрута удалось сохранить. Добавьте их на странице поездки.",
+            description:
+              "Не все остановки маршрута удалось сохранить. Добавьте их на странице поездки.",
             variant: "destructive",
           });
         }
@@ -221,8 +225,7 @@ export function Trips() {
       });
       return;
     }
-    let item =
-      selectedRouteGeo && geoItemHasCoords(selectedRouteGeo) ? selectedRouteGeo : null;
+    let item = selectedRouteGeo && geoItemHasCoords(selectedRouteGeo) ? selectedRouteGeo : null;
     if (!item && selectedRouteGeo?.label) {
       item = await resolveGeoFromQuery(selectedRouteGeo.label, { scope: "full" });
     }
@@ -255,7 +258,10 @@ export function Trips() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
-      toast({ title: "Вы присоединились!", description: "Вы добавлены в список участников поездки." });
+      toast({
+        title: "Вы присоединились!",
+        description: "Вы добавлены в список участников поездки.",
+      });
     },
     onError: (err: Error) => {
       toast({
@@ -282,7 +288,10 @@ export function Trips() {
 
   const openCreateDialog = () => {
     if (!isAuthenticated) {
-      toast({ title: "Войдите в аккаунт", description: "Чтобы создать поездку, нужна авторизация." });
+      toast({
+        title: "Войдите в аккаунт",
+        description: "Чтобы создать поездку, нужна авторизация.",
+      });
       setLocation("/login");
       return;
     }
@@ -309,8 +318,8 @@ export function Trips() {
           <DialogHeader>
             <DialogTitle>Новая поездка</DialogTitle>
             <DialogDescription>
-              Создаётся поездка, приватный чат группы и приглашения по @нику. Остальные попутчики смогут
-              присоединиться из каталога.
+              Создаётся поездка, приватный чат группы и приглашения по @нику. Остальные попутчики
+              смогут присоединиться из каталога.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -508,6 +517,7 @@ export function Trips() {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 shrink-0"
+                          aria-label="Удалить точку маршрута"
                           onClick={() =>
                             setRouteDrafts((prev) => prev.filter((_, i) => i !== index))
                           }
@@ -546,19 +556,19 @@ export function Trips() {
         </DialogContent>
       </Dialog>
 
-    <AppLayout>
-      <PageHeader
-        title="Поездки"
-        description="Поездка = маршрут + чат группы. Приглашайте друзей через @ при создании."
-        rightSlot={
-          <Button variant="premium" type="button" onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Создать поездку
-          </Button>
-        }
-      />
+      <AppLayout>
+        <PageHeader
+          title="Поездки"
+          description="Поездка = маршрут + чат группы. Приглашайте друзей через @ при создании."
+          rightSlot={
+            <Button variant="premium" type="button" onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
+              Создать поездку
+            </Button>
+          }
+        />
 
-      <div className="mb-6 mt-8 max-w-xl">
+        <div className="mb-6 mt-8 max-w-xl">
           <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -586,11 +596,7 @@ export function Trips() {
 
         <div className="flex flex-wrap gap-3 mb-6">
           <StatPill
-            value={
-              q
-                ? `${filtered.length} из ${trips.length}`
-                : String(trips.length)
-            }
+            value={q ? `${filtered.length} из ${trips.length}` : String(trips.length)}
             label={q ? "найдено по запросу" : "поездок доступно"}
           />
           {q && (
@@ -613,6 +619,17 @@ export function Trips() {
               <Card key={i} className="h-64 animate-pulse bg-muted" />
             ))}
           </div>
+        ) : isError ? (
+          <EmptyState
+            icon={AlertCircle}
+            title="Не удалось загрузить поездки"
+            description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
+            action={
+              <Button variant="outline" onClick={() => refetch()}>
+                Повторить
+              </Button>
+            }
+          />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={MapPin}
@@ -634,14 +651,8 @@ export function Trips() {
             {primaryTripId && <TripRouteMatches tripId={primaryTripId} />}
             {q && (
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm text-muted-foreground">
-                  Найдено: {filtered.length}
-                </span>
-                <Badge
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => setSearch("")}
-                >
+                <span className="text-sm text-muted-foreground">Найдено: {filtered.length}</span>
+                <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearch("")}>
                   {q} ✕
                 </Badge>
               </div>
@@ -658,7 +669,7 @@ export function Trips() {
             </div>
           </>
         )}
-    </AppLayout>
+      </AppLayout>
     </>
   );
 }

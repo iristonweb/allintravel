@@ -11,10 +11,7 @@ export default function CreatorSpotlight() {
 
   const next = CREATOR_RANKS.find((r) => r.minLifetimeCreator > data.lifetimeCreatorEarned);
   const progress = next
-    ? Math.min(
-        100,
-        Math.round((data.lifetimeCreatorEarned / next.minLifetimeCreator) * 100),
-      )
+    ? Math.min(100, Math.round((data.lifetimeCreatorEarned / next.minLifetimeCreator) * 100))
     : 100;
 
   return (
@@ -30,10 +27,7 @@ export default function CreatorSpotlight() {
             </p>
           </div>
         </div>
-        <Link
-          href="/wallet"
-          className="text-xs font-semibold text-ait-orange hover:underline"
-        >
+        <Link href="/wallet" className="text-xs font-semibold text-ait-orange hover:underline">
           AIT Hub →
         </Link>
       </div>

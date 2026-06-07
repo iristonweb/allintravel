@@ -17,7 +17,11 @@ export default function CreatorAvatar({
 }: CreatorAvatarProps) {
   return (
     <div className={cn("relative shrink-0", className)}>
-      <Avatar className={cn(creatorBadge && "ring-2 ring-ait-orange ring-offset-2 ring-offset-background")}>
+      <Avatar
+        className={cn(
+          creatorBadge && "ring-2 ring-ait-orange ring-offset-2 ring-offset-background",
+        )}
+      >
         <AvatarImage src={resolveMediaUrl(src)} />
         <AvatarFallback>{fallback}</AvatarFallback>
       </Avatar>

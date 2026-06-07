@@ -153,7 +153,10 @@ export async function persistUploadedFile(file: Express.Multer.File): Promise<st
 }
 
 /** User profile avatar — stored under avatars/{userId}/ in Blob or local uploads/. */
-export async function persistUserAvatar(userId: string, file: Express.Multer.File): Promise<string> {
+export async function persistUserAvatar(
+  userId: string,
+  file: Express.Multer.File,
+): Promise<string> {
   const buffer = fileBuffer(file);
   const mime = file.mimetype || "application/octet-stream";
   const ext = guessExtension(mime, file.originalname);

@@ -95,9 +95,7 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
 
   const totalKm = builtRoute?.distanceKm ?? totalRouteKm(routeCoords);
 
-  const mapFocus = currentStop
-    ? { lat: currentStop.lat, lon: currentStop.lon, zoom: 12 }
-    : null;
+  const mapFocus = currentStop ? { lat: currentStop.lat, lon: currentStop.lon, zoom: 12 } : null;
 
   const advance = useCallback(() => {
     if (phase === "intro") {
@@ -183,7 +181,9 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
               exit={{ opacity: 0, y: -12 }}
               className="space-y-3"
             >
-              <p className="text-xs uppercase tracking-[0.3em] text-ait-orange font-bold">Trip Cinema</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-ait-orange font-bold">
+                Trip Cinema
+              </p>
               <h2 className="text-3xl sm:text-4xl font-bold">{trip.title}</h2>
               <p className="text-lg text-muted-foreground">{trip.destination}</p>
               <p className="text-sm text-white/60">
@@ -223,7 +223,9 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
                 {flatStops.length} остановок · ~{Math.round(totalKm)} км · {trip.destination}
               </p>
               {watched && (
-                <p className="text-sm text-ait-orange">+ AIT за первый просмотр (если ещё не получали)</p>
+                <p className="text-sm text-ait-orange">
+                  + AIT за первый просмотр (если ещё не получали)
+                </p>
               )}
             </motion.div>
           )}
@@ -235,6 +237,7 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
             size="icon"
             className="rounded-full border-white/20"
             onClick={() => setPlaying((p) => !p)}
+            aria-label={playing ? "Пауза" : "Воспроизведение"}
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
@@ -247,7 +250,9 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
             />
           </div>
           <span className="text-xs text-muted-foreground tabular-nums">
-            {phase === "intro" ? "…" : `${Math.min(stepIndex + 1, flatStops.length)}/${flatStops.length}`}
+            {phase === "intro"
+              ? "…"
+              : `${Math.min(stepIndex + 1, flatStops.length)}/${flatStops.length}`}
           </span>
         </div>
       </div>

@@ -8,7 +8,11 @@ import { saveSearchIntent } from "@/lib/searchIntent";
 
 type SearchKind = "all" | "hotel" | "restaurant" | "attraction";
 
-const SEARCH_KINDS: Array<{ value: SearchKind; label: string; icon: ComponentType<{ className?: string }> }> = [
+const SEARCH_KINDS: Array<{
+  value: SearchKind;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}> = [
   { value: "all", label: "Все", icon: MapPin },
   { value: "hotel", label: "Отели", icon: Building2 },
   { value: "restaurant", label: "Еда", icon: UtensilsCrossed },

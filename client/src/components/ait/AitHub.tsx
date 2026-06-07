@@ -26,15 +26,19 @@ export default function AitHub() {
   }
 
   const buy = (sku: string, postId?: string) => {
-    spendMutation.mutate({ sku, postId }, {
-      onSuccess: () => toast({ title: "Куплено! Перк активирован" }),
-      onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
-    });
+    spendMutation.mutate(
+      { sku, postId },
+      {
+        onSuccess: () => toast({ title: "Куплено! Перк активирован" }),
+        onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+      },
+    );
   };
 
   const claim = (questId: string) => {
     claimMutation.mutate(questId, {
-      onError: (e: Error) => toast({ title: e.message.replace(/^\d+:\s*/, ""), variant: "destructive" }),
+      onError: (e: Error) =>
+        toast({ title: e.message.replace(/^\d+:\s*/, ""), variant: "destructive" }),
     });
   };
 
@@ -47,9 +51,13 @@ export default function AitHub() {
           <div>
             <div className="flex items-center gap-2 text-ait-orange mb-1">
               <Sparkles className="h-5 w-5" />
-              <span className="text-xs font-bold uppercase tracking-widest">Валюта приключений</span>
+              <span className="text-xs font-bold uppercase tracking-widest">
+                Валюта приключений
+              </span>
             </div>
-            <p className="text-4xl font-bold tabular-nums">{data.spendBalance.toLocaleString("ru-RU")}</p>
+            <p className="text-4xl font-bold tabular-nums">
+              {data.spendBalance.toLocaleString("ru-RU")}
+            </p>
             <p className="text-sm text-muted-foreground mt-1">Spend AIT · для магазина и чаевых</p>
           </div>
           <div className="text-right">
@@ -140,7 +148,11 @@ export default function AitHub() {
                     spendMutation.isPending
                   }
                   onClick={() => buy(item.sku)}
-                  title={item.sku === "boost_post_24h" ? "Купите из ленты — кнопка Boost на посте" : undefined}
+                  title={
+                    item.sku === "boost_post_24h"
+                      ? "Купите из ленты — кнопка Boost на посте"
+                      : undefined
+                  }
                 >
                   {item.sku === "boost_post_24h"
                     ? "В ленте"
@@ -163,12 +175,14 @@ export default function AitHub() {
         </h2>
         <GlassCard className="p-5 text-sm text-muted-foreground space-y-2">
           <p>
-            Публикуйте посты, stories и журналы — получайте <strong className="text-foreground">Creator AIT</strong> за
-            лайки, комментарии и чаевые под постами.
+            Публикуйте посты, stories и журналы — получайте{" "}
+            <strong className="text-foreground">Creator AIT</strong> за лайки, комментарии и чаевые
+            под постами.
           </p>
           <p>
             Зрители отправляют чаевые из ленты · 90% идёт автору. Ранг растёт с{" "}
-            <strong className="text-foreground">{data.lifetimeCreatorEarned}</strong> lifetime Creator AIT.
+            <strong className="text-foreground">{data.lifetimeCreatorEarned}</strong> lifetime
+            Creator AIT.
           </p>
         </GlassCard>
       </section>
@@ -195,7 +209,9 @@ export default function AitHub() {
                 </div>
                 <span
                   className={
-                    tx.delta > 0 ? "text-emerald-400 font-semibold tabular-nums" : "text-red-400 font-semibold tabular-nums"
+                    tx.delta > 0
+                      ? "text-emerald-400 font-semibold tabular-nums"
+                      : "text-red-400 font-semibold tabular-nums"
                   }
                 >
                   {tx.delta > 0 ? "+" : ""}

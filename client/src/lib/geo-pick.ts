@@ -33,10 +33,7 @@ function labelMatchScore(q: string, label: string): number {
   return 0;
 }
 
-export function sortGeoSuggestions(
-  q: string,
-  items: GeoAutocompleteItem[],
-): GeoAutocompleteItem[] {
+export function sortGeoSuggestions(q: string, items: GeoAutocompleteItem[]): GeoAutocompleteItem[] {
   const preferAddress = looksLikeAddressQuery(q);
   return [...items].sort((a, b) => {
     if (preferAddress) {
@@ -58,9 +55,7 @@ export function pickBestGeoSuggestion(
   });
   if (withCoords.length === 0) return null;
   const sorted = sortGeoSuggestions(q, withCoords);
-  const exact = sorted.find(
-    (item) => item.label.trim().toLowerCase() === q.trim().toLowerCase(),
-  );
+  const exact = sorted.find((item) => item.label.trim().toLowerCase() === q.trim().toLowerCase());
   if (exact) return exact;
   if (looksLikeAddressQuery(q)) {
     const addressLike = sorted.find((item) => item.kind === "address" || item.kind === "poi");

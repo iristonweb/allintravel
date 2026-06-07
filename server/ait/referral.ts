@@ -246,7 +246,9 @@ async function listInvitees(referrerId: string): Promise<ReferralInvitee[]> {
     invitees.push({
       userId: r.referred_id,
       displayName: user
-        ? [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Путешественник"
+        ? [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+          user.email ||
+          "Путешественник"
         : "Путешественник",
       username: user?.username ?? null,
       profileImageUrl: user?.profileImageUrl ?? null,
@@ -278,7 +280,8 @@ export async function getReferralInfo(userId: string): Promise<ReferralInfo> {
       FROM ait_referrals
       WHERE referrer_id = ${userId}
     `);
-    const row = (res as unknown as { rows?: { invited: number; rewarded_count: number }[] }).rows?.[0];
+    const row = (res as unknown as { rows?: { invited: number; rewarded_count: number }[] })
+      .rows?.[0];
     invited = Number(row?.invited ?? 0);
     rewardedCount = Number(row?.rewarded_count ?? 0);
   }

@@ -25,8 +25,14 @@ export default function HomeSimilar() {
     const list = (excludeId ? places.filter((p) => p.id !== excludeId) : places).slice();
 
     list.sort((a, b) => {
-      const ar = typeof a.averageRating === "string" ? Number.parseFloat(a.averageRating) || 0 : a.averageRating || 0;
-      const br = typeof b.averageRating === "string" ? Number.parseFloat(b.averageRating) || 0 : b.averageRating || 0;
+      const ar =
+        typeof a.averageRating === "string"
+          ? Number.parseFloat(a.averageRating) || 0
+          : a.averageRating || 0;
+      const br =
+        typeof b.averageRating === "string"
+          ? Number.parseFloat(b.averageRating) || 0
+          : b.averageRating || 0;
       const ac = a.reviewCount || 0;
       const bc = b.reviewCount || 0;
       if (br !== ar) return br - ar;
@@ -77,4 +83,3 @@ export default function HomeSimilar() {
     </section>
   );
 }
-

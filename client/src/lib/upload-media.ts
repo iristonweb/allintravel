@@ -67,7 +67,9 @@ export type CreateChatRoomPayload = {
   avatarFile?: File | null;
 };
 
-export async function createChatRoom(payload: CreateChatRoomPayload): Promise<{ room: import("@shared/schema").ChatRoom; avatarWarning?: string }> {
+export async function createChatRoom(
+  payload: CreateChatRoomPayload,
+): Promise<{ room: import("@shared/schema").ChatRoom; avatarWarning?: string }> {
   if (payload.avatarFile) {
     const form = new FormData();
     form.append("title", payload.title);
@@ -90,7 +92,10 @@ export async function createChatRoom(payload: CreateChatRoomPayload): Promise<{ 
       }
       throw new Error(message);
     }
-    const data = JSON.parse(text) as { room?: import("@shared/schema").ChatRoom; avatarWarning?: string } & import("@shared/schema").ChatRoom;
+    const data = JSON.parse(text) as {
+      room?: import("@shared/schema").ChatRoom;
+      avatarWarning?: string;
+    } & import("@shared/schema").ChatRoom;
     const room = data.room ?? data;
     return { room, avatarWarning: data.avatarWarning };
   }

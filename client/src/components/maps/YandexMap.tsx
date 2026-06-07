@@ -4,6 +4,7 @@ import type { MapPlace } from "@/components/PlaceMap";
 import PlaceMap from "@/components/PlaceMap";
 import type { MapFocus } from "@/components/maps/MapboxMap";
 import { cn } from "@/lib/utils";
+import { demoMarkersYandex, demoRoutesYandex } from "@/lib/map-demo-data";
 
 export type YandexPlace = MapPlace;
 
@@ -25,11 +26,7 @@ function resolveInitialView(
   validPlaces: YandexPlace[],
   showDemoMarkers?: boolean,
 ): { center: [number, number]; zoom: number } {
-  if (
-    mapFocus &&
-    Number.isFinite(mapFocus.lat) &&
-    Number.isFinite(mapFocus.lon)
-  ) {
+  if (mapFocus && Number.isFinite(mapFocus.lat) && Number.isFinite(mapFocus.lon)) {
     return {
       center: [mapFocus.lat, mapFocus.lon],
       zoom: mapFocus.zoom ?? 10,
@@ -37,10 +34,7 @@ function resolveInitialView(
   }
   if (validPlaces.length > 0) {
     return {
-      center: [
-        Number(validPlaces[0].latitude),
-        Number(validPlaces[0].longitude),
-      ],
+      center: [Number(validPlaces[0].latitude), Number(validPlaces[0].longitude)],
       zoom: validPlaces.length === 1 ? 10 : 4,
     };
   }
@@ -50,32 +44,10 @@ function resolveInitialView(
   return { center: [30, 10], zoom: 4 };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type YMap = any;
 
-const DEMO_ROUTES: [number, number][][] = [
-  [
-    [64.15, -21.95],
-    [55.68, 12.57],
-    [48.86, 2.35],
-    [35.68, 139.69],
-  ],
-  [
-    [34.05, -118.24],
-    [40.71, -73.98],
-    [51.5, -0.12],
-    [-31.95, 115.86],
-  ],
-];
-
-const DEMO_MARKERS: { lat: number; lon: number; label: string; variant: string }[] = [
-  { lat: 64.15, lon: -21.95, label: "12", variant: "purple" },
-  { lat: 55.68, lon: 12.57, label: "8", variant: "green" },
-  { lat: 48.86, lon: 2.35, label: "24", variant: "orange" },
-  { lat: 35.68, lon: 139.69, label: "16", variant: "purple" },
-  { lat: 40.71, lon: -73.98, label: "5", variant: "orange" },
-  { lat: -31.95, lon: 115.86, label: "9", variant: "green" },
-];
+const DEMO_ROUTES = demoRoutesYandex();
+const DEMO_MARKERS = demoMarkersYandex();
 
 const markerLayouts: Record<string, YMap> = {};
 
@@ -121,11 +93,7 @@ export default function YandexMap({
         if (destroyed || !containerRef.current || !window.ymaps) return;
 
         const ymaps = window.ymaps;
-        const { center, zoom } = resolveInitialView(
-          mapFocus,
-          validPlaces,
-          showDemoMarkers,
-        );
+        const { center, zoom } = resolveInitialView(mapFocus, validPlaces, showDemoMarkers);
 
         const map = new ymaps.Map(
           containerRef.current,
@@ -156,6 +124,8 @@ export default function YandexMap({
       }
       mapRef.current = null;
     };
+    // Map instance is created once per API key; follow-up effects sync markers/focus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional single init
   }, [apiKey]);
 
   useEffect(() => {
@@ -291,16 +261,8 @@ export default function YandexMap({
       }
     }
 
-    if (
-      mapFocus &&
-      Number.isFinite(mapFocus.lat) &&
-      Number.isFinite(mapFocus.lon)
-    ) {
-      map.setCenter(
-        [mapFocus.lat, mapFocus.lon],
-        mapFocus.zoom ?? 10,
-        { duration: 300 },
-      );
+    if (mapFocus && Number.isFinite(mapFocus.lat) && Number.isFinite(mapFocus.lon)) {
+      map.setCenter([mapFocus.lat, mapFocus.lon], mapFocus.zoom ?? 10, { duration: 300 });
     } else if (validPlaces.length > 1 && map.geoObjects.getBounds) {
       const bounds = map.geoObjects.getBounds();
       if (bounds) {
@@ -308,11 +270,7 @@ export default function YandexMap({
       }
     } else if (validPlaces.length === 1) {
       const p = validPlaces[0];
-      map.setCenter(
-        [Number(p.latitude), Number(p.longitude)],
-        10,
-        { duration: 300 },
-      );
+      map.setCenter([Number(p.latitude), Number(p.longitude)], 10, { duration: 300 });
     } else if (showDemoMarkers && validPlaces.length === 0) {
       map.setCenter([30, 10], 2);
     }

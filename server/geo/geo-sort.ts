@@ -62,9 +62,7 @@ export function pickBestGeoMatch(
   });
   if (withCoords.length === 0) return null;
   const sorted = sortGeoAutocompleteResults(q, withCoords);
-  const exact = sorted.find(
-    (item) => item.label.trim().toLowerCase() === q.trim().toLowerCase(),
-  );
+  const exact = sorted.find((item) => item.label.trim().toLowerCase() === q.trim().toLowerCase());
   if (exact) return exact;
   if (looksLikeAddressQuery(q)) {
     const addressLike = sorted.find((item) => item.kind === "address" || item.kind === "poi");

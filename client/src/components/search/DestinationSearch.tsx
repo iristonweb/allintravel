@@ -76,12 +76,16 @@ export default function DestinationSearch({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locations, setLocations] = useState<GeoAutocompleteItem[]>([]);
-  const [places, setPlaces] = useState<Awaited<ReturnType<typeof fetchDestinationSearch>>["places"]>([]);
+  const [places, setPlaces] = useState<
+    Awaited<ReturnType<typeof fetchDestinationSearch>>["places"]
+  >([]);
   const abortRef = useRef<AbortController | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(
-    null,
-  );
+  const [dropdownStyle, setDropdownStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   const q = value.trim();
   const debouncedQ = useDebounced(q, debounceMs);
@@ -153,7 +157,7 @@ export default function DestinationSearch({
   const submitText = () => go({ type: "text", query: q });
 
   const showDropdown =
-    open && (showPopular && !q || loading || error || locations.length > 0 || places.length > 0);
+    open && ((showPopular && !q) || loading || error || locations.length > 0 || places.length > 0);
 
   const locationIcon = (item: GeoAutocompleteItem) =>
     item.kind === "country" ? (
@@ -207,9 +211,7 @@ export default function DestinationSearch({
             </div>
           )}
 
-          {!loading && error && (
-            <div className="px-3 py-3 text-sm text-destructive">{error}</div>
-          )}
+          {!loading && error && <div className="px-3 py-3 text-sm text-destructive">{error}</div>}
 
           {!loading && !error && shouldFetch && locations.length > 0 && (
             <CommandGroup heading="Города и страны">

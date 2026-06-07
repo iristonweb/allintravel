@@ -10,7 +10,7 @@ import MessageComposer from "@/components/chat/MessageComposer";
 import { AvatarWithPresence } from "@/components/PresenceDot";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, ArrowLeft } from "lucide-react";
+import { Send, MessageCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
@@ -55,7 +55,12 @@ export function Messages() {
       ? new URLSearchParams(window.location.search).get("with")
       : null;
 
-  const { data: conversations = [] } = useQuery<Conversation[]>({
+  const {
+    data: conversations = [],
+    isLoading: conversationsLoading,
+    isError: conversationsError,
+    refetch: refetchConversations,
+  } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
     enabled: isAuthenticated,
     refetchInterval: 30_000,
@@ -98,11 +103,16 @@ export function Messages() {
     ) {
       setSelectedConversation(null);
     }
-  }, [withUserId, userToOpen, user?.id, conversations]);
+  }, [withUserId, userToOpen, user?.id, conversations, selectedConversation?.user]);
 
   const messagesKey = ["/api/messages", selectedConversation?.user.id] as const;
 
-  const { data: messages = [] } = useQuery<PrivateMessageWithMeta[]>({
+  const {
+    data: messages = [],
+    isLoading: messagesLoading,
+    isError: messagesError,
+    refetch: refetchMessages,
+  } = useQuery<PrivateMessageWithMeta[]>({
     queryKey: messagesKey,
     enabled: !!selectedConversation?.user?.id,
     refetchInterval: isVercelHost && !!selectedConversation?.user?.id ? 3000 : false,
@@ -138,6 +148,9 @@ export function Messages() {
       queryClient.invalidateQueries({ queryKey: messagesKey });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
+    onError: () => {
+      toast({ title: "Не удалось изменить сообщение", variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -147,6 +160,9 @@ export function Messages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: messagesKey });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    },
+    onError: () => {
+      toast({ title: "Не удалось удалить сообщение", variant: "destructive" });
     },
   });
 
@@ -201,14 +217,17 @@ export function Messages() {
         queryClient.setQueryData(context.key, context.previous);
         setNewMessage(context.content);
       }
+      toast({ title: "Не удалось отправить сообщение", variant: "destructive" });
     },
   });
 
   const markAsReadMutation = useMutation({
-    mutationFn: (senderId: string) =>
-      apiRequest("PUT", `/api/messages/read/${senderId}`),
+    mutationFn: (senderId: string) => apiRequest("PUT", `/api/messages/read/${senderId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+    },
+    onError: () => {
+      toast({ title: "Не удалось отметить прочитанным", variant: "destructive" });
     },
   });
 
@@ -267,10 +286,6 @@ export function Messages() {
     return format(new Date(date), "HH:mm", { locale: ru });
   };
 
-  const formatDate = (date: string) => {
-    return format(new Date(date), "d MMM", { locale: ru });
-  };
-
   const visibleConversations = useMemo(() => {
     if (msgTab === "groups") return [];
     if (msgTab === "unread") return conversations.filter((c) => c.unreadCount > 0);
@@ -295,7 +310,9 @@ export function Messages() {
       <AppLayout>
         <div className="text-center py-16">
           <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
-          <p className="text-muted-foreground">Чтобы отправлять сообщения, необходимо войти в систему</p>
+          <p className="text-muted-foreground">
+            Чтобы отправлять сообщения, необходимо войти в систему
+          </p>
         </div>
       </AppLayout>
     );
@@ -314,17 +331,11 @@ export function Messages() {
           tabs={[
             {
               id: "personal",
-              label:
-                conversations.length > 0
-                  ? `Личные (${conversations.length})`
-                  : "Личные",
+              label: conversations.length > 0 ? `Личные (${conversations.length})` : "Личные",
             },
             {
               id: "unread",
-              label:
-                unreadPersonalCount > 0
-                  ? `Непрочит. (${unreadPersonalCount})`
-                  : "Непрочит.",
+              label: unreadPersonalCount > 0 ? `Непрочит. (${unreadPersonalCount})` : "Непрочит.",
             },
             {
               id: "groups",
@@ -342,238 +353,269 @@ export function Messages() {
           className="shrink-0 mb-4"
         />
 
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-3 flex-1 min-h-0 min-h-[480px]">
-            <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
-              <div className="ait-chat-panel-header p-4">
-                <h2 className="font-semibold flex items-center gap-2">
-                  {msgTab === "groups" ? (
-                    <>
-                      <Hash className="h-5 w-5 text-ait-purple" />
-                      Группа
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle className="h-5 w-5 text-ait-purple" />
-                      Личные диалоги
-                    </>
-                  )}
-                </h2>
-              </div>
-              <div className="p-0">
-                <ScrollArea className="flex-1 min-h-0 h-full max-h-[calc(100dvh-var(--ait-header-h,5rem)-14rem)] lg:max-h-none">
-                  {msgTab === "groups" ? (
-                    roomsLoading ? (
-                      <div className="p-6 text-center text-sm text-muted-foreground">Загрузка…</div>
-                    ) : myRooms.length === 0 ? (
-                      <div className="p-6 text-center text-sm text-muted-foreground space-y-2">
-                        <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p>Вы ещё не состоите в группах</p>
-                        <Link href="/chat">
-                          <Button variant="outline" size="sm" className="rounded-full">
-                            Открыть группы
-                          </Button>
-                        </Link>
-                      </div>
-                    ) : (
-                      <div className="py-2">
-                        {myRooms.map((room) => (
-                          <Link key={room.id} href={`/chat?room=${room.slug}`}>
-                            <div className="ait-chat-list-item cursor-pointer">
-                              <div className="flex items-center gap-3">
-                                <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">{room.title}</p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {room.memberCount} участн.
-                                  </p>
-                                </div>
-                                {(room.unreadCount ?? 0) > 0 && (
-                                  <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
-                                    {room.unreadCount > 99 ? "99+" : room.unreadCount}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    )
-                  ) : visibleConversations.length === 0 && friendsWithoutChat.length === 0 ? (
-                    <div className="p-4 text-center">
-                      <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">
-                        {msgTab === "unread" ? "Нет непрочитанных" : "Нет личных диалогов"}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {msgTab === "unread"
-                          ? "Все диалоги прочитаны"
-                          : "Добавьте друзей и начните переписку"}
-                      </p>
-                      {msgTab === "personal" && (
-                        <Link href="/friends">
-                          <Button variant="outline" size="sm" className="rounded-full">
-                            Найти друзей
-                          </Button>
-                        </Link>
-                      )}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-3 flex-1 min-h-0 min-h-[480px]">
+          <div className="ait-chat-panel lg:col-span-1 overflow-hidden flex flex-col min-h-0">
+            <div className="ait-chat-panel-header p-4">
+              <h2 className="font-semibold flex items-center gap-2">
+                {msgTab === "groups" ? (
+                  <>
+                    <Hash className="h-5 w-5 text-ait-purple" />
+                    Группа
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="h-5 w-5 text-ait-purple" />
+                    Личные диалоги
+                  </>
+                )}
+              </h2>
+            </div>
+            <div className="p-0">
+              <ScrollArea className="flex-1 min-h-0 h-full max-h-[calc(100dvh-var(--ait-header-h,5rem)-14rem)] lg:max-h-none">
+                {msgTab === "groups" ? (
+                  roomsLoading ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground">Загрузка…</div>
+                  ) : myRooms.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground space-y-2">
+                      <Hash className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>Вы ещё не состоите в группах</p>
+                      <Link href="/chat">
+                        <Button variant="outline" size="sm" className="rounded-full">
+                          Открыть группы
+                        </Button>
+                      </Link>
                     </div>
                   ) : (
                     <div className="py-2">
-                      {visibleConversations.map((conversation) => (
-                        <div
-                          key={conversation.user.id}
-                          role="button"
-                          tabIndex={0}
-                          className={cn(
-                            "ait-chat-list-item cursor-pointer",
-                            selectedConversation?.user.id === conversation.user.id &&
-                              "ait-chat-list-item--active",
-                          )}
-                          onClick={() => handleSelectConversation(conversation)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSelectConversation(conversation);
-                          }}
-                        >
-                          <div className="flex items-start gap-3">
-                            <AvatarWithPresence
-                              src={conversation.user.profileImageUrl}
-                              fallback={getUserInitial(conversation.user)}
-                              isOnline={conversation.user.isOnline}
-                              className="h-14 w-14"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium truncate">
-                                  {getUserDisplayLabel(conversation.user)}
-                                </h4>
-                                <span className="text-xs text-muted-foreground shrink-0">
-                                  {conversation.lastMessage
-                                    ? formatTime(conversation.lastMessage.createdAt as unknown as string)
-                                    : ""}
-                                </span>
+                      {myRooms.map((room) => (
+                        <Link key={room.id} href={`/chat?room=${room.slug}`}>
+                          <div className="ait-chat-list-item cursor-pointer">
+                            <div className="flex items-center gap-3">
+                              <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate">{room.title}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {room.memberCount} участн.
+                                </p>
                               </div>
-                              <p className="text-sm text-muted-foreground truncate">
-                                {conversation.lastMessage?.content ? (
-                                  <MessageContent content={conversation.lastMessage.content} compact />
-                                ) : (
-                                  "Нет сообщений"
-                                )}
-                              </p>
-                              {conversation.unreadCount > 0 && (
-                                <Badge className="mt-1 bg-ait-orange border-0">
-                                  {conversation.unreadCount}
+                              {(room.unreadCount ?? 0) > 0 && (
+                                <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
+                                  {room.unreadCount > 99 ? "99+" : room.unreadCount}
                                 </Badge>
                               )}
                             </div>
                           </div>
-                        </div>
+                        </Link>
                       ))}
-
-                      {msgTab === "personal" && friendsWithoutChat.length > 0 && (
-                        <>
-                          <p className="px-4 pt-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                            Друзья — начать диалог
-                          </p>
-                          {friendsWithoutChat.map((friend) => (
-                            <div
-                              key={friend.id}
-                              role="button"
-                              tabIndex={0}
-                              className={cn(
-                                "ait-chat-list-item cursor-pointer opacity-90",
-                                selectedConversation?.user.id === friend.id &&
-                                  "ait-chat-list-item--active",
-                              )}
-                              onClick={() => openFriendChat(friend)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") openFriendChat(friend);
-                              }}
-                            >
-                              <div className="flex items-center gap-3">
-                                <AvatarWithPresence
-                                  src={friend.profileImageUrl}
-                                  fallback={getUserInitial(friend)}
-                                  className="h-14 w-14"
+                    </div>
+                  )
+                ) : conversationsLoading ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    Загрузка диалогов…
+                  </div>
+                ) : conversationsError ? (
+                  <div className="p-6 text-center text-sm space-y-2">
+                    <p className="text-muted-foreground">Не удалось загрузить диалоги</p>
+                    <Button variant="outline" size="sm" onClick={() => refetchConversations()}>
+                      Повторить
+                    </Button>
+                  </div>
+                ) : visibleConversations.length === 0 && friendsWithoutChat.length === 0 ? (
+                  <div className="p-4 text-center">
+                    <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="font-semibold mb-2">
+                      {msgTab === "unread" ? "Нет непрочитанных" : "Нет личных диалогов"}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {msgTab === "unread"
+                        ? "Все диалоги прочитаны"
+                        : "Добавьте друзей и начните переписку"}
+                    </p>
+                    {msgTab === "personal" && (
+                      <Link href="/friends">
+                        <Button variant="outline" size="sm" className="rounded-full">
+                          Найти друзей
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <div className="py-2">
+                    {visibleConversations.map((conversation) => (
+                      <div
+                        key={conversation.user.id}
+                        role="button"
+                        tabIndex={0}
+                        className={cn(
+                          "ait-chat-list-item cursor-pointer",
+                          selectedConversation?.user.id === conversation.user.id &&
+                            "ait-chat-list-item--active",
+                        )}
+                        onClick={() => handleSelectConversation(conversation)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSelectConversation(conversation);
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <AvatarWithPresence
+                            src={conversation.user.profileImageUrl}
+                            fallback={getUserInitial(conversation.user)}
+                            isOnline={conversation.user.isOnline}
+                            className="h-14 w-14"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium truncate">
+                                {getUserDisplayLabel(conversation.user)}
+                              </h4>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                {conversation.lastMessage
+                                  ? formatTime(
+                                      conversation.lastMessage.createdAt as unknown as string,
+                                    )
+                                  : ""}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {conversation.lastMessage?.content ? (
+                                <MessageContent
+                                  content={conversation.lastMessage.content}
+                                  compact
                                 />
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-medium truncate">
-                                    {getUserDisplayLabel(friend)}
-                                  </h4>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {getUserHandle(friend) ?? "Написать сообщение"}
-                                  </p>
-                                </div>
+                              ) : (
+                                "Нет сообщений"
+                              )}
+                            </p>
+                            {conversation.unreadCount > 0 && (
+                              <Badge className="mt-1 bg-ait-orange border-0">
+                                {conversation.unreadCount}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {msgTab === "personal" && friendsWithoutChat.length > 0 && (
+                      <>
+                        <p className="px-4 pt-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          Друзья — начать диалог
+                        </p>
+                        {friendsWithoutChat.map((friend) => (
+                          <div
+                            key={friend.id}
+                            role="button"
+                            tabIndex={0}
+                            className={cn(
+                              "ait-chat-list-item cursor-pointer opacity-90",
+                              selectedConversation?.user.id === friend.id &&
+                                "ait-chat-list-item--active",
+                            )}
+                            onClick={() => openFriendChat(friend)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") openFriendChat(friend);
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <AvatarWithPresence
+                                src={friend.profileImageUrl}
+                                fallback={getUserInitial(friend)}
+                                className="h-14 w-14"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium truncate">
+                                  {getUserDisplayLabel(friend)}
+                                </h4>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {getUserHandle(friend) ?? "Написать сообщение"}
+                                </p>
                               </div>
                             </div>
-                          ))}
-                        </>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          </div>
+
+          <div className="ait-chat-panel overflow-hidden flex flex-col min-h-0">
+            {!showPersonalThread ? (
+              <div className="flex items-center justify-center flex-1 min-h-[320px] p-8 ait-chat-thread">
+                <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
+                  <Hash className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
+                  <h3 className="text-lg font-semibold mb-2">Группы</h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Выберите группу слева — откроется в разделе чатов
+                  </p>
+                  <Link href="/chat">
+                    <Button variant="outline" size="sm" className="rounded-full">
+                      Все группы
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ) : selectedConversation ? (
+              <>
+                <div className="ait-chat-panel-header p-4">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="lg:hidden"
+                      onClick={() => setSelectedConversation(null)}
+                      aria-label="Назад к списку диалогов"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <AvatarWithPresence
+                      src={selectedConversation.user.profileImageUrl}
+                      fallback={getUserInitial(selectedConversation.user)}
+                      isOnline={selectedConversation.user.isOnline}
+                      className="h-16 w-16"
+                    />
+                    <div>
+                      <h3 className="font-semibold">
+                        {getUserDisplayLabel(selectedConversation.user)}
+                      </h3>
+                      {selectedConversation.user.isOnline !== undefined && (
+                        <p className="text-xs mt-0.5">
+                          {selectedConversation.user.isOnline ? (
+                            <span className="text-green-500">В сети</span>
+                          ) : (
+                            <span className="text-muted-foreground">Не в сети</span>
+                          )}
+                        </p>
+                      )}
+                      {getUserHandle(selectedConversation.user) && (
+                        <p className="text-sm text-ait-purple">
+                          {getUserHandle(selectedConversation.user)}
+                        </p>
                       )}
                     </div>
-                  )}
-                </ScrollArea>
-              </div>
-            </div>
-
-            <div className="ait-chat-panel overflow-hidden flex flex-col min-h-0">
-              {!showPersonalThread ? (
-                <div className="flex items-center justify-center flex-1 min-h-[320px] p-8 ait-chat-thread">
-                  <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
-                    <Hash className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
-                    <h3 className="text-lg font-semibold mb-2">Группы</h3>
-                    <p className="text-muted-foreground text-sm mb-4">
-                      Выберите группу слева — откроется в разделе чатов
-                    </p>
-                    <Link href="/chat">
-                      <Button variant="outline" size="sm" className="rounded-full">
-                        Все группы
-                      </Button>
-                    </Link>
                   </div>
                 </div>
-              ) : selectedConversation ? (
-                <>
-                  <div className="ait-chat-panel-header p-4">
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="lg:hidden"
-                        onClick={() => setSelectedConversation(null)}
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                      <AvatarWithPresence
-                        src={selectedConversation.user.profileImageUrl}
-                        fallback={getUserInitial(selectedConversation.user)}
-                        isOnline={selectedConversation.user.isOnline}
-                        className="h-16 w-16"
-                      />
-                      <div>
-                        <h3 className="font-semibold">
-                          {getUserDisplayLabel(selectedConversation.user)}
-                        </h3>
-                        {selectedConversation.user.isOnline !== undefined && (
-                          <p className="text-xs mt-0.5">
-                            {selectedConversation.user.isOnline ? (
-                              <span className="text-green-500">В сети</span>
-                            ) : (
-                              <span className="text-muted-foreground">Не в сети</span>
-                            )}
-                          </p>
-                        )}
-                        {getUserHandle(selectedConversation.user) && (
-                          <p className="text-sm text-ait-purple">
-                            {getUserHandle(selectedConversation.user)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col flex-1 min-h-0">
-                    <ScrollArea className="flex-1 p-4 md:p-6 ait-chat-thread">
-                      <div className="ait-chat-thread-inner space-y-5">
-                        {messages.map((message) => {
+                <div className="flex flex-col flex-1 min-h-0">
+                  <ScrollArea className="flex-1 p-4 md:p-6 ait-chat-thread">
+                    <div className="ait-chat-thread-inner space-y-5">
+                      {messagesLoading ? (
+                        <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+                          <Loader2 className="h-8 w-8 animate-spin mb-3" />
+                          <p className="text-sm">Загрузка сообщений…</p>
+                        </div>
+                      ) : messagesError ? (
+                        <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
+                          <p className="text-sm">Не удалось загрузить сообщения</p>
+                          <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
+                            Повторить
+                          </Button>
+                        </div>
+                      ) : (
+                        messages.map((message) => {
                           const isOwn = message.senderId === user?.id;
                           const peer = selectedConversation.user;
                           return (
@@ -583,13 +625,9 @@ export function Messages() {
                               content={message.content}
                               isOwn={isOwn}
                               senderInitial={
-                                isOwn
-                                  ? (user ? getUserInitial(user) : "Я")
-                                  : getUserInitial(peer)
+                                isOwn ? (user ? getUserInitial(user) : "Я") : getUserInitial(peer)
                               }
-                              senderAvatarUrl={
-                                isOwn ? user?.profileImageUrl : peer.profileImageUrl
-                              }
+                              senderAvatarUrl={isOwn ? user?.profileImageUrl : peer.profileImageUrl}
                               createdAt={message.createdAt}
                               updatedAt={message.updatedAt}
                               meta={{ reactions: message.reactions ?? [] }}
@@ -600,7 +638,9 @@ export function Messages() {
                                 reactionMutation.mutate({ messageId: message.id, emoji })
                               }
                               insightsUrl={`/api/messages/${message.id}/insights`}
-                              onEdit={(c) => editMutation.mutate({ messageId: message.id, content: c })}
+                              onEdit={(c) =>
+                                editMutation.mutate({ messageId: message.id, content: c })
+                              }
                               onDelete={() => deleteMutation.mutate(message.id)}
                               reacting={
                                 reactionMutation.isPending &&
@@ -609,49 +649,51 @@ export function Messages() {
                               onReply={!isOwn ? () => startReply(message) : undefined}
                             />
                           );
-                        })}
-                        <div ref={scrollRef} />
-                      </div>
-                    </ScrollArea>
+                        })
+                      )}
+                      <div ref={scrollRef} />
+                    </div>
+                  </ScrollArea>
 
-                    <div className="ait-chat-panel-header p-4 mt-auto border-t">
-                      <div className="flex gap-2 items-center">
-                        <MessageComposer
-                          value={newMessage}
-                          onChange={setNewMessage}
-                          onSend={(content) => handleSendMessage(content)}
-                          placeholder="Введите сообщение..."
-                          disabled={sendMessageMutation.isPending}
-                          className="flex-1"
-                          replyTo={replyTo}
-                          onCancelReply={() => setReplyTo(null)}
-                        />
-                        <Button
-                          variant="premium"
-                          size="icon"
-                          onClick={() => handleSendMessage()}
-                          disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                          className="rounded-2xl shrink-0 shadow-lg"
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
+                  <div className="ait-chat-panel-header p-4 mt-auto border-t">
+                    <div className="flex gap-2 items-center">
+                      <MessageComposer
+                        value={newMessage}
+                        onChange={setNewMessage}
+                        onSend={(content) => handleSendMessage(content)}
+                        placeholder="Введите сообщение..."
+                        disabled={sendMessageMutation.isPending}
+                        className="flex-1"
+                        replyTo={replyTo}
+                        onCancelReply={() => setReplyTo(null)}
+                      />
+                      <Button
+                        variant="premium"
+                        size="icon"
+                        onClick={() => handleSendMessage()}
+                        disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                        className="rounded-2xl shrink-0 shadow-lg"
+                        aria-label="Отправить сообщение"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                </>
-              ) : (
-                <div className="flex items-center justify-center flex-1 min-h-[320px] p-8 ait-chat-thread">
-                  <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
-                    <MessageCircle className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
-                    <h3 className="text-lg font-semibold mb-2">Выберите диалог</h3>
-                    <p className="text-muted-foreground text-sm">
-                      Выберите чат слева, чтобы начать переписку
-                    </p>
-                  </div>
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center flex-1 min-h-[320px] p-8 ait-chat-thread">
+                <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
+                  <MessageCircle className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
+                  <h3 className="text-lg font-semibold mb-2">Выберите диалог</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Выберите чат слева, чтобы начать переписку
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
       </div>
     </AppLayout>
   );

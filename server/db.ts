@@ -13,11 +13,7 @@ function databaseUrl(): string | null {
 }
 
 function needsSsl(url: string): boolean {
-  return (
-    url.includes("neon.tech") ||
-    url.includes("sslmode=require") ||
-    url.includes("ssl=true")
-  );
+  return url.includes("neon.tech") || url.includes("sslmode=require") || url.includes("ssl=true");
 }
 
 function pgPoolOptions(url: string, max: number) {

@@ -107,4 +107,3 @@ export async function dbGeoAutocomplete(params: {
 
   return results.slice(0, limit);
 }
-

@@ -152,4 +152,3 @@ export async function nominatimAutocomplete(params: {
   cacheSet(cacheKey, items, 6 * 60 * 60 * 1000);
   return items;
 }
-

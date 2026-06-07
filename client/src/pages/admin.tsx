@@ -13,7 +13,8 @@ import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import AdminBroadcastDialog from "@/components/admin/AdminBroadcastDialog";
 import MessageComposer from "@/components/chat/MessageComposer";
-import { Shield, Coins, Bell, Megaphone, Search } from "lucide-react";
+import EmptyState from "@/components/empty-state";
+import { Shield, Coins, Bell, Megaphone, Search, AlertCircle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -35,7 +36,14 @@ type UserAitDetail = {
     lifetimeSpendEarned: number;
     lifetimeCreatorEarned: number;
     creatorRank: { title: string };
-    ledger: { id: string; wallet: string; delta: number; title: string; reason: string; createdAt: string }[];
+    ledger: {
+      id: string;
+      wallet: string;
+      delta: number;
+      title: string;
+      reason: string;
+      createdAt: string;
+    }[];
   };
 };
 
@@ -54,38 +62,42 @@ export default function AdminPage() {
   const [pushTitle, setPushTitle] = useState("All In Travel");
   const [pushBody, setPushBody] = useState("");
 
-  if (!user?.isAdmin) {
-    return (
-      <AppLayout>
-        <div className="py-20 text-center">
-          <p className="text-muted-foreground mb-4">Доступ только для администраторов</p>
-          <Button asChild variant="outline">
-            <Link href="/">На главную</Link>
-          </Button>
-        </div>
-      </AppLayout>
-    );
-  }
+  const isAdmin = !!user?.isAdmin;
 
-  const { data: searchResults } = useQuery<{ users: SearchUser[] }>({
+  const {
+    data: searchResults,
+    isFetching: searchFetching,
+    isError: searchError,
+    refetch: refetchSearch,
+  } = useQuery<{ users: SearchUser[] }>({
     queryKey: ["/api/admin/ait/search", searchQ],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/admin/ait/search?q=${encodeURIComponent(searchQ)}`);
       return res.json();
     },
-    enabled: searchQ.trim().length >= 2,
+    enabled: isAdmin && searchQ.trim().length >= 2,
   });
 
-  const { data: userDetail, refetch: refetchUser } = useQuery<UserAitDetail>({
+  const {
+    data: userDetail,
+    refetch: refetchUser,
+    isLoading: userDetailLoading,
+    isError: userDetailError,
+  } = useQuery<UserAitDetail>({
     queryKey: ["/api/admin/ait/users", selectedId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/admin/ait/users/${selectedId}`);
       return res.json();
     },
-    enabled: !!selectedId,
+    enabled: isAdmin && !!selectedId,
   });
 
-  const { data: globalTx } = useQuery<{
+  const {
+    data: globalTx,
+    isLoading: globalTxLoading,
+    isError: globalTxError,
+    refetch: refetchGlobalTx,
+  } = useQuery<{
     transactions: {
       id: string;
       userId: string;
@@ -103,6 +115,7 @@ export default function AdminPage() {
       const res = await apiRequest("GET", "/api/admin/ait/transactions?limit=50");
       return res.json();
     },
+    enabled: isAdmin,
   });
 
   const adjustMutation = useMutation({
@@ -134,6 +147,19 @@ export default function AdminPage() {
     onSuccess: () => toast({ title: "Push отправлен" }),
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
+
+  if (!isAdmin) {
+    return (
+      <AppLayout>
+        <div className="py-20 text-center">
+          <p className="text-muted-foreground mb-4">Доступ только для администраторов</p>
+          <Button asChild variant="outline">
+            <Link href="/">На главную</Link>
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -181,7 +207,23 @@ export default function AdminPage() {
                   />
                 </div>
               </div>
-              {searchResults?.users?.length ? (
+              {searchFetching && searchQ.trim().length >= 2 ? (
+                <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Поиск…
+                </div>
+              ) : searchError && searchQ.trim().length >= 2 ? (
+                <EmptyState
+                  icon={AlertCircle}
+                  title="Не удалось выполнить поиск"
+                  action={
+                    <Button variant="outline" size="sm" onClick={() => refetchSearch()}>
+                      Повторить
+                    </Button>
+                  }
+                  className="py-6"
+                />
+              ) : searchResults?.users?.length ? (
                 <ul className="mt-3 divide-y divide-white/5 max-h-48 overflow-y-auto">
                   {searchResults.users.map((u) => (
                     <li key={u.id}>
@@ -205,7 +247,22 @@ export default function AdminPage() {
               ) : null}
             </GlassCard>
 
-            {userDetail && selectedId && (
+            {userDetailLoading && selectedId ? (
+              <GlassCard className="p-5 flex items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Загрузка пользователя…
+              </GlassCard>
+            ) : userDetailError && selectedId ? (
+              <EmptyState
+                icon={AlertCircle}
+                title="Не удалось загрузить данные пользователя"
+                action={
+                  <Button variant="outline" size="sm" onClick={() => refetchUser()}>
+                    Повторить
+                  </Button>
+                }
+              />
+            ) : userDetail && selectedId ? (
               <GlassCard className="p-5 space-y-4">
                 <div>
                   <p className="font-semibold">{userDetail.user.email}</p>
@@ -285,36 +342,54 @@ export default function AdminPage() {
                   ))}
                 </div>
               </GlassCard>
-            )}
+            ) : null}
 
             <GlassCard className="p-4">
               <p className="font-semibold mb-3">Последние транзакции AIT (все)</p>
-              <div className="max-h-64 overflow-y-auto text-sm divide-y divide-white/5">
-                {globalTx?.transactions?.map((tx) => (
-                  <div key={tx.id} className="py-2 flex justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{tx.userLabel}</p>
-                      <p className="text-xs text-muted-foreground">{tx.title}</p>
+              {globalTxLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-sm">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Загрузка…
+                </div>
+              ) : globalTxError ? (
+                <EmptyState
+                  icon={AlertCircle}
+                  title="Не удалось загрузить транзакции"
+                  action={
+                    <Button variant="outline" size="sm" onClick={() => refetchGlobalTx()}>
+                      Повторить
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="max-h-64 overflow-y-auto text-sm divide-y divide-white/5">
+                  {globalTx?.transactions?.map((tx) => (
+                    <div key={tx.id} className="py-2 flex justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{tx.userLabel}</p>
+                        <p className="text-xs text-muted-foreground">{tx.title}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={tx.delta > 0 ? "text-emerald-400" : "text-red-400"}>
+                          {tx.delta > 0 ? "+" : ""}
+                          {tx.delta}
+                        </span>
+                        <p className="text-[10px] text-muted-foreground">
+                          {format(new Date(tx.createdAt), "d MMM HH:mm", { locale: ru })}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className={tx.delta > 0 ? "text-emerald-400" : "text-red-400"}>
-                        {tx.delta > 0 ? "+" : ""}
-                        {tx.delta}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground">
-                        {format(new Date(tx.createdAt), "d MMM HH:mm", { locale: ru })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </GlassCard>
           </TabsContent>
 
           <TabsContent value="broadcast" className="mt-4">
             <GlassCard className="p-5 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Объявление появится у всех в приложении и уйдёт push-уведомлением со звуком (если включён push).
+                Объявление появится у всех в приложении и уйдёт push-уведомлением со звуком (если
+                включён push).
               </p>
               <AdminBroadcastDialog />
             </GlassCard>
@@ -331,7 +406,11 @@ export default function AdminPage() {
                 <>
                   <div>
                     <Label>Заголовок</Label>
-                    <Input className="mt-1 ait-glass rounded-xl" value={pushTitle} onChange={(e) => setPushTitle(e.target.value)} />
+                    <Input
+                      className="mt-1 ait-glass rounded-xl"
+                      value={pushTitle}
+                      onChange={(e) => setPushTitle(e.target.value)}
+                    />
                   </div>
                   <div>
                     <Label>Текст</Label>

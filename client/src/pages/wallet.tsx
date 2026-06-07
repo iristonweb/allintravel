@@ -7,8 +7,8 @@ export function Wallet() {
       <div className="mb-8">
         <h1 className="ait-section-title">AIT Hub</h1>
         <p className="text-muted-foreground mt-2 max-w-xl">
-          Копите AIT за общение, посты и поддержку других. Тратьте на темы и буст — или отправляйте чаевые
-          авторам. Creator AIT — награда от аудитории.
+          Копите AIT за общение, посты и поддержку других. Тратьте на темы и буст — или отправляйте
+          чаевые авторам. Creator AIT — награда от аудитории.
         </p>
       </div>
       <AitHub />

@@ -13,7 +13,12 @@ type HomeContinueProps = {
   joinedTripIds: string[];
 };
 
-export default function HomeContinue({ trips, events, onJoinTrip, joinedTripIds }: HomeContinueProps) {
+export default function HomeContinue({
+  trips,
+  events,
+  onJoinTrip,
+  joinedTripIds,
+}: HomeContinueProps) {
   const tripsPreview = trips.slice(0, 2);
   const eventsPreview = events.slice(0, 4);
 
@@ -93,4 +98,3 @@ export default function HomeContinue({ trips, events, onJoinTrip, joinedTripIds 
     </section>
   );
 }
-

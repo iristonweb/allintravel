@@ -94,6 +94,7 @@ export default function FormatToolbar({
           className={cn(compact ? "h-7 w-7" : "h-8 w-8")}
           disabled={disabled}
           title={title}
+          aria-label={title}
           onClick={() => apply(id)}
         >
           <Icon className="h-3.5 w-3.5" />
@@ -106,6 +107,7 @@ export default function FormatToolbar({
         className={cn(compact ? "h-7 w-7" : "h-8 w-8")}
         disabled={disabled}
         title="Цитата (> текст)"
+        aria-label="Цитата"
         onClick={applyQuote}
       >
         <Quote className="h-3.5 w-3.5" />

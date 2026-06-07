@@ -9,7 +9,6 @@ import {
   type InsertTrip,
   type TripParticipant,
   type TripWaypoint,
-  type InsertTripWaypoint,
   type Event,
   type InsertEvent,
   type EventRegistration,
@@ -19,15 +18,12 @@ import {
   type UserProfile,
   type InsertUserProfile,
   type Friendship,
-  type InsertFriendship,
   type UserFollow,
-  type InsertUserFollow,
   type PrivateMessage,
   type InsertPrivateMessage,
   type TravelPost,
   type InsertTravelPost,
   type PostLike,
-  type InsertPostLike,
   type PostComment,
   type InsertPostComment,
   type UserTrack,
@@ -53,6 +49,7 @@ import { DEFAULT_PRIVACY_SETTINGS } from "@shared/privacy";
 import { LEGACY_CHAT_ROOM_SEEDS } from "./legacy-chat-rooms";
 import { getDb, isDatabaseConfigured } from "./db";
 import { PgStorage } from "./pg-storage";
+import { toSelfUser } from "./user-utils";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -101,15 +98,26 @@ export interface IStorage {
   }): Promise<Trip[]>;
   getTrip(id: string): Promise<Trip | undefined>;
   createTrip(trip: InsertTrip): Promise<Trip>;
-  updateTrip(id: string, data: Partial<Omit<Trip, "id" | "userId" | "createdAt">>): Promise<Trip | undefined>;
+  updateTrip(
+    id: string,
+    data: Partial<Omit<Trip, "id" | "userId" | "createdAt">>,
+  ): Promise<Trip | undefined>;
   joinTrip(tripId: string, userId: string): Promise<TripParticipant>;
   isTripParticipant(tripId: string, userId: string): Promise<boolean>;
   getTripParticipants(tripId: string): Promise<TripParticipant[]>;
   getTripParticipationsByUser(userId: string): Promise<string[]>;
   getTripWaypoints(tripId: string): Promise<(TripWaypoint & { place: Place | null })[]>;
-  addTripWaypoint(tripId: string, placeId: string, orderIndex?: number, dayNumber?: number): Promise<TripWaypoint>;
+  addTripWaypoint(
+    tripId: string,
+    placeId: string,
+    orderIndex?: number,
+    dayNumber?: number,
+  ): Promise<TripWaypoint>;
   getTripWaypoint(waypointId: string): Promise<TripWaypoint | undefined>;
-  updateTripWaypoint(waypointId: string, data: { orderIndex?: number; dayNumber?: number }): Promise<TripWaypoint | undefined>;
+  updateTripWaypoint(
+    waypointId: string,
+    data: { orderIndex?: number; dayNumber?: number },
+  ): Promise<TripWaypoint | undefined>;
   removeTripWaypoint(waypointId: string): Promise<void>;
 
   getEvents(filters?: {
@@ -139,14 +147,18 @@ export interface IStorage {
 
   getFriendshipById(friendshipId: string): Promise<Friendship | undefined>;
   areFriends(userId1: string, userId2: string): Promise<boolean>;
-  sendFriendRequest(requesterId: string, addresseeId: string, direction?: string): Promise<Friendship>;
+  sendFriendRequest(
+    requesterId: string,
+    addresseeId: string,
+    direction?: string,
+  ): Promise<Friendship>;
   respondToFriendRequest(
     friendshipId: string,
     status: "accepted" | "rejected",
     direction?: string,
   ): Promise<Friendship>;
   getFriends(userId: string, direction?: string): Promise<User[]>;
-  getFriendRequests(userId: string, type: 'sent' | 'received'): Promise<Friendship[]>;
+  getFriendRequests(userId: string, type: "sent" | "received"): Promise<Friendship[]>;
   removeFriend(userId: string, friendId: string): Promise<void>;
 
   followUser(followerId: string, followingId: string): Promise<UserFollow>;
@@ -157,7 +169,9 @@ export interface IStorage {
 
   sendPrivateMessage(message: InsertPrivateMessage): Promise<PrivateMessage>;
   getPrivateMessages(userId1: string, userId2: string, limit?: number): Promise<PrivateMessage[]>;
-  getConversations(userId: string): Promise<{ user: User; lastMessage: PrivateMessage; unreadCount: number }[]>;
+  getConversations(
+    userId: string,
+  ): Promise<{ user: User; lastMessage: PrivateMessage; unreadCount: number }[]>;
   markMessagesAsRead(userId: string, senderId: string): Promise<void>;
 
   createTravelPost(post: InsertTravelPost): Promise<TravelPost>;
@@ -203,7 +217,9 @@ export interface IStorage {
   ensureLegacyChatRooms(): Promise<void>;
   getChatRoomBySlug(slug: string): Promise<ChatRoom | undefined>;
   getChatRoom(id: string): Promise<ChatRoom | undefined>;
-  listChatRoomsForUser(userId: string): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]>;
+  listChatRoomsForUser(
+    userId: string,
+  ): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]>;
   createChatRoom(data: {
     slug?: string;
     title: string;
@@ -213,26 +229,43 @@ export interface IStorage {
     createdBy: string;
     settings?: ChatRoom["settings"];
   }): Promise<ChatRoom>;
-  updateChatRoom(id: string, patch: Partial<Pick<ChatRoom, "title" | "description" | "avatarUrl" | "visibility" | "settings">>): Promise<ChatRoom>;
+  updateChatRoom(
+    id: string,
+    patch: Partial<
+      Pick<ChatRoom, "title" | "description" | "avatarUrl" | "visibility" | "settings">
+    >,
+  ): Promise<ChatRoom>;
   getChatRoomMember(roomId: string, userId: string): Promise<ChatRoomMember | undefined>;
   joinChatRoom(roomId: string, userId: string, role?: string): Promise<ChatRoomMember>;
   leaveChatRoom(roomId: string, userId: string): Promise<void>;
   getChatRoomMembers(roomId: string): Promise<(ChatRoomMember & { user: User })[]>;
   setChatRoomMemberRole(roomId: string, userId: string, role: string): Promise<ChatRoomMember>;
   banChatRoomMember(roomId: string, userId: string): Promise<void>;
-  createChatRoomInvite(roomId: string, createdBy: string, opts?: { expiresAt?: Date; maxUses?: number }): Promise<ChatRoomInvite & { inviteUrl: string }>;
+  createChatRoomInvite(
+    roomId: string,
+    createdBy: string,
+    opts?: { expiresAt?: Date; maxUses?: number },
+  ): Promise<ChatRoomInvite & { inviteUrl: string }>;
   joinChatRoomByToken(token: string, userId: string): Promise<ChatRoom>;
   getChatMessage(messageId: string): Promise<import("@shared/schema").ChatMessage | undefined>;
-  updateChatMessage(messageId: string, content: string): Promise<import("@shared/schema").ChatMessage | undefined>;
+  updateChatMessage(
+    messageId: string,
+    content: string,
+  ): Promise<import("@shared/schema").ChatMessage | undefined>;
   getChatMessageLikeMeta(
     messageIds: string[],
     viewerId: string,
   ): Promise<Record<string, { likeCount: number; likedByMe: boolean }>>;
-  toggleChatMessageLike(messageId: string, userId: string): Promise<{ likeCount: number; likedByMe: boolean }>;
+  toggleChatMessageLike(
+    messageId: string,
+    userId: string,
+  ): Promise<{ likeCount: number; likedByMe: boolean }>;
   getChatMessageReactionsMeta(
     messageIds: string[],
     viewerId: string,
-  ): Promise<Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>>;
+  ): Promise<
+    Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>
+  >;
   setChatMessageReaction(
     messageId: string,
     userId: string,
@@ -244,24 +277,43 @@ export interface IStorage {
     roomId: string,
     messageIds: string[],
     authorId: string,
-  ): Promise<Record<string, { deliveryStatus: "sent" | "delivered" | "read"; readByCount: number; memberCount: number }>>;
-  upsertChatRoomReadCursor(roomId: string, userId: string, lastReadMessageId: string): Promise<void>;
+  ): Promise<
+    Record<
+      string,
+      { deliveryStatus: "sent" | "delivered" | "read"; readByCount: number; memberCount: number }
+    >
+  >;
+  upsertChatRoomReadCursor(
+    roomId: string,
+    userId: string,
+    lastReadMessageId: string,
+  ): Promise<void>;
   pinChatMessage(roomId: string, messageId: string, pinnedBy: string): Promise<void>;
   unpinChatMessage(roomId: string, messageId: string): Promise<void>;
   getPinnedMessageIds(roomId: string): Promise<string[]>;
   deleteChatMessage(messageId: string): Promise<void>;
-  getPrivateMessage(messageId: string): Promise<import("@shared/schema").PrivateMessage | undefined>;
-  updatePrivateMessage(messageId: string, content: string): Promise<import("@shared/schema").PrivateMessage | undefined>;
+  getPrivateMessage(
+    messageId: string,
+  ): Promise<import("@shared/schema").PrivateMessage | undefined>;
+  updatePrivateMessage(
+    messageId: string,
+    content: string,
+  ): Promise<import("@shared/schema").PrivateMessage | undefined>;
   deletePrivateMessage(messageId: string): Promise<void>;
   getPrivateMessageLikeMeta(
     messageIds: string[],
     viewerId: string,
   ): Promise<Record<string, { likeCount: number; likedByMe: boolean }>>;
-  togglePrivateMessageLike(messageId: string, userId: string): Promise<{ likeCount: number; likedByMe: boolean }>;
+  togglePrivateMessageLike(
+    messageId: string,
+    userId: string,
+  ): Promise<{ likeCount: number; likedByMe: boolean }>;
   getPrivateMessageReactionsMeta(
     messageIds: string[],
     viewerId: string,
-  ): Promise<Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>>;
+  ): Promise<
+    Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }>
+  >;
   setPrivateMessageReaction(
     messageId: string,
     userId: string,
@@ -279,7 +331,10 @@ export interface IStorage {
     actorId?: string | null;
     entityId?: string | null;
   }): Promise<import("@shared/schema").NotificationRow>;
-  getNotifications(userId: string, limit?: number): Promise<import("@shared/schema").NotificationRow[]>;
+  getNotifications(
+    userId: string,
+    limit?: number,
+  ): Promise<import("@shared/schema").NotificationRow[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   markNotificationRead(userId: string, id: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
@@ -287,7 +342,9 @@ export interface IStorage {
     userId: string,
     sub: { endpoint: string; keys: { p256dh: string; auth: string } },
   ): Promise<void>;
-  getPushSubscriptionsForUser(userId: string): Promise<{ endpoint: string; p256dh: string; auth: string }[]>;
+  getPushSubscriptionsForUser(
+    userId: string,
+  ): Promise<{ endpoint: string; p256dh: string; auth: string }[]>;
   deletePushSubscription(endpoint: string): Promise<void>;
 
   getPostLikesCount(postId: string): Promise<number>;
@@ -300,12 +357,18 @@ export interface IStorage {
 
   listUserTracks(userId: string): Promise<import("@shared/schema").UserTrack[]>;
   getUserTrack(id: string): Promise<import("@shared/schema").UserTrack | undefined>;
-  createUserTrack(data: import("@shared/schema").InsertUserTrack): Promise<import("@shared/schema").UserTrack>;
+  createUserTrack(
+    data: import("@shared/schema").InsertUserTrack,
+  ): Promise<import("@shared/schema").UserTrack>;
   deleteUserTrack(id: string): Promise<void>;
 
-  createAdminBroadcast(data: import("@shared/schema").InsertAdminBroadcast): Promise<import("@shared/schema").AdminBroadcast>;
+  createAdminBroadcast(
+    data: import("@shared/schema").InsertAdminBroadcast,
+  ): Promise<import("@shared/schema").AdminBroadcast>;
   getAdminBroadcasts(): Promise<import("@shared/schema").AdminBroadcast[]>;
-  getPendingAdminBroadcast(userId: string): Promise<import("@shared/schema").AdminBroadcast | undefined>;
+  getPendingAdminBroadcast(
+    userId: string,
+  ): Promise<import("@shared/schema").AdminBroadcast | undefined>;
   dismissAdminBroadcast(broadcastId: string, userId: string, action: string): Promise<void>;
   getAllUserIds(): Promise<string[]>;
 }
@@ -345,8 +408,10 @@ export class MemStorage implements IStorage {
   private memReadCursors = new Map<string, { lastReadMessageId: string; updatedAt: Date }>();
   private memLegacyRoomsReady = false;
   private memNotifications: Map<string, import("@shared/schema").NotificationRow> = new Map();
-  private memPushSubs: Map<string, { userId: string; endpoint: string; p256dh: string; auth: string }> =
-    new Map();
+  private memPushSubs: Map<
+    string,
+    { userId: string; endpoint: string; p256dh: string; auth: string }
+  > = new Map();
   private userTracksMap: Map<string, UserTrack> = new Map();
   private adminBroadcastsMap: Map<string, import("@shared/schema").AdminBroadcast> = new Map();
   private adminBroadcastDismissalsSet: Set<string> = new Set();
@@ -360,7 +425,8 @@ export class MemStorage implements IStorage {
       {
         id: "place1",
         name: "Santorini Sunset Terrace",
-        description: "Breathtaking views of the caldera with iconic white-washed buildings and stunning sunsets.",
+        description:
+          "Breathtaking views of the caldera with iconic white-washed buildings and stunning sunsets.",
         type: "attraction",
         address: "Oia, Santorini 847 02, Greece",
         latitude: "36.4618",
@@ -380,7 +446,8 @@ export class MemStorage implements IStorage {
       {
         id: "place2",
         name: "Kyoto Bamboo Grove",
-        description: "Walk through towering bamboo stalks in the Arashiyama district. A serene and magical experience.",
+        description:
+          "Walk through towering bamboo stalks in the Arashiyama district. A serene and magical experience.",
         type: "nature",
         address: "Sagatenryuji Susukinobabachou, Ukyo Ward, Kyoto",
         latitude: "35.0094",
@@ -400,7 +467,8 @@ export class MemStorage implements IStorage {
       {
         id: "place3",
         name: "Machu Picchu",
-        description: "The iconic Inca citadel set high in the Andes Mountains of Peru. A UNESCO World Heritage Site.",
+        description:
+          "The iconic Inca citadel set high in the Andes Mountains of Peru. A UNESCO World Heritage Site.",
         type: "historical",
         address: "Machu Picchu, Cusco Region, Peru",
         latitude: "-13.1631",
@@ -420,7 +488,8 @@ export class MemStorage implements IStorage {
       {
         id: "place4",
         name: "Amalfi Coast",
-        description: "One of Europe's most scenic drives winding along dramatic cliffs above the azure Mediterranean Sea.",
+        description:
+          "One of Europe's most scenic drives winding along dramatic cliffs above the azure Mediterranean Sea.",
         type: "attraction",
         address: "Amalfi Coast, Province of Salerno, Italy",
         latitude: "40.6340",
@@ -460,7 +529,8 @@ export class MemStorage implements IStorage {
       {
         id: "place6",
         name: "The Louvre Museum",
-        description: "World's largest art museum and historic monument housing thousands of iconic works including the Mona Lisa.",
+        description:
+          "World's largest art museum and historic monument housing thousands of iconic works including the Mona Lisa.",
         type: "museum",
         address: "Rue de Rivoli, 75001 Paris, France",
         latitude: "48.8606",
@@ -479,14 +549,15 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    samplePlaces.forEach(p => this.places.set(p.id, p));
+    samplePlaces.forEach((p) => this.places.set(p.id, p));
 
     const now = new Date();
     const sampleEvents: Event[] = [
       {
         id: "event1",
         title: "Tokyo Cherry Blossom Festival",
-        description: "Join us for the annual Hanami festival in Ueno Park. Experience the beauty of sakura season with live music, food stalls, and traditional performances.",
+        description:
+          "Join us for the annual Hanami festival in Ueno Park. Experience the beauty of sakura season with live music, food stalls, and traditional performances.",
         type: "festival",
         location: "Ueno Park, Tokyo, Japan",
         startDate: new Date(now.getTime() + 7 * 24 * 3600000),
@@ -501,7 +572,8 @@ export class MemStorage implements IStorage {
       {
         id: "event2",
         title: "Santorini Photography Workshop",
-        description: "A 3-day photography retreat capturing the iconic landscapes of Santorini. Perfect for all skill levels.",
+        description:
+          "A 3-day photography retreat capturing the iconic landscapes of Santorini. Perfect for all skill levels.",
         type: "workshop",
         location: "Oia, Santorini, Greece",
         startDate: new Date(now.getTime() + 14 * 24 * 3600000),
@@ -516,7 +588,8 @@ export class MemStorage implements IStorage {
       {
         id: "event3",
         title: "Patagonia Hiking Expedition",
-        description: "Epic 10-day trek through Torres del Paine National Park. All experience levels welcome.",
+        description:
+          "Epic 10-day trek through Torres del Paine National Park. All experience levels welcome.",
         type: "adventure",
         location: "Torres del Paine, Patagonia, Chile",
         startDate: new Date(now.getTime() + 30 * 24 * 3600000),
@@ -530,7 +603,7 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    sampleEvents.forEach(e => this.events.set(e.id, e));
+    sampleEvents.forEach((e) => this.events.set(e.id, e));
 
     const sampleTrips: Trip[] = [
       {
@@ -557,7 +630,8 @@ export class MemStorage implements IStorage {
         id: "trip2",
         userId: "demo-user",
         title: "Japan in Spring",
-        description: "2-week cultural journey through Tokyo, Kyoto, Osaka, and Hiroshima during cherry blossom season.",
+        description:
+          "2-week cultural journey through Tokyo, Kyoto, Osaka, and Hiroshima during cherry blossom season.",
         destination: "Japan",
         startDate: new Date(now.getTime() + 45 * 24 * 3600000),
         endDate: new Date(now.getTime() + 59 * 24 * 3600000),
@@ -575,7 +649,7 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    sampleTrips.forEach(t => this.trips.set(t.id, t));
+    sampleTrips.forEach((t) => this.trips.set(t.id, t));
 
     const samplePosts: TravelPost[] = [
       {
@@ -585,7 +659,8 @@ export class MemStorage implements IStorage {
         tripId: null,
         expiresAt: null,
         title: "Bali Rice Terraces",
-        content: "Just arrived in Bali and I'm absolutely speechless! The rice terraces of Tegalalang are even more beautiful in person. If you haven't put Bali on your travel list, you're missing out!",
+        content:
+          "Just arrived in Bali and I'm absolutely speechless! The rice terraces of Tegalalang are even more beautiful in person. If you haven't put Bali on your travel list, you're missing out!",
         images: [DEST_BALI_SRC],
         location: "Bali, Indonesia",
         latitude: "-8.3405",
@@ -602,7 +677,8 @@ export class MemStorage implements IStorage {
         tripId: null,
         expiresAt: null,
         title: "Sahara Sunrise",
-        content: "Watching the sunrise over the Sahara Desert from our camel's back. Some moments in life are absolutely priceless. Morocco has stolen my heart forever.",
+        content:
+          "Watching the sunrise over the Sahara Desert from our camel's back. Some moments in life are absolutely priceless. Morocco has stolen my heart forever.",
         images: [DEST_ICELAND_SRC],
         location: "Sahara Desert, Morocco",
         latitude: "31.7917",
@@ -619,7 +695,8 @@ export class MemStorage implements IStorage {
         tripId: null,
         expiresAt: null,
         title: "Bangkok Street Food Tour",
-        content: "Street food tour in Bangkok complete! Pad Thai, mango sticky rice, green curry and so much more. The food scene here is absolutely insane. Counting down the days until I can come back!",
+        content:
+          "Street food tour in Bangkok complete! Pad Thai, mango sticky rice, green curry and so much more. The food scene here is absolutely insane. Counting down the days until I can come back!",
         images: [COMMUNITY_TRAVEL_SRC],
         location: "Bangkok, Thailand",
         latitude: "13.7563",
@@ -631,7 +708,7 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    samplePosts.forEach(p => this.travelPosts.set(p.id, p));
+    samplePosts.forEach((p) => this.travelPosts.set(p.id, p));
   }
 
   // User operations
@@ -641,16 +718,12 @@ export class MemStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const lower = email.trim().toLowerCase();
-    return Array.from(this.users.values()).find(
-      (u) => u.email?.toLowerCase() === lower
-    );
+    return Array.from(this.users.values()).find((u) => u.email?.toLowerCase() === lower);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const lower = username.trim().toLowerCase().replace(/^@/, "");
-    return Array.from(this.users.values()).find(
-      (u) => u.username?.toLowerCase() === lower,
-    );
+    return Array.from(this.users.values()).find((u) => u.username?.toLowerCase() === lower);
   }
 
   async updateUserMe(
@@ -729,21 +802,22 @@ export class MemStorage implements IStorage {
   }): Promise<Place[]> {
     let results = Array.from(this.places.values());
     if (filters?.type) {
-      results = results.filter(p => p.type === filters.type);
+      results = results.filter((p) => p.type === filters.type);
     }
     if (filters?.search) {
       const q = filters.search.toLowerCase();
-      results = results.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.address?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q)
+      results = results.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.address?.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q),
       );
     }
     if (filters?.minRating != null) {
-      results = results.filter(p => parseFloat(p.averageRating ?? "0") >= filters.minRating!);
+      results = results.filter((p) => parseFloat(p.averageRating ?? "0") >= filters.minRating!);
     }
     if (filters?.priceRange) {
-      results = results.filter(p => p.priceRange === filters.priceRange);
+      results = results.filter((p) => p.priceRange === filters.priceRange);
     }
     const offset = filters?.offset ?? 0;
     const limit = filters?.limit ?? 20;
@@ -777,11 +851,11 @@ export class MemStorage implements IStorage {
 
   // Review operations
   async getReviewsByPlace(placeId: string): Promise<Review[]> {
-    return Array.from(this.reviews.values()).filter(r => r.placeId === placeId);
+    return Array.from(this.reviews.values()).filter((r) => r.placeId === placeId);
   }
 
   async getReviewsByUser(userId: string): Promise<Review[]> {
-    return Array.from(this.reviews.values()).filter(r => r.userId === userId);
+    return Array.from(this.reviews.values()).filter((r) => r.userId === userId);
   }
 
   async createReview(review: InsertReview): Promise<Review> {
@@ -819,17 +893,17 @@ export class MemStorage implements IStorage {
   }): Promise<Trip[]> {
     let results = Array.from(this.trips.values());
     if (filters?.userId) {
-      results = results.filter(t => t.userId === filters.userId);
+      results = results.filter((t) => t.userId === filters.userId);
     }
     if (filters?.destination) {
       const q = filters.destination.toLowerCase();
-      results = results.filter(t => t.destination?.toLowerCase().includes(q));
+      results = results.filter((t) => t.destination?.toLowerCase().includes(q));
     }
     if (filters?.startDate) {
-      results = results.filter(t => t.startDate && new Date(t.startDate) >= filters.startDate!);
+      results = results.filter((t) => t.startDate && new Date(t.startDate) >= filters.startDate!);
     }
     if (filters?.endDate) {
-      results = results.filter(t => t.endDate && new Date(t.endDate) <= filters.endDate!);
+      results = results.filter((t) => t.endDate && new Date(t.endDate) <= filters.endDate!);
     }
     const offset = filters?.offset ?? 0;
     const limit = filters?.limit ?? 20;
@@ -907,29 +981,34 @@ export class MemStorage implements IStorage {
   }
 
   async getTripParticipants(tripId: string): Promise<TripParticipant[]> {
-    return Array.from(this.tripParticipants.values()).filter(p => p.tripId === tripId);
+    return Array.from(this.tripParticipants.values()).filter((p) => p.tripId === tripId);
   }
 
   async getTripParticipationsByUser(userId: string): Promise<string[]> {
     return Array.from(this.tripParticipants.values())
-      .filter(p => p.userId === userId)
-      .map(p => p.tripId);
+      .filter((p) => p.userId === userId)
+      .map((p) => p.tripId);
   }
 
   async getTripWaypoints(tripId: string): Promise<(TripWaypoint & { place: Place | null })[]> {
     const waypoints = Array.from(this.tripWaypoints.values())
-      .filter(w => w.tripId === tripId)
+      .filter((w) => w.tripId === tripId)
       .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
     return Promise.all(
       waypoints.map(async (w) => {
         const place = await this.getPlace(w.placeId);
         return { ...w, place: place ?? null };
-      })
+      }),
     );
   }
 
-  async addTripWaypoint(tripId: string, placeId: string, orderIndex?: number, dayNumber?: number): Promise<TripWaypoint> {
-    const waypoints = Array.from(this.tripWaypoints.values()).filter(w => w.tripId === tripId);
+  async addTripWaypoint(
+    tripId: string,
+    placeId: string,
+    orderIndex?: number,
+    dayNumber?: number,
+  ): Promise<TripWaypoint> {
+    const waypoints = Array.from(this.tripWaypoints.values()).filter((w) => w.tripId === tripId);
     const nextOrder = orderIndex ?? waypoints.length;
     const id = genId();
     const waypoint: TripWaypoint = {
@@ -976,11 +1055,11 @@ export class MemStorage implements IStorage {
   }): Promise<Event[]> {
     let results = Array.from(this.events.values());
     if (filters?.type) {
-      results = results.filter(e => e.type === filters.type);
+      results = results.filter((e) => e.type === filters.type);
     }
     if (filters?.upcoming) {
       const now = new Date();
-      results = results.filter(e => e.startDate && new Date(e.startDate) > now);
+      results = results.filter((e) => e.startDate && new Date(e.startDate) > now);
     }
     results.sort((a, b) => {
       const da = a.startDate ? new Date(a.startDate).getTime() : 0;
@@ -1014,7 +1093,12 @@ export class MemStorage implements IStorage {
     );
     if (existing) return existing;
     const id = genId();
-    const reg: EventRegistration = { id, eventId, userId, createdAt: new Date() } as EventRegistration;
+    const reg: EventRegistration = {
+      id,
+      eventId,
+      userId,
+      createdAt: new Date(),
+    } as EventRegistration;
     this.eventRegistrations.set(id, reg);
     return reg;
   }
@@ -1042,7 +1126,7 @@ export class MemStorage implements IStorage {
   // Chat operations
   async getChatMessages(chatRoom: string, limit = 50): Promise<ChatMessage[]> {
     const msgs = Array.from(this.chatMessages.values())
-      .filter(m => m.chatRoom === chatRoom)
+      .filter((m) => m.chatRoom === chatRoom)
       .sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
     return msgs.slice(-limit);
   }
@@ -1060,7 +1144,7 @@ export class MemStorage implements IStorage {
 
   // Favorites operations
   async getUserFavorites(userId: string): Promise<UserFavorite[]> {
-    return Array.from(this.userFavorites.values()).filter(f => f.userId === userId);
+    return Array.from(this.userFavorites.values()).filter((f) => f.userId === userId);
   }
 
   async addFavorite(userId: string, placeId: string): Promise<UserFavorite> {
@@ -1079,7 +1163,9 @@ export class MemStorage implements IStorage {
   }
 
   async isFavorite(userId: string, placeId: string): Promise<boolean> {
-    return Array.from(this.userFavorites.values()).some(f => f.userId === userId && f.placeId === placeId);
+    return Array.from(this.userFavorites.values()).some(
+      (f) => f.userId === userId && f.placeId === placeId,
+    );
   }
 
   // User profile operations
@@ -1099,7 +1185,10 @@ export class MemStorage implements IStorage {
     return newProfile;
   }
 
-  async updateUserProfile(userId: string, profile: Partial<InsertUserProfile>): Promise<UserProfile> {
+  async updateUserProfile(
+    userId: string,
+    profile: Partial<InsertUserProfile>,
+  ): Promise<UserProfile> {
     const existing = this.userProfiles.get(userId);
     if (!existing) {
       return this.createUserProfile({ userId, ...profile } as InsertUserProfile);
@@ -1124,7 +1213,11 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async sendFriendRequest(requesterId: string, addresseeId: string, direction?: string): Promise<Friendship> {
+  async sendFriendRequest(
+    requesterId: string,
+    addresseeId: string,
+    direction?: string,
+  ): Promise<Friendship> {
     const id = genId();
     const friendship: Friendship = {
       id,
@@ -1168,17 +1261,19 @@ export class MemStorage implements IStorage {
     return friendIds.map((id) => this.users.get(id)).filter(Boolean) as User[];
   }
 
-  async getFriendRequests(userId: string, type: 'sent' | 'received'): Promise<Friendship[]> {
-    return Array.from(this.friendships.values()).filter(f => {
-      if (type === 'sent') return f.requesterId === userId && f.status === 'pending';
-      return f.addresseeId === userId && f.status === 'pending';
+  async getFriendRequests(userId: string, type: "sent" | "received"): Promise<Friendship[]> {
+    return Array.from(this.friendships.values()).filter((f) => {
+      if (type === "sent") return f.requesterId === userId && f.status === "pending";
+      return f.addresseeId === userId && f.status === "pending";
     });
   }
 
   async removeFriend(userId: string, friendId: string): Promise<void> {
     for (const [key, f] of Array.from(this.friendships.entries())) {
-      if ((f.requesterId === userId && f.addresseeId === friendId) ||
-          (f.requesterId === friendId && f.addresseeId === userId)) {
+      if (
+        (f.requesterId === userId && f.addresseeId === friendId) ||
+        (f.requesterId === friendId && f.addresseeId === userId)
+      ) {
         this.friendships.delete(key);
       }
     }
@@ -1202,20 +1297,22 @@ export class MemStorage implements IStorage {
 
   async getFollowers(userId: string): Promise<User[]> {
     const ids = Array.from(this.userFollows.values())
-      .filter(f => f.followingId === userId)
-      .map(f => f.followerId);
-    return ids.map(id => this.users.get(id)).filter(Boolean) as User[];
+      .filter((f) => f.followingId === userId)
+      .map((f) => f.followerId);
+    return ids.map((id) => this.users.get(id)).filter(Boolean) as User[];
   }
 
   async getFollowing(userId: string): Promise<User[]> {
     const ids = Array.from(this.userFollows.values())
-      .filter(f => f.followerId === userId)
-      .map(f => f.followingId);
-    return ids.map(id => this.users.get(id)).filter(Boolean) as User[];
+      .filter((f) => f.followerId === userId)
+      .map((f) => f.followingId);
+    return ids.map((id) => this.users.get(id)).filter(Boolean) as User[];
   }
 
   async isFollowing(followerId: string, followingId: string): Promise<boolean> {
-    return Array.from(this.userFollows.values()).some(f => f.followerId === followerId && f.followingId === followingId);
+    return Array.from(this.userFollows.values()).some(
+      (f) => f.followerId === followerId && f.followingId === followingId,
+    );
   }
 
   // Private message operations
@@ -1231,17 +1328,24 @@ export class MemStorage implements IStorage {
     return newMsg;
   }
 
-  async getPrivateMessages(userId1: string, userId2: string, limit = 50): Promise<PrivateMessage[]> {
+  async getPrivateMessages(
+    userId1: string,
+    userId2: string,
+    limit = 50,
+  ): Promise<PrivateMessage[]> {
     const msgs = Array.from(this.privateMessages.values())
-      .filter(m =>
-        (m.senderId === userId1 && m.receiverId === userId2) ||
-        (m.senderId === userId2 && m.receiverId === userId1)
+      .filter(
+        (m) =>
+          (m.senderId === userId1 && m.receiverId === userId2) ||
+          (m.senderId === userId2 && m.receiverId === userId1),
       )
       .sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
     return msgs.slice(-limit);
   }
 
-  async getConversations(userId: string): Promise<{ user: User; lastMessage: PrivateMessage; unreadCount: number }[]> {
+  async getConversations(
+    userId: string,
+  ): Promise<{ user: User; lastMessage: PrivateMessage; unreadCount: number }[]> {
     const partnerIds = new Set<string>();
     for (const m of Array.from(this.privateMessages.values())) {
       if (m.senderId === userId) partnerIds.add(m.receiverId!);
@@ -1255,12 +1359,13 @@ export class MemStorage implements IStorage {
       const msgs = await this.getPrivateMessages(userId, partnerId);
       if (msgs.length === 0) continue;
       const lastMessage = msgs[msgs.length - 1];
-      const unreadCount = msgs.filter(m => m.receiverId === userId && !m.isRead).length;
+      const unreadCount = msgs.filter((m) => m.receiverId === userId && !m.isRead).length;
       conversations.push({ user: partner, lastMessage, unreadCount });
     }
 
-    return conversations.sort((a, b) =>
-      new Date(b.lastMessage.createdAt!).getTime() - new Date(a.lastMessage.createdAt!).getTime()
+    return conversations.sort(
+      (a, b) =>
+        new Date(b.lastMessage.createdAt!).getTime() - new Date(a.lastMessage.createdAt!).getTime(),
     );
   }
 
@@ -1310,7 +1415,7 @@ export class MemStorage implements IStorage {
       );
     }
     if (filters?.userId) {
-      results = results.filter(p => p.userId === filters.userId);
+      results = results.filter((p) => p.userId === filters.userId);
     }
     if (filters?.following) {
       const followingIds = Array.from(this.userFollows.values())
@@ -1321,7 +1426,7 @@ export class MemStorage implements IStorage {
     }
     if (filters?.tag) {
       const tag = filters.tag.toLowerCase();
-      results = results.filter(p => p.tags?.some(t => t.toLowerCase() === tag));
+      results = results.filter((p) => p.tags?.some((t) => t.toLowerCase() === tag));
     }
     results.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
     const offset = filters?.offset ?? 0;
@@ -1375,7 +1480,7 @@ export class MemStorage implements IStorage {
 
   async getPostComments(postId: string): Promise<PostComment[]> {
     return Array.from(this.postComments.values())
-      .filter(c => c.postId === postId)
+      .filter((c) => c.postId === postId)
       .sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
   }
 
@@ -1549,7 +1654,9 @@ export class MemStorage implements IStorage {
 
   async updateChatRoom(
     id: string,
-    patch: Partial<Pick<ChatRoom, "title" | "description" | "avatarUrl" | "visibility" | "settings">>,
+    patch: Partial<
+      Pick<ChatRoom, "title" | "description" | "avatarUrl" | "visibility" | "settings">
+    >,
   ): Promise<ChatRoom> {
     const room = this.memChatRooms.get(id);
     if (!room) throw new Error("Room not found");
@@ -1567,14 +1674,23 @@ export class MemStorage implements IStorage {
   }
 
   async getChatRoomMember(roomId: string, userId: string): Promise<ChatRoomMember | undefined> {
-    return Array.from(this.memChatMembers.values()).find((m) => m.roomId === roomId && m.userId === userId);
+    return Array.from(this.memChatMembers.values()).find(
+      (m) => m.roomId === roomId && m.userId === userId,
+    );
   }
 
   async joinChatRoom(roomId: string, userId: string, role = "member"): Promise<ChatRoomMember> {
     const existing = await this.getChatRoomMember(roomId, userId);
     if (existing) return { ...existing, status: "active" };
     const id = genId();
-    const m = { id, roomId, userId, role, status: "active", joinedAt: new Date() } as ChatRoomMember;
+    const m = {
+      id,
+      roomId,
+      userId,
+      role,
+      status: "active",
+      joinedAt: new Date(),
+    } as ChatRoomMember;
     this.memChatMembers.set(id, m);
     return m;
   }
@@ -1589,12 +1705,14 @@ export class MemStorage implements IStorage {
     const members = Array.from(this.memChatMembers.values()).filter(
       (m) => m.roomId === roomId && m.status === "active",
     );
-    return members
-      .map((m) => ({ ...m, user: this.users.get(m.userId)! }))
-      .filter((x) => x.user);
+    return members.map((m) => ({ ...m, user: this.users.get(m.userId)! })).filter((x) => x.user);
   }
 
-  async setChatRoomMemberRole(roomId: string, userId: string, role: string): Promise<ChatRoomMember> {
+  async setChatRoomMemberRole(
+    roomId: string,
+    userId: string,
+    role: string,
+  ): Promise<ChatRoomMember> {
     const m = await this.getChatRoomMember(roomId, userId);
     if (!m) throw new Error("Member not found");
     const updated = { ...m, role };
@@ -1607,7 +1725,11 @@ export class MemStorage implements IStorage {
     if (m) this.memChatMembers.set(m.id, { ...m, status: "banned" });
   }
 
-  async createChatRoomInvite(roomId: string, createdBy: string, opts?: { expiresAt?: Date; maxUses?: number }) {
+  async createChatRoomInvite(
+    roomId: string,
+    createdBy: string,
+    opts?: { expiresAt?: Date; maxUses?: number },
+  ) {
     const token = genId();
     const id = genId();
     const row = {
@@ -1690,7 +1812,10 @@ export class MemStorage implements IStorage {
     return this.privateMessages.get(messageId);
   }
 
-  async updatePrivateMessage(messageId: string, content: string): Promise<PrivateMessage | undefined> {
+  async updatePrivateMessage(
+    messageId: string,
+    content: string,
+  ): Promise<PrivateMessage | undefined> {
     const msg = this.privateMessages.get(messageId);
     if (!msg) return undefined;
     const updated = { ...msg, content, updatedAt: new Date() };
@@ -1730,7 +1855,10 @@ export class MemStorage implements IStorage {
     viewerId: string,
     store: Map<string, string>,
   ): Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }> {
-    const out: Record<string, { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }> = {};
+    const out: Record<
+      string,
+      { reactions: { emoji: string; count: number; reactedByMe: boolean }[] }
+    > = {};
     for (const id of messageIds) {
       const byEmoji = new Map<string, { count: number; reactedByMe: boolean }>();
       for (const [key, emoji] of Array.from(store.entries())) {
@@ -1800,7 +1928,10 @@ export class MemStorage implements IStorage {
       (m) => m.roomId === roomId && m.status === "active" && m.userId !== authorId,
     );
     const memberCount = members.length;
-    const out: Record<string, { deliveryStatus: "sent" | "delivered" | "read"; readByCount: number; memberCount: number }> = {};
+    const out: Record<
+      string,
+      { deliveryStatus: "sent" | "delivered" | "read"; readByCount: number; memberCount: number }
+    > = {};
     for (const id of messageIds) {
       const msg = this.chatMessages.get(id);
       if (!msg?.createdAt) {
@@ -1931,15 +2062,17 @@ export class MemStorage implements IStorage {
   }
 
   async getPostLikesCount(postId: string): Promise<number> {
-    return Array.from(this.postLikes.values()).filter(l => l.postId === postId).length;
+    return Array.from(this.postLikes.values()).filter((l) => l.postId === postId).length;
   }
 
   async isPostLikedByUser(userId: string, postId: string): Promise<boolean> {
-    return Array.from(this.postLikes.values()).some(l => l.userId === userId && l.postId === postId);
+    return Array.from(this.postLikes.values()).some(
+      (l) => l.userId === userId && l.postId === postId,
+    );
   }
 
   async getPostCommentsCount(postId: string): Promise<number> {
-    return Array.from(this.postComments.values()).filter(c => c.postId === postId).length;
+    return Array.from(this.postComments.values()).filter((c) => c.postId === postId).length;
   }
 
   async getUserTrips(userId: string): Promise<Trip[]> {
@@ -2070,7 +2203,7 @@ export class MemStorage implements IStorage {
   async exportUserData(userId: string): Promise<Record<string, unknown>> {
     const user = this.users.get(userId);
     if (!user) throw new Error("User not found");
-    const { passwordHash: _pw, ...userSafe } = user;
+    const userSafe = toSelfUser(user);
     return {
       exportedAt: new Date().toISOString(),
       user: userSafe,

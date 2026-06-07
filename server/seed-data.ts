@@ -23,7 +23,8 @@ export function buildSeedData(now = new Date()) {
       {
         id: SEED_PLACE_IDS.santorini,
         name: "Santorini Sunset Terrace",
-        description: "Breathtaking views of the caldera with iconic white-washed buildings and stunning sunsets.",
+        description:
+          "Breathtaking views of the caldera with iconic white-washed buildings and stunning sunsets.",
         type: "attraction",
         address: "Oia, Santorini 847 02, Greece",
         latitude: "36.4618",
@@ -175,7 +176,8 @@ export function buildSeedData(now = new Date()) {
         id: "44444444-4444-4444-a444-444444444401",
         userId: DEMO_USER_ID,
         title: "Bali Rice Terraces",
-        content: "Just arrived in Bali and I'm absolutely speechless! The rice terraces of Tegalalang are even more beautiful in person.",
+        content:
+          "Just arrived in Bali and I'm absolutely speechless! The rice terraces of Tegalalang are even more beautiful in person.",
         images: ["https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800"],
         location: "Bali, Indonesia",
         latitude: "-8.3405",
@@ -187,7 +189,8 @@ export function buildSeedData(now = new Date()) {
         id: "44444444-4444-4444-a444-444444444402",
         userId: DEMO_USER_ID,
         title: "Sahara Sunrise",
-        content: "Watching the sunrise over the Sahara Desert from our camel's back. Morocco has stolen my heart forever.",
+        content:
+          "Watching the sunrise over the Sahara Desert from our camel's back. Morocco has stolen my heart forever.",
         images: ["https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800"],
         location: "Sahara Desert, Morocco",
         latitude: "31.7917",
@@ -199,7 +202,8 @@ export function buildSeedData(now = new Date()) {
         id: "44444444-4444-4444-a444-444444444403",
         userId: DEMO_USER_ID,
         title: "Bangkok Street Food Tour",
-        content: "Street food tour in Bangkok complete! Pad Thai, mango sticky rice, green curry and so much more.",
+        content:
+          "Street food tour in Bangkok complete! Pad Thai, mango sticky rice, green curry and so much more.",
         images: ["https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800"],
         location: "Bangkok, Thailand",
         latitude: "13.7563",

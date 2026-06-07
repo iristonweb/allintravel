@@ -1,5 +1,4 @@
-const MEDIA_TOKEN_RE =
-  /\[(gif|sticker|image|video|audio|voice):([^\]]+)\]/g;
+const MEDIA_TOKEN_RE = /\[(gif|sticker|image|video|audio|voice):([^\]]+)\]/g;
 
 const ALLOWED_HOSTS = [
   "public.blob.vercel-storage.com",

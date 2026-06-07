@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, apiRequestJson } from "@/lib/queryClient";
+import { apiRequestJson } from "@/lib/queryClient";
 import { resolveThemeFromSkus } from "@/lib/ait-theme";
 import type { AitCatalogItem, CreatorRankId, WeeklyQuestDef } from "@shared/ait";
 
@@ -32,7 +32,10 @@ export function useAitDashboard(enabled = true) {
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const data = await apiRequestJson<AitDashboard & { pulseGrants?: unknown[] }>("GET", "/api/ait");
+      const data = await apiRequestJson<AitDashboard & { pulseGrants?: unknown[] }>(
+        "GET",
+        "/api/ait",
+      );
       resolveThemeFromSkus(data.entitlements.map((e) => e.sku));
       return data;
     },

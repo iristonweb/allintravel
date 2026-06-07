@@ -30,7 +30,10 @@ type MemBalance = AitBalanceRow;
 const memBalances = new Map<string, MemBalance>();
 const memTx: AitTransactionRow[] = [];
 const memCaps = new Map<string, number>();
-const memEntitlements = new Map<string, { userId: string; sku: string; expiresAt: Date | null }[]>();
+const memEntitlements = new Map<
+  string,
+  { userId: string; sku: string; expiresAt: Date | null }[]
+>();
 const memRingCounts = new Map<string, Record<ActivityRingId, number>>();
 const memQuestClaims = new Set<string>();
 const memRingsBonusClaimed = new Set<string>();
@@ -374,14 +377,19 @@ export async function applyBalanceDelta(
     const check = await db.execute(sql`
       SELECT spend_balance FROM ait_balances WHERE user_id = ${userId}
     `);
-    const bal = Number((check as unknown as { rows?: { spend_balance: number }[] }).rows?.[0]?.spend_balance ?? 0);
+    const bal = Number(
+      (check as unknown as { rows?: { spend_balance: number }[] }).rows?.[0]?.spend_balance ?? 0,
+    );
     if (bal + delta < 0) return null;
   }
   if (wallet === "creator" && delta < 0) {
     const check = await db.execute(sql`
       SELECT creator_balance FROM ait_balances WHERE user_id = ${userId}
     `);
-    const bal = Number((check as unknown as { rows?: { creator_balance: number }[] }).rows?.[0]?.creator_balance ?? 0);
+    const bal = Number(
+      (check as unknown as { rows?: { creator_balance: number }[] }).rows?.[0]?.creator_balance ??
+        0,
+    );
     if (bal + delta < 0) return null;
   }
 
@@ -416,12 +424,14 @@ export async function applyBalanceDelta(
   return { balance, transaction };
 }
 
-export async function touchStreak(userId: string): Promise<{ streakDays: number; bonusGranted: boolean }> {
+export async function touchStreak(
+  userId: string,
+): Promise<{ streakDays: number; bonusGranted: boolean }> {
   const today = todayUtc();
   const balance = await getOrCreateBalance(userId);
   const db = getDb();
   let streak = balance.streakDays;
-  let bonusGranted = false;
+  const bonusGranted = false;
 
   if (balance.lastActiveDate === today) {
     return { streakDays: streak, bonusGranted: false };
@@ -608,7 +618,9 @@ export async function addEntitlement(
   `);
 }
 
-export async function getEntitlements(userId: string): Promise<{ sku: string; expiresAt: Date | null }[]> {
+export async function getEntitlements(
+  userId: string,
+): Promise<{ sku: string; expiresAt: Date | null }[]> {
   const db = getDb();
   const now = new Date();
   if (!db) {
@@ -618,7 +630,8 @@ export async function getEntitlements(userId: string): Promise<{ sku: string; ex
     SELECT sku, expires_at FROM ait_entitlements
     WHERE user_id = ${userId} AND (expires_at IS NULL OR expires_at > now())
   `);
-  const rows = (res as unknown as { rows?: { sku: string; expires_at: string | null }[] }).rows ?? [];
+  const rows =
+    (res as unknown as { rows?: { sku: string; expires_at: string | null }[] }).rows ?? [];
   return rows.map((r) => ({
     sku: r.sku,
     expiresAt: r.expires_at ? new Date(r.expires_at) : null,
@@ -690,10 +703,7 @@ export async function hasGrantForEntity(
   if (!db) {
     return memTx.some(
       (t) =>
-        t.userId === userId &&
-        t.reasonCode === reason &&
-        t.entityId === entityId &&
-        t.delta > 0,
+        t.userId === userId && t.reasonCode === reason && t.entityId === entityId && t.delta > 0,
     );
   }
   const res = await db.execute(sql`
@@ -704,7 +714,9 @@ export async function hasGrantForEntity(
   return ((res as unknown as { rows?: unknown[] }).rows?.length ?? 0) > 0;
 }
 
-export function aggregateCreatorEarningsMem(monthKey: string): { userId: string; earned: number }[] {
+export function aggregateCreatorEarningsMem(
+  monthKey: string,
+): { userId: string; earned: number }[] {
   const [y, m] = monthKey.split("-").map(Number);
   const start = Date.UTC(y, m - 1, 1);
   const end = Date.UTC(y, m, 1);
@@ -731,7 +743,10 @@ export async function isRingsBonusClaimedToday(userId: string): Promise<boolean>
     SELECT rings_bonus_claimed FROM ait_ring_daily
     WHERE user_id = ${userId} AND ring_date = ${date}::date
   `);
-  return Boolean((res as unknown as { rows?: { rings_bonus_claimed: boolean }[] }).rows?.[0]?.rings_bonus_claimed);
+  return Boolean(
+    (res as unknown as { rows?: { rings_bonus_claimed: boolean }[] }).rows?.[0]
+      ?.rings_bonus_claimed,
+  );
 }
 
 export async function markRingsBonusClaimedToday(userId: string): Promise<boolean> {

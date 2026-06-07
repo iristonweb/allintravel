@@ -77,7 +77,11 @@ export function Hero({
             ) : null}
             {below ? <div className="mt-8 max-w-lg">{below}</div> : null}
           </div>
-          {aside ? <div className="relative lg:justify-self-end w-full max-w-sm mx-auto lg:mx-0">{aside}</div> : null}
+          {aside ? (
+            <div className="relative lg:justify-self-end w-full max-w-sm mx-auto lg:mx-0">
+              {aside}
+            </div>
+          ) : null}
         </div>
         {stats ? <div className="mt-12 border-t border-white/10 pt-8">{stats}</div> : null}
       </div>

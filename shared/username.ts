@@ -8,7 +8,9 @@ export function normalizeUsername(raw: string): string {
   return raw.trim().toLowerCase().replace(/^@/, "");
 }
 
-export function validateUsername(raw: string): { ok: true; value: string } | { ok: false; message: string } {
+export function validateUsername(
+  raw: string,
+): { ok: true; value: string } | { ok: false; message: string } {
   const value = normalizeUsername(raw);
   if (value.length < USERNAME_MIN) {
     return { ok: false, message: `Ник должен быть не короче ${USERNAME_MIN} символов` };
@@ -24,7 +26,10 @@ export function validateUsername(raw: string): { ok: true; value: string } | { o
 
 export function usernameBaseFromEmail(email: string): string {
   const local = email.split("@")[0]?.toLowerCase() ?? "user";
-  let base = local.replace(/[^a-z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  let base = local
+    .replace(/[^a-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
   if (base.length < USERNAME_MIN) base = `user_${base}`.replace(/_+/g, "_");
   return base.slice(0, USERNAME_MAX);
 }

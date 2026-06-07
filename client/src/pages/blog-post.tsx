@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute } from "wouter";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { MapPin } from "lucide-react";
+import { MapPin, AlertCircle } from "lucide-react";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import AppLayout from "@/components/app-layout";
-import GlassCard from "@/components/brand/glass-card";
+import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { renderRichText } from "@/lib/rich-text";
@@ -17,7 +17,13 @@ export function BlogPostPage() {
   const [, params] = useRoute("/blog/:id");
   const postId = params?.id;
 
-  const { data: post, isLoading, error } = useQuery<TravelPostWithAuthor>({
+  const {
+    data: post,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<TravelPostWithAuthor>({
     queryKey: [`/api/posts/${postId}`],
     enabled: Boolean(postId),
   });
@@ -26,26 +32,32 @@ export function BlogPostPage() {
     <AppLayout>
       <div className="max-w-3xl mx-auto">
         <AppBreadcrumbs
-          items={[
-            { label: "Блог", href: "/blog" },
-            { label: post?.title ?? "Статья" },
-          ]}
+          items={[{ label: "Блог", href: "/blog" }, { label: post?.title ?? "Статья" }]}
         />
 
-        {isLoading && (
-          <p className="text-muted-foreground text-center py-12">Загрузка статьи…</p>
+        {isLoading && <p className="text-muted-foreground text-center py-12">Загрузка статьи…</p>}
+
+        {!isLoading && (isError || !post) && (
+          <EmptyState
+            icon={AlertCircle}
+            title="Статья не найдена или недоступна"
+            description={isError && error instanceof Error ? error.message : undefined}
+            action={
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                {isError && (
+                  <Button variant="outline" onClick={() => refetch()}>
+                    Повторить
+                  </Button>
+                )}
+                <Button variant="link" asChild>
+                  <Link href="/blog">Вернуться в блог</Link>
+                </Button>
+              </div>
+            }
+          />
         )}
 
-        {!isLoading && (error || !post) && (
-          <GlassCard className="p-8 text-center">
-            <p className="text-muted-foreground">Статья не найдена или недоступна.</p>
-            <Button variant="link" asChild className="mt-4">
-              <Link href="/blog">Вернуться в блог</Link>
-            </Button>
-          </GlassCard>
-        )}
-
-        {post && (
+        {post && !isLoading && (
           <article>
             {post.images?.[0] && (
               <img
@@ -57,9 +69,7 @@ export function BlogPostPage() {
             <div className="flex items-center gap-3 mb-4">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={resolveMediaUrl(post.author?.profileImageUrl)} />
-                <AvatarFallback>
-                  {post.author ? getUserInitial(post.author) : "?"}
-                </AvatarFallback>
+                <AvatarFallback>{post.author ? getUserInitial(post.author) : "?"}</AvatarFallback>
               </Avatar>
               <div>
                 <p className="font-medium text-foreground">

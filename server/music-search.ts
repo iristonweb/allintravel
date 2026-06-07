@@ -1,4 +1,3 @@
-
 export type JamendoSearchResult = {
   source: "jamendo";
   id: string;
@@ -30,7 +29,10 @@ function getJamendoClientId(): string | undefined {
   return process.env.JAMENDO_CLIENT_ID?.trim() || undefined;
 }
 
-export async function searchJamendoTracks(query: string, limit = 8): Promise<JamendoSearchResult[]> {
+export async function searchJamendoTracks(
+  query: string,
+  limit = 8,
+): Promise<JamendoSearchResult[]> {
   const clientId = getJamendoClientId();
   if (!clientId || query.trim().length < 2) return [];
 
@@ -212,7 +214,9 @@ export async function importJamendoTrackToBlob(trackId: string): Promise<{
 }
 
 export async function getItunesTrackById(trackId: string): Promise<ItunesSearchResult | null> {
-  const res = await fetch(`https://itunes.apple.com/lookup?id=${encodeURIComponent(trackId)}&country=RU`);
+  const res = await fetch(
+    `https://itunes.apple.com/lookup?id=${encodeURIComponent(trackId)}&country=RU`,
+  );
   if (!res.ok) return null;
   const json = (await res.json()) as {
     results?: Array<{

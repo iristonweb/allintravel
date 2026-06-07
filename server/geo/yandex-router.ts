@@ -125,7 +125,10 @@ function parseLegacyGeometry(geometry: unknown): [number, number][] {
   return [];
 }
 
-function extractRouteGeometry(route: { legs?: RouteLeg[]; geometry?: unknown }): [number, number][] {
+function extractRouteGeometry(route: {
+  legs?: RouteLeg[];
+  geometry?: unknown;
+}): [number, number][] {
   const fromLegs = extractGeometryFromLegs(route.legs);
   if (fromLegs.length > 1) return fromLegs;
   return parseLegacyGeometry(route.geometry);
@@ -187,17 +190,11 @@ export async function yandexBuildRoute(
           const legs = route.legs ?? [];
           const distanceM = legs.reduce((s, leg) => {
             if (leg.length != null && leg.length > 0) return s + leg.length;
-            return (
-              s +
-              (leg.steps ?? []).reduce((ss, step) => ss + (step.length ?? 0), 0)
-            );
+            return s + (leg.steps ?? []).reduce((ss, step) => ss + (step.length ?? 0), 0);
           }, 0);
           const durationS = legs.reduce((s, leg) => {
             if (leg.duration != null && leg.duration > 0) return s + leg.duration;
-            return (
-              s +
-              (leg.steps ?? []).reduce((ss, step) => ss + (step.duration ?? 0), 0)
-            );
+            return s + (leg.steps ?? []).reduce((ss, step) => ss + (step.duration ?? 0), 0);
           }, 0);
           const geometry = extractRouteGeometry(route);
           if (geometry.length > 1) {

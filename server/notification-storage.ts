@@ -18,7 +18,9 @@ export async function ensureNotificationSchema(db: Db): Promise<void> {
       created_at timestamp DEFAULT now()
     )
   `);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS IDX_notifications_user ON notifications (user_id)`);
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS IDX_notifications_user ON notifications (user_id)`,
+  );
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS IDX_notifications_user_unread ON notifications (user_id, is_read)`,
   );

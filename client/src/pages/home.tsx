@@ -6,6 +6,8 @@ import HomeQuickActions from "@/components/home/home-quick-actions";
 import HomeExplorePlannerSection from "@/components/home/home-explore-planner-section";
 import HomeCommunityPreview from "@/components/home/home-community-preview";
 import HomeMobileShowcase from "@/components/home/home-mobile-showcase";
+import HomePersonalized from "@/components/home/home-personalized";
+import HomeSimilar from "@/components/home/home-similar";
 import HeroStats from "@/components/home/hero-stats";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +15,10 @@ import { apiRequest } from "@/lib/queryClient";
 import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import StoriesStrip from "@/components/feed/StoriesStrip";
 import { useToast } from "@/hooks/use-toast";
+import EmptyState from "@/components/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 import type { Place, Trip, Event, TripWaypointWithPlace } from "@shared/schema";
 import { motion } from "framer-motion";
 
@@ -21,11 +27,21 @@ export function Home() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: places = [] } = useQuery<Place[]>({
+  const {
+    data: places = [],
+    isLoading: placesLoading,
+    isError: placesError,
+    refetch: refetchPlaces,
+  } = useQuery<Place[]>({
     queryKey: ["/api/places", { limit: 30 }],
   });
 
-  const { data: trips = [] } = useQuery<Trip[]>({
+  const {
+    data: trips = [],
+    isLoading: tripsLoading,
+    isError: tripsError,
+    refetch: refetchTrips,
+  } = useQuery<Trip[]>({
     queryKey: ["/api/trips", { limit: 4 }],
   });
 
@@ -53,9 +69,23 @@ export function Home() {
     },
   });
 
-  const { data: events = [] } = useQuery<Event[]>({
+  const {
+    data: events = [],
+    isLoading: eventsLoading,
+    isError: eventsError,
+    refetch: refetchEvents,
+  } = useQuery<Event[]>({
     queryKey: ["/api/events", { upcoming: true, limit: 4 }],
   });
+
+  const dataLoading = placesLoading || tripsLoading || eventsLoading;
+  const dataError = placesError || tripsError || eventsError;
+
+  const refetchAll = () => {
+    void refetchPlaces();
+    void refetchTrips();
+    void refetchEvents();
+  };
 
   const myTrip = trips[0];
 
@@ -104,16 +134,43 @@ export function Home() {
           </motion.section>
         )}
 
-        <HomeExplorePlannerSection places={places} trip={myTrip} waypoints={myTripWaypoints} />
-        <HomeCommunityPreview useLiveData />
-        <HomeMobileShowcase />
+        {dataError ? (
+          <EmptyState
+            icon={AlertCircle}
+            title="Не удалось загрузить данные"
+            description="Проверьте соединение и попробуйте снова."
+            action={
+              <Button variant="outline" onClick={refetchAll}>
+                Повторить
+              </Button>
+            }
+          />
+        ) : dataLoading ? (
+          <div className="space-y-8">
+            <Skeleton className="h-64 w-full rounded-2xl" />
+            <Skeleton className="h-48 w-full rounded-2xl" />
+            <Skeleton className="h-40 w-full rounded-2xl" />
+          </div>
+        ) : (
+          <>
+            <HomeExplorePlannerSection places={places} trip={myTrip} waypoints={myTripWaypoints} />
+            <HomeCommunityPreview useLiveData />
+            <HomeMobileShowcase />
 
-        <HomeContinue
-          trips={trips}
-          events={events}
-          joinedTripIds={participations.tripIds}
-          onJoinTrip={(id) => joinTripMutation.mutate(id)}
-        />
+            <HomeContinue
+              trips={trips}
+              events={events}
+              joinedTripIds={participations.tripIds}
+              onJoinTrip={(id) => joinTripMutation.mutate(id)}
+            />
+            {isAuthenticated && (
+              <>
+                <HomePersonalized />
+                <HomeSimilar />
+              </>
+            )}
+          </>
+        )}
       </div>
 
       <FeatureFooter showAnchors />

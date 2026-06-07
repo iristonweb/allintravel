@@ -16,10 +16,9 @@ function groupStories(posts: TravelPostWithAuthor[]): StoryGroup[] {
   for (const post of posts) {
     const uid = post.userId;
     const existing = map.get(uid);
-    const label =
-      post.author
-        ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || "User"
-        : "User";
+    const label = post.author
+      ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || "User"
+      : "User";
     if (existing) {
       existing.posts.push(post);
     } else {

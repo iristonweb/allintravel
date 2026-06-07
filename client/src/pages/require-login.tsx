@@ -26,7 +26,8 @@ export function RequireLogin() {
           <Lock className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">Нужно войти</h1>
           <p className="text-muted-foreground mb-6">
-            Эта страница доступна после авторизации. После входа мы вернём вас туда, куда вы переходили.
+            Эта страница доступна после авторизации. После входа мы вернём вас туда, куда вы
+            переходили.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Link href={loginHref}>
@@ -43,4 +44,3 @@ export function RequireLogin() {
 }
 
 export default RequireLogin;
-

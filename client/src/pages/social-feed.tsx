@@ -3,7 +3,6 @@ import { Link } from "wouter";
 import { feedModeFromQuery, filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,8 +24,10 @@ import {
   ImagePlus,
   Loader2,
   X,
+  AlertCircle,
 } from "lucide-react";
 import GlassCard from "@/components/brand/glass-card";
+import EmptyState from "@/components/empty-state";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -111,7 +112,9 @@ export function SocialFeed() {
     else url.searchParams.set("mode", mode);
     window.history.replaceState({}, "", url.pathname + url.search);
   };
-  const [contentFormat, setContentFormat] = useState<"feed" | "stories" | "reels" | "journals">("feed");
+  const [contentFormat, setContentFormat] = useState<"feed" | "stories" | "reels" | "journals">(
+    "feed",
+  );
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -146,7 +149,13 @@ export function SocialFeed() {
     return base;
   }, [apiFormat, activeTag, feedMode, user?.id]);
 
-  const { data: posts = [], isLoading } = useQuery<TravelPostWithAuthor[]>({
+  const {
+    data: posts = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", postsQueryParams],
     enabled: isAuthenticated && (feedMode !== "following" || !!user?.id),
     refetchInterval: isAuthenticated ? 20_000 : false,
@@ -181,7 +190,11 @@ export function SocialFeed() {
     },
     onError: (error: Error) => {
       const msg = error?.message ?? "";
-      const description = msg.includes("401") ? "Войдите в систему" : msg.includes("5") ? "Ошибка сервера. Попробуйте позже." : "Не удалось опубликовать пост";
+      const description = msg.includes("401")
+        ? "Войдите в систему"
+        : msg.includes("5")
+          ? "Ошибка сервера. Попробуйте позже."
+          : "Не удалось опубликовать пост";
       toast({ title: "Ошибка при публикации поста", description, variant: "destructive" });
     },
   });
@@ -211,7 +224,9 @@ export function SocialFeed() {
       toast({ title: "Комментарий добавлен" });
     },
     onError: (error: Error) => {
-      const message = error?.message?.includes("404") ? "Пост не найден" : "Не удалось добавить комментарий";
+      const message = error?.message?.includes("404")
+        ? "Пост не найден"
+        : "Не удалось добавить комментарий";
       toast({ title: "Ошибка", description: message, variant: "destructive" });
     },
   });
@@ -229,6 +244,7 @@ export function SocialFeed() {
   const handleCreatePost = () => {
     const format = apiFormat;
     const { tagInput, images, ...postData } = newPost;
+    void tagInput;
 
     if (format === "story") {
       if (!images.length) {
@@ -391,413 +407,438 @@ export function SocialFeed() {
             layoutId="social-feed-mode-glider"
           />
           {activeTag && (
-            <Badge variant="default" className="cursor-pointer rounded-full" onClick={() => setActiveTag(null)}>
+            <Badge
+              variant="default"
+              className="cursor-pointer rounded-full"
+              onClick={() => setActiveTag(null)}
+            >
               #{activeTag} ×
             </Badge>
           )}
         </div>
 
-          {/* Create post card */}
-          <GlassCard className="mb-6 mt-8 p-4">
-            <div className="pt-0">
-              <div className="flex items-start gap-3">
-                <Avatar>
-                  <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
-                  <AvatarFallback>{user?.firstName?.[0] || user?.email?.[0] || "?"}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  {!isCreating ? (
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-muted-foreground"
-                      onClick={() => setIsCreating(true)}
-                    >
-                      {composerPlaceholder}
-                    </Button>
-                  ) : (
-                    <div className="space-y-3">
-                      {contentFormat !== "stories" && contentFormat !== "reels" && (
-                        <Input
-                          placeholder={
-                            contentFormat === "journals" ? "Заголовок журнала" : "Заголовок поста"
-                          }
-                          value={newPost.title}
-                          onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                        />
-                      )}
-                      {contentFormat !== "stories" && (
-                        <div className="space-y-1">
-                          <FormatToolbar
-                            value={newPost.content}
-                            onChange={(content) => setNewPost({ ...newPost, content })}
-                            inputRef={postContentRef}
-                          />
-                          <Textarea
-                            ref={postContentRef}
-                            placeholder={
-                              contentFormat === "journals"
-                                ? "Длинная запись (мин. 80 символов)..."
-                                : contentFormat === "reels"
-                                  ? "Подпись к Reel (необязательно)"
-                                  : "Расскажите о путешествии..."
-                            }
-                            value={newPost.content}
-                            onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                            rows={contentFormat === "journals" ? 8 : 4}
-                          />
-                        </div>
-                      )}
-                      {contentFormat === "feed" && (
-                        <>
-                          <LocationAutocompleteInput
-                            placeholder="Местоположение (необязательно)"
-                            value={newPost.location}
-                            onChange={(v) => setNewPost({ ...newPost, location: v })}
-                          />
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Добавить тег"
-                              value={newPost.tagInput}
-                              onChange={(e) => setNewPost({ ...newPost, tagInput: e.target.value })}
-                              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
-                            />
-                            <Button variant="outline" size="sm" onClick={handleAddTag}>
-                              +
-                            </Button>
-                          </div>
-                          {newPost.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {newPost.tags.map((tag) => (
-                                <Badge
-                                  key={tag}
-                                  variant="secondary"
-                                  className="cursor-pointer"
-                                  onClick={() =>
-                                    setNewPost((prev) => ({
-                                      ...prev,
-                                      tags: prev.tags.filter((t) => t !== tag),
-                                    }))
-                                  }
-                                >
-                                  #{tag} ×
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                      <input
-                        ref={mediaInputRef}
-                        type="file"
-                        accept={
-                          contentFormat === "reels"
-                            ? "video/mp4,video/webm,video/quicktime"
-                            : "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.gif"
+        {/* Create post card */}
+        <GlassCard className="mb-6 mt-8 p-4">
+          <div className="pt-0">
+            <div className="flex items-start gap-3">
+              <Avatar>
+                <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
+                <AvatarFallback>{user?.firstName?.[0] || user?.email?.[0] || "?"}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                {!isCreating ? (
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-muted-foreground"
+                    onClick={() => setIsCreating(true)}
+                  >
+                    {composerPlaceholder}
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    {contentFormat !== "stories" && contentFormat !== "reels" && (
+                      <Input
+                        placeholder={
+                          contentFormat === "journals" ? "Заголовок журнала" : "Заголовок поста"
                         }
-                        multiple={contentFormat !== "reels"}
-                        className="hidden"
-                        onChange={handleMediaSelect}
+                        value={newPost.title}
+                        onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
                       />
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={uploadingMedia}
-                          onClick={() => mediaInputRef.current?.click()}
-                        >
-                          {uploadingMedia ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <ImagePlus className="h-4 w-4 mr-1" />
-                          )}
-                          {contentFormat === "reels"
-                            ? "Видео"
-                            : contentFormat === "stories"
-                              ? "Фото / видео"
-                              : "Фото / видео"}
-                        </Button>
-                        {contentFormat === "feed" && (
-                          <div className="flex items-center gap-2 ml-auto">
-                            <Switch
-                              id="post-public"
-                              checked={newPost.isPublic}
-                              onCheckedChange={(checked) =>
-                                setNewPost((prev) => ({ ...prev, isPublic: checked }))
-                              }
-                            />
-                            <Label htmlFor="post-public" className="text-sm text-muted-foreground">
-                              Публично (в блоге)
-                            </Label>
-                          </div>
-                        )}
-                        {contentFormat === "stories" && (
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            Исчезнет через 24 часа
-                          </span>
-                        )}
+                    )}
+                    {contentFormat !== "stories" && (
+                      <div className="space-y-1">
+                        <FormatToolbar
+                          value={newPost.content}
+                          onChange={(content) => setNewPost({ ...newPost, content })}
+                          inputRef={postContentRef}
+                        />
+                        <Textarea
+                          ref={postContentRef}
+                          placeholder={
+                            contentFormat === "journals"
+                              ? "Длинная запись (мин. 80 символов)..."
+                              : contentFormat === "reels"
+                                ? "Подпись к Reel (необязательно)"
+                                : "Расскажите о путешествии..."
+                          }
+                          value={newPost.content}
+                          onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                          rows={contentFormat === "journals" ? 8 : 4}
+                        />
                       </div>
-                      {newPost.images.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {newPost.images.map((url) => (
-                            <div key={url} className="relative">
-                              {isVideoUrl(url) ? (
-                                <video src={url} className="h-20 w-28 rounded-lg object-cover" muted />
-                              ) : (
-                                <img src={url} alt="" className="h-20 w-28 rounded-lg object-cover" />
-                              )}
-                              <button
-                                type="button"
-                                className="absolute -top-1 -right-1 rounded-full bg-destructive text-white p-0.5"
+                    )}
+                    {contentFormat === "feed" && (
+                      <>
+                        <LocationAutocompleteInput
+                          placeholder="Местоположение (необязательно)"
+                          value={newPost.location}
+                          onChange={(v) => setNewPost({ ...newPost, location: v })}
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Добавить тег"
+                            value={newPost.tagInput}
+                            onChange={(e) => setNewPost({ ...newPost, tagInput: e.target.value })}
+                            onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+                          />
+                          <Button variant="outline" size="sm" onClick={handleAddTag}>
+                            +
+                          </Button>
+                        </div>
+                        {newPost.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {newPost.tags.map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="cursor-pointer"
                                 onClick={() =>
                                   setNewPost((prev) => ({
                                     ...prev,
-                                    images: prev.images.filter((u) => u !== url),
+                                    tags: prev.tags.filter((t) => t !== tag),
                                   }))
                                 }
                               >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleCreatePost}
-                          disabled={createPostMutation.isPending}
-                          variant="premium"
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Опубликовать
-                        </Button>
-                        <Button variant="outline" onClick={() => setIsCreating(false)}>
-                          Отмена
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-
-          {storyView && (
-            <StoryViewer
-              posts={storyView.posts}
-              index={storyView.index}
-              onClose={() => setStoryView(null)}
-              onIndexChange={(index) => setStoryView((s) => (s ? { ...s, index } : null))}
-            />
-          )}
-
-          {/* Posts list */}
-          <div className="space-y-6">
-            {isLoading ? (
-              <div className="text-center py-8">
-                <div className="loading-spinner mx-auto" />
-                <p className="text-muted-foreground mt-2">Загружаем посты...</p>
-              </div>
-            ) : contentFormat === "stories" ? (
-              <div className="space-y-4">
-                <div className="flex gap-3 items-start">
-                  <Link href="/social-feed?format=stories&create=1">
-                    <button
-                      type="button"
-                      className="flex flex-col items-center gap-2 shrink-0"
-                    >
-                      <div className="h-14 w-14 rounded-full border-2 border-dashed border-ait-purple/50 flex items-center justify-center bg-ait-purple/10">
-                        <Plus className="h-6 w-6 text-ait-purple" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">Создать</span>
-                    </button>
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <StoryBar posts={displayedPosts} onOpenGroup={openStoryGroup} inline />
-                  </div>
-                </div>
-                <p className="text-xs text-center text-muted-foreground">
-                  Stories живут 24 часа · лайки и реакции видны автору
-                </p>
-              </div>
-            ) : contentFormat === "reels" ? (
-              <ReelFeed posts={displayedPosts} />
-            ) : displayedPosts.length === 0 ? (
-              <GlassCard className="py-16 text-center">
-                <Compass className="mx-auto h-12 w-12 text-ait-purple mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Пока нет публикаций</h3>
-                <p className="text-muted-foreground mb-4">Создайте первую запись в этом формате</p>
-                <Button variant="premium" onClick={() => setIsCreating(true)}>
-                  Создать
-                </Button>
-              </GlassCard>
-            ) : contentFormat === "journals" ? (
-              displayedPosts.map((post) => (
-                <JournalCard
-                  key={post.id}
-                  post={post}
-                  formatDate={formatDate}
-                  onTagClick={(tag) => setActiveTag(activeTag === tag ? null : tag)}
-                />
-              ))
-            ) : (
-              displayedPosts.map((post) => (
-                <GlassCard key={post.id} className="overflow-hidden">
-                  <div className="p-4 pb-3">
-                    <div className="flex items-start gap-3">
-                      <CreatorAvatar
-                        src={post.author?.profileImageUrl}
-                        fallback={post.author?.firstName?.[0] || "?"}
-                        creatorBadge={(post as { creatorBadge?: boolean }).creatorBadge}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-semibold">
-                            {post.author
-                              ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || "Пользователь"
-                              : "Пользователь"}
-                          </h4>
-                          <span className="text-sm text-muted-foreground">
-                            {formatDate(post.createdAt as unknown as string)}
-                          </span>
-                          {(post as { isBoosted?: boolean }).isBoosted && (
-                            <Badge className="bg-ait-orange/20 text-ait-orange text-xs">Boost</Badge>
-                          )}
-                        </div>
-                        {post.location && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">{post.location}</span>
+                                #{tag} ×
+                              </Badge>
+                            ))}
                           </div>
                         )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="px-4 pb-4 space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-lg mb-1">{post.title}</h3>
-                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                        {renderRichText(post.content)}
-                      </p>
-                    </div>
-
-                    {post.images && post.images.length > 0 && resolveMediaUrl(post.images[0]) ? (
-                      <div className="rounded-2xl overflow-hidden mx-1">
-                        {isVideoUrl(post.images[0]) ? (
-                          <video
-                            src={resolveMediaUrl(post.images[0])!}
-                            className="w-full h-64 md:h-[420px] object-cover"
-                            controls
-                            playsInline
-                          />
-                        ) : (
-                          <img
-                            src={resolveMediaUrl(post.images[0])!}
-                            alt={post.title}
-                            className="w-full h-64 md:h-[420px] object-cover"
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      <div
-                        className="rounded-2xl overflow-hidden mx-1 h-64 md:h-[420px] bg-cover bg-center"
-                        style={{
-                          backgroundImage: `url('${COMMUNITY_TRAVEL_SRC}')`,
-                        }}
-                      />
+                      </>
                     )}
-
-                    {post.tags && post.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {post.tags.map((tag, i) => (
-                          <Badge
-                            key={i}
-                            variant="secondary"
-                            className="cursor-pointer"
-                            onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                          >
-                            #{tag}
-                          </Badge>
+                    <input
+                      ref={mediaInputRef}
+                      type="file"
+                      accept={
+                        contentFormat === "reels"
+                          ? "video/mp4,video/webm,video/quicktime"
+                          : "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.gif"
+                      }
+                      multiple={contentFormat !== "reels"}
+                      className="hidden"
+                      onChange={handleMediaSelect}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingMedia}
+                        onClick={() => mediaInputRef.current?.click()}
+                      >
+                        {uploadingMedia ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <ImagePlus className="h-4 w-4 mr-1" />
+                        )}
+                        {contentFormat === "reels"
+                          ? "Видео"
+                          : contentFormat === "stories"
+                            ? "Фото / видео"
+                            : "Фото / видео"}
+                      </Button>
+                      {contentFormat === "feed" && (
+                        <div className="flex items-center gap-2 ml-auto">
+                          <Switch
+                            id="post-public"
+                            checked={newPost.isPublic}
+                            onCheckedChange={(checked) =>
+                              setNewPost((prev) => ({ ...prev, isPublic: checked }))
+                            }
+                          />
+                          <Label htmlFor="post-public" className="text-sm text-muted-foreground">
+                            Публично (в блоге)
+                          </Label>
+                        </div>
+                      )}
+                      {contentFormat === "stories" && (
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          Исчезнет через 24 часа
+                        </span>
+                      )}
+                    </div>
+                    {newPost.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {newPost.images.map((url) => (
+                          <div key={url} className="relative">
+                            {isVideoUrl(url) ? (
+                              <video
+                                src={url}
+                                className="h-20 w-28 rounded-lg object-cover"
+                                muted
+                              />
+                            ) : (
+                              <img src={url} alt="" className="h-20 w-28 rounded-lg object-cover" />
+                            )}
+                            <button
+                              type="button"
+                              className="absolute -top-1 -right-1 rounded-full bg-destructive text-white p-0.5"
+                              onClick={() =>
+                                setNewPost((prev) => ({
+                                  ...prev,
+                                  images: prev.images.filter((u) => u !== url),
+                                }))
+                              }
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            likePostMutation.mutate({ postId: post.id, isLiked: post.isLiked })
-                          }
-                          disabled={likePostMutation.isPending}
-                          className={post.isLiked ? "text-red-500" : "text-muted-foreground hover:text-red-500"}
-                        >
-                          <Heart className={`mr-1.5 h-4 w-4 ${post.isLiked ? "fill-current" : ""}`} />
-                          {post.likesCount > 0 ? post.likesCount : "Нравится"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setExpandedComments((prev) => ({
-                              ...prev,
-                              [post.id]: !prev[post.id],
-                            }))
-                          }
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <MessageCircle className="mr-1.5 h-4 w-4" />
-                          {post.commentsCount > 0 ? post.commentsCount : "Комментарии"}
-                        </Button>
-                        {post.author?.id && (
-                          <PostTipButton
-                            postId={post.id}
-                            authorId={post.author.id}
-                            currentUserId={user?.id}
-                          />
-                        )}
-                        <BoostPostButton
-                          postId={post.id}
-                          authorId={post.author?.id ?? ""}
-                          currentUserId={user?.id}
-                          isBoosted={(post as { isBoosted?: boolean }).isBoosted}
-                        />
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => shareUrl(window.location.href, post.title, post.content.slice(0, 100))}
-                          className="text-muted-foreground"
-                        >
-                          <Share2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setBookmarked((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
-                          }
-                          className={bookmarked[post.id] ? "text-ait-purple" : "text-muted-foreground"}
-                        >
-                          <Bookmark className={`h-4 w-4 ${bookmarked[post.id] ? "fill-current" : ""}`} />
-                        </Button>
-                      </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleCreatePost}
+                        disabled={createPostMutation.isPending}
+                        variant="premium"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Опубликовать
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsCreating(false)}>
+                        Отмена
+                      </Button>
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </GlassCard>
 
-                    {expandedComments[post.id] && (
-                      <div className="border-t pt-3 space-y-3">
-                        <PostComments postId={post.id} enabled={expandedComments[post.id]} />
-                        <div className="flex gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
-                            <AvatarFallback>{user?.firstName?.[0] || "?"}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 flex flex-col gap-1 min-w-0">
+        {storyView && (
+          <StoryViewer
+            posts={storyView.posts}
+            index={storyView.index}
+            onClose={() => setStoryView(null)}
+            onIndexChange={(index) => setStoryView((s) => (s ? { ...s, index } : null))}
+          />
+        )}
+
+        {/* Posts list */}
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="loading-spinner mx-auto" />
+              <p className="text-muted-foreground mt-2">Загружаем посты...</p>
+            </div>
+          ) : isError ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Не удалось загрузить ленту"
+              description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
+              action={
+                <Button variant="outline" onClick={() => refetch()}>
+                  Повторить
+                </Button>
+              }
+            />
+          ) : contentFormat === "stories" ? (
+            <div className="space-y-4">
+              <div className="flex gap-3 items-start">
+                <Link href="/social-feed?format=stories&create=1">
+                  <button type="button" className="flex flex-col items-center gap-2 shrink-0">
+                    <div className="h-14 w-14 rounded-full border-2 border-dashed border-ait-purple/50 flex items-center justify-center bg-ait-purple/10">
+                      <Plus className="h-6 w-6 text-ait-purple" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Создать</span>
+                  </button>
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <StoryBar posts={displayedPosts} onOpenGroup={openStoryGroup} inline />
+                </div>
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                Stories живут 24 часа · лайки и реакции видны автору
+              </p>
+            </div>
+          ) : contentFormat === "reels" ? (
+            <ReelFeed posts={displayedPosts} />
+          ) : displayedPosts.length === 0 ? (
+            <GlassCard className="py-16 text-center">
+              <Compass className="mx-auto h-12 w-12 text-ait-purple mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Пока нет публикаций</h3>
+              <p className="text-muted-foreground mb-4">Создайте первую запись в этом формате</p>
+              <Button variant="premium" onClick={() => setIsCreating(true)}>
+                Создать
+              </Button>
+            </GlassCard>
+          ) : contentFormat === "journals" ? (
+            displayedPosts.map((post) => (
+              <JournalCard
+                key={post.id}
+                post={post}
+                formatDate={formatDate}
+                onTagClick={(tag) => setActiveTag(activeTag === tag ? null : tag)}
+              />
+            ))
+          ) : (
+            displayedPosts.map((post) => (
+              <GlassCard key={post.id} className="overflow-hidden">
+                <div className="p-4 pb-3">
+                  <div className="flex items-start gap-3">
+                    <CreatorAvatar
+                      src={post.author?.profileImageUrl}
+                      fallback={post.author?.firstName?.[0] || "?"}
+                      creatorBadge={(post as { creatorBadge?: boolean }).creatorBadge}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-semibold">
+                          {post.author
+                            ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() ||
+                              "Пользователь"
+                            : "Пользователь"}
+                        </h4>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDate(post.createdAt as unknown as string)}
+                        </span>
+                        {(post as { isBoosted?: boolean }).isBoosted && (
+                          <Badge className="bg-ait-orange/20 text-ait-orange text-xs">Boost</Badge>
+                        )}
+                      </div>
+                      {post.location && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{post.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-4 space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">{post.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {renderRichText(post.content)}
+                    </p>
+                  </div>
+
+                  {post.images && post.images.length > 0 && resolveMediaUrl(post.images[0]) ? (
+                    <div className="rounded-2xl overflow-hidden mx-1">
+                      {isVideoUrl(post.images[0]) ? (
+                        <video
+                          src={resolveMediaUrl(post.images[0])!}
+                          className="w-full h-64 md:h-[420px] object-cover"
+                          controls
+                          playsInline
+                        />
+                      ) : (
+                        <img
+                          src={resolveMediaUrl(post.images[0])!}
+                          alt={post.title}
+                          className="w-full h-64 md:h-[420px] object-cover"
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      className="rounded-2xl overflow-hidden mx-1 h-64 md:h-[420px] bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url('${COMMUNITY_TRAVEL_SRC}')`,
+                      }}
+                    />
+                  )}
+
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {post.tags.map((tag, i) => (
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="cursor-pointer"
+                          onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                        >
+                          #{tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          likePostMutation.mutate({ postId: post.id, isLiked: post.isLiked })
+                        }
+                        disabled={likePostMutation.isPending}
+                        className={
+                          post.isLiked ? "text-red-500" : "text-muted-foreground hover:text-red-500"
+                        }
+                      >
+                        <Heart className={`mr-1.5 h-4 w-4 ${post.isLiked ? "fill-current" : ""}`} />
+                        {post.likesCount > 0 ? post.likesCount : "Нравится"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setExpandedComments((prev) => ({
+                            ...prev,
+                            [post.id]: !prev[post.id],
+                          }))
+                        }
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <MessageCircle className="mr-1.5 h-4 w-4" />
+                        {post.commentsCount > 0 ? post.commentsCount : "Комментарии"}
+                      </Button>
+                      {post.author?.id && (
+                        <PostTipButton
+                          postId={post.id}
+                          authorId={post.author.id}
+                          currentUserId={user?.id}
+                        />
+                      )}
+                      <BoostPostButton
+                        postId={post.id}
+                        authorId={post.author?.id ?? ""}
+                        currentUserId={user?.id}
+                        isBoosted={(post as { isBoosted?: boolean }).isBoosted}
+                      />
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          shareUrl(window.location.href, post.title, post.content.slice(0, 100))
+                        }
+                        className="text-muted-foreground"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setBookmarked((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
+                        }
+                        className={
+                          bookmarked[post.id] ? "text-ait-purple" : "text-muted-foreground"
+                        }
+                      >
+                        <Bookmark
+                          className={`h-4 w-4 ${bookmarked[post.id] ? "fill-current" : ""}`}
+                        />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {expandedComments[post.id] && (
+                    <div className="border-t pt-3 space-y-3">
+                      <PostComments postId={post.id} enabled={expandedComments[post.id]} />
+                      <div className="flex gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
+                          <AvatarFallback>{user?.firstName?.[0] || "?"}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 flex flex-col gap-1 min-w-0">
                           <FormatToolbar
                             value={commentInputs[post.id] || ""}
                             onChange={(v) =>
@@ -824,7 +865,9 @@ export function SocialFeed() {
                             <Button
                               size="sm"
                               variant="premium"
-                              disabled={!commentInputs[post.id]?.trim() || commentMutation.isPending}
+                              disabled={
+                                !commentInputs[post.id]?.trim() || commentMutation.isPending
+                              }
                               onClick={() => handleSubmitComment(post.id)}
                               className="shrink-0"
                             >
@@ -832,14 +875,14 @@ export function SocialFeed() {
                             </Button>
                           </div>
                         </div>
-                        </div>
                       </div>
-                    )}
-                  </div>
-                </GlassCard>
-              ))
-            )}
-          </div>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            ))
+          )}
+        </div>
       </div>
     </AppLayout>
   );

@@ -8,7 +8,13 @@ type ReplyQuoteProps = {
   className?: string;
 };
 
-export default function ReplyQuote({ username, preview, isOwn, compact, className }: ReplyQuoteProps) {
+export default function ReplyQuote({
+  username,
+  preview,
+  isOwn,
+  compact,
+  className,
+}: ReplyQuoteProps) {
   return (
     <div
       className={cn(
@@ -18,10 +24,14 @@ export default function ReplyQuote({ username, preview, isOwn, compact, classNam
         className,
       )}
     >
-      <span className={cn("font-semibold block truncate", isOwn ? "text-white/90" : "text-ait-purple")}>
+      <span
+        className={cn("font-semibold block truncate", isOwn ? "text-white/90" : "text-ait-purple")}
+      >
         {username}
       </span>
-      <span className={cn("italic line-clamp-2", isOwn ? "text-white/75" : "text-muted-foreground")}>
+      <span
+        className={cn("italic line-clamp-2", isOwn ? "text-white/75" : "text-muted-foreground")}
+      >
         «{preview}»
       </span>
     </div>

@@ -22,7 +22,6 @@ import {
   sidebarDiscoverNav,
   sidebarExtraNav,
   sidebarAccountNav,
-  type SidebarNavItem,
 } from "@/lib/nav-config";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,13 +50,7 @@ const iconByHref: Record<string, LucideIcon> = {
 
 type NavItemWithMeta = { href: string; label: string; badge?: string; icon?: LucideIcon };
 
-function NavItem({
-  item,
-  active,
-}: {
-  item: NavItemWithMeta;
-  active: boolean;
-}) {
+function NavItem({ item, active }: { item: NavItemWithMeta; active: boolean }) {
   const Icon = item.icon ?? iconByHref[item.href] ?? MapPin;
   return (
     <Link href={item.href}>
@@ -160,7 +153,8 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
     if (href === "/profile") return location === "/profile";
-    if (href === "/friends") return location === "/friends" || location.startsWith("/profile/friends");
+    if (href === "/friends")
+      return location === "/friends" || location.startsWith("/profile/friends");
     return location === href || location.startsWith(`${href}/`);
   };
 

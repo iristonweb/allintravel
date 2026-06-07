@@ -10,7 +10,13 @@ type EmptyStateProps = {
   className?: string;
 };
 
-export default function EmptyState({ title, description, icon: Icon, action, className }: EmptyStateProps) {
+export default function EmptyState({
+  title,
+  description,
+  icon: Icon,
+  action,
+  className,
+}: EmptyStateProps) {
   return (
     <div className={cn("text-center py-16", className)}>
       {Icon ? <Icon className="mx-auto h-12 w-12 text-muted-foreground mb-4" /> : null}
@@ -20,4 +26,3 @@ export default function EmptyState({ title, description, icon: Icon, action, cla
     </div>
   );
 }
-

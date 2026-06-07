@@ -1,11 +1,7 @@
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AIT_GRANT_EVENT,
-  formatAitToast,
-  type AitGrantPayload,
-} from "@/lib/ait-toast";
+import { AIT_GRANT_EVENT, formatAitToast, type AitGrantPayload } from "@/lib/ait-toast";
 import { playNotificationSound } from "@/lib/notification-sound";
 export default function AitGrantListener() {
   const { toast } = useToast();

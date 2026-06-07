@@ -7,7 +7,10 @@ type MessageStatusTicksProps = {
   className?: string;
 };
 
-export default function MessageStatusTicks({ status = "sent", className }: MessageStatusTicksProps) {
+export default function MessageStatusTicks({
+  status = "sent",
+  className,
+}: MessageStatusTicksProps) {
   const isRead = status === "read";
   const isDelivered = status === "delivered" || isRead;
   const Icon = isDelivered ? CheckCheck : Check;
@@ -19,9 +22,7 @@ export default function MessageStatusTicks({ status = "sent", className }: Messa
         isRead ? "text-blue-500" : "text-muted-foreground/70",
         className,
       )}
-      aria-label={
-        isRead ? "Прочитано" : isDelivered ? "Доставлено" : "Отправлено"
-      }
+      aria-label={isRead ? "Прочитано" : isDelivered ? "Доставлено" : "Отправлено"}
     />
   );
 }

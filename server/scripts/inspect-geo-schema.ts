@@ -29,7 +29,10 @@ async function main() {
        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
        ORDER BY table_name`,
     );
-    console.log("public tables:", allTables.rows.map((r) => r.table_name));
+    console.log(
+      "public tables:",
+      allTables.rows.map((r) => r.table_name),
+    );
 
     const tables = await pool.query(
       `SELECT table_name FROM information_schema.tables

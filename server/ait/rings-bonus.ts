@@ -9,5 +9,9 @@ export async function tryClaimRingsWeeklyBonus(userId: string): Promise<AitGrant
   if (await store.isRingsBonusClaimedToday(userId)) return null;
   const marked = await store.markRingsBonusClaimedToday(userId);
   if (!marked) return null;
-  return tryGrantSpend(userId, "rings_weekly", { skipCap: true, entityType: "rings", entityId: store.todayUtc() });
+  return tryGrantSpend(userId, "rings_weekly", {
+    skipCap: true,
+    entityType: "rings",
+    entityId: store.todayUtc(),
+  });
 }

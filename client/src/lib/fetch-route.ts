@@ -35,10 +35,9 @@ export async function fetchTripRoute(
   if (opts?.day != null) params.set("day", String(opts.day));
   if (opts?.mode) params.set("mode", opts.mode);
   const q = params.toString();
-  const res = await fetch(
-    toApiUrl(`/api/trips/${tripId}/yandex-route${q ? `?${q}` : ""}`),
-    { credentials: "include" },
-  );
+  const res = await fetch(toApiUrl(`/api/trips/${tripId}/yandex-route${q ? `?${q}` : ""}`), {
+    credentials: "include",
+  });
   if (!res.ok) {
     return { configured: false, route: null };
   }

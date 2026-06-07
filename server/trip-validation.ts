@@ -2,7 +2,8 @@ import { z } from "zod";
 import { insertTripSchema, updateTripSchema } from "@shared/schema";
 
 const optionalBudget = z.preprocess(
-  (v) => (v === "" || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v)),
+  (v) =>
+    v === "" || v === null || v === undefined || Number.isNaN(Number(v)) ? undefined : Number(v),
   z.number().int().min(0).optional(),
 );
 

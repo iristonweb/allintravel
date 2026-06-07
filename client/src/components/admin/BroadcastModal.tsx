@@ -31,7 +31,7 @@ export default function BroadcastModal() {
 
   useEffect(() => {
     setOpen(Boolean(broadcast));
-  }, [broadcast?.id]);
+  }, [broadcast]);
 
   const dismissMutation = useMutation({
     mutationFn: async (action: "ack" | "skip_video") => {
@@ -53,7 +53,9 @@ export default function BroadcastModal() {
       <DialogContent className="ait-glass-strong ait-gradient-border border-white/10 sm:max-w-md max-h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-2 shrink-0">
           <DialogTitle>Сообщение от команды</DialogTitle>
-          <DialogDescription className="sr-only">Объявление для всех пользователей</DialogDescription>
+          <DialogDescription className="sr-only">
+            Объявление для всех пользователей
+          </DialogDescription>
         </DialogHeader>
         <div className="px-5 py-3 overflow-y-auto flex-1 min-h-0 text-sm leading-relaxed text-foreground">
           <div className="flex flex-col gap-3">

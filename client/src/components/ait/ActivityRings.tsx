@@ -52,9 +52,7 @@ export default function ActivityRings({ rings, compact }: ActivityRingsProps) {
               {RING_LABELS[id]}
             </span>
             {!compact && (
-              <span className="text-xs font-medium text-foreground/80">
-                {r.count}/5
-              </span>
+              <span className="text-xs font-medium text-foreground/80">{r.count}/5</span>
             )}
           </div>
         );

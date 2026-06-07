@@ -19,11 +19,7 @@ import { MapPin, AlertCircle, Plus } from "lucide-react";
 import { useLocation } from "wouter";
 import DestinationSearch from "@/components/search/DestinationSearch";
 import FilterChipRow from "@/components/filters/FilterChipRow";
-import {
-  PLACE_TYPE_FILTERS,
-  PLACE_RATING_FILTERS,
-  PLACE_PRICE_FILTERS,
-} from "@/lib/filter-config";
+import { PLACE_TYPE_FILTERS, PLACE_RATING_FILTERS, PLACE_PRICE_FILTERS } from "@/lib/filter-config";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePlaceFavorites } from "@/hooks/usePlaceFavorites";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -67,7 +63,13 @@ export function Places() {
     setTypeFilter(t);
   }, [searchString]);
 
-  const { data: places = [], isLoading, isError, error, refetch } = useQuery<Place[]>({
+  const {
+    data: places = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<Place[]>({
     queryKey: [
       "/api/places",
       {
@@ -148,17 +150,43 @@ export function Places() {
                 <DialogTitle>Новое место</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
-                <Input placeholder="Название" value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })} />
-                <Textarea placeholder="Описание" value={newPlace.description} onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })} />
-                <select className="w-full rounded-md border px-3 py-2 text-sm bg-background" value={newPlace.type} onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}>
+                <Input
+                  placeholder="Название"
+                  value={newPlace.name}
+                  onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+                />
+                <Textarea
+                  placeholder="Описание"
+                  value={newPlace.description}
+                  onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })}
+                />
+                <select
+                  className="w-full rounded-md border px-3 py-2 text-sm bg-background"
+                  value={newPlace.type}
+                  onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}
+                >
                   {PLACE_TYPE_FILTERS.filter((t) => t.value).map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
-                <Input placeholder="Адрес" value={newPlace.address} onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })} />
+                <Input
+                  placeholder="Адрес"
+                  value={newPlace.address}
+                  onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })}
+                />
                 <div className="grid grid-cols-2 gap-2">
-                  <Input placeholder="Широта" value={newPlace.latitude} onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })} />
-                  <Input placeholder="Долгота" value={newPlace.longitude} onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })} />
+                  <Input
+                    placeholder="Широта"
+                    value={newPlace.latitude}
+                    onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Долгота"
+                    value={newPlace.longitude}
+                    onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })}
+                  />
                 </div>
                 <MediaUploadField
                   label="Фото места"
@@ -168,7 +196,12 @@ export function Places() {
                   value={newPlace.imageUrl ? [newPlace.imageUrl] : []}
                   onChange={(urls) => setNewPlace({ ...newPlace, imageUrl: urls[0] ?? "" })}
                 />
-                <Button className="w-full" variant="premium" disabled={!newPlace.name || createPlaceMutation.isPending} onClick={() => createPlaceMutation.mutate()}>
+                <Button
+                  className="w-full"
+                  variant="premium"
+                  disabled={!newPlace.name || createPlaceMutation.isPending}
+                  onClick={() => createPlaceMutation.mutate()}
+                >
                   Сохранить
                 </Button>
               </div>
@@ -202,84 +235,84 @@ export function Places() {
         </p>
       </div>
 
-        <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6 space-y-4">
-          <FilterChipRow
-            label="Тип"
-            options={PLACE_TYPE_FILTERS}
-            value={typeFilter}
-            onChange={setTypeFilter}
-          />
-          <FilterChipRow
-            label="Рейтинг"
-            options={PLACE_RATING_FILTERS}
-            value={minRating}
-            onChange={setMinRating}
-          />
-          <FilterChipRow
-            label="Цена"
-            options={PLACE_PRICE_FILTERS}
-            value={priceRange}
-            onChange={setPriceRange}
-          />
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
-              Сбросить все фильтры
-            </Button>
-          )}
-        </div>
+      <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6 space-y-4">
+        <FilterChipRow
+          label="Тип"
+          options={PLACE_TYPE_FILTERS}
+          value={typeFilter}
+          onChange={setTypeFilter}
+        />
+        <FilterChipRow
+          label="Рейтинг"
+          options={PLACE_RATING_FILTERS}
+          value={minRating}
+          onChange={setMinRating}
+        />
+        <FilterChipRow
+          label="Цена"
+          options={PLACE_PRICE_FILTERS}
+          value={priceRange}
+          onChange={setPriceRange}
+        />
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
+            Сбросить все фильтры
+          </Button>
+        )}
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <MapPin className="h-8 w-8 text-primary" />
-              <div>
-                <p className="font-semibold">{places.length} мест</p>
-                <p className="text-sm text-muted-foreground">в каталоге</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <MapPin className="h-8 w-8 text-primary" />
+            <div>
+              <p className="font-semibold">{places.length} мест</p>
+              <p className="text-sm text-muted-foreground">в каталоге</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} className="h-80 animate-pulse bg-muted" />
-            ))}
-          </div>
-        ) : isError ? (
-          <EmptyState
-            icon={AlertCircle}
-            title="Не удалось загрузить места"
-            description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
-            action={
-              <Button variant="outline" onClick={() => refetch()}>
-                Повторить
-              </Button>
-            }
-          />
-        ) : places.length === 0 ? (
-          <EmptyState
-            icon={MapPin}
-            title="Места не найдены"
-            description="Попробуйте изменить фильтры или поисковый запрос"
-            action={
-              <Button variant="outline" onClick={clearFilters}>
-                Сбросить фильтры
-              </Button>
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {places.map((place) => (
-              <PlaceCard
-                key={place.id}
-                place={place}
-                isFavorite={isFavorite(place.id)}
-                onToggleFavorite={toggleFavorite}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="h-80 animate-pulse bg-muted" />
+          ))}
+        </div>
+      ) : isError ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Не удалось загрузить места"
+          description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
+          action={
+            <Button variant="outline" onClick={() => refetch()}>
+              Повторить
+            </Button>
+          }
+        />
+      ) : places.length === 0 ? (
+        <EmptyState
+          icon={MapPin}
+          title="Места не найдены"
+          description="Попробуйте изменить фильтры или поисковый запрос"
+          action={
+            <Button variant="outline" onClick={clearFilters}>
+              Сбросить фильтры
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {places.map((place) => (
+            <PlaceCard
+              key={place.id}
+              place={place}
+              isFavorite={isFavorite(place.id)}
+              onToggleFavorite={toggleFavorite}
+            />
+          ))}
+        </div>
+      )}
     </AppLayout>
   );
 }

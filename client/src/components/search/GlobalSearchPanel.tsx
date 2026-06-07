@@ -4,10 +4,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import DestinationSearch from "@/components/search/DestinationSearch";
 import { buildDestinationHref } from "@/lib/destination-search";
-import {
-  HERO_SEARCH_TARGETS,
-  HERO_TRAVELER_OPTIONS,
-} from "@/lib/filter-config";
+import { HERO_SEARCH_TARGETS, HERO_TRAVELER_OPTIONS } from "@/lib/filter-config";
 import { cn } from "@/lib/utils";
 
 export default function GlobalSearchPanel() {
@@ -80,7 +77,12 @@ export default function GlobalSearchPanel() {
           </div>
         </div>
 
-        <div className={cn(fieldClass, "flex-col sm:flex-row sm:items-center gap-2 lg:flex-col lg:items-stretch")}>
+        <div
+          className={cn(
+            fieldClass,
+            "flex-col sm:flex-row sm:items-center gap-2 lg:flex-col lg:items-stretch",
+          )}
+        >
           <div className="flex items-center gap-2 shrink-0">
             <Calendar className="h-5 w-5 text-ait-orange shrink-0" />
             <span className="text-xs font-medium text-slate-400 lg:hidden">Даты</span>

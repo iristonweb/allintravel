@@ -84,9 +84,6 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
     next();
   });
 
-  setupUploadRoutes(app);
-  setupPushRoutes(app);
-
   let server: Server;
   try {
     server = await registerRoutes(app);
@@ -94,6 +91,14 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
     console.error("[createApp] registerRoutes failed:", error);
     server = createServer(app);
   }
+
+  // After setupAuth (inside registerRoutes) so isAuthenticated works on upload/push.
+  setupUploadRoutes(app);
+  setupPushRoutes(app);
+
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ message: "Not Found" });
+  });
 
   const runStorageInit = () => {
     initAppStorage().catch((error) => {

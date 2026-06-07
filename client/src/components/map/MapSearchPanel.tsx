@@ -61,7 +61,8 @@ export default function MapSearchPanel({
           </div>
           {showPlacesHint && (
             <p className="text-xs text-slate-400 px-1">
-              В каталоге ничего не найдено — показаны заведения из OpenStreetMap по запросу или точка на карте
+              В каталоге ничего не найдено — показаны заведения из OpenStreetMap по запросу или
+              точка на карте
             </p>
           )}
         </div>

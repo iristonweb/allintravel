@@ -1,14 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  BookOpen,
-  Calendar,
-  Hash,
-  MapPin,
-  MessageCircle,
-  Music,
-  Rss,
-  Users,
-} from "lucide-react";
+import { BookOpen, Calendar, Hash, MapPin, MessageCircle, Music, Rss, Users } from "lucide-react";
 
 export type ProfileHubLink = {
   href: string;

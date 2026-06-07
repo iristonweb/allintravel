@@ -96,7 +96,13 @@ export default function MessageContent({ content, className, compact }: MessageC
         }
         if (part.type === "audio" || part.type === "voice") {
           return (
-            <audio key={i} src={src} controls className="w-full max-w-[240px] h-8" preload="metadata" />
+            <audio
+              key={i}
+              src={src}
+              controls
+              className="w-full max-w-[240px] h-8"
+              preload="metadata"
+            />
           );
         }
         return null;

@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, Calendar, Globe, Plus } from "lucide-react";
+import { Search, Calendar, Globe, Plus, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
@@ -49,7 +49,13 @@ export function Events() {
     imageUrl: "",
   });
 
-  const { data: events = [], isLoading } = useQuery<Event[]>({
+  const {
+    data: events = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<Event[]>({
     queryKey: ["/api/events", { limit: 50 }],
   });
 
@@ -165,7 +171,9 @@ export function Events() {
                   onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
                 >
                   {EVENT_TYPE_FILTERS.filter((t) => t.value).map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
                   ))}
                 </select>
                 <LocationAutocompleteInput
@@ -273,6 +281,17 @@ export function Events() {
             <Card key={i} className="h-72 animate-pulse bg-muted" />
           ))}
         </div>
+      ) : isError ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Не удалось загрузить события"
+          description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
+          action={
+            <Button variant="outline" onClick={() => refetch()}>
+              Повторить
+            </Button>
+          }
+        />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={Calendar}
@@ -285,7 +304,9 @@ export function Events() {
             <section className="mb-10">
               <h2 className="text-xl font-semibold mb-4">
                 Предстоящие события
-                <Badge variant="secondary" className="ml-2">{upcoming.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {upcoming.length}
+                </Badge>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {upcoming.map((event) => (
@@ -304,7 +325,9 @@ export function Events() {
             <section>
               <h2 className="text-xl font-semibold mb-4 text-muted-foreground">
                 Прошедшие события
-                <Badge variant="outline" className="ml-2">{past.length}</Badge>
+                <Badge variant="outline" className="ml-2">
+                  {past.length}
+                </Badge>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-70">
                 {past.map((event) => (

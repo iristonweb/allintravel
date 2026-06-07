@@ -48,7 +48,7 @@ export function registerAitRoutes(app: Express): void {
       const userId = req.user.claims.sub as string;
       const dashboard = await getAitDashboard(userId);
       res.json({ ledger: dashboard.ledger });
-    } catch (error) {
+    } catch {
       res.status(500).json({ message: "Failed to load ledger" });
     }
   });
@@ -82,7 +82,7 @@ export function registerAitRoutes(app: Express): void {
       const userId = req.user.claims.sub as string;
       const info = await getReferralInfo(userId);
       res.json(info);
-    } catch (error) {
+    } catch {
       res.status(500).json({ message: "Failed to load referral" });
     }
   });
@@ -139,7 +139,7 @@ export function registerAitRoutes(app: Express): void {
       if (!result.ok) return res.status(400).json({ message: result.message });
       const dashboard = await getAitDashboard(userId);
       res.json({ ...dashboard, aitGrant: result.grant ?? null, lastGrant: result.grant ?? null });
-    } catch (error) {
+    } catch {
       res.status(500).json({ message: "Claim failed" });
     }
   });
@@ -161,14 +161,22 @@ export function registerAitRoutes(app: Express): void {
         const result = await tipPost(userId, body.postId, body.amount, post.userId);
         if (!result.ok) return res.status(400).json({ message: result.message });
         const dashboard = await getAitDashboard(userId);
-        return res.json({ ...dashboard, aitGrant: result.grant ?? null, lastGrant: result.grant ?? null });
+        return res.json({
+          ...dashboard,
+          aitGrant: result.grant ?? null,
+          lastGrant: result.grant ?? null,
+        });
       }
 
       if (body.userId) {
         const result = await tipUser(userId, body.userId, body.amount);
         if (!result.ok) return res.status(400).json({ message: result.message });
         const dashboard = await getAitDashboard(userId);
-        return res.json({ ...dashboard, aitGrant: result.grant ?? null, lastGrant: result.grant ?? null });
+        return res.json({
+          ...dashboard,
+          aitGrant: result.grant ?? null,
+          lastGrant: result.grant ?? null,
+        });
       }
 
       return res.status(400).json({ message: "Укажите postId или userId" });

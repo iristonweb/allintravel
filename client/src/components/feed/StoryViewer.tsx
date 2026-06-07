@@ -3,15 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Heart,
-  MessageCircle,
-  Send,
-  Loader2,
-} from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Loader2 } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { isVideoUrl } from "@/lib/upload-media";
 import { markStoryViewed } from "@/lib/story-views";
@@ -54,7 +46,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
     setCommentsOpen(false);
     setCommentText("");
     setProgress(0);
-  }, [post?.id, post?.isLiked, post?.likesCount]);
+  }, [post]);
 
   const authorLabel = useMemo(() => {
     if (!post?.author) return "Путешественник";
@@ -92,7 +84,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
     return () => {
       if (progressRef.current) clearTimeout(progressRef.current);
     };
-  }, [post?.id, commentsOpen, goNext]);
+  }, [post, commentsOpen, goNext]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -171,12 +163,16 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
           </Avatar>
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{authorLabel}</p>
-            {expiresLabel && (
-              <p className="text-[10px] text-white/60">{expiresLabel}</p>
-            )}
+            {expiresLabel && <p className="text-[10px] text-white/60">{expiresLabel}</p>}
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="text-white shrink-0" onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-white shrink-0"
+          onClick={onClose}
+          aria-label="Закрыть story"
+        >
           <X className="h-5 w-5" />
         </Button>
       </div>
@@ -195,6 +191,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             variant="ghost"
             size="icon"
             className="absolute left-2 text-white z-10 hidden sm:flex"
+            aria-label="Предыдущая story"
             onClick={(e) => {
               e.stopPropagation();
               goPrev();
@@ -231,6 +228,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             variant="ghost"
             size="icon"
             className="absolute right-2 text-white z-10 hidden sm:flex"
+            aria-label="Следующая story"
             onClick={(e) => {
               e.stopPropagation();
               goNext();
@@ -302,6 +300,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
                 className="shrink-0 bg-ait-orange hover:bg-ait-orange/90"
                 disabled={!commentText.trim() || commentMutation.isPending}
                 onClick={handleSendComment}
+                aria-label="Отправить комментарий"
               >
                 {commentMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

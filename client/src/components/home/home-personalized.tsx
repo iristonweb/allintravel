@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 
@@ -10,7 +9,7 @@ import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 
 export default function HomePersonalized() {
   const recentlyViewed = useRecentlyViewed();
-  const preferredType = useMemo(() => getRecentTypePreference(), [recentlyViewed]);
+  const preferredType = getRecentTypePreference();
   const recentlyViewedCount = recentlyViewed.length;
 
   const { data: places = [] } = useQuery<Place[]>({
@@ -49,4 +48,3 @@ export default function HomePersonalized() {
     </section>
   );
 }
-

@@ -14,12 +14,7 @@ import {
   encodeVideoMessage,
   encodeVoiceMessage,
 } from "@/lib/chat-message";
-import {
-  isAudioFile,
-  isImageFile,
-  isVideoFile,
-  uploadMediaFile,
-} from "@/lib/upload-media";
+import { isAudioFile, isImageFile, isVideoFile, uploadMediaFile } from "@/lib/upload-media";
 import { useToast } from "@/hooks/use-toast";
 import MentionAutocomplete, {
   getMentionQuery,
@@ -152,7 +147,7 @@ export default function MessageComposer({
     if (!replyTo) return;
     const frame = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(frame);
-  }, [replyTo?.username, replyTo?.preview]);
+  }, [replyTo]);
 
   const { data: musicTracks = [], isLoading: musicLoading } = useQuery<UserTrack[]>({
     queryKey: ["/api/music/tracks"],
@@ -248,9 +243,7 @@ export default function MessageComposer({
     if (disabled || uploading) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/ogg";
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
       const recorder = new MediaRecorder(stream, { mimeType });
       voiceChunksRef.current = [];
       voiceStartedRef.current = Date.now();
@@ -262,7 +255,11 @@ export default function MessageComposer({
         void (async () => {
           const blob = new Blob(voiceChunksRef.current, { type: mimeType });
           if (blob.size < 100) {
-            toast({ title: "Слишком короткая запись", description: "Удерживайте кнопку микрофона дольше.", variant: "destructive" });
+            toast({
+              title: "Слишком короткая запись",
+              description: "Удерживайте кнопку микрофона дольше.",
+              variant: "destructive",
+            });
             return;
           }
           const durationSec = Math.max(
@@ -359,7 +356,14 @@ export default function MessageComposer({
             )}
           </div>
           {onCancelReply && (
-            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={onCancelReply}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              onClick={onCancelReply}
+              aria-label="Отменить ответ"
+            >
               <X className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -373,197 +377,237 @@ export default function MessageComposer({
         compact
         className="px-1"
       />
-    <div className="ait-chat-composer-bar flex items-center gap-1.5 min-w-0">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm,.mp3,.m4a,.ogg,.wav,.webm"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) void handleAttachFile(file);
-          e.target.value = "";
-        }}
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="shrink-0"
-        disabled={composerDisabled}
-        title="Прикрепить файл"
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <Paperclip className="h-5 w-5" />
-      </Button>
-      <Popover open={musicOpen} onOpenChange={setMusicOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            disabled={composerDisabled}
-            title="Музыка из библиотеки"
-          >
-            <Music className="h-5 w-5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-2 ait-glass-ios" align="start" side="top">
-          <p className="text-xs font-medium px-1 pb-2 text-muted-foreground">Моя музыка</p>
-          {musicLoading ? (
-            <p className="text-xs text-muted-foreground px-1 py-3">Загрузка…</p>
-          ) : musicTracks.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-1 py-3">
-              Добавьте треки в{" "}
-              <Link href="/profile/music" className="text-ait-purple hover:underline">
-                Моя музыка
-              </Link>
-            </p>
-          ) : (
-            <div className="max-h-48 overflow-y-auto space-y-1">
-              {musicTracks.map((track) => (
-                <button
-                  key={track.id}
-                  type="button"
-                  className="w-full text-left rounded-lg px-2 py-1.5 hover:bg-accent text-sm truncate"
-                  onClick={() => sendMusicTrack(track)}
-                >
-                  {track.title}
-                  {track.artist ? (
-                    <span className="text-muted-foreground text-xs block truncate">{track.artist}</span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className={cn("shrink-0", recording && "text-red-400 animate-pulse")}
-        disabled={composerDisabled}
-        title={recording ? "Остановить запись" : "Голосовое сообщение"}
-        onClick={() => (recording ? stopVoiceRecording() : void startVoiceRecording())}
-      >
-        <Mic className="h-5 w-5" />
-      </Button>
-      <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={composerDisabled}>
-            <Smile className="h-5 w-5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 border-0 ait-glass-ios" align="start" side="top">
-          <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.DARK} width={320} height={360} />
-        </PopoverContent>
-      </Popover>
-
-      <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={composerDisabled}>
-            <Sticker className="h-5 w-5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-3 ait-glass-ios border-white/15" align="start" side="top">
-          <p className="text-xs text-muted-foreground mb-2">Стикеры</p>
-          <div className="grid grid-cols-3 gap-2">
-            {STICKERS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className="rounded-lg p-2 hover:bg-muted transition-colors"
-                onClick={() => insertSticker(s.src)}
-                title={s.label}
-              >
-                <img src={s.src} alt={s.label} className="h-12 w-12 mx-auto" />
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      {giphyEnabled && (
-        <Popover open={gifOpen} onOpenChange={handleGifOpenChange}>
+      <div className="ait-chat-composer-bar flex items-center gap-1.5 min-w-0">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm,.mp3,.m4a,.ogg,.wav,.webm"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleAttachFile(file);
+            e.target.value = "";
+          }}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          disabled={composerDisabled}
+          title="Прикрепить файл"
+          aria-label="Прикрепить файл"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Paperclip className="h-5 w-5" />
+        </Button>
+        <Popover open={musicOpen} onOpenChange={setMusicOpen}>
           <PopoverTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" className="shrink-0" disabled={composerDisabled}>
-              <ImageIcon className="h-5 w-5" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              disabled={composerDisabled}
+              title="Музыка из библиотеки"
+              aria-label="Музыка из библиотеки"
+            >
+              <Music className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-3 ait-glass-ios border-white/15" align="start" side="top">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium">GIF</p>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setGifOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <Input
-              placeholder="Поиск GIF…"
-              value={gifQuery}
-              onChange={(e) => handleGifSearch(e.target.value)}
-              className="mb-2 h-8"
-            />
-            {gifLoading && displayedGifs.length === 0 && (
-              <p className="text-xs text-muted-foreground mb-2">Загрузка…</p>
+          <PopoverContent className="w-72 p-2 ait-glass-ios" align="start" side="top">
+            <p className="text-xs font-medium px-1 pb-2 text-muted-foreground">Моя музыка</p>
+            {musicLoading ? (
+              <p className="text-xs text-muted-foreground px-1 py-3">Загрузка…</p>
+            ) : musicTracks.length === 0 ? (
+              <p className="text-xs text-muted-foreground px-1 py-3">
+                Добавьте треки в{" "}
+                <Link href="/profile/music" className="text-ait-purple hover:underline">
+                  Моя музыка
+                </Link>
+              </p>
+            ) : (
+              <div className="max-h-48 overflow-y-auto space-y-1">
+                {musicTracks.map((track) => (
+                  <button
+                    key={track.id}
+                    type="button"
+                    className="w-full text-left rounded-lg px-2 py-1.5 hover:bg-accent text-sm truncate"
+                    onClick={() => sendMusicTrack(track)}
+                  >
+                    {track.title}
+                    {track.artist ? (
+                      <span className="text-muted-foreground text-xs block truncate">
+                        {track.artist}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
             )}
-            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {displayedGifs.map((g) => (
+          </PopoverContent>
+        </Popover>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={cn("shrink-0", recording && "text-red-400 animate-pulse")}
+          disabled={composerDisabled}
+          title={recording ? "Остановить запись" : "Голосовое сообщение"}
+          aria-label={recording ? "Остановить запись" : "Голосовое сообщение"}
+          onClick={() => (recording ? stopVoiceRecording() : void startVoiceRecording())}
+        >
+          <Mic className="h-5 w-5" />
+        </Button>
+        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              disabled={composerDisabled}
+              aria-label="Эмодзи"
+            >
+              <Smile className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 border-0 ait-glass-ios" align="start" side="top">
+            <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.DARK} width={320} height={360} />
+          </PopoverContent>
+        </Popover>
+
+        <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              disabled={composerDisabled}
+              aria-label="Стикеры"
+            >
+              <Sticker className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-64 p-3 ait-glass-ios border-white/15"
+            align="start"
+            side="top"
+          >
+            <p className="text-xs text-muted-foreground mb-2">Стикеры</p>
+            <div className="grid grid-cols-3 gap-2">
+              {STICKERS.map((s) => (
                 <button
-                  key={g.id}
+                  key={s.id}
                   type="button"
-                  className="rounded-lg bg-transparent p-1 hover:bg-white/8 transition-colors"
-                  onClick={() => {
-                    setGifOpen(false);
-                    commitMediaSend(mergeTextAndMedia(value, encodeGifMessage(g.url)));
-                  }}
+                  className="rounded-lg p-2 hover:bg-muted transition-colors"
+                  onClick={() => insertSticker(s.src)}
+                  title={s.label}
                 >
-                  <img
-                    src={g.preview}
-                    alt={g.title}
-                    className="w-full h-16 object-contain bg-transparent"
-                  />
+                  <img src={s.src} alt={s.label} className="h-12 w-12 mx-auto" />
                 </button>
               ))}
             </div>
           </PopoverContent>
         </Popover>
-      )}
 
-      <div className="relative flex-1 min-w-0">
-        {showMentions && mentionQuery !== null && (
-          <MentionAutocomplete
-            ref={mentionRef}
-            query={mentionQuery}
-            suggestUsers={suggestUsers}
-            activeIndex={mentionIndex}
-            onActiveIndexChange={setMentionIndex}
-            onSelect={applyMention}
-          />
+        {giphyEnabled && (
+          <Popover open={gifOpen} onOpenChange={handleGifOpenChange}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                disabled={composerDisabled}
+                aria-label="GIF"
+              >
+                <ImageIcon className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-80 p-3 ait-glass-ios border-white/15"
+              align="start"
+              side="top"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium">GIF</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setGifOpen(false)}
+                  aria-label="Закрыть GIF"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <Input
+                placeholder="Поиск GIF…"
+                value={gifQuery}
+                onChange={(e) => handleGifSearch(e.target.value)}
+                className="mb-2 h-8"
+              />
+              {gifLoading && displayedGifs.length === 0 && (
+                <p className="text-xs text-muted-foreground mb-2">Загрузка…</p>
+              )}
+              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                {displayedGifs.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="rounded-lg bg-transparent p-1 hover:bg-white/8 transition-colors"
+                    onClick={() => {
+                      setGifOpen(false);
+                      commitMediaSend(mergeTextAndMedia(value, encodeGifMessage(g.url)));
+                    }}
+                  >
+                    <img
+                      src={g.preview}
+                      alt={g.title}
+                      className="w-full h-16 object-contain bg-transparent"
+                    />
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
-        <Input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => {
-            onChange(e.target.value);
-            setCursorPos(e.target.selectionStart ?? e.target.value.length);
-          }}
-          onSelect={(e) => {
-            const target = e.target as HTMLInputElement;
-            setCursorPos(target.selectionStart ?? value.length);
-          }}
-          onClick={(e) => {
-            const target = e.target as HTMLInputElement;
-            setCursorPos(target.selectionStart ?? value.length);
-          }}
-          placeholder={uploading ? "Загрузка…" : recording ? "Запись…" : placeholder}
-          disabled={composerDisabled}
-          className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0"
-          onKeyDown={handleInputKeyDown}
-        />
+
+        <div className="relative flex-1 min-w-0">
+          {showMentions && mentionQuery !== null && (
+            <MentionAutocomplete
+              ref={mentionRef}
+              query={mentionQuery}
+              suggestUsers={suggestUsers}
+              activeIndex={mentionIndex}
+              onActiveIndexChange={setMentionIndex}
+              onSelect={applyMention}
+            />
+          )}
+          <Input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => {
+              onChange(e.target.value);
+              setCursorPos(e.target.selectionStart ?? e.target.value.length);
+            }}
+            onSelect={(e) => {
+              const target = e.target as HTMLInputElement;
+              setCursorPos(target.selectionStart ?? value.length);
+            }}
+            onClick={(e) => {
+              const target = e.target as HTMLInputElement;
+              setCursorPos(target.selectionStart ?? value.length);
+            }}
+            placeholder={uploading ? "Загрузка…" : recording ? "Запись…" : placeholder}
+            disabled={composerDisabled}
+            className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0"
+            onKeyDown={handleInputKeyDown}
+          />
+        </div>
       </div>
-    </div>
     </div>
   );
 }

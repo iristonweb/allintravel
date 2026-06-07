@@ -23,7 +23,9 @@ export default function PostComments({ postId, enabled }: PostCommentsProps) {
   }
 
   if (comments.length === 0) {
-    return <p className="text-sm text-muted-foreground px-1">Пока нет комментариев. Будьте первым!</p>;
+    return (
+      <p className="text-sm text-muted-foreground px-1">Пока нет комментариев. Будьте первым!</p>
+    );
   }
 
   return (
@@ -37,7 +39,9 @@ export default function PostComments({ postId, enabled }: PostCommentsProps) {
             <div className="flex items-center gap-2 mb-0.5">
               <span className="text-sm font-medium">Путешественник</span>
               <span className="text-xs text-muted-foreground">
-                {format(new Date(comment.createdAt as unknown as string), "d MMM, HH:mm", { locale: ru })}
+                {format(new Date(comment.createdAt as unknown as string), "d MMM, HH:mm", {
+                  locale: ru,
+                })}
               </span>
             </div>
             <p className="text-sm text-foreground/90 whitespace-pre-wrap">

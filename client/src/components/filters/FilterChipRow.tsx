@@ -39,8 +39,7 @@ export default function FilterChipRow({
               size="sm"
               variant="filter"
               className={cn(
-                active &&
-                  "ait-btn-glow border-0 text-white shadow-none hover:text-white",
+                active && "ait-btn-glow border-0 text-white shadow-none hover:text-white",
               )}
               onClick={() => onChange(opt.value)}
             >

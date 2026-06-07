@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
 import PageHeader from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -19,7 +19,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { UserPrivacySettings } from "@shared/privacy";
 import type { PrivacyAudience } from "@shared/privacy";
-import { Smartphone, Shield, Bell } from "lucide-react";
+import { Smartphone, Shield, Bell, AlertCircle } from "lucide-react";
+import EmptyState from "@/components/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import {
   isNotificationSoundEnabled,
@@ -35,14 +37,24 @@ const audienceOptions: { value: PrivacyAudience; label: string }[] = [
 
 export function ProfileSettings() {
   const { isAuthenticated } = useAuth();
-  const { supported: pushSupported, vapidReady, subscribed, subscribe, testPush } =
-    usePushNotifications();
+  const {
+    supported: pushSupported,
+    vapidReady,
+    subscribed,
+    subscribe,
+    testPush,
+  } = usePushNotifications();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Partial<UserPrivacySettings>>({});
   const [soundOn, setSoundOn] = useState(() => isNotificationSoundEnabled());
 
-  const { data: settings, isLoading } = useQuery<UserPrivacySettings>({
+  const {
+    data: settings,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<UserPrivacySettings>({
     queryKey: ["/api/settings/privacy"],
     enabled: isAuthenticated,
   });
@@ -84,9 +96,7 @@ export function ProfileSettings() {
 
   const handleDelete = async () => {
     if (
-      !window.confirm(
-        "Удалить аккаунт безвозвратно? Все посты, сообщения и поездки будут удалены.",
-      )
+      !window.confirm("Удалить аккаунт безвозвратно? Все посты, сообщения и поездки будут удалены.")
     ) {
       return;
     }
@@ -111,21 +121,33 @@ export function ProfileSettings() {
     <AppLayout contentClassName="py-6 max-w-2xl mx-auto">
       <PageHeader
         title="Настройки"
-        breadcrumbs={[
-          { label: "Профиль", href: "/profile" },
-          { label: "Настройки" },
-        ]}
+        breadcrumbs={[{ label: "Профиль", href: "/profile" }, { label: "Настройки" }]}
       />
       {isLoading ? (
-        <p className="text-muted-foreground">Загрузка…</p>
+        <div className="space-y-6">
+          <Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
+        </div>
+      ) : isError ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Не удалось загрузить настройки"
+          action={
+            <Button variant="outline" onClick={() => refetch()}>
+              Повторить
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Конфиденциальность</CardTitle>
-              <CardDescription>Кто видит ваш статус и может с вами связаться</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
+          <GlassCard className="p-6 space-y-5">
+            <div>
+              <h2 className="text-lg font-semibold">Конфиденциальность</h2>
+              <p className="text-sm text-muted-foreground">
+                Кто видит ваш статус и может с вами связаться
+              </p>
+            </div>
+            <div className="space-y-5">
               <div className="flex items-center justify-between gap-4">
                 <Label htmlFor="private-account">Закрытый аккаунт</Label>
                 <Switch
@@ -181,26 +203,29 @@ export function ProfileSettings() {
                   saveMutation.mutate({ showProfileTo: v });
                 }}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+          <GlassCard className="p-6 space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Bell className="h-5 w-5" />
                 Push на телефон и браузер
-              </CardTitle>
-              <CardDescription>
+              </h2>
+              <p className="text-sm text-muted-foreground">
                 Мгновенные уведомления о заявках, сообщениях, поездках и событиях (Web Push).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+              </p>
+            </div>
+            <div className="space-y-3">
               {!pushSupported && (
-                <p className="text-sm text-muted-foreground">Браузер не поддерживает push-уведомления.</p>
+                <p className="text-sm text-muted-foreground">
+                  Браузер не поддерживает push-уведомления.
+                </p>
               )}
               {pushSupported && !vapidReady && (
                 <p className="text-sm text-muted-foreground">
-                  На сервере не настроены VAPID-ключи. Добавьте VAPID_PUBLIC_KEY и VAPID_PRIVATE_KEY в .env.
+                  На сервере не настроены VAPID-ключи. Добавьте VAPID_PUBLIC_KEY и VAPID_PRIVATE_KEY
+                  в .env.
                 </p>
               )}
               {pushSupported && vapidReady && (
@@ -214,7 +239,11 @@ export function ProfileSettings() {
                     <Button type="button" onClick={() => subscribe()}>
                       {subscribed ? "Обновить подписку" : "Включить push"}
                     </Button>
-                    <Button type="button" variant="outline" onClick={() => testPush().catch(() => {})}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => testPush().catch(() => {})}
+                    >
                       Тестовое уведомление
                     </Button>
                   </div>
@@ -236,34 +265,30 @@ export function ProfileSettings() {
                   </div>
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+          <GlassCard className="p-6 space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Smartphone className="h-5 w-5" />
                 PIN для входа в приложение
-              </CardTitle>
-              <CardDescription>
+              </h2>
+              <p className="text-sm text-muted-foreground">
                 Короткий PIN появится в мобильной версии All-in-travel для быстрого входа.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="secondary" disabled>
-                Скоро в мобильной версии
-              </Button>
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            <Button variant="secondary" disabled>
+              Скоро в мобильной версии
+            </Button>
+          </GlassCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Аккаунт и данные
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
+          <GlassCard className="p-6 space-y-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Аккаунт и данные
+            </h2>
+            <div className="flex flex-wrap gap-3">
               <Button variant="outline" asChild>
                 <Link href="/privacy">Политика конфиденциальности</Link>
               </Button>
@@ -273,8 +298,8 @@ export function ProfileSettings() {
               <Button variant="destructive" type="button" onClick={handleDelete}>
                 Удалить аккаунт
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         </div>
       )}
     </AppLayout>

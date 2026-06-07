@@ -62,8 +62,7 @@ export default function AddStopSearch({
       if (!item || !geoItemHasCoords(item)) {
         toast({
           title: "Не удалось определить координаты",
-          description:
-            "Выберите пункт из списка подсказок или уточните адрес (улица, дом, город).",
+          description: "Выберите пункт из списка подсказок или уточните адрес (улица, дом, город).",
           variant: "destructive",
         });
         return;
@@ -120,9 +119,7 @@ export default function AddStopSearch({
           ) : (
             <MapPin className="h-4 w-4 mr-2" />
           )}
-          {selectedGeo
-            ? `Добавить «${selectedGeo.label.split(",")[0]}»`
-            : "Добавить в маршрут"}
+          {selectedGeo ? `Добавить «${selectedGeo.label.split(",")[0]}»` : "Добавить в маршрут"}
         </Button>
       )}
 
@@ -141,8 +138,8 @@ export default function AddStopSearch({
       )}
 
       <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-        Можно добавить город целиком (например, «Владикавказ») — координаты подставятся автоматически.
-        Для точного адреса выберите подсказку из списка.
+        Можно добавить город целиком (например, «Владикавказ») — координаты подставятся
+        автоматически. Для точного адреса выберите подсказку из списка.
       </p>
     </div>
   );

@@ -30,11 +30,7 @@ export function GuestAnchorLink({ href, children, className, onNavigate }: Guest
   }
 
   return (
-    <Link
-      href={anchorToRoute(href)}
-      className={className}
-      onClick={() => onNavigate?.()}
-    >
+    <Link href={anchorToRoute(href)} className={className} onClick={() => onNavigate?.()}>
       {children}
     </Link>
   );

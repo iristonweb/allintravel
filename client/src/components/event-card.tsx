@@ -15,7 +15,7 @@ interface EventCardProps {
 
 export function EventCard({ event, onRegister, isRegistered = false }: EventCardProps) {
   const formatDate = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const dateObj = typeof date === "string" ? new Date(date) : date;
     return format(dateObj, "d MMM yyyy, HH:mm", { locale: ru });
   };
 
@@ -31,7 +31,7 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
       music: "Музыка",
       culture: "Культура",
       sport: "Спорт",
-      nature: "Природа"
+      nature: "Природа",
     };
     return labels[type] || type;
   };
@@ -47,7 +47,7 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
           alt={event.title}
           className="w-full h-48 object-cover"
         />
-        <Badge 
+        <Badge
           className={`absolute top-2 right-2 ${
             isPastEvent
               ? "bg-muted text-muted-foreground border border-border"
@@ -62,38 +62,36 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
           {getTypeLabel(event.type)}
         </Badge>
       </div>
-      
+
       <CardHeader className="pb-2">
         <CardTitle className="text-lg leading-tight">{event.title}</CardTitle>
-        
+
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
             <span>{formatDate(event.startDate)}</span>
           </div>
-          
+
           {event.location && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4" />
               <span className="truncate">{event.location}</span>
             </div>
           )}
-          
+
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <DollarSign className="h-4 w-4" />
             <span>{formatPrice(event.price)}</span>
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         <div className="space-y-4">
           {event.description && (
-            <p className="text-sm text-muted-foreground line-clamp-3">
-              {event.description}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-3">{event.description}</p>
           )}
-          
+
           <div className="flex items-center justify-between">
             {event.organizerId && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -101,19 +99,14 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
                 <span>Организатор</span>
               </div>
             )}
-            
+
             <Button
               size="sm"
               className="bg-accent hover:bg-accent/90"
               disabled={isPastEvent || isRegistered}
               onClick={() => onRegister?.(event.id)}
             >
-              {isPastEvent 
-                ? "Завершено" 
-                : isRegistered 
-                  ? "Зарегистрированы" 
-                  : "Участвовать"
-              }
+              {isPastEvent ? "Завершено" : isRegistered ? "Зарегистрированы" : "Участвовать"}
             </Button>
           </div>
         </div>

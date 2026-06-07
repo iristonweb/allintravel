@@ -55,7 +55,8 @@ export default function AdminBroadcastDialog() {
         <DialogHeader>
           <DialogTitle>Рассылка всем пользователям</DialogTitle>
           <DialogDescription>
-            Текст, фото, видео, GIF и emoji — как в чате. Появится компактным окном по центру экрана.
+            Текст, фото, видео, GIF и emoji — как в чате. Появится компактным окном по центру
+            экрана.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

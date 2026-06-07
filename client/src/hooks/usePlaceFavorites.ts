@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +15,7 @@ export function usePlaceFavorites() {
     enabled: isAuthenticated,
   });
 
-  const favoriteIds = new Set(favorites.map((f) => f.placeId));
+  const favoriteIds = useMemo(() => new Set(favorites.map((f) => f.placeId)), [favorites]);
 
   const toggleMutation = useMutation({
     mutationFn: async ({ placeId, isFavorite }: { placeId: string; isFavorite: boolean }) => {
@@ -46,5 +46,11 @@ export function usePlaceFavorites() {
 
   const isFavorite = useCallback((placeId: string) => favoriteIds.has(placeId), [favoriteIds]);
 
-  return { favoriteIds, isFavorite, toggleFavorite, favorites, isPending: toggleMutation.isPending };
+  return {
+    favoriteIds,
+    isFavorite,
+    toggleFavorite,
+    favorites,
+    isPending: toggleMutation.isPending,
+  };
 }

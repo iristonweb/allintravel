@@ -37,6 +37,7 @@ export default function HeaderQuickActions({
           variant="ghost"
           size="icon"
           className="h-10 w-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
+          aria-label="Карта и поиск мест"
         >
           <Search className="h-5 w-5" />
         </Button>
@@ -49,6 +50,7 @@ export default function HeaderQuickActions({
             size="icon"
             className="relative h-10 w-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
             title="Уведомления"
+            aria-label="Уведомления"
           >
             <Bell className="h-5 w-5" />
             {notifCount > 0 && (
@@ -84,7 +86,9 @@ export default function HeaderQuickActions({
             <Link href="/friends" className="cursor-pointer flex items-center">
               Заявки в друзья
               {friendRequestCount > 0 && (
-                <span className="ml-auto text-xs font-bold text-ait-orange">{friendRequestCount}</span>
+                <span className="ml-auto text-xs font-bold text-ait-orange">
+                  {friendRequestCount}
+                </span>
               )}
             </Link>
           </DropdownMenuItem>
@@ -92,7 +96,9 @@ export default function HeaderQuickActions({
             <Link href="/messages" className="cursor-pointer flex items-center">
               Сообщения
               {unreadMessageCount > 0 && (
-                <span className="ml-auto text-xs font-bold text-ait-orange">{unreadMessageCount}</span>
+                <span className="ml-auto text-xs font-bold text-ait-orange">
+                  {unreadMessageCount}
+                </span>
               )}
             </Link>
           </DropdownMenuItem>
@@ -104,6 +110,7 @@ export default function HeaderQuickActions({
           variant="ghost"
           size="icon"
           className="relative h-10 w-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
+          aria-label="Сообщения"
         >
           <MessageCircle className="h-5 w-5" />
           {unreadMessageCount > 0 && (

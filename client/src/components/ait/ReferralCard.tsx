@@ -85,18 +85,30 @@ export default function ReferralCard() {
           <div>
             <h3 className="font-bold text-lg">Пригласи друга</h3>
             <p className="text-sm text-muted-foreground">
-              Вы и друг получаете по <strong>{AIT_REFERRAL_REWARD} Spend AIT</strong> после ввода кода.
-              Код можно ввести один раз.
+              Вы и друг получаете по <strong>{AIT_REFERRAL_REWARD} Spend AIT</strong> после ввода
+              кода. Код можно ввести один раз.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <code className="ait-glass px-3 py-2 rounded-xl font-mono text-lg tracking-widest">
               {data.code}
             </code>
-            <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={copyCode}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={copyCode}
+            >
               {copied === "code" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
-            <Button type="button" variant="outline" size="sm" className="rounded-xl gap-1" onClick={copyLink}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-1"
+              onClick={copyLink}
+            >
               {copied === "link" ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
               Ссылка
             </Button>
@@ -146,7 +158,10 @@ export default function ReferralCard() {
                     className="flex items-center justify-between gap-2 text-sm ait-glass rounded-lg px-2 py-1.5"
                   >
                     {inv.username ? (
-                      <Link href={`/u/${inv.username}`} className="font-medium hover:text-ait-orange truncate">
+                      <Link
+                        href={`/u/${inv.username}`}
+                        className="font-medium hover:text-ait-orange truncate"
+                      >
                         {inv.displayName}
                       </Link>
                     ) : (
@@ -154,7 +169,9 @@ export default function ReferralCard() {
                     )}
                     <span
                       className={
-                        inv.rewarded ? "text-ait-orange text-xs shrink-0" : "text-muted-foreground text-xs shrink-0"
+                        inv.rewarded
+                          ? "text-ait-orange text-xs shrink-0"
+                          : "text-muted-foreground text-xs shrink-0"
                       }
                     >
                       {inv.rewarded ? `+${AIT_REFERRAL_REWARD} AIT` : "ожидает"}

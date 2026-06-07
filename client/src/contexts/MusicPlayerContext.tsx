@@ -86,7 +86,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     typeof initial?.volume === "number" ? Math.min(1, Math.max(0, initial.volume)) : 0.85,
   );
   const [playerUi, setPlayerUi] = useState<PlayerUiMode>(
-    initial?.queue?.length && initial.playerUi !== "hidden" ? initial.playerUi ?? "expanded" : "hidden",
+    initial?.queue?.length && initial.playerUi !== "hidden"
+      ? (initial.playerUi ?? "expanded")
+      : "hidden",
   );
   const [playerPosition, setPlayerPositionState] = useState<PlayerAnchorPosition | null>(
     initial?.playerPosition ?? null,
@@ -161,7 +163,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     } else {
       audio.pause();
     }
-  }, [currentTrack?.id, currentTrack?.fileUrl, isPlaying]);
+  }, [currentTrack, isPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -326,12 +328,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   return (
     <MusicPlayerContext.Provider value={value}>
       {children}
-      <audio
-        ref={audioRef}
-        className="hidden"
-        onEnded={() => next()}
-        preload="auto"
-      />
+      <audio ref={audioRef} className="hidden" onEnded={() => next()} preload="auto" />
     </MusicPlayerContext.Provider>
   );
 }

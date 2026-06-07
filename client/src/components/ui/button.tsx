@@ -1,8 +1,8 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
@@ -14,14 +14,11 @@ const buttonVariants = cva(
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl",
         outline:
           "border border-white/15 bg-transparent hover:bg-white/8 text-foreground rounded-xl",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-xl",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-xl",
         ghost: "hover:bg-white/8 hover:text-foreground rounded-xl",
         link: "text-primary underline-offset-4 hover:underline",
-        premium:
-          "ait-btn-glow rounded-2xl text-white border-0",
-        glass:
-          "ait-glass rounded-2xl text-foreground hover:bg-white/10",
+        premium: "ait-btn-glow rounded-2xl text-white border-0",
+        glass: "ait-glass rounded-2xl text-foreground hover:bg-white/10",
         filter:
           "rounded-full text-xs font-medium shrink-0 h-8 px-3.5 ait-glass border-white/10 bg-transparent text-slate-300 hover:text-white border shadow-none",
       },
@@ -37,27 +34,22 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
-)
+  },
+);
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+    const Comp = asChild ? Slot : "button";
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-Button.displayName = "Button"
+      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+    );
+  },
+);
+Button.displayName = "Button";
 
-export { Button, buttonVariants }
+export { Button, buttonVariants };

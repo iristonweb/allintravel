@@ -1,10 +1,13 @@
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
 import { setupGoogleAuth } from "./google-auth";
-import { applyPassportMiddleware, getSession } from "./auth-middleware";
+import { applyPassportMiddleware } from "./auth-middleware";
 import { registerLocalPassportStrategy, registerLoginRoutes } from "./local-auth";
+import { getAuthUserId } from "./types/authenticated-request";
 
 export type { SessionUser } from "./auth-session";
+export type { AuthenticatedRequest } from "./types/authenticated-request";
+export { getAuthUserId } from "./types/authenticated-request";
 export { applyPassportMiddleware, getSession } from "./auth-middleware";
 
 export async function setupAuth(app: Express) {
@@ -44,8 +47,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const user = req.user as import("./auth-session").SessionUser | undefined;
-  if (!user?.claims?.sub) {
+  if (!getAuthUserId(req)) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();
@@ -55,8 +57,7 @@ export const isAdmin: RequestHandler = async (req, res, next) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  const sessionUser = req.user as import("./auth-session").SessionUser | undefined;
-  const userId = sessionUser?.claims?.sub;
+  const userId = getAuthUserId(req);
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }

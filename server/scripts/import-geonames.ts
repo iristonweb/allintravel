@@ -20,7 +20,9 @@ function ensureDir(p: string) {
 
 async function downloadIfMissing(url: string, filePath: string) {
   if (fs.existsSync(filePath)) return;
-  const res = await fetch(url, { headers: { "User-Agent": "All-in-travel/1.0 (GeoNames importer)" } });
+  const res = await fetch(url, {
+    headers: { "User-Agent": "All-in-travel/1.0 (GeoNames importer)" },
+  });
   if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status} ${url}`);
   // Node's fetch uses Web Streams; convert to Node stream for pipeline().
   const nodeStream = Readable.fromWeb(res.body as any);
@@ -29,11 +31,7 @@ async function downloadIfMissing(url: string, filePath: string) {
 
 async function unzipSingleFile(zipPath: string, outPath: string) {
   if (fs.existsSync(outPath)) return;
-  await pipeline(
-    fs.createReadStream(zipPath),
-    unzipper.ParseOne(),
-    fs.createWriteStream(outPath),
-  );
+  await pipeline(fs.createReadStream(zipPath), unzipper.ParseOne(), fs.createWriteStream(outPath));
 }
 
 function parseIntSafe(v: string): number | null {
@@ -47,7 +45,10 @@ function parseFloatSafe(v: string): string | null {
 }
 
 async function importCountries(countryInfoPath: string) {
-  const rl = readline.createInterface({ input: fs.createReadStream(countryInfoPath), crlfDelay: Infinity });
+  const rl = readline.createInterface({
+    input: fs.createReadStream(countryInfoPath),
+    crlfDelay: Infinity,
+  });
   let count = 0;
 
   for await (const line of rl) {
@@ -74,12 +75,10 @@ async function importCountries(countryInfoPath: string) {
 
     count += 1;
     if (count % 50 === 0) {
-      // eslint-disable-next-line no-console
       console.log(`countries: upserted ${count}`);
     }
   }
 
-  // eslint-disable-next-line no-console
   console.log(`countries: done (${count})`);
 }
 
@@ -97,7 +96,10 @@ type CityRow = {
 };
 
 async function importCities(citiesPath: string) {
-  const rl = readline.createInterface({ input: fs.createReadStream(citiesPath), crlfDelay: Infinity });
+  const rl = readline.createInterface({
+    input: fs.createReadStream(citiesPath),
+    crlfDelay: Infinity,
+  });
   const batch: CityRow[] = [];
   let total = 0;
 
@@ -158,13 +160,13 @@ async function importCities(citiesPath: string) {
 
     if (batch.length >= 1000) {
       await flush();
-      // eslint-disable-next-line no-console
+
       console.log(`cities: upserted ${total}`);
     }
   }
 
   await flush();
-  // eslint-disable-next-line no-console
+
   console.log(`cities: done (${total})`);
 }
 
@@ -175,27 +177,21 @@ async function main() {
   const citiesZipPath = path.join(DATA_DIR, "cities5000.zip");
   const citiesTxtPath = path.join(DATA_DIR, "cities5000.txt");
 
-  // eslint-disable-next-line no-console
   console.log("Downloading GeoNames...");
   await downloadIfMissing(URL_COUNTRY_INFO, countryInfoPath);
   await downloadIfMissing(URL_CITIES_5000_ZIP, citiesZipPath);
 
-  // eslint-disable-next-line no-console
   console.log("Unzipping cities5000...");
   await unzipSingleFile(citiesZipPath, citiesTxtPath);
 
-  // eslint-disable-next-line no-console
   console.log("Importing countries...");
   await importCountries(countryInfoPath);
 
-  // eslint-disable-next-line no-console
   console.log("Importing cities...");
   await importCities(citiesTxtPath);
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exitCode = 1;
 });
-

@@ -79,7 +79,10 @@ export async function addTripStopFromGeo(tripId: string, item: GeoAutocompleteIt
   });
 }
 
-export async function addTripStopsFromDrafts(tripId: string, drafts: TripRouteDraft[]): Promise<void> {
+export async function addTripStopsFromDrafts(
+  tripId: string,
+  drafts: TripRouteDraft[],
+): Promise<void> {
   for (const draft of drafts) {
     await apiRequest("POST", `/api/trips/${tripId}/waypoints/from-location`, {
       label: draft.label,

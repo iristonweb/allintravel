@@ -95,7 +95,10 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
         setLoading(true);
         setError(null);
         try {
-          const res = await fetch(toApiUrl(queryUrl), { credentials: "include", signal: ctrl.signal });
+          const res = await fetch(toApiUrl(queryUrl), {
+            credentials: "include",
+            signal: ctrl.signal,
+          });
           if (!res.ok) {
             const text = await res.text();
             throw new Error(text || String(res.status));
@@ -146,70 +149,71 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
     }, [dropdownPortal, open, value, items.length, loading, error]);
 
     const showDropdown =
-      open &&
-      !disabled &&
-      (loading || !!error || items.length > 0 || (shouldQuery && !loading));
+      open && !disabled && (loading || !!error || items.length > 0 || (shouldQuery && !loading));
 
     const portalReady = !dropdownPortal || dropdownStyle != null;
 
-    const dropdownContent = showDropdown && portalReady ? (
-      <div
-        data-geo-autocomplete
-        className={cn(
-          "rounded-md border bg-popover text-popover-foreground shadow-md overflow-hidden",
-          dropdownPortal ? "fixed z-[200]" : "absolute left-0 right-0 top-[calc(100%+4px)] z-50",
-        )}
-        style={
-          dropdownPortal && dropdownStyle
-            ? { top: dropdownStyle.top, left: dropdownStyle.left, width: dropdownStyle.width }
-            : undefined
-        }
-        onMouseDown={(e) => e.preventDefault()}
-      >
-        <Command shouldFilter={false}>
-          <CommandList className="max-h-64">
-            {loading && (
-              <div className="px-3 py-2 text-sm text-muted-foreground">Загрузка…</div>
-            )}
-            {!loading && error && (
-              <div className="px-3 py-2 text-sm text-destructive">{error}</div>
-            )}
-            {!loading && !error && items.length === 0 && shouldQuery && (
-              <CommandEmpty className="py-4">Ничего не найдено</CommandEmpty>
-            )}
-            {!loading &&
-              !error &&
-              items.map((item) => (
-                <CommandItem
-                  key={
-                    item.kind === "city" && item.geonameId
-                      ? `city:${item.geonameId}`
-                      : item.kind === "country" && item.countryCode
-                        ? `country:${item.countryCode}`
-                        : `${item.osmType ?? "x"}:${item.osmId ?? item.label}`
-                  }
-                  value={item.label}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onSelect={() => {
-                    onChange(item.label);
-                    onSelectItem?.(item);
-                    setOpen(false);
-                  }}
-                >
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="truncate">{item.label}</span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {[item.kind ? KIND_LABELS[item.kind] ?? item.kind : null, item.city, item.country]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </div>
-                </CommandItem>
-              ))}
-          </CommandList>
-        </Command>
-      </div>
-    ) : null;
+    const dropdownContent =
+      showDropdown && portalReady ? (
+        <div
+          data-geo-autocomplete
+          className={cn(
+            "rounded-md border bg-popover text-popover-foreground shadow-md overflow-hidden",
+            dropdownPortal ? "fixed z-[200]" : "absolute left-0 right-0 top-[calc(100%+4px)] z-50",
+          )}
+          style={
+            dropdownPortal && dropdownStyle
+              ? { top: dropdownStyle.top, left: dropdownStyle.left, width: dropdownStyle.width }
+              : undefined
+          }
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Command shouldFilter={false}>
+            <CommandList className="max-h-64">
+              {loading && <div className="px-3 py-2 text-sm text-muted-foreground">Загрузка…</div>}
+              {!loading && error && (
+                <div className="px-3 py-2 text-sm text-destructive">{error}</div>
+              )}
+              {!loading && !error && items.length === 0 && shouldQuery && (
+                <CommandEmpty className="py-4">Ничего не найдено</CommandEmpty>
+              )}
+              {!loading &&
+                !error &&
+                items.map((item) => (
+                  <CommandItem
+                    key={
+                      item.kind === "city" && item.geonameId
+                        ? `city:${item.geonameId}`
+                        : item.kind === "country" && item.countryCode
+                          ? `country:${item.countryCode}`
+                          : `${item.osmType ?? "x"}:${item.osmId ?? item.label}`
+                    }
+                    value={item.label}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onSelect={() => {
+                      onChange(item.label);
+                      onSelectItem?.(item);
+                      setOpen(false);
+                    }}
+                  >
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="truncate">{item.label}</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {[
+                          item.kind ? (KIND_LABELS[item.kind] ?? item.kind) : null,
+                          item.city,
+                          item.country,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+            </CommandList>
+          </Command>
+        </div>
+      ) : null;
 
     return (
       <div ref={anchorRef} className={cn("relative w-full")}>

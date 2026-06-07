@@ -1,7 +1,7 @@
 declare global {
   interface Window {
     // Yandex Maps JS API 2.1 (loaded dynamically)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     ymaps?: any;
   }
 }

@@ -23,7 +23,9 @@ export default function PageHeader({
   breadcrumbs,
 }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3", className)}>
+    <div
+      className={cn("flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3", className)}
+    >
       <div>
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <AppBreadcrumbs items={breadcrumbs} className="mb-2" />
@@ -42,4 +44,3 @@ export default function PageHeader({
     </div>
   );
 }
-

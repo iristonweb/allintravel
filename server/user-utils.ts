@@ -19,7 +19,8 @@ export function toPublicUser(user: User): PublicUser {
 
 /** Current user session / profile — no password hash */
 export function toSelfUser(user: User): Omit<User, "passwordHash"> {
-  const { passwordHash: _pw, ...rest } = user;
+  const { passwordHash, ...rest } = user;
+  void passwordHash;
   return rest;
 }
 

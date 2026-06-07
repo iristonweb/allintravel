@@ -76,10 +76,10 @@ type YandexFeatureMember = {
     description?: string;
     Point?: { pos?: string };
     metaDataProperty?: {
-            GeocoderMetaData?: {
-              text?: string;
-              kind?: string;
-              Address?: {
+      GeocoderMetaData?: {
+        text?: string;
+        kind?: string;
+        Address?: {
           Components?: Array<{ kind?: string; name?: string }>;
         };
       };
@@ -87,9 +87,7 @@ type YandexFeatureMember = {
   };
 };
 
-function yandexGeocoderKindToItemKind(
-  geocoderKind?: string,
-): GeoAutocompleteItem["kind"] {
+function yandexGeocoderKindToItemKind(geocoderKind?: string): GeoAutocompleteItem["kind"] {
   const k = (geocoderKind ?? "").toLowerCase();
   if (k === "country") return "country";
   if (["locality", "area", "province", "district", "region"].includes(k)) return "city";

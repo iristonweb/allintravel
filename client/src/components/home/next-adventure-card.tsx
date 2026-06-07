@@ -60,7 +60,10 @@ export default function NextAdventureCard({ trip, premium }: NextAdventureCardPr
             <span>Планирование</span>
             <span className="text-white font-medium">{progress}%</span>
           </div>
-          <Progress value={progress} className="h-2 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-[#8b5cf6] [&>div]:to-[#ff7a18]" />
+          <Progress
+            value={progress}
+            className="h-2 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-[#8b5cf6] [&>div]:to-[#ff7a18]"
+          />
         </div>
         <div className="flex items-center gap-3 pt-1">
           <div className="flex -space-x-2">
@@ -80,7 +83,10 @@ export default function NextAdventureCard({ trip, premium }: NextAdventureCardPr
   return (
     <Link href={href}>
       {premium ? (
-        <motion.div whileHover={{ y: -6, scale: 1.01 }} transition={{ type: "spring", stiffness: 300 }}>
+        <motion.div
+          whileHover={{ y: -6, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
           {Card}
         </motion.div>
       ) : (

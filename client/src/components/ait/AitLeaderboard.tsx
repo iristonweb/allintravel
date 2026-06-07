@@ -43,7 +43,10 @@ export default function AitLeaderboard({ compact = false }: { compact?: boolean 
             />
             <div className="flex-1 min-w-0">
               {e.username ? (
-                <Link href={`/u/${e.username}`} className="font-medium hover:text-ait-orange truncate block">
+                <Link
+                  href={`/u/${e.username}`}
+                  className="font-medium hover:text-ait-orange truncate block"
+                >
                   {e.displayName}
                 </Link>
               ) : (

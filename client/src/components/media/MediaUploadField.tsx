@@ -15,7 +15,8 @@ type MediaUploadFieldProps = {
   className?: string;
 };
 
-const DEFAULT_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.gif";
+const DEFAULT_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,.gif";
 
 export default function MediaUploadField({
   value,
@@ -89,7 +90,10 @@ export default function MediaUploadField({
       {value.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {value.map((url) => (
-            <div key={url} className="relative h-16 w-16 rounded-lg overflow-hidden border border-white/10">
+            <div
+              key={url}
+              className="relative h-16 w-16 rounded-lg overflow-hidden border border-white/10"
+            >
               {isVideoUrl(url) ? (
                 <video src={url} className="h-full w-full object-cover" muted />
               ) : (

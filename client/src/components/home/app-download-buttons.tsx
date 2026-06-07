@@ -26,7 +26,13 @@ const platforms: {
 }[] = [
   { id: "ios", label: "App Store", short: "iOS", icon: Apple, url: APP_STORE_URL },
   { id: "android", label: "Google Play", short: "Android", icon: Smartphone, url: PLAY_STORE_URL },
-  { id: "windows", label: "Microsoft Store", short: "Windows", icon: Monitor, url: WINDOWS_STORE_URL },
+  {
+    id: "windows",
+    label: "Microsoft Store",
+    short: "Windows",
+    icon: Monitor,
+    url: WINDOWS_STORE_URL,
+  },
 ];
 
 export default function AppDownloadButtons({ className }: { className?: string }) {

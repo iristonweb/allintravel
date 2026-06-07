@@ -25,7 +25,15 @@ type NominatimPoiItem = {
 const BASE_URL = "https://nominatim.openstreetmap.org/search";
 const USER_AGENT = "All-in-travel/1.0 (poi search)";
 
-const POI_CLASSES = new Set(["amenity", "shop", "tourism", "leisure", "office", "craft", "building"]);
+const POI_CLASSES = new Set([
+  "amenity",
+  "shop",
+  "tourism",
+  "leisure",
+  "office",
+  "craft",
+  "building",
+]);
 
 const TYPE_TO_OSM: Record<string, string> = {
   hotel: "hotel",
@@ -45,8 +53,10 @@ function shortName(displayName: string): string {
 function inferPlaceType(osmType?: string, osmClass?: string): string {
   const t = (osmType ?? "").toLowerCase();
   if (["hotel", "motel", "hostel", "guest_house"].includes(t)) return "hotel";
-  if (["restaurant", "cafe", "fast_food", "food_court", "bar", "pub"].includes(t)) return "restaurant";
-  if (["museum", "attraction", "viewpoint", "theme_park", "gallery"].includes(t)) return "attraction";
+  if (["restaurant", "cafe", "fast_food", "food_court", "bar", "pub"].includes(t))
+    return "restaurant";
+  if (["museum", "attraction", "viewpoint", "theme_park", "gallery"].includes(t))
+    return "attraction";
   if (osmClass === "tourism") return "attraction";
   if (osmClass === "amenity" && t.includes("restaurant")) return "restaurant";
   return "attraction";
@@ -86,7 +96,12 @@ export async function nominatimPoiSearch(params: {
   url.searchParams.set("limit", String(limit * 2));
   url.searchParams.set("dedupe", "1");
 
-  if (params.lat != null && params.lon != null && Number.isFinite(params.lat) && Number.isFinite(params.lon)) {
+  if (
+    params.lat != null &&
+    params.lon != null &&
+    Number.isFinite(params.lat) &&
+    Number.isFinite(params.lon)
+  ) {
     const d = 0.35;
     const minLon = params.lon - d;
     const maxLon = params.lon + d;

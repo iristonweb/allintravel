@@ -73,7 +73,9 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const unreadItems = (notifications?.items ?? []).filter((n) => !n.isRead);
   const notifCount =
     notifications?.totalUnread ??
-    unreadItems.length + (notifications?.friendRequests ?? 0) + (notifications?.unreadMessages ?? 0);
+    unreadItems.length +
+      (notifications?.friendRequests ?? 0) +
+      (notifications?.unreadMessages ?? 0);
   const friendRequestCount = notifications?.friendRequests ?? 0;
   const unreadMessageCount = notifications?.unreadMessages ?? 0;
   const hasUnreadBadge = notifCount > 0 || unreadMessageCount > 0;
@@ -171,7 +173,12 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
           {user?.isAdmin && (
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5 text-xs h-8" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex gap-1.5 text-xs h-8"
+              asChild
+            >
               <Link href="/admin">
                 <Shield className="h-3.5 w-3.5" />
                 Админ
@@ -189,11 +196,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
             onMarkReadAndGo={markReadAndGo}
           />
 
-          <AvatarHubMenu
-            user={user ?? null}
-            hasUnreadBadge={hasUnreadBadge}
-            onLogout={logout}
-          />
+          <AvatarHubMenu user={user ?? null} hasUnreadBadge={hasUnreadBadge} onLogout={logout} />
 
           <Button
             variant="ghost"

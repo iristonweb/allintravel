@@ -1,17 +1,4 @@
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  gte,
-  ilike,
-  inArray,
-  lte,
-  isNull,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, isNull, or, sql } from "drizzle-orm";
 import type {
   ChatMessage,
   Event,
@@ -25,7 +12,6 @@ import type {
   InsertReview,
   InsertTravelPost,
   InsertTrip,
-  InsertTripWaypoint,
   InsertUserProfile,
   Place,
   PostComment,
@@ -67,9 +53,10 @@ import { buildSeedData } from "./seed-data";
 import { resolveIsAdmin } from "./admin";
 import type { IStorage } from "./storage";
 import type { UserPrivacySettings } from "@shared/privacy";
-import type { ChatRoom, ChatRoomInvite, ChatRoomMember, UserPresence } from "@shared/schema";
+import type { ChatRoom, UserPresence } from "@shared/schema";
 import * as features from "./pg-storage-features";
 import type { Db } from "./pg-storage-types";
+import { toSelfUser } from "./user-utils";
 
 export class PgStorage implements IStorage {
   private db: Db;
@@ -82,18 +69,12 @@ export class PgStorage implements IStorage {
 
   async ensureSchema(): Promise<void> {
     await features.ensureExtendedSchema(this.db);
-    await this.db.execute(
-      sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar`,
-    );
+    await this.db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar`);
     await this.db.execute(
       sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin boolean DEFAULT false`,
     );
-    await this.db.execute(
-      sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS username varchar(30)`,
-    );
-    await this.db.execute(
-      sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar(64)`,
-    );
+    await this.db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS username varchar(30)`);
+    await this.db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name varchar(64)`);
     await this.db.execute(
       sql`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (username) WHERE username IS NOT NULL`,
     );
@@ -133,9 +114,7 @@ export class PgStorage implements IStorage {
         isActive: true,
       })),
     );
-    await this.db.insert(trips).values(
-      seed.trips.map((t) => ({ ...t, isActive: true })),
-    );
+    await this.db.insert(trips).values(seed.trips.map((t) => ({ ...t, isActive: true })));
     await this.db.insert(travelPosts).values(
       seed.posts.map((p) => ({
         ...p,
@@ -277,14 +256,9 @@ export class PgStorage implements IStorage {
 
       const tokenMatches = tokens.map((word) => {
         const q = `%${word}%`;
-        return or(
-          ilike(places.name, q),
-          ilike(places.address, q),
-          ilike(places.description, q),
-        )!;
+        return or(ilike(places.name, q), ilike(places.address, q), ilike(places.description, q))!;
       });
-      const placeMatch =
-        tokenMatches.length === 1 ? tokenMatches[0]! : and(...tokenMatches)!;
+      const placeMatch = tokenMatches.length === 1 ? tokenMatches[0]! : and(...tokenMatches)!;
 
       const cityQ = `%${tokens[0] ?? term}%`;
       const cityRows = await this.db
@@ -295,9 +269,7 @@ export class PgStorage implements IStorage {
         .limit(5);
 
       if (cityRows.length > 0) {
-        const cityAddressMatch = or(
-          ...cityRows.map((c) => ilike(places.address, `%${c.name}%`)),
-        )!;
+        const cityAddressMatch = or(...cityRows.map((c) => ilike(places.address, `%${c.name}%`)))!;
         conditions.push(or(placeMatch, cityAddressMatch)!);
       } else {
         conditions.push(placeMatch);
@@ -359,7 +331,11 @@ export class PgStorage implements IStorage {
     const avg = placeReviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) / placeReviews.length;
     await this.db
       .update(places)
-      .set({ averageRating: avg.toFixed(1), reviewCount: placeReviews.length, updatedAt: new Date() })
+      .set({
+        averageRating: avg.toFixed(1),
+        reviewCount: placeReviews.length,
+        updatedAt: new Date(),
+      })
       .where(eq(places.id, placeId));
   }
 
@@ -559,10 +535,7 @@ export class PgStorage implements IStorage {
         .limit(1);
       return row!;
     }
-    const [row] = await this.db
-      .insert(eventRegistrations)
-      .values({ eventId, userId })
-      .returning();
+    const [row] = await this.db.insert(eventRegistrations).values({ eventId, userId }).returning();
     return row;
   }
 
@@ -608,10 +581,7 @@ export class PgStorage implements IStorage {
   }
 
   async addFavorite(userId: string, placeId: string): Promise<UserFavorite> {
-    const [row] = await this.db
-      .insert(userFavorites)
-      .values({ userId, placeId })
-      .returning();
+    const [row] = await this.db.insert(userFavorites).values({ userId, placeId }).returning();
     return row;
   }
 
@@ -631,7 +601,11 @@ export class PgStorage implements IStorage {
   }
 
   async getUserProfile(userId: string): Promise<UserProfile | undefined> {
-    const [row] = await this.db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+    const [row] = await this.db
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, userId))
+      .limit(1);
     return row;
   }
 
@@ -640,7 +614,10 @@ export class PgStorage implements IStorage {
     return row;
   }
 
-  async updateUserProfile(userId: string, profile: Partial<InsertUserProfile>): Promise<UserProfile> {
+  async updateUserProfile(
+    userId: string,
+    profile: Partial<InsertUserProfile>,
+  ): Promise<UserProfile> {
     const existing = await this.getUserProfile(userId);
     if (!existing) {
       return this.createUserProfile({ userId, ...profile } as InsertUserProfile);
@@ -666,7 +643,11 @@ export class PgStorage implements IStorage {
     return features.areFriendsDb(this.db, userId1, userId2);
   }
 
-  async sendFriendRequest(requesterId: string, addresseeId: string, direction?: string): Promise<Friendship> {
+  async sendFriendRequest(
+    requesterId: string,
+    addresseeId: string,
+    direction?: string,
+  ): Promise<Friendship> {
     const [row] = await this.db
       .insert(friendships)
       .values({ requesterId, addresseeId, status: "pending", direction: direction ?? null })
@@ -699,8 +680,13 @@ export class PgStorage implements IStorage {
       or(eq(friendships.requesterId, userId), eq(friendships.addresseeId, userId))!,
     ];
     if (direction) conditions.push(eq(friendships.direction, direction));
-    const accepted = await this.db.select().from(friendships).where(and(...conditions)!);
-    const friendIds = accepted.map((f) => (f.requesterId === userId ? f.addresseeId : f.requesterId));
+    const accepted = await this.db
+      .select()
+      .from(friendships)
+      .where(and(...conditions)!);
+    const friendIds = accepted.map((f) =>
+      f.requesterId === userId ? f.addresseeId : f.requesterId,
+    );
     if (!friendIds.length) return [];
     return this.db.select().from(users).where(inArray(users.id, friendIds));
   }
@@ -741,15 +727,34 @@ export class PgStorage implements IStorage {
   }
 
   async getFollowers(userId: string): Promise<User[]> {
-    const rows = await this.db.select().from(userFollows).where(eq(userFollows.followingId, userId));
+    const rows = await this.db
+      .select()
+      .from(userFollows)
+      .where(eq(userFollows.followingId, userId));
     if (!rows.length) return [];
-    return this.db.select().from(users).where(inArray(users.id, rows.map((r) => r.followerId)));
+    return this.db
+      .select()
+      .from(users)
+      .where(
+        inArray(
+          users.id,
+          rows.map((r) => r.followerId),
+        ),
+      );
   }
 
   async getFollowing(userId: string): Promise<User[]> {
     const rows = await this.db.select().from(userFollows).where(eq(userFollows.followerId, userId));
     if (!rows.length) return [];
-    return this.db.select().from(users).where(inArray(users.id, rows.map((r) => r.followingId)));
+    return this.db
+      .select()
+      .from(users)
+      .where(
+        inArray(
+          users.id,
+          rows.map((r) => r.followingId),
+        ),
+      );
   }
 
   async isFollowing(followerId: string, followingId: string): Promise<boolean> {
@@ -766,7 +771,11 @@ export class PgStorage implements IStorage {
     return row;
   }
 
-  async getPrivateMessages(userId1: string, userId2: string, limit = 50): Promise<PrivateMessage[]> {
+  async getPrivateMessages(
+    userId1: string,
+    userId2: string,
+    limit = 50,
+  ): Promise<PrivateMessage[]> {
     const rows = await this.db
       .select()
       .from(privateMessages)
@@ -812,7 +821,8 @@ export class PgStorage implements IStorage {
     }
 
     return conversations.sort(
-      (a, b) => new Date(b.lastMessage.createdAt!).getTime() - new Date(a.lastMessage.createdAt!).getTime(),
+      (a, b) =>
+        new Date(b.lastMessage.createdAt!).getTime() - new Date(a.lastMessage.createdAt!).getTime(),
     );
   }
 
@@ -899,7 +909,9 @@ export class PgStorage implements IStorage {
   }
 
   async unlikePost(userId: string, postId: string): Promise<void> {
-    await this.db.delete(postLikes).where(and(eq(postLikes.userId, userId), eq(postLikes.postId, postId)));
+    await this.db
+      .delete(postLikes)
+      .where(and(eq(postLikes.userId, userId), eq(postLikes.postId, postId)));
   }
 
   async addPostComment(comment: InsertPostComment): Promise<PostComment> {
@@ -1004,7 +1016,11 @@ export class PgStorage implements IStorage {
     return features.banChatRoomMemberDb(this.db, roomId, userId);
   }
 
-  async createChatRoomInvite(roomId: string, createdBy: string, opts?: { expiresAt?: Date; maxUses?: number }) {
+  async createChatRoomInvite(
+    roomId: string,
+    createdBy: string,
+    opts?: { expiresAt?: Date; maxUses?: number },
+  ) {
     return features.createChatRoomInviteDb(this.db, roomId, createdBy, opts);
   }
 
@@ -1104,7 +1120,9 @@ export class PgStorage implements IStorage {
     return features.markPrivateMessagesDeliveredDb(this.db, receiverId, senderId);
   }
 
-  async createNotification(data: Parameters<typeof import("./notification-storage").createNotificationDb>[1]) {
+  async createNotification(
+    data: Parameters<typeof import("./notification-storage").createNotificationDb>[1],
+  ) {
     const { createNotificationDb } = await import("./notification-storage");
     return createNotificationDb(this.db, data);
   }
@@ -1219,7 +1237,7 @@ export class PgStorage implements IStorage {
   async exportUserData(userId: string): Promise<Record<string, unknown>> {
     const user = await this.getUser(userId);
     if (!user) throw new Error("User not found");
-    const { passwordHash: _pw, ...userSafe } = user;
+    const userSafe = toSelfUser(user);
     return {
       exportedAt: new Date().toISOString(),
       user: userSafe,

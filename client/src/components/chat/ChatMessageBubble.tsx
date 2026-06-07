@@ -112,9 +112,7 @@ function MediaPart({ part }: { part: ParsedChatMessage }) {
   if (part.type === "audio") {
     const src = safeUrl(part.url);
     if (!src) return <span className="text-xs text-muted-foreground">[аудио]</span>;
-    return (
-      <audio src={src} controls className="w-[min(280px,85vw)] h-10" preload="metadata" />
-    );
+    return <audio src={src} controls className="w-[min(280px,85vw)] h-10" preload="metadata" />;
   }
 
   if (part.type === "voice") {
@@ -147,7 +145,9 @@ export default function ChatMessageBubble({
   onReactionDetails,
 }: ChatMessageBubbleProps) {
   const parts = parseChatMessage(content);
-  const replyPart = parts.find((p): p is { type: "reply"; username: string; preview: string } => p.type === "reply");
+  const replyPart = parts.find(
+    (p): p is { type: "reply"; username: string; preview: string } => p.type === "reply",
+  );
   const mediaParts = parts.filter((p) => p.type !== "text" && p.type !== "reply");
   const textContent = parts
     .filter((p): p is { type: "text"; text: string } => p.type === "text")
@@ -229,9 +229,7 @@ export default function ChatMessageBubble({
 
       <div className={cn("flex items-center gap-1.5 px-1", isOwn && "flex-row-reverse")}>
         {timestamp}
-        {edited && (
-          <span className="text-[10px] text-muted-foreground italic">изменено</span>
-        )}
+        {edited && <span className="text-[10px] text-muted-foreground italic">изменено</span>}
         {isOwn && deliveryStatus && <MessageStatusTicks status={deliveryStatus} />}
       </div>
     </div>

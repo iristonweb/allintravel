@@ -60,7 +60,10 @@ const REASON_TITLES: Partial<Record<AitReasonCode, string>> = {
 };
 
 function ringForReason(reason: AitReasonCode): ActivityRingId | null {
-  for (const [ring, reasons] of Object.entries(RING_REASON_MAP) as [ActivityRingId, AitReasonCode[]][]) {
+  for (const [ring, reasons] of Object.entries(RING_REASON_MAP) as [
+    ActivityRingId,
+    AitReasonCode[],
+  ][]) {
     if (reasons.includes(reason)) return ring;
   }
   return null;
@@ -216,7 +219,11 @@ export async function spendCatalogItem(
   }
 
   const entitlements = await store.getEntitlements(userId);
-  if (item.durationDays == null && entitlements.some((e) => e.sku === sku) && sku !== "boost_post_24h") {
+  if (
+    item.durationDays == null &&
+    entitlements.some((e) => e.sku === sku) &&
+    sku !== "boost_post_24h"
+  ) {
     return { ok: false, message: "У вас уже есть этот предмет" };
   }
 

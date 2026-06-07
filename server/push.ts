@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import webpush from "web-push";
-import { isAuthenticated } from "./auth";
+import { getAuthUserId, isAuthenticated } from "./auth";
 import { storage } from "./storage";
 
 type PushSubscriptionBody = {
@@ -21,8 +21,8 @@ export function setupPushRoutes(app: Express): void {
     res.json({ publicKey: publicKey ?? null, enabled: Boolean(publicKey && privateKey) });
   });
 
-  app.post("/api/push/subscribe", isAuthenticated, async (req: any, res: Response) => {
-    const userId = req.user.claims.sub;
+  app.post("/api/push/subscribe", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = getAuthUserId(req)!;
     const sub = req.body as PushSubscriptionBody;
     if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
       return res.status(400).json({ message: "Invalid subscription" });
@@ -31,17 +31,17 @@ export function setupPushRoutes(app: Express): void {
     res.status(201).json({ ok: true });
   });
 
-  app.delete("/api/push/subscribe", isAuthenticated, async (req: any, res: Response) => {
+  app.delete("/api/push/subscribe", isAuthenticated, async (req, res: Response) => {
     const endpoint = String(req.body?.endpoint ?? "");
     if (endpoint) await storage.deletePushSubscription(endpoint);
     res.status(204).send();
   });
 
-  app.post("/api/push/test", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/push/test", isAuthenticated, async (req: Request, res: Response) => {
     if (!publicKey || !privateKey) {
       return res.status(503).json({ message: "Push not configured (VAPID keys)" });
     }
-    const userId = req.user.claims.sub;
+    const userId = getAuthUserId(req)!;
     try {
       await sendPushToUser(userId, {
         title: "All In Travel",

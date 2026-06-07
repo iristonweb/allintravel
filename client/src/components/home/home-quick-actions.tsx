@@ -1,14 +1,8 @@
 import { Button } from "@/components/ui/button";
-import {
-  Building2,
-  Car,
-  Shield,
-  Utensils,
-} from "lucide-react";
+import { Building2, Car, Shield, Utensils } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 import GlassCard from "@/components/brand/glass-card";
 import DestinationSearch from "@/components/search/DestinationSearch";
 
@@ -26,7 +20,6 @@ type HomeQuickActionsProps = {
 export default function HomeQuickActions({ defaultSearch = "" }: HomeQuickActionsProps) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState(defaultSearch);
 
   return (

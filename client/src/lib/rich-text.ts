@@ -109,8 +109,7 @@ function renderStyled(type: RichTextFormat, children: ReactNode): ReactNode {
       return createElement(
         "code",
         {
-          className:
-            "rounded px-1 py-0.5 text-[0.92em] font-mono bg-black/25 text-violet-200",
+          className: "rounded px-1 py-0.5 text-[0.92em] font-mono bg-black/25 text-violet-200",
         },
         children,
       );
@@ -166,8 +165,7 @@ function renderLine(line: string, keyPrefix: string): ReactNode {
       "blockquote",
       {
         key: keyPrefix,
-        className:
-          "border-l-2 border-ait-purple/50 pl-3 my-1 text-muted-foreground italic",
+        className: "border-l-2 border-ait-purple/50 pl-3 my-1 text-muted-foreground italic",
       },
       createElement(Fragment, null, ...parseRichInline(quoteMatch[1] ?? "", `${keyPrefix}-q`)),
     );

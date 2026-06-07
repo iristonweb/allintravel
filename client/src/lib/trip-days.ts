@@ -6,7 +6,7 @@ export function tripCalendarDayCount(trip: Pick<Trip, "startDate" | "endDate">):
   if (!trip.startDate || !trip.endDate) return 1;
   const start = new Date(trip.startDate);
   const end = new Date(trip.endDate);
-  const diff = Math.floor((end.getTime() - start.getTime()) / (86400000)) + 1;
+  const diff = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
   return Math.max(1, diff);
 }
 
@@ -16,10 +16,7 @@ export function dayLabel(trip: Pick<Trip, "startDate">, dayNumber: number): stri
   return `День ${dayNumber} · ${format(date, "d MMM", { locale: ru })}`;
 }
 
-export function effectiveDayNumber(
-  waypoint: TripWaypointWithPlace,
-  fallbackIndex: number,
-): number {
+export function effectiveDayNumber(waypoint: TripWaypointWithPlace, fallbackIndex: number): number {
   return waypoint.dayNumber ?? fallbackIndex + 1;
 }
 

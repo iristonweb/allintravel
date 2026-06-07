@@ -21,7 +21,6 @@ export async function getWeeklyCreatorLeaderboard(limit = 10): Promise<Leaderboa
 
   if (!db) {
     const byUser = new Map<string, number>();
-    const now = Date.now();
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
     for (const t of store.getMemTransactions()) {

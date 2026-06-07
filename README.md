@@ -12,6 +12,18 @@ npm run dev
 
 Приложение: http://localhost:5000
 
+## Качество кода (локально и CI)
+
+```bash
+npm run check          # TypeScript
+npm run lint           # ESLint (0 warnings)
+npm run format:check   # Prettier
+npm run test           # Vitest (unit + Supertest)
+npm run build          # client + API bundle
+```
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) запускает те же шаги на каждый push/PR.
+
 ## Сборка
 
 ```bash
@@ -25,6 +37,7 @@ npm run start
 # В .env указать DATABASE_URL
 npm install   # drizzle-kit >= 0.31 нужен для db:push на Neon
 npm run db:push
+# Версионирование схемы: npm run db:generate → migrations/ → npm run db:migrate (prod)
 npm run db:seed
 # опционально — города для автодополнения:
 npm run geo:import
@@ -98,8 +111,15 @@ npm run geo:import
 | `YANDEX_GEOSUGGEST_API_KEY` | нет | Геосаджест (подсказки) |
 | `YANDEX_GEOCODER_API_KEY` | нет | HTTP Геокодер |
 | `YANDEX_ROUTER_API_KEY` | нет | Маршрутизация (поездки) |
+| `BLOB_READ_WRITE_TOKEN` | нет (Vercel) | Vercel Blob — постоянные загрузки (аватар, медиа) |
+| `BLOB_STORE_ID` | нет (Vercel) | OIDC-доступ к Blob store |
+| `BLOB_ACCESS` | нет | `public` или `private` для Blob store |
 
 `NODE_ENV` и `VERCEL` Vercel выставляет сам. **Не коммитьте** `.env` в репозиторий.
+
+### Rate limiting
+
+На сервере включены лимиты ([`server/rate-limit.ts`](server/rate-limit.ts)): вход (`/api/auth/login`), поиск пользователей, сообщения/чат, загрузки файлов.
 
 ### Neon
 
@@ -153,8 +173,8 @@ npm run geo:import
 | Маршрут по дорогам | ✅ при `YANDEX_ROUTER_API_KEY` (вкладка маршрута поездки) |
 | Чат групп | ✅ HTTP-режим |
 | Google OAuth | ✅ при `GOOGLE_*` + `APP_URL` |
-| Аватар `/api/users/avatar` | ⚠️ файл на диске функции — **сбрасывается** при redeploy; для продакшена нужен S3/Vercel Blob |
-| Web Push | ⚠️ подписки в памяти сервера — не для production без БД |
+| Аватар `/api/users/avatar` | ✅ Vercel Blob при `BLOB_*`; локально — `/uploads/` |
+| Web Push | ✅ подписки в PostgreSQL при `DATABASE_URL`; in-memory только без БД |
 
 ## Стек
 

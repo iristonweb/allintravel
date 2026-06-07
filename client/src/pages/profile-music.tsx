@@ -87,7 +87,13 @@ function ProfileMusicContent() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  const { data: tracks = [], isLoading, isError, error, refetch } = useQuery<UserTrack[]>({
+  const {
+    data: tracks = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<UserTrack[]>({
     queryKey: ["/api/music/tracks"],
   });
 
@@ -170,282 +176,293 @@ function ProfileMusicContent() {
   const itunesResults = searchResults?.itunes ?? [];
 
   return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <AppBreadcrumbs
-          items={[
-            { label: "Профиль", href: "/profile" },
-            { label: "Моя музыка" },
-          ]}
-        />
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Music2 className="h-6 w-6 text-primary" />
-            Моя музыка
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Загружайте свои треки или ищите CC-музыку (Jamendo) и превью популярных треков (iTunes).
-          </p>
-        </div>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <AppBreadcrumbs items={[{ label: "Профиль", href: "/profile" }, { label: "Моя музыка" }]} />
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Music2 className="h-6 w-6 text-primary" />
+          Моя музыка
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Загружайте свои треки или ищите CC-музыку (Jamendo) и превью популярных треков (iTunes).
+        </p>
+      </div>
 
-        <Card className="border-border/60">
-          <CardContent className="p-4 space-y-3">
-            <Label htmlFor="music-search">Поиск по названию</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="music-search"
-                placeholder="Исполнитель или название…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            {searchQuery.length >= 2 && (
-              <div className="space-y-4 pt-1">
-                {searchLoading && (
-                  <p className="text-xs text-muted-foreground">Поиск…</p>
-                )}
-                {jamendoResults.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Jamendo — полные CC-треки
-                    </p>
-                    {jamendoResults.map((item) => (
-                      <div
-                        key={`jamendo-${item.id}`}
-                        className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {item.artist}
-                            {item.durationSeconds ? ` · ${formatDuration(item.durationSeconds)}` : ""}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          title="Послушать"
-                          onClick={() => previewExternal(`${item.title} — ${item.artist}`, item.streamUrl)}
-                        >
-                          <Play className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          disabled={importMutation.isPending}
-                          onClick={() =>
-                            importMutation.mutate({ source: "jamendo", externalId: item.id })
-                          }
-                        >
-                          <Plus className="h-3.5 w-3.5 mr-1" />
-                          В библиотеку
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {itunesResults.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      iTunes — превью 30 сек
-                    </p>
-                    {itunesResults.map((item) => (
-                      <div
-                        key={`itunes-${item.id}`}
-                        className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {item.artist}
-                            {item.album ? ` · ${item.album}` : ""}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          title="Превью"
-                          onClick={() => previewExternal(`${item.title} — ${item.artist}`, item.previewUrl)}
-                        >
-                          <Play className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={importMutation.isPending}
-                          onClick={() =>
-                            importMutation.mutate({ source: "itunes", externalId: item.id })
-                          }
-                        >
-                          Сохранить превью
-                        </Button>
-                        {item.trackViewUrl && (
-                          <Button type="button" size="icon" variant="ghost" asChild>
-                            <a href={item.trackViewUrl} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {!searchLoading &&
-                  jamendoResults.length === 0 &&
-                  itunesResults.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Ничего не найдено</p>
-                  )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60">
-          <CardContent className="p-4 space-y-4">
-            <div>
-              <Label htmlFor="track-title">Название (необязательно)</Label>
-              <Input
-                id="track-title"
-                placeholder="Будет взято из имени файла"
-                value={uploadTitle}
-                onChange={(e) => setUploadTitle(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/x-m4a,.mp3,.m4a,.ogg,.wav"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleUpload(file);
-                e.target.value = "";
-              }}
+      <Card className="border-border/60">
+        <CardContent className="p-4 space-y-3">
+          <Label htmlFor="music-search">Поиск по названию</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="music-search"
+              placeholder="Исполнитель или название…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9"
             />
-            <Button
-              type="button"
-              className="w-full"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {uploading ? "Загрузка…" : "Загрузить свой трек"}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {tracks.length > 0 && (
-          <Button type="button" variant="outline" onClick={() => playAll()}>
-            <Play className="h-4 w-4 mr-2" />
-            Воспроизвести все
-          </Button>
-        )}
-
-        <div className="space-y-2">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Загрузка…</p>
-          ) : isError ? (
-            <Card className="border-destructive/40">
-              <CardContent className="p-6 text-center space-y-3">
-                <p className="text-sm text-destructive">Не удалось загрузить библиотеку</p>
-                <p className="text-xs text-muted-foreground">
-                  {error instanceof Error ? error.message : "Ошибка сервера"}
-                </p>
-                <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-                  Повторить
-                </Button>
-              </CardContent>
-            </Card>
-          ) : tracks.length === 0 ? (
-            <Card className="border-border/60">
-              <CardContent className="p-8 text-center text-muted-foreground text-sm">
-                Пока нет треков. Загрузите MP3 или найдите музыку выше.
-              </CardContent>
-            </Card>
-          ) : (
-            tracks.map((track) => (
-              <Card key={track.id} className="border-border/60">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="secondary"
-                    className="shrink-0 h-10 w-10 rounded-xl"
-                    onClick={() => playAll(track.id)}
-                  >
-                    <Play className="h-4 w-4" />
-                  </Button>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{track.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {track.artist && `${track.artist} · `}
-                      {track.createdAt &&
-                        formatDistanceToNow(new Date(track.createdAt), {
-                          addSuffix: true,
-                          locale: ru,
-                        })}
-                      {track.isPreview && " · превью 30 сек"}
-                      {track.fileSizeBytes
-                        ? ` · ${(track.fileSizeBytes / (1024 * 1024)).toFixed(1)} МБ`
-                        : ""}
-                    </p>
-                    {track.license && (
-                      <p className="text-[10px] text-muted-foreground truncate">{track.license}</p>
-                    )}
-                  </div>
-                  {track.sourceProvider && (
-                    <Badge variant="outline" className="text-[10px] shrink-0">
-                      {track.sourceProvider}
-                    </Badge>
-                  )}
-                  {!track.isPreview && (
-                    <Button type="button" size="icon" variant="ghost" asChild>
-                      <a
-                        href={`/api/music/tracks/${track.id}/download`}
-                        download
-                        onClick={(e) => {
-                          e.preventDefault();
-                          void fetch(`/api/music/tracks/${track.id}/download`, { credentials: "include" })
-                            .then(async (r) => {
-                              if (!r.ok) throw new Error("Download failed");
-                              const blob = await r.blob();
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = url;
-                              a.download = `${track.title}.mp3`;
-                              a.click();
-                              URL.revokeObjectURL(url);
-                            })
-                            .catch(() =>
-                              toast({ title: "Не удалось скачать", variant: "destructive" }),
-                            );
-                        }}
+          </div>
+          {searchQuery.length >= 2 && (
+            <div className="space-y-4 pt-1">
+              {searchLoading && <p className="text-xs text-muted-foreground">Поиск…</p>}
+              {jamendoResults.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Jamendo — полные CC-треки
+                  </p>
+                  {jamendoResults.map((item) => (
+                    <div
+                      key={`jamendo-${item.id}`}
+                      className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {item.artist}
+                          {item.durationSeconds ? ` · ${formatDuration(item.durationSeconds)}` : ""}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        title="Послушать"
+                        aria-label="Послушать"
+                        onClick={() =>
+                          previewExternal(`${item.title} — ${item.artist}`, item.streamUrl)
+                        }
                       >
-                        <Download className="h-4 w-4" />
-                      </a>
-                    </Button>
+                        <Play className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={importMutation.isPending}
+                        onClick={() =>
+                          importMutation.mutate({ source: "jamendo", externalId: item.id })
+                        }
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />В библиотеку
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {itunesResults.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    iTunes — превью 30 сек
+                  </p>
+                  {itunesResults.map((item) => (
+                    <div
+                      key={`itunes-${item.id}`}
+                      className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {item.artist}
+                          {item.album ? ` · ${item.album}` : ""}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        title="Превью"
+                        aria-label="Превью"
+                        onClick={() =>
+                          previewExternal(`${item.title} — ${item.artist}`, item.previewUrl)
+                        }
+                      >
+                        <Play className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={importMutation.isPending}
+                        onClick={() =>
+                          importMutation.mutate({ source: "itunes", externalId: item.id })
+                        }
+                      >
+                        Сохранить превью
+                      </Button>
+                      {item.trackViewUrl && (
+                        <Button type="button" size="icon" variant="ghost" asChild>
+                          <a
+                            href={item.trackViewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Открыть в Apple Music"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!searchLoading && jamendoResults.length === 0 && itunesResults.length === 0 && (
+                <p className="text-sm text-muted-foreground">Ничего не найдено</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardContent className="p-4 space-y-4">
+          <div>
+            <Label htmlFor="track-title">Название (необязательно)</Label>
+            <Input
+              id="track-title"
+              placeholder="Будет взято из имени файла"
+              value={uploadTitle}
+              onChange={(e) => setUploadTitle(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/x-m4a,.mp3,.m4a,.ogg,.wav"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void handleUpload(file);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            type="button"
+            className="w-full"
+            disabled={uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {uploading ? "Загрузка…" : "Загрузить свой трек"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {tracks.length > 0 && (
+        <Button type="button" variant="outline" onClick={() => playAll()}>
+          <Play className="h-4 w-4 mr-2" />
+          Воспроизвести все
+        </Button>
+      )}
+
+      <div className="space-y-2">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Загрузка…</p>
+        ) : isError ? (
+          <Card className="border-destructive/40">
+            <CardContent className="p-6 text-center space-y-3">
+              <p className="text-sm text-destructive">Не удалось загрузить библиотеку</p>
+              <p className="text-xs text-muted-foreground">
+                {error instanceof Error ? error.message : "Ошибка сервера"}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+                Повторить
+              </Button>
+            </CardContent>
+          </Card>
+        ) : tracks.length === 0 ? (
+          <Card className="border-border/60">
+            <CardContent className="p-8 text-center text-muted-foreground text-sm">
+              Пока нет треков. Загрузите MP3 или найдите музыку выше.
+            </CardContent>
+          </Card>
+        ) : (
+          tracks.map((track) => (
+            <Card key={track.id} className="border-border/60">
+              <CardContent className="p-3 flex items-center gap-3">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className="shrink-0 h-10 w-10 rounded-xl"
+                  onClick={() => playAll(track.id)}
+                  aria-label={`Воспроизвести ${track.title}`}
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{track.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {track.artist && `${track.artist} · `}
+                    {track.createdAt &&
+                      formatDistanceToNow(new Date(track.createdAt), {
+                        addSuffix: true,
+                        locale: ru,
+                      })}
+                    {track.isPreview && " · превью 30 сек"}
+                    {track.fileSizeBytes
+                      ? ` · ${(track.fileSizeBytes / (1024 * 1024)).toFixed(1)} МБ`
+                      : ""}
+                  </p>
+                  {track.license && (
+                    <p className="text-[10px] text-muted-foreground truncate">{track.license}</p>
                   )}
+                </div>
+                {track.sourceProvider && (
+                  <Badge variant="outline" className="text-[10px] shrink-0">
+                    {track.sourceProvider}
+                  </Badge>
+                )}
+                {!track.isPreview && (
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => deleteMutation.mutate(track.id)}
+                    asChild
+                    aria-label="Скачать трек"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <a
+                      href={`/api/music/tracks/${track.id}/download`}
+                      download
+                      onClick={(e) => {
+                        e.preventDefault();
+                        void fetch(`/api/music/tracks/${track.id}/download`, {
+                          credentials: "include",
+                        })
+                          .then(async (r) => {
+                            if (!r.ok) throw new Error("Download failed");
+                            const blob = await r.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${track.title}.mp3`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          })
+                          .catch(() =>
+                            toast({ title: "Не удалось скачать", variant: "destructive" }),
+                          );
+                      }}
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
                   </Button>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                )}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => deleteMutation.mutate(track.id)}
+                  aria-label={`Удалить ${track.title}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
+    </div>
   );
 }
 

@@ -97,9 +97,7 @@ export default function AvatarHubMenu({ user, hasUnreadBadge, onLogout }: Avatar
           >
             <div className="rounded-2xl ait-glass-strong border border-white/10 shadow-2xl overflow-hidden p-2">
               <p className="px-2 py-1.5 text-sm font-medium truncate">{label}</p>
-              <p className="px-2 pb-2 text-xs text-muted-foreground">
-                Разделы — в меню слева
-              </p>
+              <p className="px-2 pb-2 text-xs text-muted-foreground">Разделы — в меню слева</p>
               <Link
                 href="/profile"
                 onClick={() => setOpen(false)}

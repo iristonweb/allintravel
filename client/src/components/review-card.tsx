@@ -12,10 +12,10 @@ interface ReviewCardProps {
   showPlaceName?: boolean;
 }
 
-function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProps) {
+function ReviewCard({ review, onHelpful, showPlaceName: _showPlaceName = false }: ReviewCardProps) {
   const formatDate = (date: string | Date | null) => {
     if (!date) return "Недавно";
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const dateObj = typeof date === "string" ? new Date(date) : date;
     return format(dateObj, "d MMM yyyy", { locale: ru });
   };
 
@@ -23,11 +23,7 @@ function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProp
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`h-4 w-4 ${
-          i < rating
-            ? "fill-yellow-400 text-yellow-400"
-            : "text-muted"
-        }`}
+        className={`h-4 w-4 ${i < rating ? "fill-yellow-400 text-yellow-400" : "text-muted"}`}
       />
     ));
   };
@@ -39,35 +35,27 @@ function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProp
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src="" alt="User" />
-              <AvatarFallback>
-                U
-              </AvatarFallback>
+              <AvatarFallback>U</AvatarFallback>
             </Avatar>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <div className="flex">
-                  {renderStars(review.rating)}
-                </div>
+                <div className="flex">{renderStars(review.rating)}</div>
                 <span className="text-sm text-muted-foreground">
                   {formatDate(review.createdAt)}
                 </span>
               </div>
-              {review.title && (
-                <h4 className="font-medium text-sm">{review.title}</h4>
-              )}
+              {review.title && <h4 className="font-medium text-sm">{review.title}</h4>}
             </div>
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         <div className="space-y-3">
           {review.content && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {review.content}
-            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{review.content}</p>
           )}
-          
+
           {review.images && review.images.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {review.images.slice(0, 4).map((image, index) => (
@@ -85,7 +73,7 @@ function ReviewCard({ review, onHelpful, showPlaceName = false }: ReviewCardProp
               )}
             </div>
           )}
-          
+
           <div className="flex items-center justify-between pt-2">
             <Button
               variant="ghost"

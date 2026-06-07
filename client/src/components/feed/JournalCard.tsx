@@ -14,8 +14,7 @@ type JournalCardProps = {
 };
 
 export default function JournalCard({ post, formatDate, onTagClick }: JournalCardProps) {
-  const excerpt =
-    post.content.length > 320 ? `${post.content.slice(0, 320)}…` : post.content;
+  const excerpt = post.content.length > 320 ? `${post.content.slice(0, 320)}…` : post.content;
 
   return (
     <GlassCard className="overflow-hidden">

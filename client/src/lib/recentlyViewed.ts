@@ -25,7 +25,11 @@ export function getRecentlyViewedPlaces(): RecentlyViewedPlace[] {
 export function pushRecentlyViewedPlace(input: { id: string; type?: string | null }) {
   try {
     const current = getRecentlyViewedPlaces();
-    const nextItem: RecentlyViewedPlace = { id: input.id, type: input.type ?? null, viewedAt: Date.now() };
+    const nextItem: RecentlyViewedPlace = {
+      id: input.id,
+      type: input.type ?? null,
+      viewedAt: Date.now(),
+    };
     const deduped = [nextItem, ...current.filter((x) => x.id !== input.id)];
     localStorage.setItem(KEY, JSON.stringify(deduped.slice(0, MAX_ITEMS)));
     window.dispatchEvent(new Event(RECENTLY_VIEWED_EVENT));
@@ -56,4 +60,3 @@ export function getRecentTypePreference(): string | undefined {
 export function getLastViewedPlace(): RecentlyViewedPlace | undefined {
   return getRecentlyViewedPlaces()[0];
 }
-

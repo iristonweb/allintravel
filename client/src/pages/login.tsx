@@ -37,9 +37,9 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<"invalid" | "server" | "schema" | "session" | "database" | null>(
-    urlError === "invalid" ? "invalid" : urlError === "server" ? "server" : null,
-  );
+  const [formError, setFormError] = useState<
+    "invalid" | "server" | "schema" | "session" | "database" | null
+  >(urlError === "invalid" ? "invalid" : urlError === "server" ? "server" : null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   const { data: authConfig } = useQuery({
@@ -148,14 +148,16 @@ export function Login() {
             )}
             {formError === "schema" && (
               <p className="text-sm text-destructive">
-                Схема БД устарела. Локально с production URL в <code className="text-ait-purple">.env</code>{" "}
-                выполните <code className="text-ait-purple">npm run db:push</code>.
+                Схема БД устарела. Локально с production URL в{" "}
+                <code className="text-ait-purple">.env</code> выполните{" "}
+                <code className="text-ait-purple">npm run db:push</code>.
               </p>
             )}
             {formError === "session" && (
               <p className="text-sm text-destructive">
                 Не удалось сохранить сессию. Убедитесь, что в БД есть таблица{" "}
-                <code className="text-ait-purple">sessions</code> (<code className="text-ait-purple">npm run db:push</code>
+                <code className="text-ait-purple">sessions</code> (
+                <code className="text-ait-purple">npm run db:push</code>
                 ).
               </p>
             )}
@@ -188,7 +190,7 @@ export function Login() {
                 name="password"
                 type="password"
                 placeholder="Минимум 8 символов"
-                autoComplete="new-password"
+                autoComplete="current-password"
                 minLength={8}
                 required
                 value={password}

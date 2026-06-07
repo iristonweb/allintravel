@@ -115,8 +115,7 @@ function parseSpecialToken(rest: string): { part: ParsedChatMessage; consumed: n
     const inner = rest.slice(VOICE_PREFIX.length, close);
     const pipeIdx = inner.lastIndexOf("|");
     const url = pipeIdx === -1 ? inner : inner.slice(0, pipeIdx);
-    const durationSec =
-      pipeIdx === -1 ? 0 : Number.parseInt(inner.slice(pipeIdx + 1), 10) || 0;
+    const durationSec = pipeIdx === -1 ? 0 : Number.parseInt(inner.slice(pipeIdx + 1), 10) || 0;
     return { part: { type: "voice", url, durationSec }, consumed: close + 1 };
   }
   return null;
@@ -172,7 +171,7 @@ export function isMediaOnlyMessage(content: string): boolean {
   const parts = parseChatMessage(content);
   return (
     parts.some((p) => MEDIA_TYPES.has(p.type)) &&
-    parts.every((p) => p.type === "text" ? !p.text.trim() : true)
+    parts.every((p) => (p.type === "text" ? !p.text.trim() : true))
   );
 }
 

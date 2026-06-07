@@ -61,7 +61,10 @@ export async function notifyUser(input: NotifyInput): Promise<void> {
   });
 }
 
-export async function labelForUser(user: User | undefined, fallback = "Пользователь"): Promise<string> {
+export async function labelForUser(
+  user: User | undefined,
+  fallback = "Пользователь",
+): Promise<string> {
   if (!user) return fallback;
   return getUserDisplayLabel(user);
 }
@@ -148,9 +151,7 @@ export async function notifyTripInvite(
 ): Promise<void> {
   if (inviteeId === inviter.id) return;
   const name = getUserDisplayLabel(inviter);
-  const link = chatSlug
-    ? `/chat?room=${encodeURIComponent(chatSlug)}`
-    : `/trips/${tripId}`;
+  const link = chatSlug ? `/chat?room=${encodeURIComponent(chatSlug)}` : `/trips/${tripId}`;
   await notifyUser({
     userId: inviteeId,
     type: "group_invite",

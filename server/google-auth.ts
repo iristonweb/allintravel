@@ -1,6 +1,5 @@
 import type { Express, Request, Response } from "express";
 import * as client from "openid-client";
-import passport from "passport";
 import { storage } from "./storage";
 import type { SessionUser } from "./auth";
 
@@ -66,7 +65,9 @@ export async function setupGoogleAuth(app: Express): Promise<void> {
 
   app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     try {
-      const codeVerifier = (req.session as unknown as Record<string, unknown>).oauthCodeVerifier as string | undefined;
+      const codeVerifier = (req.session as unknown as Record<string, unknown>).oauthCodeVerifier as
+        | string
+        | undefined;
       if (!codeVerifier) {
         return res.redirect("/login?error=invalid");
       }

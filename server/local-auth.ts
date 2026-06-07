@@ -1,6 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import type { Express, Request, Response } from "express";
+import type { Express, Request } from "express";
 import { storage } from "./storage";
 import { isDatabaseConfigured } from "./db";
 import { hashPassword, isPasswordLongEnough, verifyPassword } from "./password";
@@ -147,15 +147,15 @@ export function registerLoginRoutes(app: Express): void {
     const result = await authenticateLocal(email, password);
     if (!result.ok) {
       if (result.reason === "invalid") {
-        return res.status(401).json({ ok: false, error: "invalid", message: "Неверный email или пароль" });
+        return res
+          .status(401)
+          .json({ ok: false, error: "invalid", message: "Неверный email или пароль" });
       }
       return res.status(500).json({
         ok: false,
         error: "server",
         code: isProductionEnv() ? "SERVER" : (result.code ?? "UNKNOWN"),
-        message: isProductionEnv()
-          ? "Временная ошибка сервера. Попробуйте позже."
-          : result.message,
+        message: isProductionEnv() ? "Временная ошибка сервера. Попробуйте позже." : result.message,
       });
     }
 

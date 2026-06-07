@@ -3,6 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import PlaceMap, { type MapPlace } from "@/components/PlaceMap";
 import { cn } from "@/lib/utils";
+import { demoMarkersMapbox, demoRoutesMapbox } from "@/lib/map-demo-data";
 
 export type MapboxPlace = MapPlace;
 
@@ -21,29 +22,8 @@ type MapboxMapProps = {
   routeGeometry?: [number, number][];
 };
 
-const DEMO_ROUTES: [number, number][][] = [
-  [
-    [-21.95, 64.15],
-    [12.57, 55.68],
-    [2.35, 48.86],
-    [139.69, 35.68],
-  ],
-  [
-    [-118.24, 34.05],
-    [-73.98, 40.71],
-    [-0.12, 51.5],
-    [115.86, -31.95],
-  ],
-];
-
-const DEMO_MARKERS: { lng: number; lat: number; label: string; variant: "purple" | "orange" | "green" }[] = [
-  { lng: -21.95, lat: 64.15, label: "12", variant: "purple" },
-  { lng: 12.57, lat: 55.68, label: "8", variant: "green" },
-  { lng: 2.35, lat: 48.86, label: "24", variant: "orange" },
-  { lng: 139.69, lat: 35.68, label: "16", variant: "purple" },
-  { lng: -73.98, lat: 40.71, label: "5", variant: "orange" },
-  { lng: 115.86, lat: -31.95, label: "9", variant: "green" },
-];
+const DEMO_ROUTES = demoRoutesMapbox();
+const DEMO_MARKERS = demoMarkersMapbox();
 
 function createMarkerElement(label: string, variant: "purple" | "orange" | "green") {
   const el = document.createElement("div");
@@ -150,10 +130,7 @@ export default function MapboxMap({
           `<div style="padding:6px 2px;font-weight:600">${m.label} мест</div>`,
         );
         markers.push(
-          new mapboxgl.Marker({ element: el })
-            .setLngLat([m.lng, m.lat])
-            .setPopup(popup)
-            .addTo(map),
+          new mapboxgl.Marker({ element: el }).setLngLat([m.lng, m.lat]).setPopup(popup).addTo(map),
         );
       });
     }
@@ -193,10 +170,7 @@ export default function MapboxMap({
       );
     });
 
-    const routeCoords =
-      routeGeometry && routeGeometry.length > 1
-        ? routeGeometry
-        : null;
+    const routeCoords = routeGeometry && routeGeometry.length > 1 ? routeGeometry : null;
 
     if (showRoute && routeCoords && routeCoords.length > 1) {
       const routeId = "trip-route";
@@ -230,7 +204,17 @@ export default function MapboxMap({
     }
 
     return () => markers.forEach((m) => m.remove());
-  }, [validPlaces, ready, onPlaceClick, showRoute, showDemoMarkers, token, routeGeometry, mapFocus, showDestinationPin]);
+  }, [
+    validPlaces,
+    ready,
+    onPlaceClick,
+    showRoute,
+    showDemoMarkers,
+    token,
+    routeGeometry,
+    mapFocus,
+    showDestinationPin,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -263,6 +247,10 @@ export default function MapboxMap({
   }
 
   return (
-    <div ref={containerRef} className={cn("w-full", className)} style={{ height, minHeight: 400 }} />
+    <div
+      ref={containerRef}
+      className={cn("w-full", className)}
+      style={{ height, minHeight: 400 }}
+    />
   );
 }

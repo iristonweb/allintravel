@@ -4,13 +4,11 @@
  */
 import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { UserPrivacySettings } from "@shared/privacy";
-import { DEFAULT_PRIVACY_SETTINGS } from "@shared/privacy";
 import type {
   ChatMessage,
   ChatRoom,
   ChatRoomInvite,
   ChatRoomMember,
-  InsertChatMessage,
   InsertUserTrack,
   PrivateMessage,
   User,
@@ -20,7 +18,6 @@ import type {
   InsertAdminBroadcast,
 } from "@shared/schema";
 import {
-  adminBroadcastDismissals,
   adminBroadcasts,
   chatMessageLikes,
   chatMessageReactions,
@@ -181,7 +178,9 @@ export async function ensureExtendedSchema(db: PgFeaturesDb): Promise<void> {
       PRIMARY KEY (room_id, user_id)
     )
   `);
-  await db.execute(sql`ALTER TABLE private_messages ADD COLUMN IF NOT EXISTS delivered_at timestamp`);
+  await db.execute(
+    sql`ALTER TABLE private_messages ADD COLUMN IF NOT EXISTS delivered_at timestamp`,
+  );
   await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS image_url varchar(500)`);
   await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS planner_notes text`);
   await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS chat_room_id uuid`);
@@ -200,10 +199,14 @@ export async function ensureExtendedSchema(db: PgFeaturesDb): Promise<void> {
   `);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS "IDX_user_tracks_user" ON user_tracks (user_id)`);
   await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS artist varchar(200)`);
-  await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS source_provider varchar(50)`);
+  await db.execute(
+    sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS source_provider varchar(50)`,
+  );
   await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS source_id varchar(100)`);
   await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS license varchar(100)`);
-  await db.execute(sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS is_preview boolean DEFAULT false`);
+  await db.execute(
+    sql`ALTER TABLE user_tracks ADD COLUMN IF NOT EXISTS is_preview boolean DEFAULT false`,
+  );
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS admin_broadcasts (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -237,11 +240,12 @@ export type MessageReactionsMeta = { reactions: ReactionSummary[] };
 
 export type MessageDeliveryStatus = "sent" | "delivered" | "read";
 
-const DEFAULT_HEART = "❤️";
-
 export const QUICK_REACTION_EMOJIS = ["❤️", "👍", "😂", "🔥", "😮", "😢", "🎉", "👏"] as const;
 
-export async function getChatMessageDb(db: PgFeaturesDb, messageId: string): Promise<ChatMessage | undefined> {
+export async function getChatMessageDb(
+  db: PgFeaturesDb,
+  messageId: string,
+): Promise<ChatMessage | undefined> {
   const [row] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId)).limit(1);
   return row;
 }
@@ -263,7 +267,11 @@ export async function getPrivateMessageDb(
   db: PgFeaturesDb,
   messageId: string,
 ): Promise<PrivateMessage | undefined> {
-  const [row] = await db.select().from(privateMessages).where(eq(privateMessages.id, messageId)).limit(1);
+  const [row] = await db
+    .select()
+    .from(privateMessages)
+    .where(eq(privateMessages.id, messageId))
+    .limit(1);
   return row;
 }
 
@@ -361,12 +369,16 @@ export async function togglePrivateMessageLikeDb(
   const [existing] = await db
     .select()
     .from(privateMessageLikes)
-    .where(and(eq(privateMessageLikes.messageId, messageId), eq(privateMessageLikes.userId, userId)))
+    .where(
+      and(eq(privateMessageLikes.messageId, messageId), eq(privateMessageLikes.userId, userId)),
+    )
     .limit(1);
   if (existing) {
     await db
       .delete(privateMessageLikes)
-      .where(and(eq(privateMessageLikes.messageId, messageId), eq(privateMessageLikes.userId, userId)));
+      .where(
+        and(eq(privateMessageLikes.messageId, messageId), eq(privateMessageLikes.userId, userId)),
+      );
   } else {
     await db.insert(privateMessageLikes).values({ messageId, userId });
   }
@@ -439,7 +451,9 @@ export async function setChatMessageReactionDb(
   if (!emoji) {
     await db
       .delete(chatMessageReactions)
-      .where(and(eq(chatMessageReactions.messageId, messageId), eq(chatMessageReactions.userId, userId)));
+      .where(
+        and(eq(chatMessageReactions.messageId, messageId), eq(chatMessageReactions.userId, userId)),
+      );
   } else {
     await db
       .insert(chatMessageReactions)
@@ -462,7 +476,12 @@ export async function setPrivateMessageReactionDb(
   if (!emoji) {
     await db
       .delete(privateMessageReactions)
-      .where(and(eq(privateMessageReactions.messageId, messageId), eq(privateMessageReactions.userId, userId)));
+      .where(
+        and(
+          eq(privateMessageReactions.messageId, messageId),
+          eq(privateMessageReactions.userId, userId),
+        ),
+      );
   } else {
     await db
       .insert(privateMessageReactions)
@@ -587,10 +606,15 @@ export async function getChatMessageReadMetaDb(
   messageIds: string[],
   authorId: string,
 ): Promise<
-  Record<string, { deliveryStatus: MessageDeliveryStatus; readByCount: number; memberCount: number }>
+  Record<
+    string,
+    { deliveryStatus: MessageDeliveryStatus; readByCount: number; memberCount: number }
+  >
 > {
-  const out: Record<string, { deliveryStatus: MessageDeliveryStatus; readByCount: number; memberCount: number }> =
-    {};
+  const out: Record<
+    string,
+    { deliveryStatus: MessageDeliveryStatus; readByCount: number; memberCount: number }
+  > = {};
   if (messageIds.length === 0) return out;
 
   const members = await db
@@ -632,7 +656,9 @@ export async function getChatMessageReadMetaDb(
       const cursor = cursorByUser.get(memberId);
       if (!cursor) continue;
       deliveredCount += 1;
-      const readTime = cursor.lastReadMessageId ? readMsgTimes.get(cursor.lastReadMessageId) : undefined;
+      const readTime = cursor.lastReadMessageId
+        ? readMsgTimes.get(cursor.lastReadMessageId)
+        : undefined;
       if (readTime && readTime >= msgTime) readByCount += 1;
     }
     let deliveryStatus: MessageDeliveryStatus = "sent";
@@ -677,7 +703,11 @@ export function privateMessageDeliveryStatus(
 
 export async function ensureLegacyChatRoomsDb(db: PgFeaturesDb): Promise<void> {
   for (const seed of LEGACY_CHAT_ROOM_SEEDS) {
-    const [existing] = await db.select().from(chatRooms).where(eq(chatRooms.slug, seed.slug)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(chatRooms)
+      .where(eq(chatRooms.slug, seed.slug))
+      .limit(1);
     if (existing) continue;
     await db.insert(chatRooms).values({
       slug: seed.slug,
@@ -690,10 +720,21 @@ export async function ensureLegacyChatRoomsDb(db: PgFeaturesDb): Promise<void> {
   }
 }
 
-export async function getPrivacySettingsDb(db: PgFeaturesDb, userId: string): Promise<UserPrivacySettings> {
-  const [row] = await db.select().from(userPrivacySettings).where(eq(userPrivacySettings.userId, userId)).limit(1);
+export async function getPrivacySettingsDb(
+  db: PgFeaturesDb,
+  userId: string,
+): Promise<UserPrivacySettings> {
+  const [row] = await db
+    .select()
+    .from(userPrivacySettings)
+    .where(eq(userPrivacySettings.userId, userId))
+    .limit(1);
   if (row) return rowToPrivacySettings(row);
-  const profile = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  const profile = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
   const isPrivate = profile[0] ? !profile[0].isPublic : false;
   return {
     ...defaultPrivacyRow(userId),
@@ -734,7 +775,11 @@ export async function updatePrivacySettingsDb(
       },
     });
   if (patch.isPrivateAccount !== undefined) {
-    const prof = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+    const prof = await db
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, userId))
+      .limit(1);
     if (prof[0]) {
       await db
         .update(userProfiles)
@@ -745,7 +790,11 @@ export async function updatePrivacySettingsDb(
   return getPrivacySettingsDb(db, userId);
 }
 
-export async function touchPresenceDb(db: PgFeaturesDb, userId: string, isOnline: boolean): Promise<UserPresence> {
+export async function touchPresenceDb(
+  db: PgFeaturesDb,
+  userId: string,
+  isOnline: boolean,
+): Promise<UserPresence> {
   const [row] = await db
     .insert(userPresence)
     .values({ userId, isOnline, lastSeenAt: new Date() })
@@ -757,12 +806,23 @@ export async function touchPresenceDb(db: PgFeaturesDb, userId: string, isOnline
   return row;
 }
 
-export async function getPresenceDb(db: PgFeaturesDb, userId: string): Promise<UserPresence | undefined> {
-  const [row] = await db.select().from(userPresence).where(eq(userPresence.userId, userId)).limit(1);
+export async function getPresenceDb(
+  db: PgFeaturesDb,
+  userId: string,
+): Promise<UserPresence | undefined> {
+  const [row] = await db
+    .select()
+    .from(userPresence)
+    .where(eq(userPresence.userId, userId))
+    .limit(1);
   return row;
 }
 
-export async function areFriendsDb(db: PgFeaturesDb, userId1: string, userId2: string): Promise<boolean> {
+export async function areFriendsDb(
+  db: PgFeaturesDb,
+  userId1: string,
+  userId2: string,
+): Promise<boolean> {
   if (userId1 === userId2) return true;
   const [row] = await db
     .select()
@@ -797,7 +857,11 @@ export async function searchUsersDb(
 
   let rows: User[];
   if (options?.exact) {
-    const [u] = await db.select().from(users).where(eq(users.username, term.toLowerCase())).limit(1);
+    const [u] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, term.toLowerCase()))
+      .limit(1);
     rows = u ? [u] : [];
   } else {
     const q = `%${term}%`;
@@ -819,20 +883,26 @@ export async function searchUsersDb(
   for (const u of rows) {
     const settings = await getPrivacySettingsDb(db, u.id);
     if (settings.isPrivateAccount && options?.viewerId !== u.id) {
-      const isFriend = options?.viewerId && areFriendsFn
-        ? await areFriendsFn(options.viewerId, u.id)
-        : false;
+      const isFriend =
+        options?.viewerId && areFriendsFn ? await areFriendsFn(options.viewerId, u.id) : false;
       const exactMatch = u.username?.toLowerCase() === term.toLowerCase();
       if (!isFriend && !exactMatch) continue;
     }
     if (options?.travelStyle || options?.direction) {
-      const [prof] = await db.select().from(userProfiles).where(eq(userProfiles.userId, u.id)).limit(1);
+      const [prof] = await db
+        .select()
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, u.id))
+        .limit(1);
       if (options.travelStyle && prof?.travelStyle !== options.travelStyle) continue;
       if (options.direction) {
         const dests = prof?.favoriteDestinations ?? [];
         const interests = prof?.interests ?? [];
         const hay = [...dests, ...interests, prof?.travelStyle ?? ""].join(" ").toLowerCase();
-        if (!hay.includes(options.direction.replace("_", " ")) && prof?.travelStyle !== options.direction) {
+        if (
+          !hay.includes(options.direction.replace("_", " ")) &&
+          prof?.travelStyle !== options.direction
+        ) {
           continue;
         }
       }
@@ -843,7 +913,10 @@ export async function searchUsersDb(
   return filtered;
 }
 
-export async function getChatRoomBySlugDb(db: PgFeaturesDb, slug: string): Promise<ChatRoom | undefined> {
+export async function getChatRoomBySlugDb(
+  db: PgFeaturesDb,
+  slug: string,
+): Promise<ChatRoom | undefined> {
   const [row] = await db.select().from(chatRooms).where(eq(chatRooms.slug, slug)).limit(1);
   return row;
 }
@@ -875,7 +948,10 @@ export async function countUnreadInRoomDb(
     if (readMsg?.createdAt) afterTime = new Date(readMsg.createdAt);
   }
 
-  const conditions = [eq(chatMessages.chatRoom, roomSlug), sql`${chatMessages.userId} <> ${userId}`];
+  const conditions = [
+    eq(chatMessages.chatRoom, roomSlug),
+    sql`${chatMessages.userId} <> ${userId}`,
+  ];
   if (afterTime) {
     conditions.push(sql`${chatMessages.createdAt} > ${afterTime}`);
   }
@@ -891,8 +967,12 @@ export async function listChatRoomsForUserDb(
   db: PgFeaturesDb,
   userId: string,
 ): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]> {
-  const allRooms = await db.select().from(chatRooms).orderBy(desc(chatRooms.isLegacy), desc(chatRooms.createdAt));
-  const result: (ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[] = [];
+  const allRooms = await db
+    .select()
+    .from(chatRooms)
+    .orderBy(desc(chatRooms.isLegacy), desc(chatRooms.createdAt));
+  const result: (ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[] =
+    [];
   for (const room of allRooms) {
     const [{ value: memberCount }] = await db
       .select({ value: count() })
@@ -905,7 +985,12 @@ export async function listChatRoomsForUserDb(
       .limit(1);
     if (room.visibility === "private" && (!my || my.status !== "active")) continue;
     const unreadCount = await countUnreadInRoomDb(db, room.slug, room.id, userId);
-    result.push({ ...room, memberCount: Number(memberCount), myRole: my?.role ?? null, unreadCount });
+    result.push({
+      ...room,
+      memberCount: Number(memberCount),
+      myRole: my?.role ?? null,
+      unreadCount,
+    });
   }
   return result;
 }
@@ -1009,7 +1094,11 @@ export async function joinChatRoomDb(
   return row;
 }
 
-export async function leaveChatRoomDb(db: PgFeaturesDb, roomId: string, userId: string): Promise<void> {
+export async function leaveChatRoomDb(
+  db: PgFeaturesDb,
+  roomId: string,
+  userId: string,
+): Promise<void> {
   await db
     .delete(chatRoomMembers)
     .where(and(eq(chatRoomMembers.roomId, roomId), eq(chatRoomMembers.userId, userId)));
@@ -1046,7 +1135,11 @@ export async function setChatRoomMemberRoleDb(
   return row;
 }
 
-export async function banChatRoomMemberDb(db: PgFeaturesDb, roomId: string, userId: string): Promise<void> {
+export async function banChatRoomMemberDb(
+  db: PgFeaturesDb,
+  roomId: string,
+  userId: string,
+): Promise<void> {
   await db
     .update(chatRoomMembers)
     .set({ status: "banned" })
@@ -1079,11 +1172,21 @@ export async function createChatRoomInviteDb(
   return { ...row, inviteUrl: `/chat/join/${token}` };
 }
 
-export async function joinChatRoomByTokenDb(db: PgFeaturesDb, token: string, userId: string): Promise<ChatRoom> {
-  const [invite] = await db.select().from(chatRoomInvites).where(eq(chatRoomInvites.token, token)).limit(1);
+export async function joinChatRoomByTokenDb(
+  db: PgFeaturesDb,
+  token: string,
+  userId: string,
+): Promise<ChatRoom> {
+  const [invite] = await db
+    .select()
+    .from(chatRoomInvites)
+    .where(eq(chatRoomInvites.token, token))
+    .limit(1);
   if (!invite) throw new Error("Invalid invite");
-  if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) throw new Error("Invite expired");
-  if (invite.maxUses != null && (invite.useCount ?? 0) >= invite.maxUses) throw new Error("Invite exhausted");
+  if (invite.expiresAt && new Date(invite.expiresAt) < new Date())
+    throw new Error("Invite expired");
+  if (invite.maxUses != null && (invite.useCount ?? 0) >= invite.maxUses)
+    throw new Error("Invite exhausted");
   const room = await getChatRoomDb(db, invite.roomId);
   if (!room) throw new Error("Room not found");
   await joinChatRoomDb(db, room.id, userId);
@@ -1106,7 +1209,11 @@ export async function pinChatMessageDb(
   await db.insert(chatPinnedMessages).values({ roomId, messageId, pinnedBy });
 }
 
-export async function unpinChatMessageDb(db: PgFeaturesDb, roomId: string, messageId: string): Promise<void> {
+export async function unpinChatMessageDb(
+  db: PgFeaturesDb,
+  roomId: string,
+  messageId: string,
+): Promise<void> {
   await db
     .delete(chatPinnedMessages)
     .where(and(eq(chatPinnedMessages.roomId, roomId), eq(chatPinnedMessages.messageId, messageId)));
@@ -1137,7 +1244,10 @@ export async function getUserTrackDb(db: PgFeaturesDb, id: string): Promise<User
   return row;
 }
 
-export async function createUserTrackDb(db: PgFeaturesDb, data: InsertUserTrack): Promise<UserTrack> {
+export async function createUserTrackDb(
+  db: PgFeaturesDb,
+  data: InsertUserTrack,
+): Promise<UserTrack> {
   const [row] = await db.insert(userTracks).values(data).returning();
   return row;
 }

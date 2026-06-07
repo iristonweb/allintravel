@@ -150,7 +150,9 @@ export default function RoomSettingsPanel({
 
   const roleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "member" }) => {
-      const res = await apiRequest("PATCH", `/api/chat/rooms/${room.id}/members/${userId}`, { role });
+      const res = await apiRequest("PATCH", `/api/chat/rooms/${room.id}/members/${userId}`, {
+        role,
+      });
       return res.json();
     },
     onSuccess: () => {
@@ -235,6 +237,7 @@ export default function RoomSettingsPanel({
                 className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full"
                 disabled={avatarUploading}
                 onClick={() => avatarInputRef.current?.click()}
+                aria-label="Загрузить аватар группы"
               >
                 <Camera className="h-3.5 w-3.5" />
               </Button>
@@ -252,7 +255,11 @@ export default function RoomSettingsPanel({
       </div>
 
       {!isMember && room.visibility === "public" && (
-        <Button className="w-full" onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending}>
+        <Button
+          className="w-full"
+          onClick={() => joinMutation.mutate()}
+          disabled={joinMutation.isPending}
+        >
           <UserPlus className="h-4 w-4 mr-2" />
           Вступить в группу
         </Button>
@@ -265,7 +272,11 @@ export default function RoomSettingsPanel({
           </p>
           <div>
             <Label className="text-xs">Название</Label>
-            <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="mt-1 h-8" />
+            <Input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="mt-1 h-8"
+            />
           </div>
           <div>
             <Label className="text-xs">Описание</Label>
@@ -330,19 +341,24 @@ export default function RoomSettingsPanel({
         </div>
       )}
 
-      {!isAdmin && room.description && (
-        <p className="text-muted-foreground">{room.description}</p>
-      )}
+      {!isAdmin && room.description && <p className="text-muted-foreground">{room.description}</p>}
 
       {room.visibility === "private" && isAdmin && (
-        <Button size="sm" variant="outline" onClick={() => inviteMutation.mutate()} disabled={inviteMutation.isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => inviteMutation.mutate()}
+          disabled={inviteMutation.isPending}
+        >
           <Link2 className="h-4 w-4 mr-1" />
           Скопировать ссылку-приглашение
         </Button>
       )}
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Участники</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Участники
+        </p>
         {isAdmin && (
           <div className="space-y-2">
             <Input
@@ -389,7 +405,9 @@ export default function RoomSettingsPanel({
                 >
                   <Avatar className="h-8 w-8 shrink-0">
                     <AvatarImage src={resolveMediaUrl(u?.profileImageUrl)} />
-                    <AvatarFallback className="text-xs">{u ? getUserInitial(u) : "?"}</AvatarFallback>
+                    <AvatarFallback className="text-xs">
+                      {u ? getUserInitial(u) : "?"}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm">{u ? getUserDisplayLabel(u) : "Участник"}</p>
@@ -407,6 +425,7 @@ export default function RoomSettingsPanel({
                       variant="ghost"
                       className="h-7 w-7 shrink-0"
                       title={m.role === "admin" ? "Снять админа" : "Назначить админом"}
+                      aria-label={m.role === "admin" ? "Снять админа" : "Назначить админом"}
                       onClick={() =>
                         roleMutation.mutate({
                           userId: m.userId,
@@ -424,6 +443,7 @@ export default function RoomSettingsPanel({
                       variant="ghost"
                       className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
                       title="Удалить из группы"
+                      aria-label="Удалить из группы"
                       onClick={() => removeMemberMutation.mutate(m.userId)}
                     >
                       <UserMinus className="h-3.5 w-3.5" />

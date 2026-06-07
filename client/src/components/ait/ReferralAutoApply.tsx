@@ -2,10 +2,7 @@ import { useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequestJson } from "@/lib/queryClient";
-import {
-  clearPendingReferralCode,
-  getPendingReferralCode,
-} from "@/lib/referral-pending";
+import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referral-pending";
 
 /** Applies ?ref= code once after login */
 export default function ReferralAutoApply() {

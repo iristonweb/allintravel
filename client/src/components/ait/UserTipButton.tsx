@@ -21,11 +21,7 @@ type UserTipButtonProps = {
   samplePostId?: string;
 };
 
-export default function UserTipButton({
-  userId,
-  currentUserId,
-  samplePostId,
-}: UserTipButtonProps) {
+export default function UserTipButton({ userId, currentUserId, samplePostId }: UserTipButtonProps) {
   if (!currentUserId || currentUserId === userId) return null;
   if (samplePostId) {
     return <PostTipButton postId={samplePostId} authorId={userId} currentUserId={currentUserId} />;

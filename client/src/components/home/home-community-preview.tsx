@@ -61,7 +61,12 @@ function PostCard({
       </div>
       <div className="p-4 flex items-center justify-between border-t border-white/8">
         <div className="flex gap-2" onClick={onAction} onKeyDown={() => {}} role="presentation">
-          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300" onClick={onAction}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-400 hover:text-red-300"
+            onClick={onAction}
+          >
             <Heart className="h-4 w-4 mr-1 fill-current" />
             {formatCount(post.likesCount)}
           </Button>
@@ -73,7 +78,13 @@ function PostCard({
             <Share2 className="h-4 w-4" />
           </Button>
         </div>
-        <Button variant="ghost" size="icon" className="text-ait-purple" onClick={onAction}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-ait-purple"
+          onClick={onAction}
+          aria-label="Сохранить в закладки"
+        >
           <Bookmark className="h-4 w-4" />
         </Button>
       </div>
@@ -113,10 +124,7 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
   const [, navigate] = useLocation();
 
   const { data: apiPosts = [] } = useQuery<TravelPostWithAuthor[]>({
-    queryKey:
-      feedMode === "following"
-        ? ["/api/posts", { following: user?.id }]
-        : ["/api/posts"],
+    queryKey: feedMode === "following" ? ["/api/posts", { following: user?.id }] : ["/api/posts"],
     enabled: useLiveData && isAuthenticated && (feedMode !== "following" || !!user?.id),
   });
 
@@ -135,7 +143,8 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
     if (!isAuthenticated) {
       toast({
         title: "Войдите",
-        description: "После входа откроется лента с вашим режимом «" + FEED_MODE_LABELS[feedMode] + "».",
+        description:
+          "После входа откроется лента с вашим режимом «" + FEED_MODE_LABELS[feedMode] + "».",
       });
       navigate(feedHref);
       return;
@@ -165,7 +174,9 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
                   onClick={() => setFeedMode(mode)}
                   className={cn(
                     "px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-colors",
-                    feedMode === mode ? "ait-nav-active text-white" : "text-slate-400 hover:text-white",
+                    feedMode === mode
+                      ? "ait-nav-active text-white"
+                      : "text-slate-400 hover:text-white",
                   )}
                 >
                   {FEED_MODE_LABELS[mode]}
@@ -194,7 +205,8 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
 
       {!isAuthenticated && feedMode === "popular" && (
         <p className="text-sm text-muted-foreground text-center">
-          Популярное — посты с наибольшим числом лайков. После входа список обновляется из сообщества.
+          Популярное — посты с наибольшим числом лайков. После входа список обновляется из
+          сообщества.
         </p>
       )}
 
@@ -218,11 +230,7 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
           <Link href={feedHref}>
             <div className="flex gap-4 overflow-x-auto pb-2 snap-x scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible cursor-pointer">
               {posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onAction={handlePostAction}
-                />
+                <PostCard key={post.id} post={post} onAction={handlePostAction} />
               ))}
             </div>
           </Link>

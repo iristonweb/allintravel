@@ -48,4 +48,3 @@ export default function PublicHeader({ navItems }: PublicHeaderProps) {
     </header>
   );
 }
-

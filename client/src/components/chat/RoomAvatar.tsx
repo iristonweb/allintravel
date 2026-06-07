@@ -20,11 +20,7 @@ export default function RoomAvatar({
 
   if (resolved) {
     return (
-      <img
-        src={resolved}
-        alt=""
-        className={cn("rounded-full object-cover shrink-0", className)}
-      />
+      <img src={resolved} alt="" className={cn("rounded-full object-cover shrink-0", className)} />
     );
   }
 
@@ -57,5 +53,20 @@ export default function RoomAvatar({
     );
   }
 
-  return <Hash className={cn("shrink-0 text-ait-purple opacity-70", className.includes("h-16") ? "h-7 w-7" : className.includes("h-14") ? "h-6 w-6" : className.includes("h-12") ? "h-6 w-6" : className.includes("h-11") ? "h-5 w-5" : "h-4 w-4")} />;
+  return (
+    <Hash
+      className={cn(
+        "shrink-0 text-ait-purple opacity-70",
+        className.includes("h-16")
+          ? "h-7 w-7"
+          : className.includes("h-14")
+            ? "h-6 w-6"
+            : className.includes("h-12")
+              ? "h-6 w-6"
+              : className.includes("h-11")
+                ? "h-5 w-5"
+                : "h-4 w-4",
+      )}
+    />
+  );
 }

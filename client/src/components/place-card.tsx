@@ -42,6 +42,7 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
           className={`absolute right-3 top-3 ${
             isFavorite ? "text-red-500" : "text-white"
           } hover:text-red-500 bg-black/15 backdrop-blur-md hover:bg-black/20`}
+          aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -56,19 +57,17 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
           </Badge>
         )}
       </div>
-      
+
       <CardHeader className="pb-2 pt-4">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-lg font-semibold leading-tight tracking-[-0.01em]">
-            {place.name}
-          </h3>
+          <h3 className="text-lg font-semibold leading-tight tracking-[-0.01em]">{place.name}</h3>
           <div className="flex items-center gap-1 rounded-full border border-border bg-card/40 px-2 py-1">
             <Star className="h-4 w-4 fill-[var(--ait-accent)] text-[var(--ait-accent)]" />
             <span className="text-sm font-semibold">{rating.toFixed(1)}</span>
             <span className="text-xs text-muted-foreground">({place.reviewCount || 0})</span>
           </div>
         </div>
-        
+
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="rounded-full">
             {getTypeLabel(place.type)}
@@ -81,21 +80,21 @@ export function PlaceCard({ place, isFavorite = false, onToggleFavorite }: Place
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {place.description && (
           <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
             {place.description}
           </p>
         )}
-        
+
         {place.address && (
           <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
             <span className="truncate">{place.address}</span>
           </div>
         )}
-        
+
         <div className="flex gap-2">
           <Link href={`/place/${place.id}`} className="flex-1">
             <Button className="w-full rounded-[16px] bg-primary hover:bg-primary/90">

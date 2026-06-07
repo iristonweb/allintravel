@@ -2,7 +2,8 @@ import { Readable } from "node:stream";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import multer, { MulterError } from "multer";
 import { get } from "@vercel/blob";
-import { isAuthenticated } from "./auth";
+import { getAuthUserId, isAuthenticated } from "./auth";
+import { uploadLimiter } from "./rate-limit";
 import { storage } from "./storage";
 import {
   getUploadsStaticDir,
@@ -119,6 +120,7 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
 
   app.post(
     "/api/upload",
+    uploadLimiter,
     isAuthenticated,
     (req, res, next) => handleMulter(req, res, next, upload.single("file")),
     async (req: Request, res: Response) => {
@@ -139,18 +141,21 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
 
   app.post(
     "/api/users/avatar",
+    uploadLimiter,
     isAuthenticated,
     (req, res, next) => handleMulter(req, res, next, upload.single("file")),
-    async (req: any, res: Response) => {
+    async (req: Request, res: Response) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: "Файл не выбран" });
         }
         const mime = req.file.mimetype || "";
         if (!mime.startsWith("image/")) {
-          return res.status(400).json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
+          return res
+            .status(400)
+            .json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
         }
-        const userId = req.user.claims.sub;
+        const userId = getAuthUserId(req)!;
         const url = await persistUserAvatar(userId, req.file);
         const existing = await storage.getUser(userId);
         if (existing) {
@@ -179,11 +184,12 @@ function mountRoomAvatarRoute(
 ): void {
   app.post(
     "/api/chat/rooms/:id/avatar",
+    uploadLimiter,
     isAuthenticated,
     (req, res, next) => handleMulter(req, res, next, upload.single("file")),
-    async (req: any, res: Response) => {
+    async (req: Request, res: Response) => {
       try {
-        const userId = req.user.claims.sub;
+        const userId = getAuthUserId(req)!;
         const roomId = req.params.id;
         if (!(await isRoomAdminForUpload(roomId, userId))) {
           return res.status(403).json({ message: "Admin only" });
@@ -193,7 +199,9 @@ function mountRoomAvatarRoute(
         }
         const mime = req.file.mimetype || "";
         if (!mime.startsWith("image/")) {
-          return res.status(400).json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
+          return res
+            .status(400)
+            .json({ message: "Аватар должен быть изображением (JPG, PNG, WebP, GIF)" });
         }
         const url = await persistUploadedFile(req.file);
         assertPersistentMediaUrl(url);

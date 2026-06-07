@@ -11,7 +11,9 @@ const STORY_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function parseCreateTravelPostBody(body: unknown, userId: string) {
   const base = insertTravelPostSchema.parse({ ...(body as object), userId });
-  const format = postFormatSchema.parse((body as { format?: string })?.format ?? "post") as PostFormat;
+  const format = postFormatSchema.parse(
+    (body as { format?: string })?.format ?? "post",
+  ) as PostFormat;
   const images = base.images ?? [];
   const content = (base.content ?? "").trim();
   const title = (base.title ?? "").trim() || defaultTitleForFormat(format);
@@ -67,14 +69,10 @@ export function parseCreateTravelPostBody(body: unknown, userId: string) {
   }
 
   if (!title || title.length < 2) {
-    throw new z.ZodError([
-      { code: "custom", path: ["title"], message: "Title is required" },
-    ]);
+    throw new z.ZodError([{ code: "custom", path: ["title"], message: "Title is required" }]);
   }
   if (!content) {
-    throw new z.ZodError([
-      { code: "custom", path: ["content"], message: "Content is required" },
-    ]);
+    throw new z.ZodError([{ code: "custom", path: ["content"], message: "Content is required" }]);
   }
 
   return { ...base, format, title, content };

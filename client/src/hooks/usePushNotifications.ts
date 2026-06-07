@@ -18,7 +18,9 @@ export function usePushNotifications() {
   const [vapidReady, setVapidReady] = useState(false);
 
   useEffect(() => {
-    setSupported("serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
+    setSupported(
+      "serviceWorker" in navigator && "PushManager" in window && "Notification" in window,
+    );
     fetch("/api/push/vapid-public-key", { credentials: "include" })
       .then((r) => r.json())
       .then((d: { publicKey?: string | null; enabled?: boolean }) => {

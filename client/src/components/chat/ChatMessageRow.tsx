@@ -32,18 +32,20 @@ import { Textarea } from "@/components/ui/textarea";
 import FormatToolbar from "@/components/rich-text/FormatToolbar";
 import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
 import { cn } from "@/lib/utils";
+import { MoreHorizontal, Pencil, Pin, PinOff, Trash2, Reply, Eye, Smile } from "lucide-react";
+import type {
+  MessageDeliveryStatus,
+  MessageReactionMeta,
+  MessageReadMeta,
+  ReactionSummary,
+  User,
+} from "@shared/schema";
 import {
-  MoreHorizontal,
-  Pencil,
-  Pin,
-  PinOff,
-  Trash2,
-  Reply,
-  Eye,
-  Smile,
-} from "lucide-react";
-import type { MessageDeliveryStatus, MessageReactionMeta, MessageReadMeta, ReactionSummary, User } from "@shared/schema";
-import { QUICK_REACTION_EMOJIS, DEFAULT_REACTION, findMyReaction, toggleReactionEmoji } from "@/lib/message-reactions";
+  QUICK_REACTION_EMOJIS,
+  DEFAULT_REACTION,
+  findMyReaction,
+  toggleReactionEmoji,
+} from "@/lib/message-reactions";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { useQuery } from "@tanstack/react-query";
@@ -121,9 +123,7 @@ export default function ChatMessageRow({
     },
   });
 
-  const timeStr = createdAt
-    ? format(new Date(createdAt as string), "HH:mm", { locale: ru })
-    : "";
+  const timeStr = createdAt ? format(new Date(createdAt as string), "HH:mm", { locale: ru }) : "";
 
   const reactions: ReactionSummary[] = meta?.reactions ?? [];
   const myReaction = findMyReaction(reactions);
@@ -192,9 +192,7 @@ export default function ChatMessageRow({
           <span className="text-xs text-muted-foreground px-1">{senderLabel}</span>
         ) : undefined
       }
-      timestamp={
-        <span className="text-[10px] text-muted-foreground px-1">{timeStr}</span>
-      }
+      timestamp={<span className="text-[10px] text-muted-foreground px-1">{timeStr}</span>}
     />
   );
 
@@ -203,11 +201,7 @@ export default function ChatMessageRow({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            className={cn(
-              "group flex gap-2",
-              isOwn && "flex-row-reverse",
-              isPinned && "relative",
-            )}
+            className={cn("group flex gap-2", isOwn && "flex-row-reverse", isPinned && "relative")}
             data-message-id={messageId}
           >
             {senderInitial != null && (
@@ -243,71 +237,71 @@ export default function ChatMessageRow({
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-56">
-                  {onReply && (
-                    <DropdownMenuItem onClick={onReply}>
-                      <Reply className="h-4 w-4 mr-2" />
-                      Ответить
-                    </DropdownMenuItem>
-                  )}
-                  {canPin && !isPinned && onPin && (
-                    <DropdownMenuItem onClick={onPin}>
-                      <Pin className="h-4 w-4 mr-2" />
-                      Закрепить
-                    </DropdownMenuItem>
-                  )}
-                  {canPin && isPinned && onUnpin && (
-                    <DropdownMenuItem onClick={onUnpin}>
-                      <PinOff className="h-4 w-4 mr-2" />
-                      Открепить
-                    </DropdownMenuItem>
-                  )}
-                  {insightsUrl && (
-                    <DropdownMenuItem onClick={() => setInsightsOpen(true)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Просмотры и реакции
-                    </DropdownMenuItem>
-                  )}
-                  {canEdit && onEdit && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setEditText(content);
-                        setEditOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Редактировать
-                    </DropdownMenuItem>
-                  )}
-                  {onReact && (
-                    <>
-                      {(onReply || onPin || onUnpin || insightsUrl || (canEdit && onEdit)) && (
-                        <DropdownMenuSeparator />
+                    <DropdownMenuContent align={isOwn ? "end" : "start"} className="w-56">
+                      {onReply && (
+                        <DropdownMenuItem onClick={onReply}>
+                          <Reply className="h-4 w-4 mr-2" />
+                          Ответить
+                        </DropdownMenuItem>
                       )}
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <Smile className="h-4 w-4 mr-2" />
-                          Реакция
-                        </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-48">
-                          {reactionPicker}
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                    </>
-                  )}
-                  {canDelete && onDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={onDelete}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Удалить
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
+                      {canPin && !isPinned && onPin && (
+                        <DropdownMenuItem onClick={onPin}>
+                          <Pin className="h-4 w-4 mr-2" />
+                          Закрепить
+                        </DropdownMenuItem>
+                      )}
+                      {canPin && isPinned && onUnpin && (
+                        <DropdownMenuItem onClick={onUnpin}>
+                          <PinOff className="h-4 w-4 mr-2" />
+                          Открепить
+                        </DropdownMenuItem>
+                      )}
+                      {insightsUrl && (
+                        <DropdownMenuItem onClick={() => setInsightsOpen(true)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Просмотры и реакции
+                        </DropdownMenuItem>
+                      )}
+                      {canEdit && onEdit && (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditText(content);
+                            setEditOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Редактировать
+                        </DropdownMenuItem>
+                      )}
+                      {onReact && (
+                        <>
+                          {(onReply || onPin || onUnpin || insightsUrl || (canEdit && onEdit)) && (
+                            <DropdownMenuSeparator />
+                          )}
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                              <Smile className="h-4 w-4 mr-2" />
+                              Реакция
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="w-48">
+                              {reactionPicker}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+                        </>
+                      )}
+                      {canDelete && onDelete && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={onDelete}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
                   </DropdownMenu>
                 )}
               </div>
@@ -362,15 +356,11 @@ export default function ChatMessageRow({
           ) : insights ? (
             <div className="space-y-4 text-sm">
               <div>
-                <p className="font-medium mb-1">
-                  Просмотрели ({insights.readCount})
-                </p>
+                <p className="font-medium mb-1">Просмотрели ({insights.readCount})</p>
                 {insights.readers.length === 0 ? (
                   <p className="text-muted-foreground">Пока никто</p>
                 ) : (
-                  <ul className="space-y-2">
-                    {insights.readers.map((u) => userRow(u))}
-                  </ul>
+                  <ul className="space-y-2">{insights.readers.map((u) => userRow(u))}</ul>
                 )}
               </div>
               <div>
@@ -382,9 +372,7 @@ export default function ChatMessageRow({
                     {insights.reactions.map((g) => (
                       <li key={g.emoji}>
                         <span className="mr-2">{g.emoji}</span>
-                        <ul className="mt-1 space-y-1">
-                          {g.users.map((u) => userRow(u))}
-                        </ul>
+                        <ul className="mt-1 space-y-1">{g.users.map((u) => userRow(u))}</ul>
                       </li>
                     ))}
                   </ul>
@@ -400,11 +388,7 @@ export default function ChatMessageRow({
           <DialogHeader>
             <DialogTitle>Редактировать сообщение</DialogTitle>
           </DialogHeader>
-          <FormatToolbar
-            value={editText}
-            onChange={setEditText}
-            inputRef={editTextRef}
-          />
+          <FormatToolbar value={editText} onChange={setEditText} inputRef={editTextRef} />
           <Textarea
             ref={editTextRef}
             value={editText}

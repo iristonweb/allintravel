@@ -5,20 +5,15 @@ import { setupAuth, isAuthenticated, isAdmin, getSession, type SessionUser } fro
 import { isGoogleAuthEnabled } from "./google-auth";
 import passport from "passport";
 import { allowGeoRequest } from "./geo/nominatim";
-import { 
-  insertPlaceSchema, 
-  insertReviewSchema, 
-  insertTripSchema, 
+import {
+  insertPlaceSchema,
+  insertReviewSchema,
   insertEventSchema,
   insertChatMessageSchema,
   insertUserProfileSchema,
-  insertFriendshipSchema,
-  insertUserFollowSchema,
   insertPrivateMessageSchema,
   updateChatMessageSchema,
   updatePrivateMessageSchema,
-  insertTravelPostSchema,
-  insertPostLikeSchema,
   insertPostCommentSchema,
   updateTravelPostSchema,
   updateUserProfileSchema,
@@ -31,16 +26,18 @@ import { validateUsername } from "@shared/username";
 import { updatePrivacySettingsSchema } from "@shared/privacy";
 import { isTravelDirectionId } from "@shared/travel-directions";
 import { toPublicUser, toSelfUser } from "./user-utils";
-import { getUploadsStaticDir, persistUploadedFile, assertPersistentMediaUrl, VERCEL_BLOB_REQUIRED_MSG } from "./media-storage";
+import {
+  getUploadsStaticDir,
+  persistUploadedFile,
+  assertPersistentMediaUrl,
+  VERCEL_BLOB_REQUIRED_MSG,
+} from "./media-storage";
 import { createUploadMiddleware, handleMulter } from "./upload";
 import { userCanManageTrip } from "./security";
+import { searchLimiter, messagingLimiter } from "./rate-limit";
 import { resolveChatRoomAccess, ensureMemberForPost } from "./chat-access";
 import { validateChatMessageMediaContent } from "./chat-media-content";
-import {
-  importJamendoTrackToBlob,
-  searchMusicCatalog,
-  getItunesTrackById,
-} from "./music-search";
+import { importJamendoTrackToBlob, searchMusicCatalog, getItunesTrackById } from "./music-search";
 import {
   canViewProfile,
   canSendDm,
@@ -90,7 +87,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const q = String(req.query.q ?? "").trim();
       const limitRaw = req.query.limit != null ? Number(req.query.limit) : 8;
-      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(15, Math.floor(limitRaw))) : 10;
+      const limit = Number.isFinite(limitRaw)
+        ? Math.max(1, Math.min(15, Math.floor(limitRaw)))
+        : 10;
       const scopeRaw = typeof req.query.scope === "string" ? req.query.scope : "all";
       const scope =
         scopeRaw === "city" || scopeRaw === "country" || scopeRaw === "all" || scopeRaw === "full"
@@ -123,11 +122,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/search/destinations", async (req, res) => {
+  app.get("/api/search/destinations", searchLimiter, async (req, res) => {
     try {
       const q = String(req.query.q ?? "").trim();
       const limitRaw = req.query.limit != null ? Number(req.query.limit) : 10;
-      const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(15, Math.floor(limitRaw))) : 10;
+      const limit = Number.isFinite(limitRaw)
+        ? Math.max(1, Math.min(15, Math.floor(limitRaw)))
+        : 10;
       const type = typeof req.query.type === "string" ? req.query.type : undefined;
 
       if (q.length < 2) {
@@ -197,10 +198,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .split(/[,;]|(?:\s+—\s+)|(?:\s+–\s+)|(?:\s+-\s+)/)
         .map((s) => s.trim())
         .filter(Boolean);
-      const keywords =
-        segments.length >= 2 ? segments[segments.length - 1]! : q;
-      const locationHint =
-        segments.length >= 2 ? segments.slice(0, -1).join(", ") : q;
+      const keywords = segments.length >= 2 ? segments[segments.length - 1]! : q;
+      const locationHint = segments.length >= 2 ? segments.slice(0, -1).join(", ") : q;
 
       const catalogTerms = [keywords, locationHint, q].filter(
         (t, i, arr) => t.length >= 2 && arr.indexOf(t) === i,
@@ -373,7 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { resolveCreatorRank } = await import("@shared/ait");
       res.json({
         ...toPublicUser(user),
-        isOnline: showOnline ? presence?.isOnline ?? false : undefined,
+        isOnline: showOnline ? (presence?.isOnline ?? false) : undefined,
         lastSeenAt: showOnline && settings.showLastSeen ? presence?.lastSeenAt : undefined,
         isFriend,
         creatorBadge: badges.has(user.id),
@@ -385,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/users/:id', async (req, res) => {
+  app.get("/api/users/:id", async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ message: "User not found" });
@@ -446,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Place routes
-  app.get('/api/places', async (req, res) => {
+  app.get("/api/places", async (req, res) => {
     try {
       const { type, search, minRating, priceRange, limit = 20, offset = 0 } = req.query;
       const places = await storage.getPlaces({
@@ -464,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/places/:id', async (req, res) => {
+  app.get("/api/places/:id", async (req, res) => {
     try {
       const place = await storage.getPlace(req.params.id);
       if (!place) {
@@ -477,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/places', isAuthenticated, async (req, res) => {
+  app.post("/api/places", isAuthenticated, async (req, res) => {
     try {
       const placeData = insertPlaceSchema.parse(req.body);
       const place = await storage.createPlace(placeData);
@@ -492,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Review routes
-  app.get('/api/places/:id/reviews', async (req, res) => {
+  app.get("/api/places/:id/reviews", async (req, res) => {
     try {
       const reviews = await storage.getReviewsByPlace(req.params.id);
       res.json(reviews);
@@ -502,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/places/:id/reviews', isAuthenticated, async (req: any, res) => {
+  app.post("/api/places/:id/reviews", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const reviewData = insertReviewSchema.parse({
@@ -527,14 +526,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User reviews route
-  app.get('/api/reviews/user', isAuthenticated, async (req: any, res) => {
+  app.get("/api/reviews/user", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const reviews = await storage.getReviewsByUser(userId);
-      const enriched = await Promise.all(reviews.map(async (review) => {
-        const place = await storage.getPlace(review.placeId);
-        return { ...review, place: place || null };
-      }));
+      const enriched = await Promise.all(
+        reviews.map(async (review) => {
+          const place = await storage.getPlace(review.placeId);
+          return { ...review, place: place || null };
+        }),
+      );
       res.json(enriched);
     } catch (error) {
       console.error("Error fetching user reviews:", error);
@@ -543,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Trip routes
-  app.get('/api/trips', async (req, res) => {
+  app.get("/api/trips", async (req, res) => {
     try {
       const { userId, destination, startDate, endDate, limit = 20, offset = 0 } = req.query;
       const trips = await storage.getTrips({
@@ -561,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/trips/my-participations', isAuthenticated, async (req: any, res) => {
+  app.get("/api/trips/my-participations", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const tripIds = await storage.getTripParticipationsByUser(userId);
@@ -572,7 +573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/trips/:id/waypoints', async (req, res) => {
+  app.get("/api/trips/:id/waypoints", async (req, res) => {
     try {
       const waypoints = await storage.getTripWaypoints(req.params.id);
       res.json(waypoints);
@@ -702,7 +703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/trips/:id/waypoints', isAuthenticated, async (req: any, res) => {
+  app.post("/api/trips/:id/waypoints", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       if (!(await userCanManageTrip(storage, userId, req.params.id))) {
@@ -713,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.params.id,
         placeId,
         orderIndex != null ? Number(orderIndex) : undefined,
-        dayNumber != null ? Number(dayNumber) : undefined
+        dayNumber != null ? Number(dayNumber) : undefined,
       );
       res.status(201).json(waypoint);
     } catch (error) {
@@ -722,7 +723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/trips/:id/waypoints/from-location', isAuthenticated, async (req: any, res) => {
+  app.post("/api/trips/:id/waypoints/from-location", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       if (!(await userCanManageTrip(storage, userId, req.params.id))) {
@@ -735,8 +736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Укажите адрес и координаты" });
       }
 
-      const name =
-        label.length > 255 ? label.slice(0, 255) : label;
+      const name = label.length > 255 ? label.slice(0, 255) : label;
       const candidates = await storage.getPlaces({ search: name, limit: 10 });
       let place = candidates.find((p) => {
         const plat = Number(p.latitude);
@@ -773,7 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req: any, res) => {
+  app.patch("/api/trips/:id/waypoints/:waypointId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       if (!(await userCanManageTrip(storage, userId, req.params.id))) {
@@ -798,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/trips/:id/waypoints/:waypointId', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/trips/:id/waypoints/:waypointId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       if (!(await userCanManageTrip(storage, userId, req.params.id))) {
@@ -816,7 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/trips/:id', async (req, res) => {
+  app.get("/api/trips/:id", async (req, res) => {
     try {
       const trip = await storage.getTrip(req.params.id);
       if (!trip) {
@@ -863,10 +863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (waypoints.length === 0) return res.json({ updated: 0 });
       const start = new Date(trip.startDate);
       const end = new Date(trip.endDate);
-      const totalDays = Math.max(
-        1,
-        Math.floor((end.getTime() - start.getTime()) / 86400000) + 1,
-      );
+      const totalDays = Math.max(1, Math.floor((end.getTime() - start.getTime()) / 86400000) + 1);
       const perDay = Math.max(1, Math.ceil(waypoints.length / totalDays));
       const sorted = [...waypoints].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
       for (let i = 0; i < sorted.length; i++) {
@@ -970,10 +967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? sorted.filter((w) => w.dayNumber === dayParam)
           : sorted;
       const names = stops.map((w) => w.place?.name).filter(Boolean) as string[];
-      const title =
-        dayParam != null
-          ? `${trip.title} — день ${dayParam}`
-          : `Журнал: ${trip.title}`;
+      const title = dayParam != null ? `${trip.title} — день ${dayParam}` : `Журнал: ${trip.title}`;
       const lines = [
         `# ${title}`,
         "",
@@ -999,7 +993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/trips', isAuthenticated, async (req: any, res) => {
+  app.post("/api/trips", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { parseCreateTripBody } = await import("./trip-validation");
@@ -1008,7 +1002,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { ensureTripChatRoom, inviteUsersToTrip } = await import("./trip-hub");
       trip = await ensureTripChatRoom(storage, trip);
       const { invited, skipped } = await inviteUsersToTrip(storage, trip, inviteUserIds, userId);
-      const aitGrant = await grantSpend(userId, "trip_created", { entityType: "trip", entityId: trip.id });
+      const aitGrant = await grantSpend(userId, "trip_created", {
+        entityType: "trip",
+        entityId: trip.id,
+      });
       let chatSlug: string | null = null;
       if (trip.chatRoomId) {
         const room = await storage.getChatRoom(trip.chatRoomId);
@@ -1030,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/trips/:id/join', isAuthenticated, async (req: any, res) => {
+  app.post("/api/trips/:id/join", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const trip = await storage.getTrip(req.params.id);
@@ -1053,12 +1050,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Event routes
-  app.get('/api/events', async (req, res) => {
+  app.get("/api/events", async (req, res) => {
     try {
       const { type, upcoming, limit = 20, offset = 0 } = req.query;
       const events = await storage.getEvents({
         type: type as string,
-        upcoming: upcoming === 'true',
+        upcoming: upcoming === "true",
         limit: Number(limit),
         offset: Number(offset),
       });
@@ -1069,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/events', isAuthenticated, async (req: any, res) => {
+  app.post("/api/events", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const eventData = insertEventSchema.parse({
@@ -1087,7 +1084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/events/registrations', isAuthenticated, async (req: any, res) => {
+  app.get("/api/events/registrations", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const eventIds = await storage.getRegisteredEventIds(userId);
@@ -1098,7 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/events/:id', async (req, res) => {
+  app.get("/api/events/:id", async (req, res) => {
     try {
       const event = await storage.getEvent(req.params.id);
       if (!event) return res.status(404).json({ message: "Event not found" });
@@ -1109,7 +1106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/events/:id/register', isAuthenticated, async (req: any, res) => {
+  app.post("/api/events/:id/register", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const event = await storage.getEvent(req.params.id);
@@ -1130,7 +1127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/events/:id/register', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/events/:id/register", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.unregisterFromEvent(req.params.id, userId);
@@ -1141,7 +1138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/trips/:id/participants', isAuthenticated, async (req: any, res) => {
+  app.get("/api/trips/:id/participants", isAuthenticated, async (req: any, res) => {
     try {
       const trip = await storage.getTrip(req.params.id);
       if (!trip) {
@@ -1299,8 +1296,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(502).json({ message: "Failed to fetch file" });
       }
       const buffer = Buffer.from(await remote.arrayBuffer());
-      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
-      res.setHeader("Content-Type", track.mimeType || remote.headers.get("content-type") || "audio/mpeg");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(filename)}"`,
+      );
+      res.setHeader(
+        "Content-Type",
+        track.mimeType || remote.headers.get("content-type") || "audio/mpeg",
+      );
       res.send(buffer);
     } catch (error) {
       console.error("Error downloading music track:", error);
@@ -1308,7 +1311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/follow/:userId/check', isAuthenticated, async (req: any, res) => {
+  app.get("/api/follow/:userId/check", isAuthenticated, async (req: any, res) => {
     try {
       const followerId = req.user.claims.sub;
       const isFollowing = await storage.isFollowing(followerId, req.params.userId);
@@ -1319,7 +1322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const [receivedRequests, conversations, dbItems, unreadNotifs] = await Promise.all([
@@ -1534,7 +1537,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       if (!result.ok) return res.status(400).json({ message: result.message });
       const { adminGetUserAit } = await import("./ait/admin");
-      res.json({ ok: true, grant: result.grant, aitGrant: result.grant ?? null, ait: await adminGetUserAit(body.userId) });
+      res.json({
+        ok: true,
+        grant: result.grant,
+        aitGrant: result.grant ?? null,
+        ait: await adminGetUserAit(body.userId),
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid body" });
@@ -1584,9 +1592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/broadcasts/:id/dismiss", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const body = z
-        .object({ action: z.enum(["ack", "skip_video"]) })
-        .parse(req.body);
+      const body = z.object({ action: z.enum(["ack", "skip_video"]) }).parse(req.body);
       await storage.dismissAdminBroadcast(req.params.id, userId, body.action);
       res.status(204).send();
     } catch (error) {
@@ -1698,7 +1704,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entityType: "chat_room",
           entityId: room.id,
         });
-        res.status(201).json({ room, aitGrant: aitGrant ?? null, ...(avatarWarning ? { avatarWarning } : {}) });
+        res
+          .status(201)
+          .json({ room, aitGrant: aitGrant ?? null, ...(avatarWarning ? { avatarWarning } : {}) });
       } catch (error) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: "Invalid room data", errors: error.errors });
@@ -1718,7 +1726,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!access.allowed) return res.status(403).json({ message: access.reason });
       const members = await storage.getChatRoomMembers(room.id);
       const pinnedIds = await storage.getPinnedMessageIds(room.id);
-      res.json({ ...room, memberCount: members.length, members, pinnedMessageIds: pinnedIds, myRole: (await storage.getChatRoomMember(room.id, userId))?.role ?? null });
+      res.json({
+        ...room,
+        memberCount: members.length,
+        members,
+        pinnedMessageIds: pinnedIds,
+        myRole: (await storage.getChatRoomMember(room.id, userId))?.role ?? null,
+      });
     } catch (error) {
       console.error("Error fetching chat room:", error);
       res.status(500).json({ message: "Failed to fetch room" });
@@ -1871,29 +1885,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/chat/rooms/:id/members/:memberUserId", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const roomId = req.params.id;
-      const memberUserId = req.params.memberUserId;
-      const room = await storage.getChatRoom(roomId);
-      if (!room) return res.status(404).json({ message: "Room not found" });
-      const targetMember = await storage.getChatRoomMember(roomId, memberUserId);
-      if (!targetMember) return res.status(404).json({ message: "Member not found" });
-      if (targetMember.role === "owner") {
-        return res.status(400).json({ message: "Cannot remove owner" });
+  app.delete(
+    "/api/chat/rooms/:id/members/:memberUserId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const roomId = req.params.id;
+        const memberUserId = req.params.memberUserId;
+        const room = await storage.getChatRoom(roomId);
+        if (!room) return res.status(404).json({ message: "Room not found" });
+        const targetMember = await storage.getChatRoomMember(roomId, memberUserId);
+        if (!targetMember) return res.status(404).json({ message: "Member not found" });
+        if (targetMember.role === "owner") {
+          return res.status(400).json({ message: "Cannot remove owner" });
+        }
+        const isSelf = memberUserId === userId;
+        if (!isSelf && !(await isRoomAdmin(roomId, userId))) {
+          return res.status(403).json({ message: "Admin only" });
+        }
+        await storage.banChatRoomMember(roomId, memberUserId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error removing room member:", error);
+        res.status(500).json({ message: "Failed to remove member" });
       }
-      const isSelf = memberUserId === userId;
-      if (!isSelf && !(await isRoomAdmin(roomId, userId))) {
-        return res.status(403).json({ message: "Admin only" });
-      }
-      await storage.banChatRoomMember(roomId, memberUserId);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error removing room member:", error);
-      res.status(500).json({ message: "Failed to remove member" });
-    }
-  });
+    },
+  );
 
   const canManageChatMessage = async (roomId: string, messageId: string, userId: string) => {
     const msg = await storage.getChatMessage(messageId);
@@ -1903,172 +1921,211 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { ok: false as const, status: 403, message: "Forbidden" };
   };
 
-  app.post("/api/chat/rooms/:roomId/messages/:messageId/pin", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
-      if (!access.ok) return res.status(access.status).json({ message: access.message });
-      await storage.pinChatMessage(req.params.roomId, req.params.messageId, userId);
-      const room = await storage.getChatRoom(req.params.roomId);
-      const pinner = await storage.getUser(userId);
-      if (room && pinner) {
-        const members = await storage.getChatRoomMembers(req.params.roomId);
-        const memberIds = members.map((m) => m.userId);
-        const preview = access.msg.content.replace(/\[[^\]]+\]/g, "").trim() || "Сообщение";
-        void notifyChatMessagePinned(memberIds, pinner, room.title, room.slug, req.params.messageId, preview);
+  app.post(
+    "/api/chat/rooms/:roomId/messages/:messageId/pin",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
+        if (!access.ok) return res.status(access.status).json({ message: access.message });
+        await storage.pinChatMessage(req.params.roomId, req.params.messageId, userId);
+        const room = await storage.getChatRoom(req.params.roomId);
+        const pinner = await storage.getUser(userId);
+        if (room && pinner) {
+          const members = await storage.getChatRoomMembers(req.params.roomId);
+          const memberIds = members.map((m) => m.userId);
+          const preview = access.msg.content.replace(/\[[^\]]+\]/g, "").trim() || "Сообщение";
+          void notifyChatMessagePinned(
+            memberIds,
+            pinner,
+            room.title,
+            room.slug,
+            req.params.messageId,
+            preview,
+          );
+          const { broadcastToUser } = await import("./realtime-hub");
+          for (const m of members) {
+            broadcastToUser(m.userId, {
+              type: "message_pinned",
+              roomId: req.params.roomId,
+              roomSlug: room.slug,
+              messageId: req.params.messageId,
+            });
+          }
+        }
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error pinning message:", error);
+        res.status(500).json({ message: "Failed to pin" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/chat/rooms/:roomId/messages/:messageId/pin",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
+        if (!access.ok) return res.status(access.status).json({ message: access.message });
+        await storage.unpinChatMessage(req.params.roomId, req.params.messageId);
+        const room = await storage.getChatRoom(req.params.roomId);
+        if (room) {
+          const { broadcastToUser } = await import("./realtime-hub");
+          const members = await storage.getChatRoomMembers(req.params.roomId);
+          for (const m of members) {
+            broadcastToUser(m.userId, {
+              type: "message_unpinned",
+              roomId: req.params.roomId,
+              roomSlug: room.slug,
+              messageId: req.params.messageId,
+            });
+          }
+        }
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error unpinning message:", error);
+        res.status(500).json({ message: "Failed to unpin" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/chat/rooms/:roomId/messages/:messageId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
+        if (!access.ok) return res.status(access.status).json({ message: access.message });
+        await storage.deleteChatMessage(req.params.messageId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting message:", error);
+        res.status(500).json({ message: "Failed to delete" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/chat/rooms/:roomId/messages/:messageId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const msg = await storage.getChatMessage(req.params.messageId);
+        if (!msg) return res.status(404).json({ message: "Message not found" });
+        if (msg.userId !== userId) return res.status(403).json({ message: "Only author can edit" });
+        const { content } = updateChatMessageSchema.parse(req.body);
+        const updated = await storage.updateChatMessage(req.params.messageId, content);
+        const sender = await storage.getUser(userId);
+        const likeMeta = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
+        const meta = likeMeta[req.params.messageId] ?? { reactions: [] };
+        res.json({
+          ...updated,
+          ...meta,
+          sender: sender ? toPublicUser(sender) : null,
+        });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Invalid content", errors: error.errors });
+        }
+        console.error("Error editing message:", error);
+        res.status(500).json({ message: "Failed to edit" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/chat/rooms/:roomId/messages/:messageId/like",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const msg = await storage.getChatMessage(req.params.messageId);
+        if (!msg) return res.status(404).json({ message: "Message not found" });
+        const existing = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
+        const mine = existing[req.params.messageId]?.reactions.find((r) => r.reactedByMe);
+        const meta = await storage.setChatMessageReaction(
+          req.params.messageId,
+          userId,
+          mine?.emoji === "❤️" ? null : "❤️",
+        );
+        res.json(meta);
+      } catch (error) {
+        console.error("Error toggling like:", error);
+        res.status(500).json({ message: "Failed to toggle like" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/chat/rooms/:roomId/messages/:messageId/reactions",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const msg = await storage.getChatMessage(req.params.messageId);
+        if (!msg) return res.status(404).json({ message: "Message not found" });
+        const body = z.object({ emoji: z.string().min(1).max(16).nullable() }).parse(req.body);
+        const meta = await storage.setChatMessageReaction(req.params.messageId, userId, body.emoji);
         const { broadcastToUser } = await import("./realtime-hub");
-        for (const m of members) {
-          broadcastToUser(m.userId, {
-            type: "message_pinned",
-            roomId: req.params.roomId,
-            roomSlug: room.slug,
-            messageId: req.params.messageId,
-          });
-        }
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error pinning message:", error);
-      res.status(500).json({ message: "Failed to pin" });
-    }
-  });
-
-  app.delete("/api/chat/rooms/:roomId/messages/:messageId/pin", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
-      if (!access.ok) return res.status(access.status).json({ message: access.message });
-      await storage.unpinChatMessage(req.params.roomId, req.params.messageId);
-      const room = await storage.getChatRoom(req.params.roomId);
-      if (room) {
-        const { broadcastToUser } = await import("./realtime-hub");
         const members = await storage.getChatRoomMembers(req.params.roomId);
         for (const m of members) {
-          broadcastToUser(m.userId, {
-            type: "message_unpinned",
-            roomId: req.params.roomId,
-            roomSlug: room.slug,
-            messageId: req.params.messageId,
-          });
+          if (m.userId !== userId) {
+            broadcastToUser(m.userId, {
+              type: "reaction_updated",
+              roomId: req.params.roomId,
+              messageId: req.params.messageId,
+              reactions: meta.reactions,
+            });
+          }
         }
-      }
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error unpinning message:", error);
-      res.status(500).json({ message: "Failed to unpin" });
-    }
-  });
-
-  app.delete("/api/chat/rooms/:roomId/messages/:messageId", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
-      if (!access.ok) return res.status(access.status).json({ message: access.message });
-      await storage.deleteChatMessage(req.params.messageId);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting message:", error);
-      res.status(500).json({ message: "Failed to delete" });
-    }
-  });
-
-  app.patch("/api/chat/rooms/:roomId/messages/:messageId", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const msg = await storage.getChatMessage(req.params.messageId);
-      if (!msg) return res.status(404).json({ message: "Message not found" });
-      if (msg.userId !== userId) return res.status(403).json({ message: "Only author can edit" });
-      const { content } = updateChatMessageSchema.parse(req.body);
-      const updated = await storage.updateChatMessage(req.params.messageId, content);
-      const sender = await storage.getUser(userId);
-      const likeMeta = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
-      const meta = likeMeta[req.params.messageId] ?? { reactions: [] };
-      res.json({
-        ...updated,
-        ...meta,
-        sender: sender ? toPublicUser(sender) : null,
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid content", errors: error.errors });
-      }
-      console.error("Error editing message:", error);
-      res.status(500).json({ message: "Failed to edit" });
-    }
-  });
-
-  app.post("/api/chat/rooms/:roomId/messages/:messageId/like", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const msg = await storage.getChatMessage(req.params.messageId);
-      if (!msg) return res.status(404).json({ message: "Message not found" });
-      const existing = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
-      const mine = existing[req.params.messageId]?.reactions.find((r) => r.reactedByMe);
-      const meta = await storage.setChatMessageReaction(
-        req.params.messageId,
-        userId,
-        mine?.emoji === "❤️" ? null : "❤️",
-      );
-      res.json(meta);
-    } catch (error) {
-      console.error("Error toggling like:", error);
-      res.status(500).json({ message: "Failed to toggle like" });
-    }
-  });
-
-  app.put("/api/chat/rooms/:roomId/messages/:messageId/reactions", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const msg = await storage.getChatMessage(req.params.messageId);
-      if (!msg) return res.status(404).json({ message: "Message not found" });
-      const body = z.object({ emoji: z.string().min(1).max(16).nullable() }).parse(req.body);
-      const meta = await storage.setChatMessageReaction(req.params.messageId, userId, body.emoji);
-      const { broadcastToUser } = await import("./realtime-hub");
-      const members = await storage.getChatRoomMembers(req.params.roomId);
-      for (const m of members) {
-        if (m.userId !== userId) {
-          broadcastToUser(m.userId, {
-            type: "reaction_updated",
-            roomId: req.params.roomId,
-            messageId: req.params.messageId,
-            reactions: meta.reactions,
-          });
+        res.json(meta);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Invalid reaction", errors: error.errors });
         }
+        console.error("Error setting reaction:", error);
+        res.status(500).json({ message: "Failed to set reaction" });
       }
-      res.json(meta);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid reaction", errors: error.errors });
-      }
-      console.error("Error setting reaction:", error);
-      res.status(500).json({ message: "Failed to set reaction" });
-    }
-  });
+    },
+  );
 
-  app.get("/api/chat/rooms/:roomId/messages/:messageId/insights", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const room = await storage.getChatRoom(req.params.roomId);
-      if (!room) return res.status(404).json({ message: "Room not found" });
-      const access = await resolveChatRoomAccess(storage, room.slug, userId);
-      if (!access.allowed) return res.status(403).json({ message: access.reason });
-      const msg = await storage.getChatMessage(req.params.messageId);
-      if (!msg) return res.status(404).json({ message: "Message not found" });
-      const readers = await storage.getChatMessageReaders(room.id, req.params.messageId, msg.userId ?? undefined);
-      const reactionGroups = await storage.getChatMessageReactionDetails(req.params.messageId);
-      res.json({
-        readCount: readers.length,
-        readers: readers.map(toPublicUser),
-        reactions: reactionGroups.map((g) => ({
-          emoji: g.emoji,
-          users: g.users.map(toPublicUser),
-        })),
-      });
-    } catch (error) {
-      console.error("Error fetching message insights:", error);
-      res.status(500).json({ message: "Failed to fetch insights" });
-    }
-  });
+  app.get(
+    "/api/chat/rooms/:roomId/messages/:messageId/insights",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const room = await storage.getChatRoom(req.params.roomId);
+        if (!room) return res.status(404).json({ message: "Room not found" });
+        const access = await resolveChatRoomAccess(storage, room.slug, userId);
+        if (!access.allowed) return res.status(403).json({ message: access.reason });
+        const msg = await storage.getChatMessage(req.params.messageId);
+        if (!msg) return res.status(404).json({ message: "Message not found" });
+        const readers = await storage.getChatMessageReaders(
+          room.id,
+          req.params.messageId,
+          msg.userId ?? undefined,
+        );
+        const reactionGroups = await storage.getChatMessageReactionDetails(req.params.messageId);
+        res.json({
+          readCount: readers.length,
+          readers: readers.map(toPublicUser),
+          reactions: reactionGroups.map((g) => ({
+            emoji: g.emoji,
+            users: g.users.map(toPublicUser),
+          })),
+        });
+      } catch (error) {
+        console.error("Error fetching message insights:", error);
+        res.status(500).json({ message: "Failed to fetch insights" });
+      }
+    },
+  );
 
   app.post("/api/chat/rooms/:roomId/read", isAuthenticated, async (req: any, res) => {
     try {
@@ -2152,7 +2209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chat/:room", isAuthenticated, async (req: any, res) => {
+  app.post("/api/chat/:room", messagingLimiter, isAuthenticated, async (req: any, res) => {
     try {
       const { room } = req.params;
       const userId = req.user.claims.sub;
@@ -2200,14 +2257,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Favorites routes
-  app.get('/api/favorites', isAuthenticated, async (req: any, res) => {
+  app.get("/api/favorites", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const favorites = await storage.getUserFavorites(userId);
-      const enriched = await Promise.all(favorites.map(async (fav) => {
-        const place = await storage.getPlace(fav.placeId);
-        return { ...fav, place: place || null };
-      }));
+      const enriched = await Promise.all(
+        favorites.map(async (fav) => {
+          const place = await storage.getPlace(fav.placeId);
+          return { ...fav, place: place || null };
+        }),
+      );
       res.json(enriched);
     } catch (error) {
       console.error("Error fetching favorites:", error);
@@ -2215,7 +2274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/favorites/:placeId', isAuthenticated, async (req: any, res) => {
+  app.post("/api/favorites/:placeId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { placeId } = req.params;
@@ -2227,7 +2286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/favorites/:placeId', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/favorites/:placeId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { placeId } = req.params;
@@ -2239,7 +2298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/favorites/:placeId/check', isAuthenticated, async (req: any, res) => {
+  app.get("/api/favorites/:placeId/check", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { placeId } = req.params;
@@ -2254,7 +2313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Social features API routes
 
   // User profile routes
-  app.get('/api/profile/:userId', async (req, res) => {
+  app.get("/api/profile/:userId", async (req, res) => {
     try {
       const userId = req.params.userId;
       const viewerId = req.isAuthenticated() ? (req.user as SessionUser).claims.sub : undefined;
@@ -2282,7 +2341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/profile', isAuthenticated, async (req: any, res) => {
+  app.post("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const profileData = insertUserProfileSchema.parse({ ...req.body, userId });
@@ -2297,7 +2356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/profile', isAuthenticated, async (req: any, res) => {
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const profileData = updateUserProfileSchema.parse(req.body);
@@ -2313,7 +2372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Friend routes
-  app.post('/api/friends/request/:userId', isAuthenticated, async (req: any, res) => {
+  app.post("/api/friends/request/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const requesterId = req.user.claims.sub;
       const addresseeId = req.params.userId;
@@ -2338,7 +2397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/friends/respond/:friendshipId', isAuthenticated, async (req: any, res) => {
+  app.put("/api/friends/respond/:friendshipId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const status = z.enum(["accepted", "rejected"]).parse(req.body?.status);
@@ -2356,7 +2415,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         typeof req.body?.direction === "string" && isTravelDirectionId(req.body.direction)
           ? req.body.direction
           : undefined;
-      const friendship = await storage.respondToFriendRequest(req.params.friendshipId, status, direction);
+      const friendship = await storage.respondToFriendRequest(
+        req.params.friendshipId,
+        status,
+        direction,
+      );
       if (status === "accepted") {
         const accepter = await storage.getUser(userId);
         if (accepter) {
@@ -2379,7 +2442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/friends', isAuthenticated, async (req: any, res) => {
+  app.get("/api/friends", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const direction =
@@ -2394,16 +2457,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/friends/requests/:type', isAuthenticated, async (req: any, res) => {
+  app.get("/api/friends/requests/:type", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const type = req.params.type as 'sent' | 'received';
+      const type = req.params.type as "sent" | "received";
       const requests = await storage.getFriendRequests(userId, type);
-      const enriched = await Promise.all(requests.map(async (friendship) => {
-        const otherUserId = type === 'sent' ? friendship.addresseeId : friendship.requesterId;
-        const user = await storage.getUser(otherUserId);
-        return { ...friendship, user: user ? toPublicUser(user) : null };
-      }));
+      const enriched = await Promise.all(
+        requests.map(async (friendship) => {
+          const otherUserId = type === "sent" ? friendship.addresseeId : friendship.requesterId;
+          const user = await storage.getUser(otherUserId);
+          return { ...friendship, user: user ? toPublicUser(user) : null };
+        }),
+      );
       res.json(enriched);
     } catch (error) {
       console.error("Error fetching friend requests:", error);
@@ -2411,7 +2476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/friends/:friendId', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/friends/:friendId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.removeFriend(userId, req.params.friendId);
@@ -2423,7 +2488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Follow routes
-  app.post('/api/follow/:userId', isAuthenticated, async (req: any, res) => {
+  app.post("/api/follow/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const followerId = req.user.claims.sub;
       const followingId = req.params.userId;
@@ -2436,7 +2501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/follow/:userId', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/follow/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const followerId = req.user.claims.sub;
       const followingId = req.params.userId;
@@ -2448,7 +2513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/followers/:userId', async (req, res) => {
+  app.get("/api/followers/:userId", async (req, res) => {
     try {
       const followers = await storage.getFollowers(req.params.userId);
       res.json(followers);
@@ -2458,7 +2523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/following/:userId', async (req, res) => {
+  app.get("/api/following/:userId", async (req, res) => {
     try {
       const following = await storage.getFollowing(req.params.userId);
       res.json(following);
@@ -2469,7 +2534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Private message routes
-  app.post('/api/messages', isAuthenticated, async (req: any, res) => {
+  app.post("/api/messages", messagingLimiter, isAuthenticated, async (req: any, res) => {
     try {
       const senderId = req.user.claims.sub;
       const messageData = insertPrivateMessageSchema.parse({ ...req.body, senderId });
@@ -2500,7 +2565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/messages/:userId', isAuthenticated, async (req: any, res) => {
+  app.get("/api/messages/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const currentUserId = req.user.claims.sub;
       const otherUserId = req.params.userId;
@@ -2533,7 +2598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/messages/:messageId', isAuthenticated, async (req: any, res) => {
+  app.patch("/api/messages/:messageId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const msg = await storage.getPrivateMessage(req.params.messageId);
@@ -2555,12 +2620,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/messages/:messageId', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/messages/:messageId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const msg = await storage.getPrivateMessage(req.params.messageId);
       if (!msg) return res.status(404).json({ message: "Message not found" });
-      if (msg.senderId !== userId) return res.status(403).json({ message: "Only author can delete" });
+      if (msg.senderId !== userId)
+        return res.status(403).json({ message: "Only author can delete" });
       await storage.deletePrivateMessage(req.params.messageId);
       res.status(204).send();
     } catch (error) {
@@ -2569,7 +2635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/messages/:messageId/like', isAuthenticated, async (req: any, res) => {
+  app.post("/api/messages/:messageId/like", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const msg = await storage.getPrivateMessage(req.params.messageId);
@@ -2588,13 +2654,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/messages/:messageId/reactions', isAuthenticated, async (req: any, res) => {
+  app.put("/api/messages/:messageId/reactions", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const msg = await storage.getPrivateMessage(req.params.messageId);
       if (!msg) return res.status(404).json({ message: "Message not found" });
       const body = z.object({ emoji: z.string().min(1).max(16).nullable() }).parse(req.body);
-      const meta = await storage.setPrivateMessageReaction(req.params.messageId, userId, body.emoji);
+      const meta = await storage.setPrivateMessageReaction(
+        req.params.messageId,
+        userId,
+        body.emoji,
+      );
       const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
       if (partnerId) {
         const { broadcastToUser } = await import("./realtime-hub");
@@ -2614,7 +2684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/messages/:messageId/insights', isAuthenticated, async (req: any, res) => {
+  app.get("/api/messages/:messageId/insights", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const msg = await storage.getPrivateMessage(req.params.messageId);
@@ -2640,7 +2710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/conversations', isAuthenticated, async (req: any, res) => {
+  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const conversations = await storage.getConversations(userId);
@@ -2666,7 +2736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/messages/read/:senderId', isAuthenticated, async (req: any, res) => {
+  app.put("/api/messages/read/:senderId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const senderId = req.params.senderId;
@@ -2679,7 +2749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Travel post routes
-  app.post('/api/posts', isAuthenticated, async (req: any, res) => {
+  app.post("/api/posts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const postData = parseCreateTravelPostBody(req.body, userId);
@@ -2701,9 +2771,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts', async (req: any, res) => {
+  app.get("/api/posts", async (req: any, res) => {
     try {
-      const { userId, following, tag, format, public: publicFilter, limit = 20, offset = 0 } = req.query;
+      const {
+        userId,
+        following,
+        tag,
+        format,
+        public: publicFilter,
+        limit = 20,
+        offset = 0,
+      } = req.query;
       const currentUserId: string | null = req.user?.claims?.sub || null;
       const posts = await storage.getTravelPosts({
         userId: userId as string,
@@ -2714,26 +2792,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: Number(limit),
         offset: Number(offset),
       });
-      const {
-        getActiveBoostedPostIds,
-        getUsersWithCreatorBadge,
-        sortPostsWithBoosts,
-      } = await import("./ait/perks");
+      const { getActiveBoostedPostIds, getUsersWithCreatorBadge, sortPostsWithBoosts } =
+        await import("./ait/perks");
       const boosted = await getActiveBoostedPostIds();
-      const enriched = await Promise.all(posts.map(async (post) => {
-        const author = post.userId ? await storage.getUser(post.userId) : null;
-        const likesCount = await storage.getPostLikesCount(post.id);
-        const commentsCount = await storage.getPostCommentsCount(post.id);
-        const isLiked = currentUserId ? await storage.isPostLikedByUser(currentUserId, post.id) : false;
-        return {
-          ...post,
-          author: author ? { id: author.id, firstName: author.firstName, lastName: author.lastName, profileImageUrl: author.profileImageUrl } : null,
-          likesCount,
-          commentsCount,
-          isLiked,
-          isBoosted: boosted.has(post.id),
-        };
-      }));
+      const enriched = await Promise.all(
+        posts.map(async (post) => {
+          const author = post.userId ? await storage.getUser(post.userId) : null;
+          const likesCount = await storage.getPostLikesCount(post.id);
+          const commentsCount = await storage.getPostCommentsCount(post.id);
+          const isLiked = currentUserId
+            ? await storage.isPostLikedByUser(currentUserId, post.id)
+            : false;
+          return {
+            ...post,
+            author: author
+              ? {
+                  id: author.id,
+                  firstName: author.firstName,
+                  lastName: author.lastName,
+                  profileImageUrl: author.profileImageUrl,
+                }
+              : null,
+            likesCount,
+            commentsCount,
+            isLiked,
+            isBoosted: boosted.has(post.id),
+          };
+        }),
+      );
       const authorIds = enriched.map((p) => p.userId).filter(Boolean) as string[];
       const badges = await getUsersWithCreatorBadge(authorIds);
       const withBadges = enriched.map((p) => ({
@@ -2747,7 +2833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts/:id', async (req: any, res) => {
+  app.get("/api/posts/:id", async (req: any, res) => {
     try {
       const post = await storage.getTravelPost(req.params.id);
       if (!post) {
@@ -2760,7 +2846,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const author = post.userId ? await storage.getUser(post.userId) : null;
       const likesCount = await storage.getPostLikesCount(post.id);
       const commentsCount = await storage.getPostCommentsCount(post.id);
-      const isLiked = currentUserId ? await storage.isPostLikedByUser(currentUserId, post.id) : false;
+      const isLiked = currentUserId
+        ? await storage.isPostLikedByUser(currentUserId, post.id)
+        : false;
       res.json({
         ...post,
         author: author
@@ -2781,7 +2869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/posts/:id', isAuthenticated, async (req: any, res) => {
+  app.put("/api/posts/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const existing = await storage.getTravelPost(req.params.id);
@@ -2799,7 +2887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/posts/:id', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/posts/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const existing = await storage.getTravelPost(req.params.id);
@@ -2814,7 +2902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Post interaction routes
-  app.post('/api/posts/:id/like', isAuthenticated, async (req: any, res) => {
+  app.post("/api/posts/:id/like", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const postId = req.params.id;
@@ -2832,7 +2920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/posts/:id/like', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/posts/:id/like", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const postId = req.params.id;
@@ -2844,7 +2932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/posts/:id/comments', isAuthenticated, async (req: any, res) => {
+  app.post("/api/posts/:id/comments", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const postId = req.params.id;
@@ -2869,7 +2957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/posts/:id/comments', async (req, res) => {
+  app.get("/api/posts/:id/comments", async (req, res) => {
     try {
       const comments = await storage.getPostComments(req.params.id);
       res.json(comments);
@@ -2879,7 +2967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/comments/:id', isAuthenticated, async (req: any, res) => {
+  app.delete("/api/comments/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const comment = await storage.getPostComment(req.params.id);
@@ -2925,7 +3013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search routes
-  app.get('/api/search/users', async (req, res) => {
+  app.get("/api/search/users", searchLimiter, async (req, res) => {
     try {
       const { q, limit = 20, exact, direction, travelStyle } = req.query;
       if (!q) {
@@ -2954,100 +3042,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WebSocket only for local/long-running Node server (not Vercel serverless)
   if (!process.env.VERCEL) {
-  const { WebSocketServer, WebSocket } = await import("ws");
-  const sessionParser = getSession();
+    const { WebSocketServer, WebSocket } = await import("ws");
+    const sessionParser = getSession();
 
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+    const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
-  wss.on('connection', (ws: InstanceType<typeof WebSocket>, req) => {
-    let authenticatedUserId: string | null = null;
+    wss.on("connection", (ws: InstanceType<typeof WebSocket>, req) => {
+      let authenticatedUserId: string | null = null;
 
-    const runSession = (cb: () => void) => {
-      sessionParser(req as Request, {} as Response, () => {
-        passport.initialize()(req as Request, {} as Response, () => {
-          passport.session()(req as Request, {} as Response, cb);
+      const runSession = (cb: () => void) => {
+        sessionParser(req as Request, {} as Response, () => {
+          passport.initialize()(req as Request, {} as Response, () => {
+            passport.session()(req as Request, {} as Response, cb);
+          });
         });
-      });
-    };
+      };
 
-    runSession(() => {
-      const user = (req as Request).user as SessionUser | undefined;
-      authenticatedUserId = user?.claims?.sub ?? null;
-      if (authenticatedUserId) {
-        registerUserSocket(authenticatedUserId, ws);
-        storage.touchPresence(authenticatedUserId, true).catch(() => {});
-      }
-    });
-
-    ws.on('close', () => {
-      if (authenticatedUserId) {
-        unregisterUserSocket(authenticatedUserId, ws);
-        storage.touchPresence(authenticatedUserId, false).catch(() => {});
-      }
-    });
-
-    ws.on('message', async (message: string) => {
-      try {
-        const data = JSON.parse(message);
-
-        if (data.type === 'chat_message') {
-          const userId = authenticatedUserId;
-          if (!userId) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Authentication required' }));
-            return;
-          }
-          const chatRoom = String(data.chatRoom ?? "");
-          await storage.ensureLegacyChatRooms();
-          const access = await resolveChatRoomAccess(storage, chatRoom, userId);
-          if (!access.allowed) {
-            ws.send(JSON.stringify({ type: 'error', message: access.reason }));
-            return;
-          }
-          if (!access.canPost) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Cannot post' }));
-            return;
-          }
-          await ensureMemberForPost(storage, access.room, userId);
-          const content = String(data.content ?? "").trim();
-          if (!content) {
-            ws.send(JSON.stringify({ type: "error", message: "Content is required" }));
-            return;
-          }
-          const mediaError = validateChatMessageMediaContent(content);
-          if (mediaError) {
-            ws.send(JSON.stringify({ type: "error", message: mediaError }));
-            return;
-          }
-          const messageData = insertChatMessageSchema.parse({
-            userId,
-            content,
-            chatRoom,
-          });
-
-          const savedMessage = await storage.createChatMessage(messageData);
-          if (userId) await storage.touchPresence(userId, true);
-          const sender = await storage.getUser(savedMessage.userId);
-
-          wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({
-                type: 'new_message',
-                message: savedMessage,
-                sender: sender ? toPublicUser(sender) : null,
-              }));
-            }
-          });
+      runSession(() => {
+        const user = (req as Request).user as SessionUser | undefined;
+        authenticatedUserId = user?.claims?.sub ?? null;
+        if (authenticatedUserId) {
+          registerUserSocket(authenticatedUserId, ws);
+          storage.touchPresence(authenticatedUserId, true).catch(() => {});
         }
-      } catch (error) {
-        console.error('Error handling WebSocket message:', error);
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'Failed to process message',
-        }));
-      }
-    });
+      });
 
-  });
+      ws.on("close", () => {
+        if (authenticatedUserId) {
+          unregisterUserSocket(authenticatedUserId, ws);
+          storage.touchPresence(authenticatedUserId, false).catch(() => {});
+        }
+      });
+
+      ws.on("message", async (message: string) => {
+        try {
+          const data = JSON.parse(message);
+
+          if (data.type === "chat_message") {
+            const userId = authenticatedUserId;
+            if (!userId) {
+              ws.send(JSON.stringify({ type: "error", message: "Authentication required" }));
+              return;
+            }
+            const chatRoom = String(data.chatRoom ?? "");
+            await storage.ensureLegacyChatRooms();
+            const access = await resolveChatRoomAccess(storage, chatRoom, userId);
+            if (!access.allowed) {
+              ws.send(JSON.stringify({ type: "error", message: access.reason }));
+              return;
+            }
+            if (!access.canPost) {
+              ws.send(JSON.stringify({ type: "error", message: "Cannot post" }));
+              return;
+            }
+            await ensureMemberForPost(storage, access.room, userId);
+            const content = String(data.content ?? "").trim();
+            if (!content) {
+              ws.send(JSON.stringify({ type: "error", message: "Content is required" }));
+              return;
+            }
+            const mediaError = validateChatMessageMediaContent(content);
+            if (mediaError) {
+              ws.send(JSON.stringify({ type: "error", message: mediaError }));
+              return;
+            }
+            const messageData = insertChatMessageSchema.parse({
+              userId,
+              content,
+              chatRoom,
+            });
+
+            const savedMessage = await storage.createChatMessage(messageData);
+            if (userId) await storage.touchPresence(userId, true);
+            const sender = await storage.getUser(savedMessage.userId);
+
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(
+                  JSON.stringify({
+                    type: "new_message",
+                    message: savedMessage,
+                    sender: sender ? toPublicUser(sender) : null,
+                  }),
+                );
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Error handling WebSocket message:", error);
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              message: "Failed to process message",
+            }),
+          );
+        }
+      });
+    });
   }
 
   return httpServer;
