@@ -132,6 +132,19 @@ export async function markNotificationReadDb(db: Db, userId: string, id: string)
     .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
 }
 
+export async function markNotificationsReadBatchDb(
+  db: Db,
+  userId: string,
+  ids: string[],
+): Promise<void> {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (unique.length === 0) return;
+  await db
+    .update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.userId, userId), inArray(notifications.id, unique)));
+}
+
 export async function markAllNotificationsReadDb(db: Db, userId: string): Promise<void> {
   await db
     .update(notifications)

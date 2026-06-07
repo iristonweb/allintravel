@@ -74,7 +74,12 @@ import {
   voidAit,
   type AitGrantResult,
 } from "./ait/hooks";
-import { NOTIFICATION_FILTERS, type NotificationFilter } from "@shared/notification-types";
+import {
+  NOTIFICATION_FILTERS,
+  type AppNotification,
+  type NotificationFilter,
+} from "@shared/notification-types";
+import { aggregateNotifications } from "@shared/notification-aggregate";
 import type { NotificationRow } from "@shared/schema";
 
 async function mapNotificationsForClient(items: NotificationRow[]) {
@@ -83,10 +88,10 @@ async function mapNotificationsForClient(items: NotificationRow[]) {
   );
   const users = await Promise.all(actorIds.map((id) => storage.getUser(id)));
   const actorMap = new Map(users.filter(Boolean).map((u) => [u!.id, toPublicUser(u!)] as const));
-  return items.map((n) => ({
+  const mapped: AppNotification[] = items.map((n) => ({
     id: n.id,
     userId: n.userId,
-    type: n.type,
+    type: n.type as AppNotification["type"],
     title: n.title,
     body: n.body,
     link: n.link,
@@ -96,6 +101,7 @@ async function mapNotificationsForClient(items: NotificationRow[]) {
     createdAt: n.createdAt?.toISOString() ?? null,
     actor: n.actorId ? (actorMap.get(n.actorId) ?? null) : null,
   }));
+  return aggregateNotifications(mapped);
 }
 
 const updateUserMeSchema = z.object({
@@ -1395,6 +1401,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking notification read:", error);
       res.status(500).json({ message: "Failed to update notification" });
+    }
+  });
+
+  app.put("/api/notifications/read-batch", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ids = Array.isArray(req.body?.ids)
+        ? req.body.ids.filter((id: unknown) => typeof id === "string")
+        : [];
+      if (ids.length === 0) {
+        res.status(400).json({ message: "ids required" });
+        return;
+      }
+      await storage.markNotificationsReadBatch(userId, ids);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error marking notifications read:", error);
+      res.status(500).json({ message: "Failed to update notifications" });
     }
   });
 

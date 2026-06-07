@@ -39,6 +39,7 @@ import PushSoundListener from "@/components/PushSoundListener";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import GlobalMusicBar from "@/components/music/GlobalMusicBar";
 import AdminPage from "@/pages/admin";
+import { NotificationsPage } from "@/pages/notifications";
 import { captureReferralFromUrl } from "@/lib/referral-pending";
 
 function Router() {
@@ -101,6 +102,7 @@ function Router() {
           {isAuthenticated && <Route path="/u/:username" component={UserPublicProfile} />}
           {isAuthenticated && <Route path="/friends" component={Friends} />}
           {isAuthenticated && <Route path="/messages" component={Messages} />}
+          {isAuthenticated && <Route path="/notifications" component={NotificationsPage} />}
           {isAuthenticated && <Route path="/social-feed" component={SocialFeed} />}
           {isAuthenticated && <Route path="/trips" component={Trips} />}
           {isAuthenticated && <Route path="/trips/:id" component={TripDetail} />}

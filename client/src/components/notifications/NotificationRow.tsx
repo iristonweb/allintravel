@@ -2,10 +2,12 @@ import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { AppNotification } from "@shared/notification-types";
+import { getUserDisplayLabel } from "@shared/user-display";
+import { aggregatedActionVerb, formatAggregatedActorLabel } from "@/lib/notification-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
-import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
+import { getUserInitial } from "@shared/user-display";
 import { notificationVisual } from "@/lib/notification-ui";
 
 type NotificationRowProps = {
@@ -15,6 +17,12 @@ type NotificationRowProps = {
 };
 
 function notificationSummary(item: AppNotification, actorLabel: string): string {
+  const count = item.aggregateCount ?? 1;
+  if (count > 1 && item.actors?.length) {
+    const actorsLabel = formatAggregatedActorLabel(item.actors, count);
+    return `${actorsLabel} ${aggregatedActionVerb(item.type, count)}`;
+  }
+
   switch (item.type) {
     case "post_like":
       return `${actorLabel} оценила вашу публикацию`;
@@ -30,12 +38,93 @@ function notificationSummary(item: AppNotification, actorLabel: string): string 
   }
 }
 
-export default function NotificationRow({ item, onActivate, compact }: NotificationRowProps) {
+function StackedAvatars({ item, compact }: { item: AppNotification; compact?: boolean }) {
   const visual = notificationVisual(item.type);
   const Icon = visual.icon;
+  const actors =
+    item.aggregateCount && item.aggregateCount > 1 && item.actors?.length
+      ? item.actors.slice(0, 3)
+      : item.actor
+        ? [item.actor]
+        : [];
+
+  const size = compact ? "h-10 w-10" : "h-11 w-11";
+  const stackSize = compact ? "h-8 w-8" : "h-9 w-9";
+
+  if (actors.length <= 1) {
+    const actor = actors[0];
+    const initial = actor ? getUserInitial(actor) : "?";
+    return (
+      <div className="relative shrink-0">
+        <Avatar className={cn("border-2 border-white/15", size)}>
+          <AvatarImage src={resolveMediaUrl(actor?.profileImageUrl)} />
+          <AvatarFallback className="bg-gradient-to-br from-ait-purple to-ait-orange text-xs text-white">
+            {initial}
+          </AvatarFallback>
+        </Avatar>
+        <TypeBadge visual={visual} Icon={Icon} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative shrink-0 w-[52px] h-11">
+      {actors.map((actor, i) => {
+        const initial = getUserInitial(actor);
+        return (
+          <Avatar
+            key={actor.id}
+            className={cn(
+              "absolute border-2 border-[#050816]",
+              stackSize,
+              i === 0 && "left-0 top-0 z-30",
+              i === 1 && "left-3 top-2 z-20",
+              i === 2 && "left-6 top-0 z-10",
+            )}
+          >
+            <AvatarImage src={resolveMediaUrl(actor.profileImageUrl)} />
+            <AvatarFallback className="bg-gradient-to-br from-ait-purple to-ait-orange text-[10px] text-white">
+              {initial}
+            </AvatarFallback>
+          </Avatar>
+        );
+      })}
+      <TypeBadge visual={visual} Icon={Icon} className="left-auto right-0" />
+    </div>
+  );
+}
+
+function TypeBadge({
+  visual,
+  Icon,
+  className,
+}: {
+  visual: ReturnType<typeof notificationVisual>;
+  Icon: ReturnType<typeof notificationVisual>["icon"];
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full",
+        "bg-gradient-to-br text-[10px] shadow-md ring-2 ring-[#050816]",
+        visual.accentClass,
+        className,
+      )}
+      aria-hidden
+    >
+      {visual.emoji ? (
+        <span className="text-[11px] leading-none">{visual.emoji}</span>
+      ) : (
+        <Icon className="h-2.5 w-2.5 text-white" strokeWidth={2.5} />
+      )}
+    </span>
+  );
+}
+
+export default function NotificationRow({ item, onActivate, compact }: NotificationRowProps) {
   const actor = item.actor;
   const actorLabel = actor ? getUserDisplayLabel(actor) : "Кто-то";
-  const initial = actor ? getUserInitial(actor) : "?";
   const summary = notificationSummary(item, actorLabel);
 
   const inner = (
@@ -47,28 +136,7 @@ export default function NotificationRow({ item, onActivate, compact }: Notificat
         compact && "p-2.5 gap-2.5",
       )}
     >
-      <div className="relative shrink-0">
-        <Avatar className={cn("border-2 border-white/15", compact ? "h-10 w-10" : "h-11 w-11")}>
-          <AvatarImage src={resolveMediaUrl(actor?.profileImageUrl)} />
-          <AvatarFallback className="bg-gradient-to-br from-ait-purple to-ait-orange text-xs text-white">
-            {initial}
-          </AvatarFallback>
-        </Avatar>
-        <span
-          className={cn(
-            "absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full",
-            "bg-gradient-to-br text-[10px] shadow-md ring-2 ring-[#050816]",
-            visual.accentClass,
-          )}
-          aria-hidden
-        >
-          {visual.emoji ? (
-            <span className="text-[11px] leading-none">{visual.emoji}</span>
-          ) : (
-            <Icon className="h-2.5 w-2.5 text-white" strokeWidth={2.5} />
-          )}
-        </span>
-      </div>
+      <StackedAvatars item={item} compact={compact} />
 
       <div className="min-w-0 flex-1 pt-0.5">
         <p

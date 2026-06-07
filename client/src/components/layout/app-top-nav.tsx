@@ -5,7 +5,7 @@ import { Menu, Shield, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import type { AppNotification } from "@shared/notification-types";
-import { apiRequest } from "@/lib/queryClient";
+import { markNotificationRead } from "@/lib/notification-actions";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -37,6 +37,7 @@ const pageTitles: Record<string, string> = {
   "/blog": "Блог",
   "/wallet": "AIT Hub",
   "/chat": "Чаты",
+  "/notifications": "Уведомления",
   "/admin": "Админ",
   "/profile/edit": "Редактирование",
   "/profile/settings": "Настройки",
@@ -82,7 +83,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
 
   const markReadAndGo = async (item: AppNotification) => {
     try {
-      await apiRequest("PUT", `/api/notifications/${item.id}/read`);
+      await markNotificationRead(item);
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     } catch {
       /* ignore */

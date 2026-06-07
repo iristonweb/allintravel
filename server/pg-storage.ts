@@ -1170,6 +1170,11 @@ export class PgStorage implements IStorage {
     return markNotificationReadDb(this.db, userId, id);
   }
 
+  async markNotificationsReadBatch(userId: string, ids: string[]) {
+    const { markNotificationsReadBatchDb } = await import("./notification-storage");
+    return markNotificationsReadBatchDb(this.db, userId, ids);
+  }
+
   async markAllNotificationsRead(userId: string) {
     const { markAllNotificationsReadDb } = await import("./notification-storage");
     return markAllNotificationsReadDb(this.db, userId);

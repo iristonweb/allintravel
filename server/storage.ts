@@ -345,6 +345,7 @@ export interface IStorage {
   ): Promise<{ items: import("@shared/schema").NotificationRow[]; nextCursor: string | null }>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   markNotificationRead(userId: string, id: string): Promise<void>;
+  markNotificationsReadBatch(userId: string, ids: string[]): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
   upsertPushSubscription(
     userId: string,
@@ -2074,6 +2075,13 @@ export class MemStorage implements IStorage {
   async markNotificationRead(userId: string, id: string) {
     const n = this.memNotifications.get(id);
     if (n && n.userId === userId) this.memNotifications.set(id, { ...n, isRead: true });
+  }
+
+  async markNotificationsReadBatch(userId: string, ids: string[]) {
+    for (const id of ids) {
+      const n = this.memNotifications.get(id);
+      if (n && n.userId === userId) this.memNotifications.set(id, { ...n, isRead: true });
+    }
   }
 
   async markAllNotificationsRead(userId: string) {

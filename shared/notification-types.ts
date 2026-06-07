@@ -61,6 +61,11 @@ export type AppNotification = {
   isRead: boolean;
   createdAt: string | null;
   actor?: NotificationActor | null;
+  /** Same entity grouped (e.g. 4 likes on one post). */
+  aggregateCount?: number;
+  aggregateIds?: string[];
+  /** Up to 3 actors for stacked avatars (newest first). */
+  actors?: NotificationActor[];
 };
 
 export type NotificationsSummary = {
