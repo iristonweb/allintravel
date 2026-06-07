@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, getSession, type SessionUser } from "./auth";
+import { authConfigPayload } from "./auth-readiness";
 import { isGoogleAuthEnabled } from "./google-auth";
 import passport from "passport";
 import { allowGeoRequest } from "./geo/nominatim";
@@ -283,9 +284,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/config", (_req, res) => {
     res.json({
+      ...authConfigPayload(),
       googleOAuth: isGoogleAuthEnabled(),
-      /** First login with email + password creates the account (no separate signup page). */
-      emailSignup: true,
     });
   });
 

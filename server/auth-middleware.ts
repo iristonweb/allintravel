@@ -6,11 +6,14 @@ import type { Express } from "express";
 import { getSessionPool } from "./db";
 import { resolveSessionSecret } from "./security";
 
-const SESSION_SECRET = resolveSessionSecret();
 const PgSession = connectPgSimple(session);
 const MemoryStore = createMemoryStore(session);
 
 let sessionMiddleware: ReturnType<typeof session> | null = null;
+
+function sessionSecret(): string {
+  return resolveSessionSecret();
+}
 
 export function getSession() {
   if (sessionMiddleware) return sessionMiddleware;
@@ -25,7 +28,7 @@ export function getSession() {
       ? new PgSession({
           pool: pgPool,
           tableName: "sessions",
-          createTableIfMissing: false,
+          createTableIfMissing: true,
         })
       : new MemoryStore({ checkPeriod: 86_400_000 });
   } catch (err) {
@@ -34,7 +37,7 @@ export function getSession() {
   }
 
   sessionMiddleware = session({
-    secret: SESSION_SECRET,
+    secret: sessionSecret(),
     resave: false,
     saveUninitialized: false,
     store,

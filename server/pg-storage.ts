@@ -68,6 +68,22 @@ export class PgStorage implements IStorage {
   }
 
   async ensureSchema(): Promise<void> {
+    await this.db.execute(sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        email varchar UNIQUE,
+        username varchar(30),
+        display_name varchar(64),
+        first_name varchar,
+        last_name varchar,
+        profile_image_url varchar,
+        password_hash varchar,
+        is_verified boolean DEFAULT false,
+        is_admin boolean DEFAULT false,
+        created_at timestamp DEFAULT now(),
+        updated_at timestamp DEFAULT now()
+      )
+    `);
     await features.ensureExtendedSchema(this.db);
     await this.db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar`);
     await this.db.execute(

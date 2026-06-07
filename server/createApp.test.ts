@@ -26,6 +26,8 @@ describe("createApp", () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ emailSignup: true });
     expect(res.body).toHaveProperty("googleOAuth");
+    expect(res.body).toHaveProperty("databaseConfigured");
+    expect(res.body).toHaveProperty("sessionConfigured");
   });
 
   it("GET /api/auth/user returns 401 without session", async () => {

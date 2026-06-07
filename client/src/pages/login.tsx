@@ -13,6 +13,8 @@ import { Loader2 } from "lucide-react";
 type AuthConfig = {
   googleOAuth: boolean;
   emailSignup: boolean;
+  databaseConfigured?: boolean;
+  sessionConfigured?: boolean;
 };
 
 async function fetchAuthConfig(): Promise<AuthConfig> {
@@ -38,7 +40,7 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<
-    "invalid" | "server" | "schema" | "session" | "database" | null
+    "invalid" | "server" | "schema" | "session" | "database" | "session_secret" | "db_connect" | null
   >(urlError === "invalid" ? "invalid" : urlError === "server" ? "server" : null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
@@ -49,6 +51,12 @@ export function Login() {
   });
 
   const googleEnabled = authConfig?.googleOAuth ?? false;
+  const configWarning =
+    authConfig?.databaseConfigured === false
+      ? "database"
+      : authConfig?.sessionConfigured === false
+        ? "session_secret"
+        : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +96,16 @@ export function Login() {
 
       if (data.code === "NO_DATABASE") {
         setFormError("database");
+        setErrorDetail(data.message ?? null);
+        return;
+      }
+      if (data.code === "NO_SESSION_SECRET") {
+        setFormError("session_secret");
+        setErrorDetail(data.message ?? null);
+        return;
+      }
+      if (data.code === "DB_CONNECT") {
+        setFormError("db_connect");
         setErrorDetail(data.message ?? null);
         return;
       }
@@ -137,36 +155,52 @@ export function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {configWarning === "database" && !formError && (
+              <p className="text-sm text-destructive">
+                Сервер не видит DATABASE_URL. Добавьте Neon URL в Vercel → Environment Variables
+                (Production) и redeploy.
+              </p>
+            )}
+            {configWarning === "session_secret" && !formError && (
+              <p className="text-sm text-destructive">
+                SESSION_SECRET не настроен на сервере (нужна строка ≥32 символов в Vercel).
+              </p>
+            )}
             {formError === "invalid" && (
               <p className="text-sm text-destructive">Неверный email или пароль.</p>
             )}
             {formError === "database" && (
               <p className="text-sm text-destructive">
-                База данных не подключена. В Vercel → Settings → Environment Variables добавьте{" "}
-                <code className="text-ait-purple">DATABASE_URL</code> (Neon) и перезапустите деплой.
+                {errorDetail ??
+                  "База данных не подключена. В Vercel → Settings → Environment Variables добавьте DATABASE_URL (Neon) и перезапустите деплой."}
+              </p>
+            )}
+            {formError === "session_secret" && (
+              <p className="text-sm text-destructive">
+                {errorDetail ??
+                  "SESSION_SECRET не задан или слишком короткий. Добавьте случайную строку ≥32 символов в Vercel и redeploy."}
+              </p>
+            )}
+            {formError === "db_connect" && (
+              <p className="text-sm text-destructive">
+                {errorDetail ?? "Не удалось подключиться к базе данных. Проверьте DATABASE_URL и Neon."}
               </p>
             )}
             {formError === "schema" && (
               <p className="text-sm text-destructive">
-                Схема БД устарела. Локально с production URL в{" "}
-                <code className="text-ait-purple">.env</code> выполните{" "}
-                <code className="text-ait-purple">npm run db:push</code>.
+                {errorDetail ??
+                  "Схема БД не готова. Подключите production DATABASE_URL локально и выполните npm run db:migrate."}
               </p>
             )}
             {formError === "session" && (
               <p className="text-sm text-destructive">
-                Не удалось сохранить сессию. Убедитесь, что в БД есть таблица{" "}
-                <code className="text-ait-purple">sessions</code> (
-                <code className="text-ait-purple">npm run db:push</code>
-                ).
+                {errorDetail ??
+                  "Не удалось сохранить сессию. Убедитесь, что таблица sessions создана (npm run db:migrate)."}
               </p>
             )}
             {formError === "server" && (
               <p className="text-sm text-destructive">
-                Ошибка сервера при входе. Проверьте DATABASE_URL и SESSION_SECRET на Vercel.
-                {errorDetail ? (
-                  <span className="block mt-1 text-xs opacity-80">{errorDetail}</span>
-                ) : null}
+                {errorDetail ?? "Ошибка сервера при входе. Попробуйте позже или обратитесь в поддержку."}
               </p>
             )}
             <div className="space-y-2">

@@ -2239,11 +2239,25 @@ export async function initAppStorage(): Promise<void> {
   }
 }
 
-function createStorage(): IStorage {
+let storageInstance: IStorage | null = null;
+
+function resolveStorage(): IStorage {
   if (isDatabaseConfigured() && getDb()) {
-    return new PgStorage();
+    if (!(storageInstance instanceof PgStorage)) {
+      storageInstance = new PgStorage();
+    }
+    return storageInstance;
   }
-  return new MemStorage();
+  if (!storageInstance) {
+    storageInstance = new MemStorage();
+  }
+  return storageInstance;
 }
 
-export const storage = createStorage();
+export const storage: IStorage = new Proxy({} as IStorage, {
+  get(_target, prop) {
+    const impl = resolveStorage();
+    const value = Reflect.get(impl, prop);
+    return typeof value === "function" ? value.bind(impl) : value;
+  },
+});
