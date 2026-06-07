@@ -1148,6 +1148,18 @@ export class PgStorage implements IStorage {
     return getNotificationsDb(this.db, userId, limit);
   }
 
+  async getNotificationsPage(
+    userId: string,
+    opts?: {
+      limit?: number;
+      cursor?: string | null;
+      filter?: import("@shared/notification-types").NotificationFilter;
+    },
+  ) {
+    const { getNotificationsPageDb } = await import("./notification-storage");
+    return getNotificationsPageDb(this.db, userId, opts ?? {});
+  }
+
   async getUnreadNotificationCount(userId: string) {
     const { getUnreadNotificationCountDb } = await import("./notification-storage");
     return getUnreadNotificationCountDb(this.db, userId);

@@ -5,26 +5,15 @@ import {
   Map,
   MapPin,
   MessageCircle,
-  User,
   Users,
-  Wallet,
   BookOpen,
   Sparkles,
   MessageSquare,
   Music,
-  Settings,
-  PenLine,
-  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  sidebarPrimaryNav,
-  sidebarDiscoverNav,
-  sidebarExtraNav,
-  sidebarAccountNav,
-} from "@/lib/nav-config";
+import { sidebarPrimaryNav, sidebarDiscoverNav } from "@/lib/nav-config";
 import type { LucideIcon } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 export const SIDEBAR_WIDTH_COLLAPSED = 72;
 export const SIDEBAR_WIDTH_EXPANDED = 220;
@@ -39,13 +28,8 @@ const iconByHref: Record<string, LucideIcon> = {
   "/places": MapPin,
   "/events": Sparkles,
   "/blog": BookOpen,
-  "/wallet": Wallet,
   "/chat": MessageSquare,
   "/profile/music": Music,
-  "/profile": User,
-  "/profile/edit": PenLine,
-  "/profile/settings": Settings,
-  "/admin": Shield,
 };
 
 type NavItemWithMeta = { href: string; label: string; badge?: string; icon?: LucideIcon };
@@ -148,7 +132,6 @@ type AppIconSidebarProps = {
 
 export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
   const [location] = useLocation();
-  const { user } = useAuth();
 
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
@@ -157,15 +140,6 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
       return location === "/friends" || location.startsWith("/profile/friends");
     return location === href || location.startsWith(`${href}/`);
   };
-
-  const extraItems: NavItemWithMeta[] = sidebarExtraNav.map((item) =>
-    item.href === "/wallet" ? { ...item, badge: item.badge ?? "AIT" } : item,
-  );
-
-  const accountItems: NavItemWithMeta[] = [
-    ...sidebarAccountNav,
-    ...(user?.isAdmin ? [{ href: "/admin", label: "Админ", icon: Shield }] : []),
-  ];
 
   return (
     <aside
@@ -183,10 +157,6 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
       <NavSection items={sidebarPrimaryNav} activeFn={isActive} />
       <SectionDivider />
       <NavSection label="Каталог" items={sidebarDiscoverNav} activeFn={isActive} />
-      <SectionDivider />
-      <NavSection items={extraItems} activeFn={isActive} />
-      <SectionDivider />
-      <NavSection label="Аккаунт" items={accountItems} activeFn={isActive} />
     </aside>
   );
 }

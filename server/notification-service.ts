@@ -69,6 +69,107 @@ export async function labelForUser(
   return getUserDisplayLabel(user);
 }
 
+export function truncateNotificationPreview(text: string, max = 80): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
+export async function notifyPostLiked(
+  postOwnerId: string,
+  liker: User,
+  postId: string,
+  postContent: string,
+): Promise<void> {
+  if (postOwnerId === liker.id) return;
+  const name = getUserDisplayLabel(liker);
+  const preview = truncateNotificationPreview(postContent);
+  await notifyUser({
+    userId: postOwnerId,
+    type: "post_like",
+    title: "Оценка публикации",
+    body: preview
+      ? `${name} оценила вашу публикацию: «${preview}»`
+      : `${name} оценила вашу публикацию`,
+    link: `/social-feed?post=${postId}`,
+    actorId: liker.id,
+    entityId: postId,
+  });
+}
+
+export async function notifyPostCommented(
+  postOwnerId: string,
+  commenter: User,
+  postId: string,
+  postContent: string,
+  commentText: string,
+): Promise<void> {
+  if (postOwnerId === commenter.id) return;
+  const name = getUserDisplayLabel(commenter);
+  const comment = truncateNotificationPreview(commentText, 120);
+  const preview = truncateNotificationPreview(postContent, 40);
+  await notifyUser({
+    userId: postOwnerId,
+    type: "post_comment",
+    title: "Комментарий к публикации",
+    body: preview
+      ? `${name} прокомментировала «${preview}»: «${comment}»`
+      : `${name} прокомментировала вашу публикацию: «${comment}»`,
+    link: `/social-feed?post=${postId}`,
+    actorId: commenter.id,
+    entityId: postId,
+  });
+}
+
+export async function notifyPrivateMessageReaction(
+  messageAuthorId: string,
+  reactor: User,
+  messageId: string,
+  partnerId: string,
+  emoji: string,
+  messagePreview: string,
+): Promise<void> {
+  if (messageAuthorId === reactor.id) return;
+  const name = getUserDisplayLabel(reactor);
+  const preview = truncateNotificationPreview(messagePreview);
+  await notifyUser({
+    userId: messageAuthorId,
+    type: "message_reaction",
+    title: "Реакция на сообщение",
+    body: preview
+      ? `${name} отреагировал(а) ${emoji} на «${preview}»`
+      : `${name} отреагировал(а) ${emoji} на ваше сообщение`,
+    link: `/messages?with=${partnerId}`,
+    actorId: reactor.id,
+    entityId: messageId,
+  });
+}
+
+export async function notifyChatMessageReaction(
+  messageAuthorId: string,
+  reactor: User,
+  messageId: string,
+  roomSlug: string,
+  roomTitle: string,
+  emoji: string,
+  messagePreview: string,
+): Promise<void> {
+  if (messageAuthorId === reactor.id) return;
+  const name = getUserDisplayLabel(reactor);
+  const preview = truncateNotificationPreview(messagePreview);
+  await notifyUser({
+    userId: messageAuthorId,
+    type: "chat_reaction",
+    title: `Реакция в «${roomTitle}»`,
+    body: preview
+      ? `${name} отреагировал(а) ${emoji}: «${preview}»`
+      : `${name} отреагировал(а) ${emoji} на ваше сообщение`,
+    link: `/chat?room=${encodeURIComponent(roomSlug)}`,
+    actorId: reactor.id,
+    entityId: messageId,
+  });
+}
+
 export async function notifyFriendRequest(
   storage: IStorage,
   addresseeId: string,

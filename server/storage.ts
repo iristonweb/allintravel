@@ -335,6 +335,14 @@ export interface IStorage {
     userId: string,
     limit?: number,
   ): Promise<import("@shared/schema").NotificationRow[]>;
+  getNotificationsPage(
+    userId: string,
+    opts?: {
+      limit?: number;
+      cursor?: string | null;
+      filter?: import("@shared/notification-types").NotificationFilter;
+    },
+  ): Promise<{ items: import("@shared/schema").NotificationRow[]; nextCursor: string | null }>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   markNotificationRead(userId: string, id: string): Promise<void>;
   markAllNotificationsRead(userId: string): Promise<void>;
@@ -2018,10 +2026,43 @@ export class MemStorage implements IStorage {
   }
 
   async getNotifications(userId: string, limit = 50) {
-    return Array.from(this.memNotifications.values())
-      .filter((n) => n.userId === userId)
-      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
-      .slice(0, limit);
+    const { items } = await this.getNotificationsPage(userId, { limit });
+    return items;
+  }
+
+  async getNotificationsPage(
+    userId: string,
+    opts: {
+      limit?: number;
+      cursor?: string | null;
+      filter?: import("@shared/notification-types").NotificationFilter;
+    } = {},
+  ) {
+    const limit = Math.min(Math.max(opts.limit ?? 30, 1), 50);
+    const { SOCIAL_NOTIFICATION_TYPES, MESSAGE_NOTIFICATION_TYPES } =
+      await import("@shared/notification-types");
+
+    let rows = Array.from(this.memNotifications.values()).filter((n) => n.userId === userId);
+
+    if (opts.filter === "social") {
+      rows = rows.filter((n) => (SOCIAL_NOTIFICATION_TYPES as string[]).includes(n.type));
+    } else if (opts.filter === "messages") {
+      rows = rows.filter((n) => (MESSAGE_NOTIFICATION_TYPES as string[]).includes(n.type));
+    }
+
+    if (opts.cursor) {
+      const cursorMs = new Date(opts.cursor).getTime();
+      if (!Number.isNaN(cursorMs)) {
+        rows = rows.filter((n) => new Date(n.createdAt!).getTime() < cursorMs);
+      }
+    }
+
+    rows.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const last = items[items.length - 1];
+    const nextCursor = hasMore && last?.createdAt ? new Date(last.createdAt).toISOString() : null;
+    return { items, nextCursor };
   }
 
   async getUnreadNotificationCount(userId: string) {

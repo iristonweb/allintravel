@@ -1,7 +1,6 @@
 /** Shared navigation config — single source of truth for app shell nav */
 
 import type { LucideIcon } from "lucide-react";
-import { Settings, User, PenLine } from "lucide-react";
 
 export type NavItem = { href: string; label: string; badge?: string };
 
@@ -38,15 +37,11 @@ export const sidebarDiscoverNav: NavItem[] = [
   { href: "/profile/music", label: "Моя музыка" },
 ];
 
-/** Sidebar: AIT */
-export const sidebarExtraNav: NavItem[] = [{ href: "/wallet", label: "AIT Hub", badge: "AIT" }];
+/** Sidebar: AIT — дублируется иконкой кошелька в шапке */
+export const sidebarExtraNav: NavItem[] = [];
 
-/** Sidebar: аккаунт (без дублирования ссылок из ленты) */
-export const sidebarAccountNav: SidebarNavItem[] = [
-  { href: "/profile", label: "Мой профиль", icon: User },
-  { href: "/profile/edit", label: "Редактировать", icon: PenLine },
-  { href: "/profile/settings", label: "Настройки", icon: Settings },
-];
+/** Ссылки аккаунта — только на странице профиля и аватар в шапке */
+export const sidebarAccountNav: SidebarNavItem[] = [];
 
 /** Полное меню для мобильного drawer в шапке */
 export const authenticatedMenuNav: NavItem[] = [
@@ -71,8 +66,6 @@ export const mobileEcosystemNav: NavItem[] = [
   { href: "/chat", label: "Группа" },
   { href: "/wallet", label: "AIT Hub" },
   { href: "/profile/music", label: "Музыка" },
-  { href: "/profile", label: "Профиль" },
-  { href: "/profile/settings", label: "Настройки" },
 ];
 
 /** Landing hash → full path for guest pages without section IDs */

@@ -5,7 +5,7 @@ import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Search, Edit, AlertCircle } from "lucide-react";
+import { Settings, Search, Edit, AlertCircle, LogOut, Music, Wallet } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import EmptyState from "@/components/empty-state";
@@ -15,6 +15,7 @@ import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { useLocation } from "wouter";
 import type { User } from "@shared/schema";
 import UserPreviewCell from "@/components/social/UserPreviewCell";
+import { apiRequest } from "@/lib/queryClient";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
@@ -48,6 +49,11 @@ export function Profile() {
     const term = nickSearch.trim().replace(/^@/, "");
     if (term.length < 3) return;
     navigate(`/u/${term}`);
+  };
+
+  const logout = async () => {
+    await apiRequest("POST", "/api/logout");
+    window.location.href = "/";
   };
 
   return (
@@ -85,8 +91,8 @@ export function Profile() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Лента, друзья, чаты и настройки — в меню слева. Здесь только ваш профиль и поиск
-                    людей.
+                    Редактирование, настройки, кошелёк AIT и выход — здесь. Остальные разделы — в
+                    меню слева.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" asChild>
@@ -100,6 +106,27 @@ export function Profile() {
                         <Settings className="h-4 w-4 mr-1" />
                         Настройки
                       </Link>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href="/profile/music">
+                        <Music className="h-4 w-4 mr-1" />
+                        Моя музыка
+                      </Link>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href="/wallet">
+                        <Wallet className="h-4 w-4 mr-1" />
+                        AIT Hub
+                      </Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => void logout()}
+                    >
+                      <LogOut className="h-4 w-4 mr-1" />
+                      Выйти
                     </Button>
                   </div>
                   <div className="mt-4 flex gap-6 text-sm text-muted-foreground">

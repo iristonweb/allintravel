@@ -14,11 +14,11 @@ import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
 import {
   guestAnchors,
   sidebarDiscoverNav,
-  sidebarExtraNav,
   sidebarPrimaryNav,
   scrollToAnchor,
 } from "@/lib/nav-config";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
+import WalletHeaderButton from "@/components/layout/wallet-header-button";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
 import AitBalancePill from "@/components/ait/AitBalancePill";
 
@@ -90,11 +90,6 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
     if (item.link) window.location.href = item.link;
   };
 
-  const logout = async () => {
-    await apiRequest("POST", "/api/logout");
-    window.location.href = "/";
-  };
-
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
     if (href === "/profile") return location === "/profile";
@@ -137,8 +132,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const menuSections = [
     { title: "Основное", items: sidebarPrimaryNav },
     { title: "Каталог", items: sidebarDiscoverNav },
-    { title: "Ещё", items: sidebarExtraNav },
-  ];
+  ].filter((section) => section.items.length > 0);
 
   return (
     <header
@@ -196,7 +190,9 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
             onMarkReadAndGo={markReadAndGo}
           />
 
-          <AvatarHubMenu user={user ?? null} hasUnreadBadge={hasUnreadBadge} onLogout={logout} />
+          <WalletHeaderButton />
+
+          <AvatarHubMenu user={user ?? null} hasUnreadBadge={hasUnreadBadge} />
 
           <Button
             variant="ghost"

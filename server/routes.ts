@@ -54,6 +54,10 @@ import {
   notifyEventRegistration,
   notifyGroupJoin,
   notifyChatMessagePinned,
+  notifyPostLiked,
+  notifyPostCommented,
+  notifyPrivateMessageReaction,
+  notifyChatMessageReaction,
 } from "./notification-service";
 import { registerUserSocket, unregisterUserSocket } from "./realtime-hub";
 import { registerAitRoutes } from "./ait/routes";
@@ -70,6 +74,29 @@ import {
   voidAit,
   type AitGrantResult,
 } from "./ait/hooks";
+import { NOTIFICATION_FILTERS, type NotificationFilter } from "@shared/notification-types";
+import type { NotificationRow } from "@shared/schema";
+
+async function mapNotificationsForClient(items: NotificationRow[]) {
+  const actorIds = Array.from(
+    new Set(items.map((n) => n.actorId).filter((id): id is string => Boolean(id))),
+  );
+  const users = await Promise.all(actorIds.map((id) => storage.getUser(id)));
+  const actorMap = new Map(users.filter(Boolean).map((u) => [u!.id, toPublicUser(u!)] as const));
+  return items.map((n) => ({
+    id: n.id,
+    userId: n.userId,
+    type: n.type,
+    title: n.title,
+    body: n.body,
+    link: n.link,
+    actorId: n.actorId,
+    entityId: n.entityId,
+    isRead: n.isRead,
+    createdAt: n.createdAt?.toISOString() ?? null,
+    actor: n.actorId ? (actorMap.get(n.actorId) ?? null) : null,
+  }));
+}
 
 const updateUserMeSchema = z.object({
   displayName: z.string().max(64).nullable().optional(),
@@ -1325,29 +1352,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const [receivedRequests, conversations, dbItems, unreadNotifs] = await Promise.all([
+      const limitRaw = parseInt(String(req.query.limit ?? "30"), 10);
+      const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 50) : 30;
+      const cursor =
+        typeof req.query.cursor === "string" && req.query.cursor.length > 0
+          ? req.query.cursor
+          : null;
+      const filterRaw = String(req.query.filter ?? "all");
+      const filter: NotificationFilter = (NOTIFICATION_FILTERS as readonly string[]).includes(
+        filterRaw,
+      )
+        ? (filterRaw as NotificationFilter)
+        : "all";
+
+      const [receivedRequests, conversations, page, unreadNotifs] = await Promise.all([
         storage.getFriendRequests(userId, "received"),
         storage.getConversations(userId),
-        storage.getNotifications(userId, 40),
+        storage.getNotificationsPage(userId, { limit, cursor, filter }),
         storage.getUnreadNotificationCount(userId),
       ]);
       const unreadMessages = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+      const items = await mapNotificationsForClient(page.items);
       res.json({
         friendRequests: receivedRequests.length,
         unreadMessages,
+        unreadNotifications: unreadNotifs,
         totalUnread: unreadNotifs + receivedRequests.length + unreadMessages,
-        items: dbItems.map((n) => ({
-          id: n.id,
-          userId: n.userId,
-          type: n.type,
-          title: n.title,
-          body: n.body,
-          link: n.link,
-          actorId: n.actorId,
-          entityId: n.entityId,
-          isRead: n.isRead,
-          createdAt: n.createdAt?.toISOString() ?? null,
-        })),
+        items,
+        nextCursor: page.nextCursor,
       });
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -2048,11 +2080,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!msg) return res.status(404).json({ message: "Message not found" });
         const existing = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
         const mine = existing[req.params.messageId]?.reactions.find((r) => r.reactedByMe);
+        const adding = mine?.emoji !== "❤️";
         const meta = await storage.setChatMessageReaction(
           req.params.messageId,
           userId,
           mine?.emoji === "❤️" ? null : "❤️",
         );
+        if (adding && msg.userId && msg.userId !== userId) {
+          const reactor = await storage.getUser(userId);
+          const room = await storage.getChatRoom(req.params.roomId);
+          if (reactor) {
+            void notifyChatMessageReaction(
+              msg.userId,
+              reactor,
+              req.params.messageId,
+              room?.slug ?? msg.chatRoom,
+              room?.title ?? msg.chatRoom,
+              "❤️",
+              msg.content,
+            ).catch((err) => console.error("[notify] chat reaction:", err));
+          }
+        }
         res.json(meta);
       } catch (error) {
         console.error("Error toggling like:", error);
@@ -2071,6 +2119,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!msg) return res.status(404).json({ message: "Message not found" });
         const body = z.object({ emoji: z.string().min(1).max(16).nullable() }).parse(req.body);
         const meta = await storage.setChatMessageReaction(req.params.messageId, userId, body.emoji);
+        if (body.emoji && msg.userId && msg.userId !== userId) {
+          const reactor = await storage.getUser(userId);
+          const room = await storage.getChatRoom(req.params.roomId);
+          if (reactor) {
+            void notifyChatMessageReaction(
+              msg.userId,
+              reactor,
+              req.params.messageId,
+              room?.slug ?? msg.chatRoom,
+              room?.title ?? msg.chatRoom,
+              body.emoji,
+              msg.content,
+            ).catch((err) => console.error("[notify] chat reaction:", err));
+          }
+        }
         const { broadcastToUser } = await import("./realtime-hub");
         const members = await storage.getChatRoomMembers(req.params.roomId);
         for (const m of members) {
@@ -2642,11 +2705,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!msg) return res.status(404).json({ message: "Message not found" });
       const existing = await storage.getPrivateMessageReactionsMeta([req.params.messageId], userId);
       const mine = existing[req.params.messageId]?.reactions.find((r) => r.reactedByMe);
+      const adding = mine?.emoji !== "❤️";
       const meta = await storage.setPrivateMessageReaction(
         req.params.messageId,
         userId,
         mine?.emoji === "❤️" ? null : "❤️",
       );
+      if (adding && msg.senderId !== userId) {
+        const reactor = await storage.getUser(userId);
+        const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+        if (reactor && partnerId) {
+          void notifyPrivateMessageReaction(
+            msg.senderId,
+            reactor,
+            req.params.messageId,
+            partnerId,
+            "❤️",
+            msg.content,
+          ).catch((err) => console.error("[notify] dm reaction:", err));
+        }
+      }
       res.json(meta);
     } catch (error) {
       console.error("Error toggling private like:", error);
@@ -2666,6 +2744,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body.emoji,
       );
       const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      if (body.emoji && msg.senderId !== userId && partnerId) {
+        const reactor = await storage.getUser(userId);
+        if (reactor) {
+          void notifyPrivateMessageReaction(
+            msg.senderId,
+            reactor,
+            req.params.messageId,
+            partnerId,
+            body.emoji,
+            msg.content,
+          ).catch((err) => console.error("[notify] dm reaction:", err));
+        }
+      }
       if (partnerId) {
         const { broadcastToUser } = await import("./realtime-hub");
         broadcastToUser(partnerId, {
@@ -2912,6 +3003,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (post?.userId) {
         const g = await grantForPostLiked(userId, post.userId, postId);
         aitGrant = g.authorGrant;
+        const liker = await storage.getUser(userId);
+        if (liker && post.content) {
+          void notifyPostLiked(post.userId, liker, postId, post.content).catch((err) =>
+            console.error("[notify] post like:", err),
+          );
+        }
       }
       res.status(201).json({ ...like, aitGrant });
     } catch (error) {
@@ -2946,6 +3043,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (post.userId) {
         const g = await grantForPostCommented(userId, post.userId, postId, comment.content);
         aitGrant = g.commenterGrant;
+        const commenter = await storage.getUser(userId);
+        if (commenter) {
+          void notifyPostCommented(
+            post.userId,
+            commenter,
+            postId,
+            post.content ?? "",
+            comment.content,
+          ).catch((err) => console.error("[notify] post comment:", err));
+        }
       }
       res.status(201).json({ ...comment, aitGrant });
     } catch (error) {

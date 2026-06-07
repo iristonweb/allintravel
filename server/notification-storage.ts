@@ -1,5 +1,10 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import type { NotificationRow } from "@shared/schema";
+import {
+  MESSAGE_NOTIFICATION_TYPES,
+  SOCIAL_NOTIFICATION_TYPES,
+  type NotificationFilter,
+} from "@shared/notification-types";
 import { notifications, pushSubscriptions } from "@shared/schema";
 import type { Db } from "./pg-storage-types";
 
@@ -72,12 +77,44 @@ export async function getNotificationsDb(
   userId: string,
   limit = 50,
 ): Promise<NotificationRow[]> {
-  return db
+  const { items } = await getNotificationsPageDb(db, userId, { limit });
+  return items;
+}
+
+export async function getNotificationsPageDb(
+  db: Db,
+  userId: string,
+  opts: { limit?: number; cursor?: string | null; filter?: NotificationFilter } = {},
+): Promise<{ items: NotificationRow[]; nextCursor: string | null }> {
+  const limit = Math.min(Math.max(opts.limit ?? 30, 1), 50);
+  const conditions = [eq(notifications.userId, userId)];
+
+  if (opts.filter === "social") {
+    conditions.push(inArray(notifications.type, SOCIAL_NOTIFICATION_TYPES));
+  } else if (opts.filter === "messages") {
+    conditions.push(inArray(notifications.type, MESSAGE_NOTIFICATION_TYPES));
+  }
+
+  if (opts.cursor) {
+    const cursorDate = new Date(opts.cursor);
+    if (!Number.isNaN(cursorDate.getTime())) {
+      conditions.push(lt(notifications.createdAt, cursorDate));
+    }
+  }
+
+  const rows = await db
     .select()
     .from(notifications)
-    .where(eq(notifications.userId, userId))
+    .where(and(...conditions))
     .orderBy(desc(notifications.createdAt))
-    .limit(limit);
+    .limit(limit + 1);
+
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const last = items[items.length - 1];
+  const nextCursor = hasMore && last?.createdAt ? last.createdAt.toISOString() : null;
+
+  return { items, nextCursor };
 }
 
 export async function getUnreadNotificationCountDb(db: Db, userId: string): Promise<number> {
