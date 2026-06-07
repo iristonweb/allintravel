@@ -3,7 +3,7 @@ dist
 uploads
 api/index.js
 api/health.js
-# Legacy esbuild output; Vercel uses api/*.ts entrypoints
+# esbuild bundles for Vercel; api/*.ts re-export these after build
 .DS_Store
 .env
 .env.local

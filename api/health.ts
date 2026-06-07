@@ -1,1 +1,1 @@
-export { default, config } from "../server/vercel/health";
+export { default, config } from "./health.js";

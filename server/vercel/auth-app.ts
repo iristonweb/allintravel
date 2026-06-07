@@ -114,5 +114,15 @@ export function runAuthApp(req: Request, res: Response): Promise<void> {
     });
   };
 
-  return run();
+  return run().catch((err) => {
+    console.error("[auth-app] unhandled error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        ok: false,
+        error: "server",
+        code: "SERVER",
+        message: publicAuthErrorMessage("SERVER", err instanceof Error ? err.message : String(err)),
+      });
+    }
+  });
 }
