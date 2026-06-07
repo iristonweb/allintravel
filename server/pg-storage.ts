@@ -1175,6 +1175,47 @@ export class PgStorage implements IStorage {
     return markNotificationsReadBatchDb(this.db, userId, ids);
   }
 
+  async findNotificationByEntity(userId: string, type: string, entityId: string) {
+    const { findNotificationByEntityDb } = await import("./notification-storage");
+    return findNotificationByEntityDb(this.db, userId, type, entityId);
+  }
+
+  async updateNotification(
+    userId: string,
+    id: string,
+    patch: {
+      title?: string;
+      body?: string;
+      link?: string | null;
+      actorId?: string | null;
+      isRead?: boolean;
+      bumpCreatedAt?: boolean;
+    },
+  ) {
+    const { updateNotificationDb } = await import("./notification-storage");
+    return updateNotificationDb(this.db, userId, id, patch);
+  }
+
+  async deleteDuplicateNotificationsForEntity(
+    userId: string,
+    type: string,
+    entityId: string,
+    keepId: string,
+  ) {
+    const { deleteDuplicateNotificationsForEntityDb } = await import("./notification-storage");
+    return deleteDuplicateNotificationsForEntityDb(this.db, userId, type, entityId, keepId);
+  }
+
+  async deleteNotificationsForEntity(userId: string, type: string, entityId: string) {
+    const { deleteNotificationsForEntityDb } = await import("./notification-storage");
+    return deleteNotificationsForEntityDb(this.db, userId, type, entityId);
+  }
+
+  async dedupePostLikeNotifications(userId: string) {
+    const { dedupePostLikeNotificationsDb } = await import("./notification-storage");
+    return dedupePostLikeNotificationsDb(this.db, userId);
+  }
+
   async markAllNotificationsRead(userId: string) {
     const { markAllNotificationsReadDb } = await import("./notification-storage");
     return markAllNotificationsReadDb(this.db, userId);
@@ -1204,6 +1245,16 @@ export class PgStorage implements IStorage {
       .from(postLikes)
       .where(eq(postLikes.postId, postId));
     return Number(value);
+  }
+
+  async getRecentPostLikerUserIds(postId: string, limit = 3): Promise<string[]> {
+    const rows = await this.db
+      .select({ userId: postLikes.userId })
+      .from(postLikes)
+      .where(eq(postLikes.postId, postId))
+      .orderBy(desc(postLikes.createdAt))
+      .limit(limit);
+    return rows.map((r) => r.userId);
   }
 
   async isPostLikedByUser(userId: string, postId: string): Promise<boolean> {

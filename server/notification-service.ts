@@ -1,9 +1,10 @@
 import type { NotificationType } from "@shared/notification-types";
+import { formatPostLikeNotificationBody } from "@shared/notification-text";
 import type { IStorage } from "./storage";
 import { sendPushToUser } from "./push";
 import { broadcastToUser } from "./realtime-hub";
 import { getUserDisplayLabel } from "@shared/user-display";
-import type { User } from "@shared/schema";
+import type { NotificationRow, User } from "@shared/schema";
 
 export type NotifyInput = {
   userId: string;
@@ -21,21 +22,9 @@ export function setNotificationStorage(storage: IStorage): void {
   storageRef = storage;
 }
 
-export async function notifyUser(input: NotifyInput): Promise<void> {
-  if (!storageRef) return;
-
-  const row = await storageRef.createNotification({
-    userId: input.userId,
-    type: input.type,
-    title: input.title,
-    body: input.body,
-    link: input.link ?? null,
-    actorId: input.actorId ?? null,
-    entityId: input.entityId ?? null,
-  });
-
-  const payload = {
-    type: "notification",
+function rowToPayload(row: NotificationRow) {
+  return {
+    type: "notification" as const,
     notification: {
       id: row.id,
       userId: row.userId,
@@ -49,15 +38,41 @@ export async function notifyUser(input: NotifyInput): Promise<void> {
       createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
     },
   };
+}
 
-  broadcastToUser(input.userId, payload);
+async function emitNotificationRow(
+  userId: string,
+  row: NotificationRow,
+  push: { title: string; body: string; url?: string; tag?: string },
+): Promise<void> {
+  broadcastToUser(userId, rowToPayload(row));
+  await sendPushToUser(userId, {
+    title: push.title,
+    body: push.body,
+    url: push.url ?? row.link ?? "/",
+    tag: push.tag ?? `${row.type}-${row.entityId ?? row.id}`,
+    soundKind: "default",
+  });
+}
 
-  await sendPushToUser(input.userId, {
+export async function notifyUser(input: NotifyInput): Promise<void> {
+  if (!storageRef) return;
+
+  const row = await storageRef.createNotification({
+    userId: input.userId,
+    type: input.type,
     title: input.title,
     body: input.body,
-    url: input.link ?? "/",
+    link: input.link ?? null,
+    actorId: input.actorId ?? null,
+    entityId: input.entityId ?? null,
+  });
+
+  await emitNotificationRow(input.userId, row, {
+    title: input.title,
+    body: input.body,
+    url: input.link,
     tag: `${input.type}-${input.entityId ?? row.id}`,
-    soundKind: "default",
   });
 }
 
@@ -75,26 +90,121 @@ export function truncateNotificationPreview(text: string, max = 80): string {
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
+async function buildPostLikeNotification(
+  postId: string,
+  postContent: string,
+  latestLiker: User,
+): Promise<{ title: string; body: string; link: string }> {
+  if (!storageRef) {
+    const name = getUserDisplayLabel(latestLiker);
+    return {
+      title: "Оценка публикации",
+      body: `${name} оценила вашу публикацию`,
+      link: `/social-feed?post=${postId}`,
+    };
+  }
+
+  const [likeCount, likerIds] = await Promise.all([
+    storageRef.getPostLikesCount(postId),
+    storageRef.getRecentPostLikerUserIds(postId, 3),
+  ]);
+  const likers = (await Promise.all(likerIds.map((id) => storageRef!.getUser(id)))).filter(
+    Boolean,
+  ) as User[];
+
+  const actors = likers.length > 0 ? likers : [latestLiker];
+  const body = formatPostLikeNotificationBody(actors, likeCount, postContent);
+
+  return {
+    title: "Оценка публикации",
+    body,
+    link: `/social-feed?post=${postId}`,
+  };
+}
+
 export async function notifyPostLiked(
   postOwnerId: string,
   liker: User,
   postId: string,
   postContent: string,
 ): Promise<void> {
-  if (postOwnerId === liker.id) return;
-  const name = getUserDisplayLabel(liker);
-  const preview = truncateNotificationPreview(postContent);
-  await notifyUser({
-    userId: postOwnerId,
-    type: "post_like",
-    title: "Оценка публикации",
-    body: preview
-      ? `${name} оценила вашу публикацию: «${preview}»`
-      : `${name} оценила вашу публикацию`,
-    link: `/social-feed?post=${postId}`,
-    actorId: liker.id,
-    entityId: postId,
+  if (!storageRef || postOwnerId === liker.id) return;
+
+  const { title, body, link } = await buildPostLikeNotification(postId, postContent, liker);
+  const existing = await storageRef.findNotificationByEntity(postOwnerId, "post_like", postId);
+
+  let row: NotificationRow | undefined;
+  if (existing) {
+    row = await storageRef.updateNotification(postOwnerId, existing.id, {
+      title,
+      body,
+      link,
+      actorId: liker.id,
+      isRead: false,
+      bumpCreatedAt: true,
+    });
+    await storageRef.deleteDuplicateNotificationsForEntity(
+      postOwnerId,
+      "post_like",
+      postId,
+      existing.id,
+    );
+  } else {
+    row = await storageRef.createNotification({
+      userId: postOwnerId,
+      type: "post_like",
+      title,
+      body,
+      link,
+      actorId: liker.id,
+      entityId: postId,
+    });
+  }
+
+  if (!row) return;
+
+  await emitNotificationRow(postOwnerId, row, {
+    title,
+    body,
+    url: link,
+    tag: `post_like-${postId}`,
   });
+}
+
+/** Refresh or remove post_like notification after unlike. */
+export async function syncPostLikeNotification(
+  postOwnerId: string,
+  postId: string,
+  postContent: string,
+): Promise<void> {
+  if (!storageRef) return;
+
+  const likeCount = await storageRef.getPostLikesCount(postId);
+  if (likeCount === 0) {
+    await storageRef.deleteNotificationsForEntity(postOwnerId, "post_like", postId);
+    return;
+  }
+
+  const likerIds = await storageRef.getRecentPostLikerUserIds(postId, 1);
+  const latest = likerIds[0] ? await storageRef.getUser(likerIds[0]) : undefined;
+  if (!latest) return;
+
+  const { title, body, link } = await buildPostLikeNotification(postId, postContent, latest);
+  const existing = await storageRef.findNotificationByEntity(postOwnerId, "post_like", postId);
+  if (existing) {
+    await storageRef.updateNotification(postOwnerId, existing.id, {
+      title,
+      body,
+      link,
+      actorId: latest.id,
+    });
+    await storageRef.deleteDuplicateNotificationsForEntity(
+      postOwnerId,
+      "post_like",
+      postId,
+      existing.id,
+    );
+  }
 }
 
 export async function notifyPostCommented(

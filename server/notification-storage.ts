@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import type { NotificationRow } from "@shared/schema";
 import {
   MESSAGE_NOTIFICATION_TYPES,
@@ -28,6 +28,9 @@ export async function ensureNotificationSchema(db: Db): Promise<void> {
   );
   await db.execute(
     sql`CREATE INDEX IF NOT EXISTS IDX_notifications_user_unread ON notifications (user_id, is_read)`,
+  );
+  await db.execute(
+    sql`CREATE INDEX IF NOT EXISTS IDX_notifications_entity ON notifications (user_id, type, entity_id)`,
   );
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -70,6 +73,106 @@ export async function createNotificationDb(
     })
     .returning();
   return row;
+}
+
+export async function findNotificationByEntityDb(
+  db: Db,
+  userId: string,
+  type: string,
+  entityId: string,
+): Promise<NotificationRow | undefined> {
+  const [row] = await db
+    .select()
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type),
+        eq(notifications.entityId, entityId),
+      ),
+    )
+    .orderBy(desc(notifications.createdAt))
+    .limit(1);
+  return row;
+}
+
+export async function updateNotificationDb(
+  db: Db,
+  userId: string,
+  id: string,
+  patch: {
+    title?: string;
+    body?: string;
+    link?: string | null;
+    actorId?: string | null;
+    isRead?: boolean;
+    bumpCreatedAt?: boolean;
+  },
+): Promise<NotificationRow | undefined> {
+  const [row] = await db
+    .update(notifications)
+    .set({
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.body !== undefined ? { body: patch.body } : {}),
+      ...(patch.link !== undefined ? { link: patch.link } : {}),
+      ...(patch.actorId !== undefined ? { actorId: patch.actorId } : {}),
+      ...(patch.isRead !== undefined ? { isRead: patch.isRead } : {}),
+      ...(patch.bumpCreatedAt ? { createdAt: sql`now()` } : {}),
+    })
+    .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+    .returning();
+  return row;
+}
+
+export async function deleteDuplicateNotificationsForEntityDb(
+  db: Db,
+  userId: string,
+  type: string,
+  entityId: string,
+  keepId: string,
+): Promise<void> {
+  await db
+    .delete(notifications)
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type),
+        eq(notifications.entityId, entityId),
+        ne(notifications.id, keepId),
+      ),
+    );
+}
+
+export async function deleteNotificationsForEntityDb(
+  db: Db,
+  userId: string,
+  type: string,
+  entityId: string,
+): Promise<void> {
+  await db
+    .delete(notifications)
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type),
+        eq(notifications.entityId, entityId),
+      ),
+    );
+}
+
+/** Remove legacy duplicate post_like rows (keep newest per post). */
+export async function dedupePostLikeNotificationsDb(db: Db, userId: string): Promise<void> {
+  await db.execute(sql`
+    DELETE FROM notifications AS older
+    USING notifications AS newer
+    WHERE older.user_id = ${userId}
+      AND older.type = 'post_like'
+      AND older.entity_id IS NOT NULL
+      AND newer.user_id = older.user_id
+      AND newer.type = 'post_like'
+      AND newer.entity_id = older.entity_id
+      AND newer.created_at > older.created_at
+  `);
 }
 
 export async function getNotificationsDb(
@@ -126,10 +229,39 @@ export async function getUnreadNotificationCountDb(db: Db, userId: string): Prom
 }
 
 export async function markNotificationReadDb(db: Db, userId: string, id: string): Promise<void> {
+  const [row] = await db
+    .select({ type: notifications.type, entityId: notifications.entityId })
+    .from(notifications)
+    .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+    .limit(1);
+
+  if (row?.type === "post_like" && row.entityId) {
+    await markNotificationsReadByEntityDb(db, userId, row.type, row.entityId);
+    return;
+  }
+
   await db
     .update(notifications)
     .set({ isRead: true })
     .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+}
+
+export async function markNotificationsReadByEntityDb(
+  db: Db,
+  userId: string,
+  type: string,
+  entityId: string,
+): Promise<void> {
+  await db
+    .update(notifications)
+    .set({ isRead: true })
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type),
+        eq(notifications.entityId, entityId),
+      ),
+    );
 }
 
 export async function markNotificationsReadBatchDb(
@@ -139,10 +271,37 @@ export async function markNotificationsReadBatchDb(
 ): Promise<void> {
   const unique = Array.from(new Set(ids.filter(Boolean)));
   if (unique.length === 0) return;
-  await db
-    .update(notifications)
-    .set({ isRead: true })
+
+  const rows = await db
+    .select({
+      id: notifications.id,
+      type: notifications.type,
+      entityId: notifications.entityId,
+    })
+    .from(notifications)
     .where(and(eq(notifications.userId, userId), inArray(notifications.id, unique)));
+
+  const entityKeys = new Map<string, { type: string; entityId: string }>();
+  const plainIds: string[] = [];
+
+  for (const row of rows) {
+    if (row.type === "post_like" && row.entityId) {
+      entityKeys.set(`${row.type}:${row.entityId}`, { type: row.type, entityId: row.entityId });
+    } else {
+      plainIds.push(row.id);
+    }
+  }
+
+  for (const { type, entityId } of Array.from(entityKeys.values())) {
+    await markNotificationsReadByEntityDb(db, userId, type, entityId);
+  }
+
+  if (plainIds.length > 0) {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.userId, userId), inArray(notifications.id, plainIds)));
+  }
 }
 
 export async function markAllNotificationsReadDb(db: Db, userId: string): Promise<void> {

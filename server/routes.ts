@@ -55,6 +55,7 @@ import {
   notifyGroupJoin,
   notifyChatMessagePinned,
   notifyPostLiked,
+  syncPostLikeNotification,
   notifyPostCommented,
   notifyPrivateMessageReaction,
   notifyChatMessageReaction,
@@ -80,6 +81,7 @@ import {
   type NotificationFilter,
 } from "@shared/notification-types";
 import { aggregateNotifications } from "@shared/notification-aggregate";
+import { enrichPostLikeNotifications } from "./notification-enrich";
 import type { NotificationRow } from "@shared/schema";
 
 async function mapNotificationsForClient(items: NotificationRow[]) {
@@ -101,7 +103,8 @@ async function mapNotificationsForClient(items: NotificationRow[]) {
     createdAt: n.createdAt?.toISOString() ?? null,
     actor: n.actorId ? (actorMap.get(n.actorId) ?? null) : null,
   }));
-  return aggregateNotifications(mapped);
+  const aggregated = aggregateNotifications(mapped);
+  return enrichPostLikeNotifications(aggregated, storage, actorMap);
 }
 
 const updateUserMeSchema = z.object({
@@ -1370,6 +1373,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       )
         ? (filterRaw as NotificationFilter)
         : "all";
+
+      await storage.dedupePostLikeNotifications(userId);
 
       const [receivedRequests, conversations, page, unreadNotifs] = await Promise.all([
         storage.getFriendRequests(userId, "received"),
@@ -3045,7 +3050,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const postId = req.params.id;
+      const post = await storage.getTravelPost(postId);
       await storage.unlikePost(userId, postId);
+      if (post?.userId && post.content) {
+        void syncPostLikeNotification(post.userId, postId, post.content).catch((err) =>
+          console.error("[notify] post unlike sync:", err),
+        );
+      }
       res.status(204).send();
     } catch (error) {
       console.error("Error unliking post:", error);

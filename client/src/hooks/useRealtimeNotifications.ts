@@ -9,6 +9,8 @@ const isVercelHost =
   typeof window !== "undefined" &&
   (window.location.hostname.includes("vercel.app") || import.meta.env.PROD);
 
+const POLL_MS = 8000;
+
 export function useRealtimeNotifications() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
@@ -16,7 +18,27 @@ export function useRealtimeNotifications() {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated || isVercelHost) return;
+    if (!isAuthenticated) return;
+
+    const invalidateNotifs = () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    };
+
+    if (isVercelHost) {
+      invalidateNotifs();
+      const pollId = window.setInterval(invalidateNotifs, POLL_MS);
+      const onVisible = () => {
+        if (document.visibilityState === "visible") invalidateNotifs();
+      };
+      const onFocus = () => invalidateNotifs();
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("focus", onFocus);
+      return () => {
+        window.clearInterval(pollId);
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("focus", onFocus);
+      };
+    }
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
@@ -29,7 +51,7 @@ export function useRealtimeNotifications() {
           notification?: AppNotification;
         };
         if (data.type === "notification" && data.notification) {
-          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+          invalidateNotifs();
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/received"] });
           playNotificationSound("default");
@@ -40,7 +62,7 @@ export function useRealtimeNotifications() {
         }
         if (data.type === "new_message") {
           playNotificationSound("default");
-          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+          invalidateNotifs();
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
         }

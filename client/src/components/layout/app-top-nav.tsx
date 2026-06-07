@@ -55,7 +55,7 @@ type AppTopNavProps = {
 
 export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { user, isAuthenticated } = useAuth();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const queryClient = useQueryClient();
@@ -68,7 +68,8 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   }>({
     queryKey: ["/api/notifications"],
     enabled: isAuthenticated,
-    refetchInterval: 5000,
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
   });
 
   const unreadItems = (notifications?.items ?? []).filter((n) => !n.isRead);
@@ -88,7 +89,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
     } catch {
       /* ignore */
     }
-    if (item.link) window.location.href = item.link;
+    if (item.link) navigate(item.link);
   };
 
   const isActive = (href: string) => {
