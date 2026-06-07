@@ -46,6 +46,8 @@ const resources = {
         },
         sidebar: {
           searchPlaceholder: "Поиск групп",
+          searchDialogsPlaceholder: "Поиск диалогов",
+          searchAllPlaceholder: "Поиск",
         },
         discover: {
           header: "Найти публичные группы",
@@ -139,6 +141,8 @@ const resources = {
         },
         sidebar: {
           searchPlaceholder: "Search groups",
+          searchDialogsPlaceholder: "Search conversations",
+          searchAllPlaceholder: "Search",
         },
         discover: {
           header: "Find public groups",

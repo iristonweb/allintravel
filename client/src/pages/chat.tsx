@@ -141,11 +141,22 @@ export function Chat() {
       const params = new URLSearchParams(searchString);
       if (tab === "all") params.delete("tab");
       else params.set("tab", tab);
+      if (tab === "personal" || tab === "unread") {
+        params.delete("room");
+        params.delete("message");
+      }
       const qs = params.toString();
       navigate(`/chat${qs ? `?${qs}` : ""}`);
     },
     [navigate, searchString],
   );
+
+  const searchPlaceholder = useMemo(() => {
+    if (chatTab === "personal" || chatTab === "unread") {
+      return t("chat.sidebar.searchDialogsPlaceholder");
+    }
+    return t("chat.sidebar.searchPlaceholder");
+  }, [chatTab, t]);
   const urlDiscoverQ = useMemo(() => {
     const params = new URLSearchParams(searchString);
     return params.get("q")?.trim() ?? "";
@@ -226,7 +237,7 @@ export function Chat() {
       if (!res.ok) throw new Error("Failed to discover rooms");
       return res.json() as Promise<DiscoverRoom[]>;
     },
-    enabled: isAuthenticated && discoverSearch.length >= 2,
+    enabled: isAuthenticated && chatTab !== "personal" && discoverSearch.length >= 2,
     staleTime: 30_000,
   });
 
@@ -920,9 +931,11 @@ export function Chat() {
                     </DialogContent>
                   </Dialog>
                   )}
-                  <Badge variant="secondary" className="text-[10px] ait-glass">
-                    {statusLabel}
-                  </Badge>
+                  {chatTab !== "personal" && chatTab !== "unread" && (
+                    <Badge variant="secondary" className="text-[10px] ait-glass">
+                      {statusLabel}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -934,10 +947,12 @@ export function Chat() {
                   onChange={(e) => setRoomQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-                  placeholder={t("chat.sidebar.searchPlaceholder")}
+                  placeholder={searchPlaceholder}
                   className="h-9 pl-9 text-sm rounded-2xl ait-glass border-white/10 bg-transparent"
                 />
-                {discoverSearch.length >= 2 && (searchFocused || urlDiscoverQ.length >= 2) && (
+                {chatTab !== "personal" &&
+                  discoverSearch.length >= 2 &&
+                  (searchFocused || urlDiscoverQ.length >= 2) && (
                   <div
                     className="absolute top-full left-0 right-0 z-20 mt-1.5 ait-glass-strong rounded-2xl border border-white/10 shadow-xl overflow-hidden max-h-[min(50vh,320px)] overflow-y-auto"
                     onMouseDown={(e) => e.preventDefault()}
@@ -978,7 +993,7 @@ export function Chat() {
                       visibleConversations.map((conversation) => (
                         <Link
                           key={conversation.user.id}
-                          href={`/messages?with=${conversation.user.id}`}
+                          href={`/messages?with=${conversation.user.id}&from=${chatTab === "unread" ? "unread" : "personal"}`}
                           className={cn(
                             "ait-chat-room-item w-full text-left",
                             "text-slate-400 hover:text-slate-200",
@@ -1089,10 +1104,19 @@ export function Chat() {
                   !conversationsLoading &&
                   !conversationsError &&
                   visibleConversations.length === 0 && (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
-                      {roomQuery.trim()
-                        ? "Диалоги не найдены"
-                        : "Нет личных диалогов — напишите другу из раздела «Друзья»"}
+                    <div className="p-6 text-center text-sm text-muted-foreground space-y-3">
+                      <p>
+                        {roomQuery.trim()
+                          ? "Диалоги не найдены"
+                          : "Нет личных диалогов — напишите другу из раздела «Друзья»"}
+                      </p>
+                      {!roomQuery.trim() && (
+                        <Link href="/friends">
+                          <Button variant="outline" size="sm" className="rounded-full">
+                            Найти друзей
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   )}
 

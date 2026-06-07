@@ -114,7 +114,7 @@ export default function HeaderQuickActions({
             variant="ghost"
             size="icon"
             className="relative h-10 w-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
-            aria-label="Личные сообщения"
+            aria-label="Непрочитанные"
           >
             <MessageCircle className="h-5 w-5" />
             {unreadMessageCount > 0 && (

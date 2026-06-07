@@ -44,6 +44,17 @@ export function Messages() {
     return new URLSearchParams(searchString).get("with");
   }, [location, searchString]);
 
+  const returnTab = useMemo(() => {
+    const from = new URLSearchParams(searchString).get("from");
+    if (from === "unread" || from === "personal" || from === "all" || from === "mine") {
+      return from;
+    }
+    return "personal";
+  }, [searchString]);
+
+  const backHref =
+    returnTab === "all" ? "/chat" : `/chat?tab=${encodeURIComponent(returnTab)}`;
+
   useEffect(() => {
     if (!isAuthenticated || location !== "/messages") return;
     const params = new URLSearchParams(searchString);
@@ -68,7 +79,11 @@ export function Messages() {
   });
 
 
-  const { data: userToOpen } = useQuery<User | null>({
+  const {
+    data: userToOpen,
+    isLoading: userLoading,
+    isError: userError,
+  } = useQuery<User | null>({
     queryKey: ["/api/users", withUserId || ""],
     enabled: !!withUserId && withUserId !== user?.id,
   });
@@ -250,15 +265,15 @@ export function Messages() {
   };
 
   useEffect(() => {
-    if (
-      selectedConversation?.user &&
-      selectedConversation.unreadCount > 0 &&
-      lastMarkedSenderRef.current !== selectedConversation.user.id
-    ) {
-      lastMarkedSenderRef.current = selectedConversation.user.id;
-      markAsReadMutation.mutate(selectedConversation.user.id);
+    const peerId = selectedConversation?.user?.id;
+    if (!peerId) return;
+    const fresh = conversations.find((c) => c.user.id === peerId);
+    const unread = fresh?.unreadCount ?? selectedConversation?.unreadCount ?? 0;
+    if (unread > 0 && lastMarkedSenderRef.current !== peerId) {
+      lastMarkedSenderRef.current = peerId;
+      markAsReadMutation.mutate(peerId);
     }
-  }, [selectedConversation, markAsReadMutation]);
+  }, [selectedConversation, conversations, markAsReadMutation]);
 
   if (!withUserId) {
     return (
@@ -283,6 +298,29 @@ export function Messages() {
     );
   }
 
+  if (userLoading || (!selectedConversation && withUserId && withUserId !== user?.id)) {
+    return (
+      <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-2 md:p-4">
+        <div className="flex items-center justify-center min-h-[40vh] text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (userError || (withUserId && withUserId !== user?.id && !userToOpen && !userLoading)) {
+    return (
+      <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-2 md:p-4">
+        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center px-4">
+          <p className="text-muted-foreground">Пользователь не найден или недоступен</p>
+          <Button variant="outline" asChild>
+            <Link href={backHref}>Вернуться к чатам</Link>
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!selectedConversation) {
     return (
       <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-2 md:p-4">
@@ -302,7 +340,7 @@ export function Messages() {
         <div className="ait-chat-panel-header p-4">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" asChild aria-label="Назад к чатам">
-              <Link href="/chat?tab=personal">
+              <Link href={backHref}>
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
