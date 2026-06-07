@@ -28,7 +28,6 @@ const pageTitles: Record<string, string> = {
   "/trips": "Поездки",
   "/social-feed": "Сообщество",
   "/friends": "Друзья",
-  "/messages": "Чаты",
   "/profile": "Профиль",
   "/profile/music": "Моя музыка",
   "/music": "Моя музыка",
@@ -44,6 +43,7 @@ const pageTitles: Record<string, string> = {
 };
 
 function resolvePageTitle(path: string): string | null {
+  if (path.startsWith("/messages")) return pageTitles["/chat"] ?? "Чаты";
   if (pageTitles[path]) return pageTitles[path];
   const base = `/${path.split("/").filter(Boolean)[0] ?? ""}`;
   return pageTitles[base] ?? null;

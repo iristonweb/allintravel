@@ -12,6 +12,7 @@ import type { PrivateMessage, PrivateMessageWithMeta, User } from "@shared/schem
 import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
 import { useToast } from "@/hooks/use-toast";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
+import { useTranslation } from "react-i18next";
 
 type ReplyTarget = { username: string; label: string; preview: string };
 
@@ -31,6 +32,7 @@ type PersonalChatThreadProps = {
 };
 
 export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatThreadProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -83,8 +85,8 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
     },
     onError: (err) => {
       toast({
-        title: "Не удалось поставить реакцию",
-        description: err instanceof Error ? err.message : "Попробуйте ещё раз",
+        title: t("chat.page.errors.reaction"),
+        description: err instanceof Error ? err.message : t("chat.page.errors.retry"),
         variant: "destructive",
       });
     },
@@ -100,7 +102,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
     onError: () => {
-      toast({ title: "Не удалось изменить сообщение", variant: "destructive" });
+      toast({ title: t("chat.page.errors.edit"), variant: "destructive" });
     },
   });
 
@@ -113,7 +115,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
     onError: () => {
-      toast({ title: "Не удалось удалить сообщение", variant: "destructive" });
+      toast({ title: t("chat.page.errors.delete"), variant: "destructive" });
     },
   });
 
@@ -164,7 +166,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
         queryClient.setQueryData(context.key, context.previous);
         setNewMessage(context.content);
       }
-      toast({ title: "Не удалось отправить сообщение", variant: "destructive" });
+      toast({ title: t("chat.personal.sendError"), variant: "destructive" });
     },
   });
 
@@ -197,8 +199,8 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
   const startReply = (message: PrivateMessageWithMeta) => {
     if (!peer?.username) {
       toast({
-        title: "Нельзя ответить",
-        description: "У собеседника нет @username в профиле",
+        title: t("chat.page.errors.reply"),
+        description: t("chat.personal.replyNoUsername"),
         variant: "destructive",
       });
       return;
@@ -221,7 +223,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
   if (userError || !peer) {
     return (
       <div className="flex flex-1 items-center justify-center p-8 text-center text-muted-foreground text-sm">
-        Пользователь не найден или недоступен
+        {t("chat.personal.userNotFound")}
       </div>
     );
   }
@@ -235,7 +237,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
             variant="ghost"
             size="icon"
             className="shrink-0 lg:hidden"
-            aria-label="Назад к списку"
+            aria-label={t("chat.page.backToList")}
             onClick={onBack}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -252,9 +254,9 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
           {peer.isOnline !== undefined && (
             <p className="text-xs mt-0.5">
               {peer.isOnline ? (
-                <span className="text-green-500">В сети</span>
+                <span className="text-green-500">{t("chat.personal.online")}</span>
               ) : (
-                <span className="text-muted-foreground">Не в сети</span>
+                <span className="text-muted-foreground">{t("chat.personal.offline")}</span>
               )}
             </p>
           )}
@@ -269,14 +271,14 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
           {messagesLoading ? (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin mb-3" />
-              <p className="text-sm">Загрузка сообщений…</p>
+              <p className="text-sm">{t("chat.page.loading.messages")}</p>
             </div>
           ) : messagesError ? (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
-              <p className="text-sm">Не удалось загрузить сообщения</p>
-              <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
-                Повторить
-              </Button>
+                  <p className="text-sm">{t("chat.page.errors.messages")}</p>
+                  <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
+                    {t("chat.page.errors.retry")}
+                  </Button>
             </div>
           ) : (
             messages.map((message) => {
@@ -318,7 +320,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
             value={newMessage}
             onChange={setNewMessage}
             onSend={(content) => handleSendMessage(content)}
-            placeholder="Введите сообщение…"
+            placeholder={t("chat.personal.messagePlaceholder")}
             disabled={sendMessageMutation.isPending}
             className="flex-1"
             replyTo={replyTo}
@@ -330,7 +332,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
             onClick={() => handleSendMessage()}
             disabled={!newMessage.trim() || sendMessageMutation.isPending}
             className="rounded-2xl shrink-0 shadow-lg"
-            aria-label="Отправить сообщение"
+            aria-label={t("chat.page.sendMessage")}
           >
             <Send className="h-4 w-4" />
           </Button>

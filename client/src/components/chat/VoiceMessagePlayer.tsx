@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, Pause, Play } from "lucide-react";
+import { Mic, Music2, Pause, Play } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ type VoiceMessagePlayerProps = {
   src: string;
   durationSec?: number;
   variant?: "own" | "other";
+  mediaKind?: "voice" | "audio";
   className?: string;
 };
 
@@ -31,8 +33,11 @@ export default function VoiceMessagePlayer({
   src,
   durationSec = 0,
   variant = "other",
+  mediaKind = "voice",
   className,
 }: VoiceMessagePlayerProps) {
+  const { t } = useTranslation();
+  const KindIcon = mediaKind === "audio" ? Music2 : Mic;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -105,14 +110,14 @@ export default function VoiceMessagePlayer({
             : "bg-ait-purple/20 hover:bg-ait-purple/30 text-ait-purple",
         )}
         onClick={togglePlay}
-        aria-label={playing ? "Пауза" : "Воспроизвести"}
+        aria-label={playing ? t("chat.player.pause") : t("chat.player.play")}
       >
         {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
       </Button>
 
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center gap-1.5">
-          <Mic
+          <KindIcon
             className={cn(
               "h-3 w-3 shrink-0",
               variant === "own" ? "text-white/70" : "text-ait-purple/70",
@@ -130,7 +135,7 @@ export default function VoiceMessagePlayer({
                 ? "[&_.bg-primary]:bg-white/80 [&_[role=slider]]:bg-white"
                 : "[&_.bg-primary]:bg-ait-purple [&_[role=slider]]:bg-ait-purple",
             )}
-            aria-label="Прогресс воспроизведения"
+            aria-label={t("chat.player.progress")}
           />
         </div>
         <div

@@ -114,12 +114,17 @@ export default function MessageContent({
         }
         if (part.type === "audio") {
           return (
-            <audio
+            <VoiceMessagePlayer
               key={i}
               src={src}
-              controls
-              className="w-full max-w-[240px] h-8"
-              preload="metadata"
+              durationSec={
+                "durationSec" in part && typeof part.durationSec === "number"
+                  ? part.durationSec
+                  : undefined
+              }
+              variant={isOwn ? "own" : "other"}
+              mediaKind="audio"
+              className="block"
             />
           );
         }

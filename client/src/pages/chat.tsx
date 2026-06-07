@@ -11,25 +11,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Send,
   MessageCircle,
   Hash,
-  Plus,
   Lock,
-  Globe,
   Settings,
   Pin,
-  Camera,
   Search,
   Loader2,
   ArrowLeft,
@@ -39,85 +27,37 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { createChatRoom } from "@/lib/upload-media";
 import RoomAvatar from "@/components/chat/RoomAvatar";
 import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
 import PersonalChatThread from "@/components/chat/PersonalChatThread";
+import CreateRoomDialog from "@/components/chat/CreateRoomDialog";
+import ChatThreadPlaceholder from "@/components/chat/ChatThreadPlaceholder";
+import {
+  type ChatTab,
+  type ReplyTarget,
+  type Conversation,
+  type RoomListItem,
+  type ChatMessageWithSender,
+  type DiscoverRoom,
+  type ChatHistoryPayload,
+  fetchChatHistory,
+} from "@/lib/chat-page-types";
 import { AvatarWithPresence } from "@/components/PresenceDot";
-import type {
-  ChatMessage,
-  ChatRoom,
-  MessageReactionMeta,
-  MessageReadMeta,
-  PrivateMessage,
-  Trip,
-  User,
-} from "@shared/schema";
+import type { ChatRoom, MessageReactionMeta, Trip, User } from "@shared/schema";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import { mergeChronologicalMessages } from "@/lib/chat-thread";
 import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
 import MessageContent from "@/components/chat/MessageContent";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
-import type { UserLabelFields } from "@shared/user-display";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useTranslation } from "react-i18next";
-
-type ChatTab = "all" | "mine" | "unread" | "personal";
-
-type ReplyTarget = { username: string; label: string; preview: string };
-
-interface Conversation {
-  user: User & { isOnline?: boolean };
-  lastMessage: PrivateMessage | null;
-  unreadCount: number;
-}
-
-type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number };
-
-type ChatMessageWithSender = ChatMessage &
-  MessageReactionMeta &
-  Partial<MessageReadMeta> & {
-    sender?: (UserLabelFields & { id?: string; profileImageUrl?: string | null }) | null;
-  };
 
 const isVercelHost =
   typeof window !== "undefined" &&
   (window.location.hostname.includes("vercel.app") || import.meta.env.PROD);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-type DiscoverRoom = ChatRoom & { memberCount: number; matchScore: number };
-
-type ChatHistoryPayload = {
-  messages?: ChatMessageWithSender[];
-  pinnedMessageIds?: string[];
-  room?: ChatRoom;
-  joinRequired?: boolean;
-  joinPreview?: {
-    id: string;
-    slug: string;
-    title: string;
-    description?: string | null;
-    avatarUrl?: string | null;
-    memberCount?: number;
-  };
-};
-
-async function fetchChatHistory(room: string): Promise<ChatHistoryPayload> {
-  const res = await fetch(`/api/chat/${encodeURIComponent(room)}`, { credentials: "include" });
-  const body = (await res.json()) as Record<string, unknown>;
-  if (res.status === 403 && body.joinRequired && body.room) {
-    return {
-      joinRequired: true,
-      joinPreview: body.room as NonNullable<ChatHistoryPayload["joinPreview"]>,
-      messages: [],
-      pinnedMessageIds: [],
-    };
-  }
-  if (!res.ok) throw new Error(String(body.message ?? "Failed to load chat"));
-  return body as ChatHistoryPayload;
-}
 
 export function Chat() {
   const { t } = useTranslation();
@@ -248,15 +188,6 @@ export function Chat() {
   }, [urlDiscoverQ]);
   const [activeRoom, setActiveRoom] = useState("general");
   const [showRoomInfo, setShowRoomInfo] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [newRoom, setNewRoom] = useState({
-    title: "",
-    description: "",
-    visibility: "public" as "public" | "private",
-  });
-  const [newRoomAvatarFile, setNewRoomAvatarFile] = useState<File | null>(null);
-  const [newRoomAvatarPreview, setNewRoomAvatarPreview] = useState<string | null>(null);
-  const createAvatarInputRef = useRef<HTMLInputElement>(null);
   const [messageText, setMessageText] = useState("");
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [wsMessages, setWsMessages] = useState<Record<string, ChatMessageWithSender[]>>({});
@@ -442,47 +373,11 @@ export function Chat() {
   const roomBreadcrumbs = useMemo(() => {
     if (!effectiveTripId || !breadcrumbTrip) return null;
     return [
-      { label: "Поездки", href: "/trips" },
+      { label: t("chat.page.group.tripsBreadcrumb"), href: "/trips" },
       { label: breadcrumbTrip.title, href: `/trips/${effectiveTripId}` },
-      { label: "Чат" },
+      { label: t("chat.page.group.chatBreadcrumb") },
     ];
-  }, [effectiveTripId, breadcrumbTrip]);
-
-  const createRoomMutation = useMutation({
-    mutationFn: async () => {
-      const { room, avatarWarning } = await createChatRoom({
-        title: newRoom.title,
-        description: newRoom.description || undefined,
-        visibility: newRoom.visibility,
-        avatarFile: newRoomAvatarFile,
-      });
-      return { room, avatarWarning };
-    },
-    onSuccess: ({ room, avatarWarning }) => {
-      if (avatarWarning) {
-        toast({
-          title: "Группа создана",
-          description: avatarWarning,
-          variant: "destructive",
-        });
-      } else {
-        toast({ title: "Группа создана" });
-      }
-      setCreateOpen(false);
-      setNewRoom({ title: "", description: "", visibility: "public" });
-      if (newRoomAvatarPreview) URL.revokeObjectURL(newRoomAvatarPreview);
-      setNewRoomAvatarFile(null);
-      setNewRoomAvatarPreview(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      selectRoom(room.slug);
-    },
-    onError: (err) =>
-      toast({
-        title: "Не удалось создать",
-        description: err instanceof Error ? err.message : undefined,
-        variant: "destructive",
-      }),
-  });
+  }, [effectiveTripId, breadcrumbTrip, t]);
 
   const appendMessageToHistory = useCallback(
     (saved: ChatMessageWithSender) => {
@@ -507,7 +402,7 @@ export function Chat() {
     },
     onError: (err) =>
       toast({
-        title: "Не удалось отправить",
+        title: t("chat.page.errors.send"),
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       }),
@@ -549,8 +444,8 @@ export function Chat() {
     },
     onError: (err) => {
       toast({
-        title: "Не удалось поставить реакцию",
-        description: err instanceof Error ? err.message : "Попробуйте ещё раз",
+        title: t("chat.page.errors.reaction"),
+        description: err instanceof Error ? err.message : t("chat.page.errors.retry"),
         variant: "destructive",
       });
     },
@@ -580,11 +475,11 @@ export function Chat() {
     onSuccess: (_data, variables) => {
       invalidateThread();
       if (variables.pin) {
-        toast({ title: "Сообщение закреплено" });
+        toast({ title: t("chat.page.group.pinnedToast") });
       }
     },
     onError: () => {
-      toast({ title: "Не удалось закрепить сообщение", variant: "destructive" });
+      toast({ title: t("chat.page.errors.pin"), variant: "destructive" });
     },
   });
 
@@ -598,7 +493,7 @@ export function Chat() {
     },
     onSuccess: invalidateThread,
     onError: () => {
-      toast({ title: "Не удалось изменить сообщение", variant: "destructive" });
+      toast({ title: t("chat.page.errors.edit"), variant: "destructive" });
     },
   });
 
@@ -609,7 +504,7 @@ export function Chat() {
     },
     onSuccess: invalidateThread,
     onError: () => {
-      toast({ title: "Не удалось удалить сообщение", variant: "destructive" });
+      toast({ title: t("chat.page.errors.delete"), variant: "destructive" });
     },
   });
 
@@ -672,23 +567,23 @@ export function Chat() {
           if (data.type === "message_pinned" && data.messageId) {
             const inRoom = data.roomSlug === activeRoom;
             toast({
-              title: "Сообщение закреплено",
+              title: t("chat.page.group.pinnedToast"),
               description: inRoom
-                ? "Нажмите на плашку сверху, чтобы перейти"
-                : "Откройте чат группы",
+                ? t("chat.page.group.pinnedToastHint")
+                : t("chat.page.group.pinnedToastOpen"),
               action: inRoom ? (
                 <ToastAction
-                  altText="Перейти"
+                  altText={t("chat.page.group.goToPinned")}
                   onClick={() => scrollToMessage(String(data.messageId))}
                 >
-                  Перейти
+                  {t("chat.page.group.goToPinned")}
                 </ToastAction>
               ) : undefined,
             });
           }
         } else if (data.type === "error" && data.message) {
           toast({
-            title: "Ошибка чата",
+            title: t("chat.page.group.chatError"),
             description: String(data.message),
             variant: "destructive",
           });
@@ -825,8 +720,8 @@ export function Chat() {
   const startReply = (msg: ChatMessageWithSender, label: string, username?: string | null) => {
     if (!username) {
       toast({
-        title: "Нельзя ответить",
-        description: "У автора нет @username в профиле",
+        title: t("chat.page.errors.reply"),
+        description: t("chat.page.errors.replyNoUsername"),
         variant: "destructive",
       });
       return;
@@ -839,39 +734,45 @@ export function Chat() {
       <AppLayout contentClassName="py-16">
         <div className="text-center max-w-md mx-auto ait-glass rounded-3xl p-10">
           <MessageCircle className="h-12 w-12 mx-auto text-ait-purple mb-4" />
-          <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
-          <p className="text-muted-foreground">Чтобы участвовать в чатах путешествий</p>
+          <h1 className="text-2xl font-bold mb-4">{t("chat.page.loginTitle")}</h1>
+          <p className="text-muted-foreground">{t("chat.page.loginHint")}</p>
         </div>
       </AppLayout>
     );
   }
 
-  const statusLabel = useHttpMode ? "HTTP · 4с" : wsConnected ? "Онлайн" : "Подключение…";
+  const statusLabel = useHttpMode
+    ? t("chat.page.sidebar.statusHttp")
+    : wsConnected
+      ? t("chat.page.sidebar.statusOnline")
+      : t("chat.page.sidebar.statusConnecting");
 
   return (
     <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-0 md:p-4">
       <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <h1 className="ait-section-title">Чаты</h1>
-          <p className="text-muted-foreground mt-1">Группы и личные сообщения в одном месте</p>
+          <h1 className="ait-section-title">{t("chat.page.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("chat.page.subtitle")}</p>
         </motion.div>
 
         <ChatFilterTabs
           layoutId="chat-page-filter"
           tabs={[
-            { id: "all", label: "Мои группы" },
+            { id: "all", label: t("chat.page.tabs.all") },
             {
               id: "unread",
               label:
                 totalUnreadCount > 0
-                  ? `Непрочитанные (${totalUnreadCount})`
-                  : "Непрочитанные",
+                  ? t("chat.page.tabs.unreadCount", { count: totalUnreadCount })
+                  : t("chat.page.tabs.unread"),
             },
-            { id: "mine", label: "Участник" },
+            { id: "mine", label: t("chat.page.tabs.mine") },
             {
               id: "personal",
               label:
-                conversations.length > 0 ? `Личные (${conversations.length})` : "Личные",
+                conversations.length > 0
+                  ? t("chat.page.tabs.personalCount", { count: conversations.length })
+                  : t("chat.page.tabs.personal"),
             },
           ]}
           value={chatTab}
@@ -895,122 +796,20 @@ export function Chat() {
                   {chatTab === "personal" || chatTab === "unread" ? (
                     <>
                       <MessageCircle className="h-4 w-4 text-ait-purple" />
-                      {chatTab === "unread" ? "Непрочитанные" : "Личные"}
+                      {chatTab === "unread"
+                        ? t("chat.page.sidebar.unread")
+                        : t("chat.page.sidebar.personal")}
                     </>
                   ) : (
                     <>
                       <Hash className="h-4 w-4 text-ait-purple" />
-                      Группа
+                      {t("chat.page.sidebar.group")}
                     </>
                   )}
                 </span>
                 <div className="flex items-center gap-1">
                   {chatTab !== "personal" && chatTab !== "unread" && (
-                  <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8"
-                        aria-label="Создать группу"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Создать группу</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          {newRoomAvatarPreview ? (
-                            <img
-                              src={newRoomAvatarPreview}
-                              alt=""
-                              className="h-14 w-14 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
-                              {newRoom.title.slice(0, 1).toUpperCase() || "?"}
-                            </div>
-                          )}
-                          <div>
-                            <input
-                              ref={createAvatarInputRef}
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp,image/gif"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                if (newRoomAvatarPreview) URL.revokeObjectURL(newRoomAvatarPreview);
-                                setNewRoomAvatarFile(file);
-                                setNewRoomAvatarPreview(URL.createObjectURL(file));
-                                e.target.value = "";
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              disabled={createRoomMutation.isPending}
-                              onClick={() => createAvatarInputRef.current?.click()}
-                            >
-                              <Camera className="h-4 w-4 mr-1" />
-                              Аватар
-                            </Button>
-                          </div>
-                        </div>
-                        <div>
-                          <Label>Название</Label>
-                          <Input
-                            value={newRoom.title}
-                            onChange={(e) => setNewRoom({ ...newRoom, title: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label>Описание</Label>
-                          <Textarea
-                            value={newRoom.description}
-                            onChange={(e) =>
-                              setNewRoom({ ...newRoom, description: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={newRoom.visibility === "public" ? "default" : "outline"}
-                            onClick={() => setNewRoom({ ...newRoom, visibility: "public" })}
-                          >
-                            <Globe className="h-4 w-4 mr-1" />
-                            Открытая
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={newRoom.visibility === "private" ? "default" : "outline"}
-                            onClick={() => setNewRoom({ ...newRoom, visibility: "private" })}
-                          >
-                            <Lock className="h-4 w-4 mr-1" />
-                            Закрытая
-                          </Button>
-                        </div>
-                        {newRoom.visibility === "public" && (
-                          <p className="text-xs text-muted-foreground">
-                            Открытая группа не появится у всех в списке — её можно найти через поиск
-                            (как в Telegram).
-                          </p>
-                        )}
-                        <Button
-                          className="w-full"
-                          onClick={() => createRoomMutation.mutate()}
-                          disabled={!newRoom.title.trim() || createRoomMutation.isPending}
-                        >
-                          Создать
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                    <CreateRoomDialog onCreated={(slug) => selectRoom(slug)} />
                   )}
                   {chatTab !== "personal" && chatTab !== "unread" && (
                     <Badge variant="secondary" className="text-[10px] ait-glass">
@@ -1055,24 +854,24 @@ export function Chat() {
                   <>
                     {chatTab === "unread" && visibleConversations.length > 0 && (
                       <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                        Личные
+                        {t("chat.page.sidebar.personalSection")}
                       </p>
                     )}
                     {chatTab === "unread" && conversationsLoading && roomsLoading ? (
                       <div className="py-6 text-center text-sm text-muted-foreground">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                        Загрузка…
+                        {t("chat.page.loading.default")}
                       </div>
                     ) : conversationsLoading ? (
                       <div className="py-4 text-center text-sm text-muted-foreground">
                         <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                        Загрузка диалогов…
+                        {t("chat.page.loading.dialogs")}
                       </div>
                     ) : conversationsError ? (
                       <div className="py-4 text-center text-sm space-y-2">
-                        <p className="text-muted-foreground">Не удалось загрузить диалоги</p>
+                        <p className="text-muted-foreground">{t("chat.page.errors.dialogs")}</p>
                         <Button variant="outline" size="sm" onClick={() => refetchConversations()}>
-                          Повторить
+                          {t("chat.page.errors.retry")}
                         </Button>
                       </div>
                     ) : (
@@ -1117,7 +916,7 @@ export function Chat() {
                     )}
                     {chatTab === "unread" && visibleConversations.length > 0 && filteredRooms.length > 0 && (
                       <p className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                        Группы
+                        {t("chat.page.sidebar.groupsSection")}
                       </p>
                     )}
                   </>
@@ -1128,13 +927,13 @@ export function Chat() {
                     {chatTab === "unread" && conversationsLoading && roomsLoading ? null : roomsLoading ? (
                       <div className="p-6 text-center text-sm text-muted-foreground">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                        Загрузка групп…
+                        {t("chat.page.loading.groups")}
                       </div>
                     ) : roomsError ? (
                       <div className="p-6 text-center text-sm space-y-2">
-                        <p className="text-muted-foreground">Не удалось загрузить группы</p>
+                        <p className="text-muted-foreground">{t("chat.page.errors.groups")}</p>
                         <Button variant="outline" size="sm" onClick={() => refetchRooms()}>
-                          Повторить
+                          {t("chat.page.errors.retry")}
                         </Button>
                       </div>
                     ) : filteredRooms.length === 0 ? (
@@ -1142,13 +941,13 @@ export function Chat() {
                         <div className="p-6 text-center text-sm text-muted-foreground">
                           {roomQuery.trim()
                             ? discoverSearch.length >= 2
-                              ? "В ваших группах ничего не найдено — смотрите результаты в поиске выше"
-                              : "В ваших группах ничего не найдено"
+                              ? t("chat.page.empty.noGroupsInSearchDiscover")
+                              : t("chat.page.empty.noGroupsInSearch")
                             : chatTab === "mine"
-                              ? "Вы ещё не состоите в группах"
+                              ? t("chat.page.empty.notInGroups")
                               : chatTab === "unread"
-                                ? "Нет непрочитанных групп"
-                                : "Нет групп — создайте или найдите через поиск"}
+                                ? t("chat.page.empty.noUnreadGroups")
+                                : t("chat.page.empty.noGroups")}
                         </div>
                       )
                     ) : (
@@ -1196,13 +995,13 @@ export function Chat() {
                     <div className="p-6 text-center text-sm text-muted-foreground space-y-3">
                       <p>
                         {roomQuery.trim()
-                          ? "Диалоги не найдены"
-                          : "Нет личных диалогов — напишите другу из раздела «Друзья»"}
+                          ? t("chat.page.empty.dialogsNotFound")
+                          : t("chat.page.empty.noPersonal")}
                       </p>
                       {!roomQuery.trim() && (
                         <Link href="/friends">
                           <Button variant="outline" size="sm" className="rounded-full">
-                            Найти друзей
+                            {t("chat.page.empty.findFriends")}
                           </Button>
                         </Link>
                       )}
@@ -1215,7 +1014,7 @@ export function Chat() {
                   visibleConversations.length === 0 &&
                   filteredRooms.length === 0 && (
                     <div className="p-6 text-center text-sm text-muted-foreground">
-                      Нет непрочитанных
+                      {t("chat.page.empty.noUnread")}
                     </div>
                   )}
               </div>
@@ -1234,17 +1033,7 @@ export function Chat() {
                 onBack={mobileThreadOpen ? clearThreadSelection : undefined}
               />
             ) : showChatPlaceholder ? (
-              <div className="flex flex-1 items-center justify-center p-8 ait-chat-thread">
-                <div className="text-center ait-glass-ios rounded-3xl px-10 py-8 max-w-sm">
-                  <MessageCircle className="mx-auto h-12 w-12 text-ait-purple mb-4 opacity-80" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    {chatTab === "unread" ? "Непрочитанные" : "Личные сообщения"}
-                  </h3>
-                  <p className="text-muted-foreground text-sm">
-                    Выберите диалог слева, чтобы начать переписку
-                  </p>
-                </div>
-              </div>
+              <ChatThreadPlaceholder chatTab={chatTab === "unread" ? "unread" : "personal"} />
             ) : (
               <>
             {roomBreadcrumbs && (
@@ -1259,7 +1048,7 @@ export function Chat() {
                   variant="ghost"
                   size="icon"
                   className="shrink-0 lg:hidden"
-                  aria-label="Назад к списку"
+                  aria-label={t("chat.page.backToList")}
                   onClick={clearThreadSelection}
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -1273,14 +1062,14 @@ export function Chat() {
               <div className="flex-1 min-w-0">
                 <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
                 <p className="text-xs text-muted-foreground truncate">
-                  {activeRoomMeta?.description ?? "Групповое обсуждение"}
+                  {activeRoomMeta?.description ?? t("chat.page.group.defaultDescription")}
                 </p>
               </div>
               <Button
                 size="icon"
                 variant="ghost"
-                title="Настройки группы"
-                aria-label="Настройки группы"
+                title={t("chat.page.group.settings")}
+                aria-label={t("chat.page.group.settings")}
                 onClick={() => setShowRoomInfo(true)}
               >
                 <Settings className="h-4 w-4" />
@@ -1290,7 +1079,7 @@ export function Chat() {
             <Sheet open={showRoomInfo} onOpenChange={setShowRoomInfo}>
               <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0">
                 <SheetHeader className="p-4 pb-0">
-                  <SheetTitle>Настройки группы</SheetTitle>
+                  <SheetTitle>{t("chat.page.group.settings")}</SheetTitle>
                 </SheetHeader>
                 {activeRoomMeta && (
                   <RoomSettingsPanel
@@ -1313,7 +1102,9 @@ export function Chat() {
                 className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-ait-orange/30 bg-ait-orange/10 px-3 py-2 text-left hover:bg-ait-orange/15 transition-colors"
               >
                 <Pin className="h-3.5 w-3.5 shrink-0 text-ait-orange" />
-                <span className="text-xs text-ait-orange font-semibold shrink-0">Закреплено</span>
+                <span className="text-xs text-ait-orange font-semibold shrink-0">
+                  {t("chat.page.group.pinned")}
+                </span>
                 <span className="text-sm truncate flex-1 min-w-0 text-foreground/90">
                   <MessageContent content={latestPinned.content} compact />
                 </span>
@@ -1365,19 +1156,19 @@ export function Chat() {
               ) : historyLoading ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                   <Loader2 className="h-8 w-8 animate-spin mb-3" />
-                  <p className="text-sm">Загрузка сообщений…</p>
+                  <p className="text-sm">{t("chat.page.loading.messages")}</p>
                 </div>
               ) : historyError ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
-                  <p className="text-sm">Не удалось загрузить историю</p>
+                  <p className="text-sm">{t("chat.page.errors.history")}</p>
                   <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
-                    Повторить
+                    {t("chat.page.errors.retry")}
                   </Button>
                 </div>
               ) : allMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                   <MessageCircle className="h-10 w-10 mb-3 opacity-40" />
-                  <p className="text-sm">Начните разговор о следующей поездке</p>
+                  <p className="text-sm">{t("chat.page.empty.startTripChat")}</p>
                 </div>
               ) : (
                 <div className="ait-chat-thread-inner space-y-4">
@@ -1387,14 +1178,14 @@ export function Chat() {
                     const senderName = isOwn
                       ? user
                         ? getUserDisplayLabel(user)
-                        : "Я"
+                        : t("chat.page.group.me")
                       : msg.sender
                         ? getUserDisplayLabel(msg.sender)
-                        : "Путешественник";
+                        : t("chat.page.group.traveler");
                     const senderInitial = isOwn
                       ? user
                         ? getUserInitial(user)
-                        : "Я"
+                        : t("chat.page.group.me")
                       : msg.sender
                         ? getUserInitial(msg.sender)
                         : "?";
@@ -1474,7 +1265,11 @@ export function Chat() {
                     value={messageText}
                     onChange={setMessageText}
                     onSend={(content) => void handleSend(content)}
-                    placeholder={canSend ? "Сообщение…" : "Подключение…"}
+                    placeholder={
+                      canSend
+                        ? t("chat.page.group.messagePlaceholder")
+                        : t("chat.page.group.connectingPlaceholder")
+                    }
                     disabled={!canSend}
                     className="flex-1"
                     suggestUsers={mentionSuggestUsers}
@@ -1487,7 +1282,7 @@ export function Chat() {
                     onClick={() => void handleSend()}
                     disabled={!messageText.trim() || !canSend}
                     className="rounded-2xl shrink-0 shadow-lg"
-                    aria-label="Отправить сообщение"
+                    aria-label={t("chat.page.sendMessage")}
                   >
                     <Send className="h-4 w-4" />
                   </Button>

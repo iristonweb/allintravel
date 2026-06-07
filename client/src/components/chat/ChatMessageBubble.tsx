@@ -113,7 +113,18 @@ function MediaPart({ part, isOwn }: { part: ParsedChatMessage; isOwn: boolean })
   if (part.type === "audio") {
     const src = safeUrl(part.url);
     if (!src) return <span className="text-xs text-muted-foreground">[аудио]</span>;
-    return <audio src={src} controls className="w-[min(280px,85vw)] h-10" preload="metadata" />;
+    return (
+      <VoiceMessagePlayer
+        src={src}
+        durationSec={
+          "durationSec" in part && typeof part.durationSec === "number"
+            ? part.durationSec
+            : undefined
+        }
+        variant={isOwn ? "own" : "other"}
+        mediaKind="audio"
+      />
+    );
   }
 
   if (part.type === "voice") {
