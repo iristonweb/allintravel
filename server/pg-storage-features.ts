@@ -927,6 +927,69 @@ export async function getChatRoomDb(db: PgFeaturesDb, id: string): Promise<ChatR
   return row;
 }
 
+export async function countUnreadInRoomsBatchDb(
+  db: PgFeaturesDb,
+  rooms: { id: string; slug: string }[],
+  userId: string,
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (rooms.length === 0) return counts;
+
+  const roomIds = rooms.map((r) => r.id);
+  const slugs = rooms.map((r) => r.slug);
+  const slugToId = new Map(rooms.map((r) => [r.slug, r.id]));
+  for (const room of rooms) counts.set(room.id, 0);
+
+  const cursors = await db
+    .select()
+    .from(chatRoomReadCursors)
+    .where(
+      and(eq(chatRoomReadCursors.userId, userId), inArray(chatRoomReadCursors.roomId, roomIds)),
+    );
+
+  const afterTimeByRoomId = new Map<string, Date | null>();
+  for (const roomId of roomIds) afterTimeByRoomId.set(roomId, null);
+
+  const readMsgIds = cursors
+    .map((c) => c.lastReadMessageId)
+    .filter((id): id is string => Boolean(id));
+
+  const readMsgTimes = new Map<string, Date>();
+  if (readMsgIds.length > 0) {
+    const readMsgs = await db
+      .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
+      .from(chatMessages)
+      .where(inArray(chatMessages.id, readMsgIds));
+    for (const m of readMsgs) {
+      if (m.createdAt) readMsgTimes.set(m.id, new Date(m.createdAt));
+    }
+  }
+
+  for (const c of cursors) {
+    if (c.lastReadMessageId && readMsgTimes.has(c.lastReadMessageId)) {
+      afterTimeByRoomId.set(c.roomId, readMsgTimes.get(c.lastReadMessageId)!);
+    }
+  }
+
+  const messages = await db
+    .select({
+      chatRoom: chatMessages.chatRoom,
+      createdAt: chatMessages.createdAt,
+    })
+    .from(chatMessages)
+    .where(and(inArray(chatMessages.chatRoom, slugs), sql`${chatMessages.userId} <> ${userId}`));
+
+  for (const m of messages) {
+    const roomId = slugToId.get(m.chatRoom);
+    if (!roomId) continue;
+    const afterTime = afterTimeByRoomId.get(roomId);
+    if (afterTime && m.createdAt && new Date(m.createdAt) <= afterTime) continue;
+    counts.set(roomId, (counts.get(roomId) ?? 0) + 1);
+  }
+
+  return counts;
+}
+
 export async function countUnreadInRoomDb(
   db: PgFeaturesDb,
   roomSlug: string,
@@ -999,18 +1062,18 @@ export async function listChatRoomsForUserDb(
 
   const countByRoom = new Map(memberCounts.map((r) => [r.roomId, Number(r.value)]));
 
-  const result: (ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[] =
-    [];
-  for (const { room, myRole, myStatus } of eligible) {
-    const unreadCount = await countUnreadInRoomDb(db, room.slug, room.id, userId);
-    result.push({
-      ...room,
-      memberCount: countByRoom.get(room.id) ?? 0,
-      myRole: myStatus === "active" ? (myRole ?? null) : null,
-      unreadCount,
-    });
-  }
-  return result;
+  const unreadByRoomId = await countUnreadInRoomsBatchDb(
+    db,
+    eligible.map(({ room }) => ({ id: room.id, slug: room.slug })),
+    userId,
+  );
+
+  return eligible.map(({ room, myRole, myStatus }) => ({
+    ...room,
+    memberCount: countByRoom.get(room.id) ?? 0,
+    myRole: myStatus === "active" ? (myRole ?? null) : null,
+    unreadCount: unreadByRoomId.get(room.id) ?? 0,
+  }));
 }
 
 export async function discoverChatRoomsDb(

@@ -1,6 +1,7 @@
-import type { AppNotification, NotificationActor } from "@shared/notification-types";
-import { getUserDisplayLabel } from "@shared/user-display";
+import type { AppNotification } from "@shared/notification-types";
+import { formatPostLikeActorsLabel } from "@shared/notification-text";
 import { apiRequest } from "@/lib/queryClient";
+import i18n from "@/i18n";
 
 export async function markNotificationRead(item: AppNotification): Promise<void> {
   const ids = item.aggregateIds?.length ? item.aggregateIds : [item.id];
@@ -12,29 +13,28 @@ export async function markNotificationRead(item: AppNotification): Promise<void>
 }
 
 export function formatAggregatedActorLabel(
-  actors: NotificationActor[],
+  actors: Parameters<typeof formatPostLikeActorsLabel>[0],
   totalCount: number,
 ): string {
-  const names = actors.map((a) => getUserDisplayLabel(a));
-  if (totalCount <= 1) return names[0] ?? "Кто-то";
-  if (totalCount === 2) {
-    if (names.length >= 2) return `${names[0]} и ${names[1]}`;
-    if (names.length === 1) return `${names[0]} и ещё один`;
-    return "Два пользователя";
-  }
-  const others = totalCount - 1;
-  const first = names[0] ?? "Кто-то";
-  return `${first} и ещё ${others}`;
+  const label = formatPostLikeActorsLabel(actors, totalCount);
+  if (label === "Кто-то") return i18n.t("notifications.someone");
+  return label;
 }
 
 export function aggregatedActionVerb(type: AppNotification["type"], count: number): string {
   const plural = count > 1;
   switch (type) {
     case "post_comment":
-      return plural ? "прокомментировали публикацию" : "прокомментировала публикацию";
+      return plural
+        ? i18n.t("notifications.postComment.verbPlural")
+        : i18n.t("notifications.postComment.verbSingle");
     case "post_like":
-      return plural ? "оценили вашу публикацию" : "оценила вашу публикацию";
+      return plural
+        ? i18n.t("notifications.postLike.verbPlural")
+        : i18n.t("notifications.postLike.verbSingle");
     default:
-      return plural ? "отправили уведомление" : "отправил(а) уведомление";
+      return plural
+        ? i18n.t("notifications.defaultVerbPlural")
+        : i18n.t("notifications.defaultVerbSingle");
   }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { getActivePushSubscription, unsubscribePush } from "@/lib/push-subscription";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -29,6 +30,14 @@ export function usePushNotifications() {
       .catch(() => setVapidReady(false));
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated || !supported) {
+      setSubscribed(false);
+      return;
+    }
+    void getActivePushSubscription().then((sub) => setSubscribed(Boolean(sub)));
+  }, [isAuthenticated, supported]);
+
   const subscribe = useCallback(async (): Promise<boolean> => {
     if (!supported || !vapidReady || !isAuthenticated) return false;
 
@@ -40,10 +49,13 @@ export function usePushNotifications() {
     const { publicKey } = (await keyRes.json()) as { publicKey: string };
     if (!publicKey) return false;
 
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
+    const existing = await reg.pushManager.getSubscription();
+    const sub =
+      existing ??
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      }));
 
     const json = sub.toJSON();
     await apiRequest("POST", "/api/push/subscribe", {
@@ -55,9 +67,14 @@ export function usePushNotifications() {
     return true;
   }, [supported, vapidReady, isAuthenticated]);
 
+  const unsubscribe = useCallback(async (): Promise<void> => {
+    await unsubscribePush();
+    setSubscribed(false);
+  }, []);
+
   const testPush = useCallback(async () => {
     await apiRequest("POST", "/api/push/test");
   }, []);
 
-  return { supported, subscribed, vapidReady, subscribe, testPush };
+  return { supported, subscribed, vapidReady, subscribe, unsubscribe, testPush };
 }

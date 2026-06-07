@@ -217,18 +217,22 @@ export const eventRegistrations = pgTable("event_registrations", {
 });
 
 // Chat messages table
-export const chatMessages = pgTable("chat_messages", {
-  id: uuid("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  userId: varchar("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  chatRoom: varchar("chat_room", { length: 100 }).notNull(), // e.g., "general", "rome", "paris"
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
-});
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    chatRoom: varchar("chat_room", { length: 100 }).notNull(), // e.g., "general", "rome", "paris"
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at"),
+  },
+  (t) => [index("IDX_chat_messages_room_created").on(t.chatRoom, t.createdAt)],
+);
 
 export const chatMessageLikes = pgTable(
   "chat_message_likes",

@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 import type { User } from "@shared/schema";
 import UserPreviewCell from "@/components/social/UserPreviewCell";
 import { apiRequest } from "@/lib/queryClient";
+import { unsubscribePush } from "@/lib/push-subscription";
 
 export function Profile() {
   const { user, isAuthenticated } = useAuth();
@@ -52,6 +53,7 @@ export function Profile() {
   };
 
   const logout = async () => {
+    await unsubscribePush().catch(() => undefined);
     await apiRequest("POST", "/api/logout");
     window.location.href = "/";
   };

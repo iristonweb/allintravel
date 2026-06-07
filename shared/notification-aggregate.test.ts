@@ -57,4 +57,18 @@ describe("aggregateNotifications", () => {
     ];
     expect(aggregateNotifications(items)[0]!.isRead).toBe(false);
   });
+
+  it("merges post_like and post_comment on same entity separately", () => {
+    const items = [
+      notif("1", "post_like", "p1", "a1", "Anna"),
+      notif("2", "post_comment", "p1", "a2", "Bob"),
+      notif("3", "post_comment", "p1", "a3", "Claire"),
+    ];
+    const out = aggregateNotifications(items);
+    expect(out).toHaveLength(2);
+    const likes = out.find((n) => n.type === "post_like");
+    const comments = out.find((n) => n.type === "post_comment");
+    expect(likes?.aggregateCount).toBe(1);
+    expect(comments?.aggregateCount).toBe(2);
+  });
 });

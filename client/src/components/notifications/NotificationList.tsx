@@ -14,12 +14,7 @@ import EmptyState from "@/components/empty-state";
 import NotificationRow from "@/components/notifications/NotificationRow";
 import { groupNotificationsByDay } from "@/lib/notification-ui";
 import { markNotificationRead } from "@/lib/notification-actions";
-
-const FILTER_LABELS: Record<NotificationFilter, string> = {
-  all: "Все",
-  social: "Социальное",
-  messages: "Сообщения",
-};
+import { useTranslation } from "react-i18next";
 
 type NotificationListProps = {
   filter: NotificationFilter;
@@ -53,7 +48,14 @@ export default function NotificationList({
   listClassName,
   showMarkAll = true,
 }: NotificationListProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  const filterLabels: Record<NotificationFilter, string> = {
+    all: t("notifications.filters.all"),
+    social: t("notifications.filters.social"),
+    messages: t("notifications.filters.messages"),
+  };
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
@@ -122,7 +124,7 @@ export default function NotificationList({
                   : "bg-white/5 text-slate-400 border border-transparent hover:bg-white/10",
               )}
             >
-              {FILTER_LABELS[key]}
+              {filterLabels[key]}
             </button>
           ))}
         </div>
@@ -136,7 +138,7 @@ export default function NotificationList({
             onClick={() => markAllRead.mutate()}
           >
             <CheckCheck className="h-4 w-4 mr-1" />
-            Прочитать все
+            {t("notifications.readAll")}
           </Button>
         )}
       </div>

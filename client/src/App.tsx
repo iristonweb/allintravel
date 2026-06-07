@@ -36,6 +36,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import AitGrantListener from "@/components/ait/AitGrantListener";
 import ReferralAutoApply from "@/components/ait/ReferralAutoApply";
 import PushSoundListener from "@/components/PushSoundListener";
+import { ChatGroupSearchProvider } from "@/components/chat/ChatGroupSearchContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import GlobalMusicBar from "@/components/music/GlobalMusicBar";
 import AdminPage from "@/pages/admin";
@@ -133,9 +134,11 @@ function App() {
           <ReferralAutoApply />
           <PushSoundListener />
           <GlobalMusicBar />
-          <ErrorBoundary>
-            <Router />
-          </ErrorBoundary>
+          <ChatGroupSearchProvider>
+            <ErrorBoundary>
+              <Router />
+            </ErrorBoundary>
+          </ChatGroupSearchProvider>
         </TooltipProvider>
       </MusicPlayerProvider>
     </QueryClientProvider>

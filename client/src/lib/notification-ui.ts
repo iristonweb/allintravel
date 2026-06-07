@@ -1,4 +1,5 @@
 import type { NotificationType } from "@shared/notification-types";
+import i18n from "@/i18n";
 import {
   Heart,
   MessageCircle,
@@ -58,9 +59,9 @@ export function groupNotificationsByDay(
 
   for (const item of items) {
     const t = item.createdAt ? new Date(item.createdAt).getTime() : 0;
-    let label = "Раньше";
-    if (t >= startOfToday) label = "Сегодня";
-    else if (t >= startOfWeek) label = "На этой неделе";
+    let label = i18n.t("notifications.buckets.earlier");
+    if (t >= startOfToday) label = i18n.t("notifications.buckets.today");
+    else if (t >= startOfWeek) label = i18n.t("notifications.buckets.thisWeek");
 
     if (!buckets.has(label)) {
       buckets.set(label, []);

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { getUserInitial } from "@shared/user-display";
 import { notificationVisual } from "@/lib/notification-ui";
+import i18n from "@/i18n";
 
 type NotificationRowProps = {
   item: AppNotification;
@@ -25,14 +26,14 @@ function notificationSummary(item: AppNotification, actorLabel: string): string 
 
   switch (item.type) {
     case "post_like":
-      return `${actorLabel} оценила вашу публикацию`;
+      return `${actorLabel} ${i18n.t("notifications.postLike.summarySingle")}`;
     case "post_comment":
-      return `${actorLabel} прокомментировала публикацию`;
+      return `${actorLabel} ${i18n.t("notifications.postComment.summarySingle")}`;
     case "message_reaction":
     case "chat_reaction":
       return item.title;
     case "message":
-      return `${actorLabel} написала вам`;
+      return `${actorLabel} ${i18n.t("notifications.messageSummary")}`;
     default:
       return item.title;
   }

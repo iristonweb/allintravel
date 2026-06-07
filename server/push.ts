@@ -64,6 +64,7 @@ export type PushPayload = {
   body: string;
   url?: string;
   tag?: string;
+  notificationId?: string;
   sound?: string;
   soundKind?: "default" | "ait";
 };
@@ -83,6 +84,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
     body: payload.body,
     url: payload.url ?? "/",
     tag: payload.tag,
+    notificationId: payload.notificationId,
     sound,
     soundKind,
   });

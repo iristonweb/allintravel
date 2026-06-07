@@ -5,6 +5,7 @@ import PageHeader from "@/components/page-header";
 import NotificationList from "@/components/notifications/NotificationList";
 import type { NotificationFilter } from "@shared/notification-types";
 import { NOTIFICATION_FILTERS } from "@shared/notification-types";
+import { useTranslation } from "react-i18next";
 
 function parseFilter(raw: string | null): NotificationFilter {
   return (NOTIFICATION_FILTERS as readonly string[]).includes(raw ?? "")
@@ -13,6 +14,7 @@ function parseFilter(raw: string | null): NotificationFilter {
 }
 
 export function NotificationsPage() {
+  const { t } = useTranslation();
   const search = useSearch();
   const initialFilter = parseFilter(new URLSearchParams(search).get("filter"));
   const [filter, setFilter] = useState<NotificationFilter>(initialFilter);
@@ -20,7 +22,10 @@ export function NotificationsPage() {
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
-        <PageHeader title="Уведомления" description="Лайки, комментарии, реакции и сообщения" />
+        <PageHeader
+          title={t("notifications.page.title")}
+          description={t("notifications.page.description")}
+        />
         <div className="mt-6 rounded-3xl border border-white/10 ait-glass-strong p-4 sm:p-5 min-h-[60vh]">
           <NotificationList
             filter={filter}

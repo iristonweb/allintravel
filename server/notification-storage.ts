@@ -263,10 +263,7 @@ export async function markNotificationReadDb(db: Db, userId: string, id: string)
     .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
     .limit(1);
 
-  if (
-    row?.entityId &&
-    (row.type === "post_like" || row.type === "post_comment")
-  ) {
+  if (row?.entityId && (row.type === "post_like" || row.type === "post_comment")) {
     await markNotificationsReadByEntityDb(db, userId, row.type, row.entityId);
     return;
   }

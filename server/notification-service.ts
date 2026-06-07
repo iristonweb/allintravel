@@ -1,5 +1,8 @@
 import type { NotificationType } from "@shared/notification-types";
-import { formatPostLikeNotificationBody, formatPostCommentNotificationBody } from "@shared/notification-text";
+import {
+  formatPostLikeNotificationBody,
+  formatPostCommentNotificationBody,
+} from "@shared/notification-text";
 import type { IStorage } from "./storage";
 import { sendPushToUser } from "./push";
 import { broadcastToUser } from "./realtime-hub";
@@ -51,6 +54,7 @@ async function emitNotificationRow(
     body: push.body,
     url: push.url ?? row.link ?? "/",
     tag: push.tag ?? `${row.type}-${row.entityId ?? row.id}`,
+    notificationId: row.id,
     soundKind: "default",
   });
 }
@@ -220,25 +224,16 @@ export async function notifyPostCommented(
     storageRef.getPostCommentsCount(postId),
     storageRef.getRecentPostCommenterUserIds(postId, 3),
   ]);
-  const commenters = (
-    await Promise.all(commenterIds.map((id) => storageRef!.getUser(id)))
-  ).filter(Boolean) as User[];
+  const commenters = (await Promise.all(commenterIds.map((id) => storageRef!.getUser(id)))).filter(
+    Boolean,
+  ) as User[];
   const actors = commenters.length > 0 ? commenters : [commenter];
 
-  const body = formatPostCommentNotificationBody(
-    actors,
-    commentCount,
-    postContent,
-    commentText,
-  );
+  const body = formatPostCommentNotificationBody(actors, commentCount, postContent, commentText);
   const title = "Комментарий к публикации";
   const link = `/social-feed?post=${postId}`;
 
-  const existing = await storageRef.findNotificationByEntity(
-    postOwnerId,
-    "post_comment",
-    postId,
-  );
+  const existing = await storageRef.findNotificationByEntity(postOwnerId, "post_comment", postId);
 
   let row: NotificationRow | undefined;
   if (existing) {

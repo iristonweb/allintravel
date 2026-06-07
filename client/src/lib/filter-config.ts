@@ -51,6 +51,7 @@ export const HERO_SEARCH_TARGETS: FilterOption[] = [
   { value: "places", label: "Каталог мест" },
   { value: "trips", label: "Поездки" },
   { value: "events", label: "События" },
+  { value: "groups", label: "Группы" },
 ];
 
 export const HERO_TRAVELER_OPTIONS: FilterOption[] = [

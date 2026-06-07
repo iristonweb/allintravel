@@ -68,6 +68,16 @@ describe("createApp", () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
+  it("GET /api/chat/rooms returns 401 without session", async () => {
+    const res = await request(app).get("/api/chat/rooms");
+    expect(res.status).toBe(401);
+  });
+
+  it("GET /api/chat/rooms/discover returns 401 without session", async () => {
+    const res = await request(app).get("/api/chat/rooms/discover?q=test");
+    expect(res.status).toBe(401);
+  });
+
   it("POST /api/trips returns 401 without session", async () => {
     const res = await request(app).post("/api/trips").send({ title: "Test" });
     expect(res.status).toBe(401);

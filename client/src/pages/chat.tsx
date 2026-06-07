@@ -56,6 +56,7 @@ import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import type { UserLabelFields } from "@shared/user-display";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { useTranslation } from "react-i18next";
 
 type ChatTab = "all" | "mine" | "unread";
 
@@ -108,13 +109,22 @@ async function fetchChatHistory(room: string): Promise<ChatHistoryPayload> {
 }
 
 export function Chat() {
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [location] = useLocation();
   const searchString = useSearch();
   const [chatTab, setChatTab] = useState<ChatTab>("all");
-  const [roomQuery, setRoomQuery] = useState("");
+  const urlDiscoverQ = useMemo(() => {
+    const params = new URLSearchParams(searchString);
+    return params.get("q")?.trim() ?? "";
+  }, [searchString]);
+  const [roomQuery, setRoomQuery] = useState(urlDiscoverQ);
+
+  useEffect(() => {
+    if (urlDiscoverQ) setRoomQuery(urlDiscoverQ);
+  }, [urlDiscoverQ]);
   const [activeRoom, setActiveRoom] = useState("general");
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -183,11 +193,11 @@ export function Chat() {
         .then((room: ChatRoom) => {
           setActiveRoom(room.slug);
           queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-          toast({ title: `Вы вступили в «${room.title}»` });
+          toast({ title: t("chat.joinGate.joinedToast", { title: room.title }) });
         })
-        .catch(() => toast({ title: "Не удалось вступить", variant: "destructive" }));
+        .catch(() => toast({ title: t("chat.joinGate.joinError"), variant: "destructive" }));
     }
-  }, [location, isAuthenticated, queryClient, toast]);
+  }, [location, isAuthenticated, queryClient, toast, t]);
 
   const filteredRooms = rooms
     .filter((r) => {
@@ -251,14 +261,14 @@ export function Chat() {
         rooms.find((r) => r.id === roomId)?.title ||
         discoverRooms.find((r) => r.id === roomId)?.title;
       if (roomTitle) {
-        toast({ title: `Вы вступили в «${roomTitle}»` });
+        toast({ title: t("chat.joinGate.joinedToast", { title: roomTitle }) });
       } else {
-        toast({ title: "Вы вступили в группу" });
+        toast({ title: t("chat.joinGate.joinedToastFallback") });
       }
       setRoomQuery("");
     },
     onError: () => {
-      toast({ title: "Не удалось вступить в группу", variant: "destructive" });
+      toast({ title: t("chat.joinGate.joinErrorGroup"), variant: "destructive" });
     },
   });
 
@@ -601,8 +611,7 @@ export function Chat() {
   const isRoomAdmin =
     myRole === "admin" || myRole === "owner" || activeRoomMeta?.createdBy === user?.id;
   const chatBgClass = getChatBackgroundClass(activeRoomMeta?.settings?.chatBackground);
-  const canSend =
-    !joinRequired && (useHttpMode ? !postMessage.isPending : wsConnected);
+  const canSend = !joinRequired && (useHttpMode ? !postMessage.isPending : wsConnected);
   const showLegacyJoinHint =
     Boolean(activeRoomMeta?.isLegacy) && !(activeRoomMeta as RoomListItem)?.myRole;
 
@@ -903,7 +912,7 @@ export function Chat() {
                         )}
                         {room.isLegacy && (
                           <Badge variant="outline" className="text-[9px] px-1 py-0">
-                            Офиц.
+                            {t("chat.legacy.badge")}
                           </Badge>
                         )}
                       </button>
@@ -912,7 +921,7 @@ export function Chat() {
                     {discoverSearch.length >= 2 && (
                       <div className="pt-3 mt-2 border-t border-white/10 space-y-1">
                         <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                          Найти публичные группы
+                          {t("chat.discover.header")}
                         </p>
                         {discoverLoading ? (
                           <div className="py-4 flex justify-center">
@@ -920,7 +929,7 @@ export function Chat() {
                           </div>
                         ) : discoverRooms.length === 0 ? (
                           <p className="px-2 py-2 text-xs text-muted-foreground">
-                            Похожих групп не найдено. Попробуйте другое название.
+                            {t("chat.discover.empty")}
                           </p>
                         ) : (
                           discoverRooms.map((room) => (
@@ -936,7 +945,7 @@ export function Chat() {
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium truncate">{room.title}</p>
                                 <p className="text-[10px] text-muted-foreground truncate">
-                                  {room.memberCount} участн.
+                                  {t("chat.discover.memberCount", { count: room.memberCount })}
                                   {room.description ? ` · ${room.description}` : ""}
                                 </p>
                               </div>
@@ -948,7 +957,7 @@ export function Chat() {
                                 disabled={joinRoomMutation.isPending}
                                 onClick={() => joinRoomMutation.mutate(room.id)}
                               >
-                                Вступить
+                                {t("chat.discover.join")}
                               </Button>
                             </div>
                           ))
@@ -1039,16 +1048,18 @@ export function Chat() {
                   <div>
                     <h3 className="text-lg font-semibold">{joinPreview.title}</h3>
                     {joinPreview.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{joinPreview.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {joinPreview.description}
+                      </p>
                     )}
                     {joinPreview.memberCount != null && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        {joinPreview.memberCount} участников
+                        {t("chat.joinGate.memberCount", { count: joinPreview.memberCount })}
                       </p>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground max-w-sm">
-                    Вступите в группу, чтобы читать и отправлять сообщения — как в Telegram.
+                    {t("chat.joinGate.title")}
                   </p>
                   <Button
                     type="button"
@@ -1059,7 +1070,7 @@ export function Chat() {
                     {joinRoomMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Вступить в группу"
+                      t("chat.joinGate.joinButton")
                     )}
                   </Button>
                 </div>
@@ -1164,36 +1175,36 @@ export function Chat() {
             </ScrollArea>
 
             {!joinRequired && (
-            <div className="ait-chat-panel-header p-4 border-t">
-              {showLegacyJoinHint && (
-                <p className="text-xs text-muted-foreground mb-2 px-1">
-                  Официальный канал — напишите сообщение, чтобы присоединиться к обсуждению.
-                </p>
-              )}
-              <div className="flex gap-2 items-center">
-                <MessageComposer
-                  value={messageText}
-                  onChange={setMessageText}
-                  onSend={(content) => void handleSend(content)}
-                  placeholder={canSend ? "Сообщение…" : "Подключение…"}
-                  disabled={!canSend}
-                  className="flex-1"
-                  suggestUsers={mentionSuggestUsers}
-                  replyTo={replyTo}
-                  onCancelReply={() => setReplyTo(null)}
-                />
-                <Button
-                  variant="premium"
-                  size="icon"
-                  onClick={() => void handleSend()}
-                  disabled={!messageText.trim() || !canSend}
-                  className="rounded-2xl shrink-0 shadow-lg"
-                  aria-label="Отправить сообщение"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="ait-chat-panel-header p-4 border-t">
+                {showLegacyJoinHint && (
+                  <p className="text-xs text-muted-foreground mb-2 px-1">
+                    {t("chat.legacy.joinHint")}
+                  </p>
+                )}
+                <div className="flex gap-2 items-center">
+                  <MessageComposer
+                    value={messageText}
+                    onChange={setMessageText}
+                    onSend={(content) => void handleSend(content)}
+                    placeholder={canSend ? "Сообщение…" : "Подключение…"}
+                    disabled={!canSend}
+                    className="flex-1"
+                    suggestUsers={mentionSuggestUsers}
+                    replyTo={replyTo}
+                    onCancelReply={() => setReplyTo(null)}
+                  />
+                  <Button
+                    variant="premium"
+                    size="icon"
+                    onClick={() => void handleSend()}
+                    disabled={!messageText.trim() || !canSend}
+                    className="rounded-2xl shrink-0 shadow-lg"
+                    aria-label="Отправить сообщение"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
             )}
           </div>
         </div>
