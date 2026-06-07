@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
 
 /** Placeholder for `drizzle-kit generate` when DATABASE_URL is unset locally. */
