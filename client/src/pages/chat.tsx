@@ -216,7 +216,12 @@ export function Chat() {
     navigate(`/chat${qs ? `?${qs}` : ""}`);
   }, [navigate, searchString]);
 
-  const mobileThreadOpen = Boolean(urlWithUserId) || (chatTab === "unread" && Boolean(urlRoom));
+  const mobileGroupThreadOpen =
+    Boolean(urlRoom) &&
+    (chatTab === "unread" || chatTab === "all" || chatTab === "mine");
+  const mobileThreadOpen = Boolean(urlWithUserId) || mobileGroupThreadOpen;
+  const mobileGroupListOnly =
+    (chatTab === "all" || chatTab === "mine") && !urlRoom && !urlWithUserId;
   const showChatPlaceholder =
     !urlWithUserId &&
     ((chatTab === "personal" && !urlRoom) ||
@@ -1220,7 +1225,7 @@ export function Chat() {
           <div
             className={cn(
               "ait-chat-panel flex flex-col overflow-hidden min-h-0",
-              !mobileThreadOpen && showChatPlaceholder && "hidden lg:flex",
+              !mobileThreadOpen && (showChatPlaceholder || mobileGroupListOnly) && "hidden lg:flex",
             )}
           >
             {urlWithUserId ? (

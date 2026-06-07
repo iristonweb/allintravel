@@ -58,6 +58,7 @@ export function useRealtimeNotifications() {
         const data = await fetchNotificationsSnapshot();
         invalidateNotifs();
         queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
 
         const items = data.items ?? [];
         const unread = items.filter((n) => !n.isRead);
@@ -135,13 +136,16 @@ export function useRealtimeNotifications() {
           invalidateNotifs();
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/received"] });
+          if (data.notification.type === "message") {
+            queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+          }
           playNotificationSound("default");
           toast({
             title: data.notification.title,
             description: data.notification.body,
           });
         }
-        if (data.type === "new_message") {
+        if (data.type === "new_private_message" || data.type === "new_message") {
           playNotificationSound("default");
           invalidateNotifs();
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });

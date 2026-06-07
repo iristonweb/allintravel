@@ -2937,6 +2937,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (sender) {
         void notifyNewMessage(receiverId, sender, message.content);
       }
+      const { broadcastToUser } = await import("./realtime-hub");
+      const dmPayload = {
+        type: "new_private_message" as const,
+        message: { ...message, reactions: [] as const },
+        partnerId: senderId,
+      };
+      broadcastToUser(receiverId, dmPayload);
+      broadcastToUser(senderId, { ...dmPayload, partnerId: receiverId });
       res.status(201).json({ ...message, aitGrant: aitGrant ?? null });
     } catch (error) {
       if (error instanceof z.ZodError) {

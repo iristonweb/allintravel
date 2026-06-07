@@ -23,7 +23,6 @@ const iconByHref: Record<string, LucideIcon> = {
   "/trips": Calendar,
   "/social-feed": Users,
   "/friends": Users,
-  "/messages": MessageSquare,
   "/places": MapPin,
   "/events": Sparkles,
   "/blog": BookOpen,

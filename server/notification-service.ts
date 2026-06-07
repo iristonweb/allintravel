@@ -291,7 +291,7 @@ export async function notifyPrivateMessageReaction(
     body: preview
       ? `${name} отреагировал(а) ${emoji} на «${preview}»`
       : `${name} отреагировал(а) ${emoji} на ваше сообщение`,
-    link: `/chat?with=${partnerId}&tab=personal`,
+    link: `/chat?with=${partnerId}&tab=unread`,
     actorId: reactor.id,
     entityId: messageId,
   });
@@ -370,7 +370,7 @@ export async function notifyNewMessage(
     type: "message",
     title: `Сообщение от ${name}`,
     body,
-    link: `/chat?with=${sender.id}&tab=personal`,
+    link: `/chat?with=${sender.id}&tab=unread`,
     actorId: sender.id,
     entityId: sender.id,
   });

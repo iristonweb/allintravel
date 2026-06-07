@@ -28,7 +28,7 @@ const pageTitles: Record<string, string> = {
   "/trips": "Поездки",
   "/social-feed": "Сообщество",
   "/friends": "Друзья",
-  "/messages": "Личные",
+  "/messages": "Чаты",
   "/profile": "Профиль",
   "/profile/music": "Моя музыка",
   "/music": "Моя музыка",

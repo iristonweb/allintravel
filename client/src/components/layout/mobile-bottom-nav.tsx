@@ -29,7 +29,6 @@ const iconByHref: Record<string, LucideIcon> = {
   "/": Home,
   "/map": Map,
   "/trips": Plus,
-  "/messages": MessageCircle,
   "/chat": MessageSquare,
   "/places": MapPin,
   "/events": Sparkles,
