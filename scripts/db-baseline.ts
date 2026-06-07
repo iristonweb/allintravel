@@ -63,10 +63,10 @@ async function main() {
       );
       if (existing.rowCount && existing.rowCount > 0) continue;
 
-      await pool.query(`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)`, [
-        entry.hash,
-        entry.folderMillis,
-      ]);
+      await pool.query(
+        `INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)`,
+        [entry.hash, entry.folderMillis],
+      );
       inserted++;
       console.log(`[db:baseline] Recorded migration ${entry.hash.slice(0, 12)}…`);
     }

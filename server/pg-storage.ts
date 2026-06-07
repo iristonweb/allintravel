@@ -1220,6 +1220,11 @@ export class PgStorage implements IStorage {
     return dedupePostLikeNotificationsDb(this.db, userId);
   }
 
+  async dedupePostCommentNotifications(userId: string) {
+    const { dedupePostCommentNotificationsDb } = await import("./notification-storage");
+    return dedupePostCommentNotificationsDb(this.db, userId);
+  }
+
   async markAllNotificationsRead(userId: string) {
     const { markAllNotificationsReadDb } = await import("./notification-storage");
     return markAllNotificationsReadDb(this.db, userId);
@@ -1268,6 +1273,16 @@ export class PgStorage implements IStorage {
       .where(and(eq(postLikes.userId, userId), eq(postLikes.postId, postId)))
       .limit(1);
     return Boolean(row);
+  }
+
+  async getRecentPostCommenterUserIds(postId: string, limit = 3): Promise<string[]> {
+    const rows = await this.db
+      .select({ userId: postComments.userId })
+      .from(postComments)
+      .where(eq(postComments.postId, postId))
+      .orderBy(desc(postComments.createdAt))
+      .limit(limit);
+    return rows.map((r) => r.userId);
   }
 
   async getPostCommentsCount(postId: string): Promise<number> {

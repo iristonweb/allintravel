@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import type { NotificationRow } from "@shared/schema";
 import {
   MESSAGE_NOTIFICATION_TYPES,
@@ -175,6 +175,20 @@ export async function dedupePostLikeNotificationsDb(db: Db, userId: string): Pro
   `);
 }
 
+export async function dedupePostCommentNotificationsDb(db: Db, userId: string): Promise<void> {
+  await db.execute(sql`
+    DELETE FROM notifications AS older
+    USING notifications AS newer
+    WHERE older.user_id = ${userId}
+      AND older.type = 'post_comment'
+      AND older.entity_id IS NOT NULL
+      AND newer.user_id = older.user_id
+      AND newer.type = 'post_comment'
+      AND newer.entity_id = older.entity_id
+      AND newer.created_at > older.created_at
+  `);
+}
+
 export async function getNotificationsDb(
   db: Db,
   userId: string,
@@ -221,11 +235,25 @@ export async function getNotificationsPageDb(
 }
 
 export async function getUnreadNotificationCountDb(db: Db, userId: string): Promise<number> {
-  const [{ value }] = await db
-    .select({ value: count() })
-    .from(notifications)
-    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
-  return Number(value);
+  const result = await db.execute<{ value: string }>(sql`
+    SELECT COUNT(*)::text AS value FROM (
+      SELECT 1
+      FROM notifications
+      WHERE user_id = ${userId}
+        AND is_read = false
+        AND type NOT IN ('post_like', 'post_comment')
+      UNION ALL
+      SELECT DISTINCT ON (type, entity_id) 1
+      FROM notifications
+      WHERE user_id = ${userId}
+        AND is_read = false
+        AND type IN ('post_like', 'post_comment')
+        AND entity_id IS NOT NULL
+      ORDER BY type, entity_id, created_at DESC
+    ) AS unread_rows
+  `);
+  const row = result.rows[0];
+  return Number(row?.value ?? 0);
 }
 
 export async function markNotificationReadDb(db: Db, userId: string, id: string): Promise<void> {
@@ -235,7 +263,10 @@ export async function markNotificationReadDb(db: Db, userId: string, id: string)
     .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
     .limit(1);
 
-  if (row?.type === "post_like" && row.entityId) {
+  if (
+    row?.entityId &&
+    (row.type === "post_like" || row.type === "post_comment")
+  ) {
     await markNotificationsReadByEntityDb(db, userId, row.type, row.entityId);
     return;
   }
@@ -286,6 +317,8 @@ export async function markNotificationsReadBatchDb(
 
   for (const row of rows) {
     if (row.type === "post_like" && row.entityId) {
+      entityKeys.set(`${row.type}:${row.entityId}`, { type: row.type, entityId: row.entityId });
+    } else if (row.type === "post_comment" && row.entityId) {
       entityKeys.set(`${row.type}:${row.entityId}`, { type: row.type, entityId: row.entityId });
     } else {
       plainIds.push(row.id);

@@ -81,7 +81,31 @@ type ChatHistoryPayload = {
   messages?: ChatMessageWithSender[];
   pinnedMessageIds?: string[];
   room?: ChatRoom;
+  joinRequired?: boolean;
+  joinPreview?: {
+    id: string;
+    slug: string;
+    title: string;
+    description?: string | null;
+    avatarUrl?: string | null;
+    memberCount?: number;
+  };
 };
+
+async function fetchChatHistory(room: string): Promise<ChatHistoryPayload> {
+  const res = await fetch(`/api/chat/${encodeURIComponent(room)}`, { credentials: "include" });
+  const body = (await res.json()) as Record<string, unknown>;
+  if (res.status === 403 && body.joinRequired && body.room) {
+    return {
+      joinRequired: true,
+      joinPreview: body.room as NonNullable<ChatHistoryPayload["joinPreview"]>,
+      messages: [],
+      pinnedMessageIds: [],
+    };
+  }
+  if (!res.ok) throw new Error(String(body.message ?? "Failed to load chat"));
+  return body as ChatHistoryPayload;
+}
 
 export function Chat() {
   const { user, isAuthenticated } = useAuth();
@@ -151,25 +175,6 @@ export function Chat() {
     staleTime: 30_000,
   });
 
-  const joinRoomMutation = useMutation({
-    mutationFn: async (roomId: string) => {
-      await apiRequest("POST", `/api/chat/rooms/${roomId}/join`);
-    },
-    onSuccess: (_data, roomId) => {
-      const joined = discoverRooms.find((r) => r.id === roomId);
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms/discover"] });
-      if (joined) {
-        setActiveRoom(joined.slug);
-        setRoomQuery("");
-        toast({ title: `Вы вступили в «${joined.title}»` });
-      }
-    },
-    onError: () => {
-      toast({ title: "Не удалось вступить в группу", variant: "destructive" });
-    },
-  });
-
   useEffect(() => {
     const joinMatch = location.match(/^\/chat\/join\/([^/]+)/);
     if (joinMatch && isAuthenticated) {
@@ -207,7 +212,8 @@ export function Chat() {
     refetch: refetchHistory,
   } = useQuery<ChatHistoryPayload | ChatMessageWithSender[]>({
     queryKey: historyKey,
-    enabled: isAuthenticated,
+    queryFn: () => fetchChatHistory(activeRoom),
+    enabled: isAuthenticated && Boolean(activeRoom),
     refetchInterval: useHttpMode ? 2000 : false,
   });
 
@@ -221,6 +227,40 @@ export function Chat() {
       ? { ...historyRoom, memberCount: listRoom.memberCount, myRole: listRoom.myRole }
       : (listRoom ?? historyRoom);
   const pinnedIds = Array.isArray(historyPayload) ? [] : (historyPayload?.pinnedMessageIds ?? []);
+
+  const joinRequired = !Array.isArray(historyPayload) && historyPayload?.joinRequired;
+  const joinPreview = !Array.isArray(historyPayload) ? historyPayload?.joinPreview : undefined;
+
+  const joinRoomMutation = useMutation({
+    mutationFn: async (roomId: string) => {
+      await apiRequest("POST", `/api/chat/rooms/${roomId}/join`);
+      return roomId;
+    },
+    onSuccess: async (roomId) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms/discover"] }),
+        queryClient.refetchQueries({ queryKey: historyKey }),
+      ]);
+      const refreshed = queryClient.getQueryData<ChatHistoryPayload | ChatMessageWithSender[]>(
+        historyKey,
+      );
+      const roomTitle =
+        (!Array.isArray(refreshed) && refreshed?.room?.title) ||
+        (joinPreview?.id === roomId ? joinPreview.title : undefined) ||
+        rooms.find((r) => r.id === roomId)?.title ||
+        discoverRooms.find((r) => r.id === roomId)?.title;
+      if (roomTitle) {
+        toast({ title: `Вы вступили в «${roomTitle}»` });
+      } else {
+        toast({ title: "Вы вступили в группу" });
+      }
+      setRoomQuery("");
+    },
+    onError: () => {
+      toast({ title: "Не удалось вступить в группу", variant: "destructive" });
+    },
+  });
 
   const fromHref = useMemo(() => {
     const params = new URLSearchParams(searchString);
@@ -561,7 +601,10 @@ export function Chat() {
   const isRoomAdmin =
     myRole === "admin" || myRole === "owner" || activeRoomMeta?.createdBy === user?.id;
   const chatBgClass = getChatBackgroundClass(activeRoomMeta?.settings?.chatBackground);
-  const canSend = useHttpMode ? !postMessage.isPending : wsConnected;
+  const canSend =
+    !joinRequired && (useHttpMode ? !postMessage.isPending : wsConnected);
+  const showLegacyJoinHint =
+    Boolean(activeRoomMeta?.isLegacy) && !(activeRoomMeta as RoomListItem)?.myRole;
 
   const handleSend = async (contentOverride?: string) => {
     let body = (contentOverride ?? messageText).trim();
@@ -986,7 +1029,41 @@ export function Chat() {
             )}
 
             <ScrollArea className={cn("flex-1 p-4", chatBgClass)}>
-              {historyLoading ? (
+              {joinRequired && joinPreview ? (
+                <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-center px-6 space-y-4">
+                  <RoomAvatar
+                    title={joinPreview.title}
+                    avatarUrl={joinPreview.avatarUrl}
+                    className="h-20 w-20"
+                  />
+                  <div>
+                    <h3 className="text-lg font-semibold">{joinPreview.title}</h3>
+                    {joinPreview.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{joinPreview.description}</p>
+                    )}
+                    {joinPreview.memberCount != null && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {joinPreview.memberCount} участников
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Вступите в группу, чтобы читать и отправлять сообщения — как в Telegram.
+                  </p>
+                  <Button
+                    type="button"
+                    className="ait-btn-glow"
+                    disabled={joinRoomMutation.isPending}
+                    onClick={() => joinRoomMutation.mutate(joinPreview.id)}
+                  >
+                    {joinRoomMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Вступить в группу"
+                    )}
+                  </Button>
+                </div>
+              ) : historyLoading ? (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                   <Loader2 className="h-8 w-8 animate-spin mb-3" />
                   <p className="text-sm">Загрузка сообщений…</p>
@@ -1086,7 +1163,13 @@ export function Chat() {
               )}
             </ScrollArea>
 
+            {!joinRequired && (
             <div className="ait-chat-panel-header p-4 border-t">
+              {showLegacyJoinHint && (
+                <p className="text-xs text-muted-foreground mb-2 px-1">
+                  Официальный канал — напишите сообщение, чтобы присоединиться к обсуждению.
+                </p>
+              )}
               <div className="flex gap-2 items-center">
                 <MessageComposer
                   value={messageText}
@@ -1111,6 +1194,7 @@ export function Chat() {
                 </Button>
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>

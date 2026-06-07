@@ -1,5 +1,5 @@
 import type { NotificationType } from "@shared/notification-types";
-import { formatPostLikeNotificationBody } from "@shared/notification-text";
+import { formatPostLikeNotificationBody, formatPostCommentNotificationBody } from "@shared/notification-text";
 import type { IStorage } from "./storage";
 import { sendPushToUser } from "./push";
 import { broadcastToUser } from "./realtime-hub";
@@ -214,20 +214,67 @@ export async function notifyPostCommented(
   postContent: string,
   commentText: string,
 ): Promise<void> {
-  if (postOwnerId === commenter.id) return;
-  const name = getUserDisplayLabel(commenter);
-  const comment = truncateNotificationPreview(commentText, 120);
-  const preview = truncateNotificationPreview(postContent, 40);
-  await notifyUser({
-    userId: postOwnerId,
-    type: "post_comment",
-    title: "Комментарий к публикации",
-    body: preview
-      ? `${name} прокомментировала «${preview}»: «${comment}»`
-      : `${name} прокомментировала вашу публикацию: «${comment}»`,
-    link: `/social-feed?post=${postId}`,
-    actorId: commenter.id,
-    entityId: postId,
+  if (!storageRef || postOwnerId === commenter.id) return;
+
+  const [commentCount, commenterIds] = await Promise.all([
+    storageRef.getPostCommentsCount(postId),
+    storageRef.getRecentPostCommenterUserIds(postId, 3),
+  ]);
+  const commenters = (
+    await Promise.all(commenterIds.map((id) => storageRef!.getUser(id)))
+  ).filter(Boolean) as User[];
+  const actors = commenters.length > 0 ? commenters : [commenter];
+
+  const body = formatPostCommentNotificationBody(
+    actors,
+    commentCount,
+    postContent,
+    commentText,
+  );
+  const title = "Комментарий к публикации";
+  const link = `/social-feed?post=${postId}`;
+
+  const existing = await storageRef.findNotificationByEntity(
+    postOwnerId,
+    "post_comment",
+    postId,
+  );
+
+  let row: NotificationRow | undefined;
+  if (existing) {
+    row = await storageRef.updateNotification(postOwnerId, existing.id, {
+      title,
+      body,
+      link,
+      actorId: commenter.id,
+      isRead: false,
+      bumpCreatedAt: true,
+    });
+    await storageRef.deleteDuplicateNotificationsForEntity(
+      postOwnerId,
+      "post_comment",
+      postId,
+      existing.id,
+    );
+  } else {
+    row = await storageRef.createNotification({
+      userId: postOwnerId,
+      type: "post_comment",
+      title,
+      body,
+      link,
+      actorId: commenter.id,
+      entityId: postId,
+    });
+  }
+
+  if (!row) return;
+
+  await emitNotificationRow(postOwnerId, row, {
+    title,
+    body,
+    url: link,
+    tag: `post_comment-${postId}`,
   });
 }
 

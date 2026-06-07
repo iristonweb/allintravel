@@ -67,9 +67,7 @@ export function runAuthApp(req: Request, res: Response): Promise<void> {
       await warmAuthInfrastructure();
     } catch (err) {
       const code =
-        err instanceof Error && "code" in err && typeof err.code === "string"
-          ? err.code
-          : "SERVER";
+        err instanceof Error && "code" in err && typeof err.code === "string" ? err.code : "SERVER";
       console.error("[auth-app] infrastructure warm failed:", err);
       if (!res.headersSent) {
         res.status(code === "NO_SESSION_SECRET" ? 503 : 500).json({

@@ -30,6 +30,8 @@ export function formatAggregatedActorLabel(
 export function aggregatedActionVerb(type: AppNotification["type"], count: number): string {
   const plural = count > 1;
   switch (type) {
+    case "post_comment":
+      return plural ? "прокомментировали публикацию" : "прокомментировала публикацию";
     case "post_like":
       return plural ? "оценили вашу публикацию" : "оценила вашу публикацию";
     default:

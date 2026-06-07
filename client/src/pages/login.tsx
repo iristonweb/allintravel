@@ -40,7 +40,14 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<
-    "invalid" | "server" | "schema" | "session" | "database" | "session_secret" | "db_connect" | null
+    | "invalid"
+    | "server"
+    | "schema"
+    | "session"
+    | "database"
+    | "session_secret"
+    | "db_connect"
+    | null
   >(urlError === "invalid" ? "invalid" : urlError === "server" ? "server" : null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
@@ -183,7 +190,8 @@ export function Login() {
             )}
             {formError === "db_connect" && (
               <p className="text-sm text-destructive">
-                {errorDetail ?? "Не удалось подключиться к базе данных. Проверьте DATABASE_URL и Neon."}
+                {errorDetail ??
+                  "Не удалось подключиться к базе данных. Проверьте DATABASE_URL и Neon."}
               </p>
             )}
             {formError === "schema" && (
@@ -200,7 +208,8 @@ export function Login() {
             )}
             {formError === "server" && (
               <p className="text-sm text-destructive">
-                {errorDetail ?? "Ошибка сервера при входе. Попробуйте позже или обратитесь в поддержку."}
+                {errorDetail ??
+                  "Ошибка сервера при входе. Попробуйте позже или обратитесь в поддержку."}
               </p>
             )}
             <div className="space-y-2">

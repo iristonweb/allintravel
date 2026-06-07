@@ -2,8 +2,8 @@ import type { ChatRoom } from "@shared/schema";
 import type { IStorage } from "./storage";
 
 export type ChatAccessResult =
-  | { allowed: true; room: ChatRoom; canPost: boolean }
-  | { allowed: false; reason: string };
+  | { allowed: true; room: ChatRoom; canPost: boolean; isMember: boolean }
+  | { allowed: false; reason: string; joinRequired?: boolean; room?: ChatRoom };
 
 export async function resolveChatRoomAccess(
   storage: IStorage,
@@ -23,31 +23,36 @@ export async function resolveChatRoomAccess(
   }
 
   const member = await storage.getChatRoomMember(room.id, userId);
+  const isMember = Boolean(member && member.status === "active");
 
   if (room.visibility === "private") {
-    if (!member || member.status === "banned") {
+    if (!isMember || member?.status === "banned") {
       return { allowed: false, reason: "Private room — invite required" };
     }
-  } else {
-    if (member?.status === "banned") {
-      return { allowed: false, reason: "Banned from room" };
-    }
+  } else if (member?.status === "banned") {
+    return { allowed: false, reason: "Banned from room" };
+  } else if (!room.isLegacy && !isMember) {
+    return {
+      allowed: false,
+      reason: "Вступите в группу, чтобы читать сообщения",
+      joinRequired: true,
+      room,
+    };
   }
 
   const settings = room.settings ?? {};
   const whoCanPost = settings.whoCanPost ?? "everyone";
-  const isMember = Boolean(member && member.status === "active");
   const isAdmin = member?.role === "admin" || member?.role === "owner";
 
   let canPost = false;
   if (whoCanPost === "everyone") {
-    canPost = room.visibility === "public" ? true : isMember;
+    canPost = room.visibility === "public" && (room.isLegacy || isMember);
   } else {
     canPost = isMember;
   }
   if (isAdmin) canPost = true;
 
-  return { allowed: true, room, canPost };
+  return { allowed: true, room, canPost, isMember };
 }
 
 export async function ensureMemberForPost(
@@ -60,6 +65,10 @@ export async function ensureMemberForPost(
 
   if (room.visibility === "private") {
     throw new Error("Not a member");
+  }
+
+  if (!room.isLegacy) {
+    throw new Error("Join the group before posting");
   }
 
   const autoJoin = room.settings?.autoJoinOnPost !== false;

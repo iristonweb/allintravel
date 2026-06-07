@@ -7,10 +7,7 @@ import { hashPassword, isPasswordLongEnough, verifyPassword } from "./password";
 import { resolveIsAdmin } from "./admin";
 import { toSessionUser, type SessionUser } from "./auth-session";
 import { authLoginLimiter } from "./rate-limit";
-import {
-  clientAuthErrorCode,
-  publicAuthErrorMessage,
-} from "./auth-readiness";
+import { clientAuthErrorCode, publicAuthErrorMessage } from "./auth-readiness";
 
 async function syncAdminRole(user: NonNullable<Awaited<ReturnType<typeof storage.getUser>>>) {
   if (!resolveIsAdmin(user.email) || user.isAdmin) return user;
@@ -98,7 +95,9 @@ export async function authenticateLocal(email: string, password: string): Promis
         ? "SCHEMA"
         : message.includes("relation") && message.includes("does not exist")
           ? "SCHEMA"
-          : message.includes("connect") || message.includes("timeout") || message.includes("ECONNREFUSED")
+          : message.includes("connect") ||
+              message.includes("timeout") ||
+              message.includes("ECONNREFUSED")
             ? "DB_CONNECT"
             : "UNKNOWN";
     return { ok: false, reason: "error", message, code };

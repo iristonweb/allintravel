@@ -968,30 +968,45 @@ export async function listChatRoomsForUserDb(
   db: PgFeaturesDb,
   userId: string,
 ): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]> {
-  const allRooms = await db
-    .select()
+  const rows = await db
+    .select({
+      room: chatRooms,
+      myRole: chatRoomMembers.role,
+      myStatus: chatRoomMembers.status,
+    })
     .from(chatRooms)
+    .leftJoin(
+      chatRoomMembers,
+      and(eq(chatRoomMembers.roomId, chatRooms.id), eq(chatRoomMembers.userId, userId)),
+    )
     .orderBy(desc(chatRooms.isLegacy), desc(chatRooms.createdAt));
+
+  const eligible = rows.filter(({ room, myStatus }) => {
+    const isMember = myStatus === "active";
+    if (room.visibility === "private" && !isMember) return false;
+    if (!isMember && !room.isLegacy) return false;
+    return true;
+  });
+
+  if (eligible.length === 0) return [];
+
+  const roomIds = eligible.map((r) => r.room.id);
+  const memberCounts = await db
+    .select({ roomId: chatRoomMembers.roomId, value: count() })
+    .from(chatRoomMembers)
+    .where(and(inArray(chatRoomMembers.roomId, roomIds), eq(chatRoomMembers.status, "active")))
+    .groupBy(chatRoomMembers.roomId);
+
+  const countByRoom = new Map(memberCounts.map((r) => [r.roomId, Number(r.value)]));
+
   const result: (ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[] =
     [];
-  for (const room of allRooms) {
-    const [{ value: memberCount }] = await db
-      .select({ value: count() })
-      .from(chatRoomMembers)
-      .where(and(eq(chatRoomMembers.roomId, room.id), eq(chatRoomMembers.status, "active")));
-    const [my] = await db
-      .select()
-      .from(chatRoomMembers)
-      .where(and(eq(chatRoomMembers.roomId, room.id), eq(chatRoomMembers.userId, userId)))
-      .limit(1);
-    const isMember = my?.status === "active";
-    if (room.visibility === "private" && !isMember) continue;
-    if (!isMember && !room.isLegacy) continue;
+  for (const { room, myRole, myStatus } of eligible) {
     const unreadCount = await countUnreadInRoomDb(db, room.slug, room.id, userId);
     result.push({
       ...room,
-      memberCount: Number(memberCount),
-      myRole: my?.role ?? null,
+      memberCount: countByRoom.get(room.id) ?? 0,
+      myRole: myStatus === "active" ? (myRole ?? null) : null,
       unreadCount,
     });
   }
@@ -1059,7 +1074,7 @@ export async function createChatRoomDb(
       avatarUrl: data.avatarUrl ?? null,
       visibility: data.visibility,
       createdBy: data.createdBy,
-      settings: data.settings ?? { autoJoinOnPost: true, whoCanPost: "members" },
+      settings: data.settings ?? { autoJoinOnPost: false, whoCanPost: "members" },
       isLegacy: false,
     })
     .returning();

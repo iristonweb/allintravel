@@ -1,7 +1,7 @@
 import type { AppNotification, NotificationType } from "./notification-types";
 
 /** Types grouped by entity (e.g. multiple likes on one post). */
-export const AGGREGATABLE_NOTIFICATION_TYPES: NotificationType[] = ["post_like"];
+export const AGGREGATABLE_NOTIFICATION_TYPES: NotificationType[] = ["post_like", "post_comment"];
 
 function aggregateKey(item: Pick<AppNotification, "type" | "entityId">): string | null {
   if (!item.entityId) return null;

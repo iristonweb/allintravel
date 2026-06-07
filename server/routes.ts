@@ -81,7 +81,7 @@ import {
   type NotificationFilter,
 } from "@shared/notification-types";
 import { aggregateNotifications } from "@shared/notification-aggregate";
-import { enrichPostLikeNotifications } from "./notification-enrich";
+import { enrichSocialNotifications } from "./notification-enrich";
 import type { NotificationRow } from "@shared/schema";
 
 async function mapNotificationsForClient(items: NotificationRow[]) {
@@ -104,7 +104,7 @@ async function mapNotificationsForClient(items: NotificationRow[]) {
     actor: n.actorId ? (actorMap.get(n.actorId) ?? null) : null,
   }));
   const aggregated = aggregateNotifications(mapped);
-  return enrichPostLikeNotifications(aggregated, storage, actorMap);
+  return enrichSocialNotifications(aggregated, storage, actorMap);
 }
 
 const updateUserMeSchema = z.object({
@@ -1375,6 +1375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : "all";
 
       await storage.dedupePostLikeNotifications(userId);
+      await storage.dedupePostCommentNotifications(userId);
 
       const [receivedRequests, conversations, page, unreadNotifs] = await Promise.all([
         storage.getFriendRequests(userId, "received"),
@@ -2305,6 +2306,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.ensureLegacyChatRooms();
       const access = await resolveChatRoomAccess(storage, room, userId);
       if (!access.allowed) {
+        if (access.joinRequired && access.room) {
+          const members = await storage.getChatRoomMembers(access.room.id);
+          return res.status(403).json({
+            message: access.reason,
+            joinRequired: true,
+            room: {
+              id: access.room.id,
+              slug: access.room.slug,
+              title: access.room.title,
+              description: access.room.description,
+              avatarUrl: access.room.avatarUrl,
+              visibility: access.room.visibility,
+              memberCount: members.length,
+            },
+          });
+        }
         return res.status(403).json({ message: access.reason });
       }
       const { limit = 50 } = req.query;
@@ -2325,6 +2342,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.ensureLegacyChatRooms();
       const access = await resolveChatRoomAccess(storage, room, userId);
       if (!access.allowed) {
+        if (access.joinRequired && access.room) {
+          return res.status(403).json({
+            message: access.reason,
+            joinRequired: true,
+          });
+        }
         return res.status(403).json({ message: access.reason });
       }
       if (!access.canPost) {

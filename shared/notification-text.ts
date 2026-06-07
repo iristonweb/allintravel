@@ -19,6 +19,22 @@ export function formatPostLikeActorsLabel(actors: UserLabelFields[], totalCount:
   return `${names[0] ?? "Кто-то"} и ещё ${totalCount - 1}`;
 }
 
+export function formatPostCommentNotificationBody(
+  actors: UserLabelFields[],
+  totalCount: number,
+  postContent: string,
+  latestComment: string,
+): string {
+  const label = formatPostLikeActorsLabel(actors, totalCount);
+  const verb = totalCount > 1 ? "прокомментировали" : "прокомментировала";
+  const preview = truncateNotificationPreview(postContent, 40);
+  const comment = truncateNotificationPreview(latestComment, 100);
+  if (preview) {
+    return `${label} ${verb} «${preview}»: «${comment}»`;
+  }
+  return `${label} ${verb} вашу публикацию: «${comment}»`;
+}
+
 export function formatPostLikeNotificationBody(
   actors: UserLabelFields[],
   totalCount: number,

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Bell, MessageCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ChatGroupSearchDialog from "@/components/chat/ChatGroupSearchDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,20 +31,23 @@ export default function HeaderQuickActions({
   onMarkReadAndGo,
   className,
 }: HeaderQuickActionsProps) {
+  const [searchOpen, setSearchOpen] = useState(false);
   const previewItems = unreadItems.slice(0, 7);
 
   return (
-    <div className={cn("flex items-center gap-0.5 sm:gap-1", className)}>
-      <Link href="/map" title="Карта и поиск мест">
+    <>
+      <div className={cn("flex items-center gap-0.5 sm:gap-1", className)}>
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           className="h-10 w-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
-          aria-label="Карта и поиск мест"
+          title="Поиск групп и мест"
+          aria-label="Поиск"
+          onClick={() => setSearchOpen(true)}
         >
           <Search className="h-5 w-5" />
         </Button>
-      </Link>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -115,7 +120,10 @@ export default function HeaderQuickActions({
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#ff7a18] ring-2 ring-[#050816]" />
           )}
         </Button>
-      </Link>
-    </div>
+        </Link>
+      </div>
+
+      <ChatGroupSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
   );
 }

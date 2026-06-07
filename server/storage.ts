@@ -377,6 +377,7 @@ export interface IStorage {
   ): Promise<void>;
   deleteNotificationsForEntity(userId: string, type: string, entityId: string): Promise<void>;
   dedupePostLikeNotifications(userId: string): Promise<void>;
+  dedupePostCommentNotifications(userId: string): Promise<void>;
   upsertPushSubscription(
     userId: string,
     sub: { endpoint: string; keys: { p256dh: string; auth: string } },
@@ -388,6 +389,7 @@ export interface IStorage {
 
   getPostLikesCount(postId: string): Promise<number>;
   getRecentPostLikerUserIds(postId: string, limit?: number): Promise<string[]>;
+  getRecentPostCommenterUserIds(postId: string, limit?: number): Promise<string[]>;
   isPostLikedByUser(userId: string, postId: string): Promise<boolean>;
   getPostCommentsCount(postId: string): Promise<number>;
   getUserTrips(userId: string): Promise<Trip[]>;
@@ -2120,9 +2122,20 @@ export class MemStorage implements IStorage {
   }
 
   async getUnreadNotificationCount(userId: string) {
-    return Array.from(this.memNotifications.values()).filter(
+    const unread = Array.from(this.memNotifications.values()).filter(
       (n) => n.userId === userId && !n.isRead,
-    ).length;
+    );
+    const seen = new Set<string>();
+    let count = 0;
+    for (const n of unread) {
+      if ((n.type === "post_like" || n.type === "post_comment") && n.entityId) {
+        const key = `${n.type}:${n.entityId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
+      count += 1;
+    }
+    return count;
   }
 
   async markNotificationRead(userId: string, id: string) {
@@ -2131,6 +2144,14 @@ export class MemStorage implements IStorage {
     if (n.type === "post_like" && n.entityId) {
       for (const [nid, row] of Array.from(this.memNotifications.entries())) {
         if (row.userId === userId && row.type === "post_like" && row.entityId === n.entityId) {
+          this.memNotifications.set(nid, { ...row, isRead: true });
+        }
+      }
+      return;
+    }
+    if (n.type === "post_comment" && n.entityId) {
+      for (const [nid, row] of Array.from(this.memNotifications.entries())) {
+        if (row.userId === userId && row.type === "post_comment" && row.entityId === n.entityId) {
           this.memNotifications.set(nid, { ...row, isRead: true });
         }
       }
@@ -2212,6 +2233,22 @@ export class MemStorage implements IStorage {
     }
   }
 
+  async dedupePostCommentNotifications(userId: string) {
+    const byEntity = new Map<string, import("@shared/schema").NotificationRow>();
+    for (const n of Array.from(this.memNotifications.values())) {
+      if (n.userId !== userId || n.type !== "post_comment" || !n.entityId) continue;
+      const prev = byEntity.get(n.entityId);
+      if (!prev || new Date(n.createdAt!).getTime() > new Date(prev.createdAt!).getTime()) {
+        byEntity.set(n.entityId, n);
+      }
+    }
+    for (const [id, n] of Array.from(this.memNotifications.entries())) {
+      if (n.userId !== userId || n.type !== "post_comment" || !n.entityId) continue;
+      const keep = byEntity.get(n.entityId);
+      if (keep && keep.id !== id) this.memNotifications.delete(id);
+    }
+  }
+
   async markAllNotificationsRead(userId: string) {
     for (const [id, n] of Array.from(this.memNotifications.entries())) {
       if (n.userId === userId) this.memNotifications.set(id, { ...n, isRead: true });
@@ -2248,6 +2285,14 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
       .slice(0, limit)
       .map((l) => l.userId);
+  }
+
+  async getRecentPostCommenterUserIds(postId: string, limit = 3): Promise<string[]> {
+    return Array.from(this.postComments.values())
+      .filter((c) => c.postId === postId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+      .slice(0, limit)
+      .map((c) => c.userId);
   }
 
   async isPostLikedByUser(userId: string, postId: string): Promise<boolean> {
