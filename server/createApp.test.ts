@@ -8,6 +8,8 @@ describe("createApp", () => {
   beforeAll(async () => {
     process.env.NODE_ENV = "test";
     process.env.VERCEL = "1";
+    process.env.SESSION_SECRET =
+      process.env.SESSION_SECRET ?? "vitest-ci-session-secret-min-32-chars";
     const { createApp } = await import("./createApp");
     ({ app } = await createApp());
   }, 30_000);

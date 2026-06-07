@@ -33,6 +33,14 @@ export type LocalAuthResult =
   | { ok: false; reason: "error"; message: string; code?: string };
 
 export async function authenticateLocal(email: string, password: string): Promise<LocalAuthResult> {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) {
+    return { ok: false, reason: "invalid" };
+  }
+  if (!isPasswordLongEnough(password)) {
+    return { ok: false, reason: "invalid" };
+  }
+
   if (!isDatabaseConfigured()) {
     return {
       ok: false,
@@ -44,14 +52,6 @@ export async function authenticateLocal(email: string, password: string): Promis
 
   try {
     await ensureAuthSchema();
-
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed) {
-      return { ok: false, reason: "invalid" };
-    }
-    if (!isPasswordLongEnough(password)) {
-      return { ok: false, reason: "invalid" };
-    }
 
     let user = await storage.getUserByEmail(trimmed);
 

@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      SESSION_SECRET: ci-github-actions-session-secret-min-32-chars
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
