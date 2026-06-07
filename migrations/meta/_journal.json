@@ -15,6 +15,13 @@
       "when": 1780860000000,
       "tag": "0001_chat_messages_room_created_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780870000000,
+      "tag": "0002_trip_public",
+      "breakpoints": true
     }
   ]
 }

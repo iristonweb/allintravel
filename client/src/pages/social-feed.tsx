@@ -115,7 +115,11 @@ export function SocialFeed() {
   const [contentFormat, setContentFormat] = useState<"feed" | "stories" | "reels" | "journals">(
     "feed",
   );
-  const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({});
+  const { data: bookmarkData } = useQuery<{ postIds: string[] }>({
+    queryKey: ["/api/bookmarks"],
+    enabled: isAuthenticated,
+  });
+  const bookmarkedSet = new Set(bookmarkData?.postIds ?? []);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newPost, setNewPost] = useState({
@@ -229,6 +233,21 @@ export function SocialFeed() {
         : "Не удалось добавить комментарий";
       toast({ title: "Ошибка", description: message, variant: "destructive" });
     },
+  });
+
+  const toggleBookmarkMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      if (bookmarkedSet.has(postId)) {
+        await apiRequest("DELETE", `/api/bookmarks/${postId}`);
+        return { postId, saved: false };
+      }
+      await apiRequest("POST", `/api/bookmarks/${postId}`);
+      return { postId, saved: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] });
+    },
+    onError: () => toast({ title: "Не удалось обновить закладку", variant: "destructive" }),
   });
 
   /** Submit comment only if content is non-empty after trim; show toast otherwise. */
@@ -816,15 +835,13 @@ export function SocialFeed() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() =>
-                          setBookmarked((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
-                        }
+                        onClick={() => toggleBookmarkMutation.mutate(post.id)}
                         className={
-                          bookmarked[post.id] ? "text-ait-purple" : "text-muted-foreground"
+                          bookmarkedSet.has(post.id) ? "text-ait-purple" : "text-muted-foreground"
                         }
                       >
                         <Bookmark
-                          className={`h-4 w-4 ${bookmarked[post.id] ? "fill-current" : ""}`}
+                          className={`h-4 w-4 ${bookmarkedSet.has(post.id) ? "fill-current" : ""}`}
                         />
                       </Button>
                     </div>

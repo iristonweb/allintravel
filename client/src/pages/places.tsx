@@ -26,8 +26,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import MediaUploadField from "@/components/media/MediaUploadField";
 import type { Place } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Places() {
+  const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const { toast } = useToast();
@@ -138,6 +140,7 @@ export function Places() {
         title="Места"
         description="Рестораны, отели и достопримечательности, которые рекомендуют путешественники"
         rightSlot={
+          isAuthenticated ? (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button variant="premium">
@@ -207,6 +210,7 @@ export function Places() {
               </div>
             </DialogContent>
           </Dialog>
+          ) : null
         }
       />
 

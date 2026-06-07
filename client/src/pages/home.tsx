@@ -21,9 +21,19 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import type { Place, Trip, Event, TripWaypointWithPlace } from "@shared/schema";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
+import { isOnboardingDone } from "@/lib/onboarding";
 
 export function Home() {
   const { user, isAuthenticated } = useAuth();
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && !isOnboardingDone()) {
+      setOnboardingOpen(true);
+    }
+  }, [isAuthenticated]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -96,6 +106,7 @@ export function Home() {
 
   return (
     <AppLayout immersive contentClassName="p-0">
+      <OnboardingWizard open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
       <CinematicHero trips={trips} showAnchorPills />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-24">

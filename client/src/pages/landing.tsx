@@ -4,7 +4,9 @@ import HeroStats from "@/components/home/hero-stats";
 import HomeExplorePlannerSection from "@/components/home/home-explore-planner-section";
 import HomeCommunityPreview from "@/components/home/home-community-preview";
 import HomeMobileShowcase from "@/components/home/home-mobile-showcase";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Map, MapPin, BookOpen, Compass } from "lucide-react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { scrollToAnchor } from "@/lib/nav-config";
@@ -33,8 +35,37 @@ export function Landing() {
         <HomeCommunityPreview />
         <HomeMobileShowcase />
 
-        <section className="max-w-3xl mx-auto text-center py-8">
-          <h2 className="ait-section-title mb-6">Готовы к следующему приключению?</h2>
+        <section className="max-w-3xl mx-auto text-center py-8 space-y-6">
+          <h2 className="ait-section-title">Исследуйте без регистрации</h2>
+          <p className="text-muted-foreground">
+            Карта, места, блог и гиды по направлениям — попробуйте до входа в аккаунт.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button variant="outline" className="rounded-2xl gap-2" asChild>
+              <Link href="/map">
+                <Map className="h-4 w-4" />
+                Карта
+              </Link>
+            </Button>
+            <Button variant="outline" className="rounded-2xl gap-2" asChild>
+              <Link href="/places">
+                <MapPin className="h-4 w-4" />
+                Места
+              </Link>
+            </Button>
+            <Button variant="outline" className="rounded-2xl gap-2" asChild>
+              <Link href="/blog">
+                <BookOpen className="h-4 w-4" />
+                Блог
+              </Link>
+            </Button>
+            <Button variant="outline" className="rounded-2xl gap-2" asChild>
+              <Link href="/destinations">
+                <Compass className="h-4 w-4" />
+                Направления
+              </Link>
+            </Button>
+          </div>
           <button
             type="button"
             onClick={() => navigate("/login")}

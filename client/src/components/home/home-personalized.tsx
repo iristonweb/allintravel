@@ -6,11 +6,13 @@ import PlaceCard from "@/components/place-card";
 import type { Place } from "@shared/schema";
 import { getRecentTypePreference } from "@/lib/recentlyViewed";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { loadOnboardingPrefs } from "@/lib/onboarding";
 
 export default function HomePersonalized() {
   const recentlyViewed = useRecentlyViewed();
   const preferredType = getRecentTypePreference();
   const recentlyViewedCount = recentlyViewed.length;
+  const onboardingPrefs = loadOnboardingPrefs();
 
   const { data: places = [] } = useQuery<Place[]>({
     queryKey: [
@@ -28,14 +30,16 @@ export default function HomePersonalized() {
       <HomeSectionHeader
         title="Рекомендовано вам"
         description={
-          recentlyViewedCount > 0
-            ? "Подборка на основе истории просмотров"
-            : "Сначала откройте пару мест — и мы начнём подстраиваться"
+          onboardingPrefs?.destination
+            ? `Подборка для «${onboardingPrefs.destination.split(",")[0]?.trim()}»`
+            : recentlyViewedCount > 0
+              ? "Подборка на основе истории просмотров"
+              : "Сначала откройте пару мест — и мы начнём подстраиваться"
         }
         rightSlot={
           <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
             <Sparkles className="h-4 w-4" />
-            AI-рекомендации (MVP)
+            Персонально для вас
           </div>
         }
       />

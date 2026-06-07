@@ -609,6 +609,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/trips/my-plannable", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { getPlannableTrips } = await import("./trip-features");
+      const trips = await getPlannableTrips(storage, userId);
+      res.json(trips);
+    } catch (error) {
+      console.error("Error fetching plannable trips:", error);
+      res.status(500).json({ message: "Failed to fetch trips" });
+    }
+  });
+
+  app.get("/api/trips/invite/:token", async (req, res) => {
+    try {
+      const { resolveTripInvite } = await import("./trip-features");
+      const resolved = await resolveTripInvite(storage, req.params.token);
+      if (!resolved) return res.status(404).json({ message: "Invite not found" });
+      const waypoints = await storage.getTripWaypoints(resolved.trip.id);
+      res.json({
+        trip: resolved.trip,
+        stopCount: waypoints.length,
+        referrerId: resolved.referrerId,
+      });
+    } catch (error) {
+      console.error("Error resolving trip invite:", error);
+      res.status(500).json({ message: "Failed to resolve invite" });
+    }
+  });
+
+  app.post("/api/trips/invite/:token/join", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { joinTripViaInvite } = await import("./trip-features");
+      const result = await joinTripViaInvite(storage, req.params.token, userId);
+      res.json(result);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to join";
+      if (msg === "Invalid invite") return res.status(404).json({ message: msg });
+      if (msg === "Trip is full") return res.status(409).json({ message: msg });
+      console.error("Error joining via invite:", error);
+      res.status(500).json({ message: "Failed to join trip" });
+    }
+  });
+
   app.get("/api/trips/:id/waypoints", async (req, res) => {
     try {
       const waypoints = await storage.getTripWaypoints(req.params.id);
@@ -1085,6 +1129,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/trips/:id/public", async (req, res) => {
+    try {
+      const { getPublicTripPayload } = await import("./trip-features");
+      const payload = await getPublicTripPayload(storage, req.params.id);
+      if (!payload) return res.status(404).json({ message: "Trip not found or not public" });
+      res.json(payload);
+    } catch (error) {
+      console.error("Error fetching public trip:", error);
+      res.status(500).json({ message: "Failed to fetch trip" });
+    }
+  });
+
+  app.post("/api/trips/:id/copy", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { copyTripForUser } = await import("./trip-features");
+      const trip = await copyTripForUser(storage, req.params.id, userId);
+      const aitGrant = await grantSpend(userId, "trip_created", {
+        entityType: "trip",
+        entityId: trip.id,
+      });
+      res.status(201).json({ ...trip, aitGrant: aitGrant ?? null });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to copy trip";
+      if (msg === "Forbidden") return res.status(403).json({ message: msg });
+      if (msg === "Trip not found") return res.status(404).json({ message: msg });
+      console.error("Error copying trip:", error);
+      res.status(500).json({ message: "Failed to copy trip" });
+    }
+  });
+
+  app.post("/api/trips/:id/invite-link", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { createTripInviteLink } = await import("./trip-features");
+      const { getOrCreateReferralCode } = await import("./ait/referral");
+      const referralCode = await getOrCreateReferralCode(userId);
+      const appUrl =
+        process.env.APP_URL?.trim() ||
+        `${req.protocol}://${req.get("host") || "localhost:5000"}`;
+      const info = await createTripInviteLink(
+        storage,
+        req.params.id,
+        userId,
+        referralCode,
+        appUrl,
+      );
+      res.json(info);
+    } catch (error) {
+      console.error("Error creating trip invite:", error);
+      res.status(500).json({ message: "Failed to create invite link" });
+    }
+  });
+
+  app.post("/api/trips/:id/copilot", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const trip = await storage.getTrip(req.params.id);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
+      const prompt = String(req.body?.prompt ?? "").trim();
+      if (!prompt) return res.status(400).json({ message: "Укажите запрос" });
+      const { generateTripCopilotPlan } = await import("./ai/trip-copilot");
+      const plan = await generateTripCopilotPlan(storage, trip.destination, prompt);
+      res.json(plan);
+    } catch (error) {
+      console.error("Error running trip copilot:", error);
+      res.status(500).json({ message: "Copilot failed" });
+    }
+  });
+
+  app.post("/api/trips/:id/copilot/apply", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!(await userCanManageTrip(storage, userId, req.params.id))) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const placeIds = Array.isArray(req.body?.placeIds) ? (req.body.placeIds as string[]) : [];
+      if (!placeIds.length) return res.status(400).json({ message: "Нет остановок" });
+      const added = [];
+      for (const placeId of placeIds.slice(0, 12)) {
+        const wp = await storage.addTripWaypoint(req.params.id, placeId);
+        added.push(wp);
+      }
+      res.json({ added: added.length, waypoints: added });
+    } catch (error) {
+      console.error("Error applying copilot plan:", error);
+      res.status(500).json({ message: "Failed to apply plan" });
+    }
+  });
+
+  app.get("/api/destinations", async (_req, res) => {
+    try {
+      const { listDestinationSlugs } = await import("./destinations");
+      const slugs = await listDestinationSlugs(storage);
+      res.json({ slugs });
+    } catch (error) {
+      console.error("Error listing destinations:", error);
+      res.status(500).json({ message: "Failed to list destinations" });
+    }
+  });
+
+  app.get("/api/destinations/:slug", async (req, res) => {
+    try {
+      const { getDestinationPage } = await import("./destinations");
+      const page = await getDestinationPage(storage, req.params.slug);
+      if (!page) return res.status(404).json({ message: "Destination not found" });
+      res.json(page);
+    } catch (error) {
+      console.error("Error fetching destination:", error);
+      res.status(500).json({ message: "Failed to fetch destination" });
+    }
+  });
+
+  app.get("/api/bookmarks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { listBookmarkedPostIds } = await import("./bookmarks");
+      const postIds = await listBookmarkedPostIds(userId);
+      res.json({ postIds });
+    } catch (error) {
+      console.error("Error listing bookmarks:", error);
+      res.status(500).json({ message: "Failed to list bookmarks" });
+    }
+  });
+
+  app.post("/api/bookmarks/:postId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { addPostBookmark } = await import("./bookmarks");
+      await addPostBookmark(userId, req.params.postId);
+      res.status(201).json({ ok: true });
+    } catch (error) {
+      console.error("Error adding bookmark:", error);
+      res.status(500).json({ message: "Failed to bookmark" });
+    }
+  });
+
+  app.delete("/api/bookmarks/:postId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { removePostBookmark } = await import("./bookmarks");
+      await removePostBookmark(userId, req.params.postId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing bookmark:", error);
+      res.status(500).json({ message: "Failed to remove bookmark" });
+    }
+  });
+
+  app.get("/api/affiliate/hotel-link", async (req, res) => {
+    try {
+      const name = String(req.query.name ?? "").trim();
+      const city = String(req.query.city ?? "").trim();
+      if (!name && !city) return res.status(400).json({ message: "name or city required" });
+      const query = encodeURIComponent([name, city].filter(Boolean).join(" "));
+      const marker = process.env.AFFILIATE_MARKER?.trim() || "allintravel";
+      const ostrovok = `https://ostrovok.ru/hotel/search/?q=${query}&partner_slug=${marker}`;
+      const booking = `https://www.booking.com/searchresults.html?ss=${query}&aid=${marker}`;
+      res.json({ ostrovok, booking, query: [name, city].filter(Boolean).join(" ") });
+    } catch (error) {
+      console.error("Error building affiliate link:", error);
+      res.status(500).json({ message: "Failed to build link" });
+    }
+  });
+
   // Event routes
   app.get("/api/events", async (req, res) => {
     try {
@@ -1142,11 +1357,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/events/:id/checkout", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const event = await storage.getEvent(req.params.id);
+      if (!event) return res.status(404).json({ message: "Event not found" });
+      const price = event.price ?? 0;
+      if (price <= 0) {
+        return res.status(400).json({ message: "Событие бесплатное — используйте регистрацию" });
+      }
+      const { createEventCheckout, yukassaEnabled } = await import("./payments/yukassa");
+      const appUrl =
+        process.env.APP_URL?.trim() ||
+        `${req.protocol}://${req.get("host") || "localhost:5000"}`;
+      const returnUrl = `${appUrl}/events?paid=${event.id}`;
+      const session = await createEventCheckout({
+        eventId: event.id,
+        eventTitle: event.title,
+        amountCents: price,
+        userId,
+        returnUrl,
+      });
+      res.json({ ...session, yukassaEnabled: yukassaEnabled() });
+    } catch (error) {
+      console.error("Error creating checkout:", error);
+      res.status(500).json({ message: "Failed to create checkout" });
+    }
+  });
+
   app.post("/api/events/:id/register", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const event = await storage.getEvent(req.params.id);
       if (!event) return res.status(404).json({ message: "Event not found" });
+      if ((event.price ?? 0) > 0 && !req.body?.paid) {
+        return res.status(402).json({
+          message: "Требуется оплата",
+          requiresPayment: true,
+          priceCents: event.price,
+        });
+      }
       const registration = await storage.registerForEvent(req.params.id, userId);
       const aitGrant = await grantSpend(userId, "event_register", {
         entityType: "event",

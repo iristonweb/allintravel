@@ -19,7 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Star, MapPin, Phone, Globe, Heart, Share2, AlertCircle } from "lucide-react";
+import { Star, MapPin, Phone, Globe, Heart, Share2, AlertCircle, LogIn } from "lucide-react";
+import AddPlaceToTripButton from "@/components/places/AddPlaceToTripButton";
+import AffiliateHotelWidget from "@/components/monetization/AffiliateHotelWidget";
+import { Link } from "wouter";
+import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import EmptyState from "@/components/empty-state";
 import { useState } from "react";
 import { shareUrl } from "@/lib/share";
@@ -30,27 +34,11 @@ import { PLACE_CARD_FALLBACK_SRC } from "@/lib/marketing-images";
 
 export default function PlaceDetails() {
   const { id } = useParams();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [reviewText, setReviewText] = useState("");
   const [reviewRating, setReviewRating] = useState("5");
-
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Нужен вход",
-        description: "Сессия закончилась. Перенаправляем на страницу входа…",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        const redirect = window.location.pathname + window.location.search + window.location.hash;
-        window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, authLoading, toast]);
 
   const {
     data: place,
@@ -60,17 +48,28 @@ export default function PlaceDetails() {
     refetch: refetchPlace,
   } = useQuery<PlaceWithDetails>({
     queryKey: ["/api/places", id],
-    enabled: !!id && isAuthenticated,
+    enabled: !!id,
   });
 
+  useDocumentMeta(
+    place
+      ? {
+          title: `${place.name} | All In Travel`,
+          description: place.description?.slice(0, 160) ?? `Место: ${place.name}`,
+          image: place.imageUrl ?? undefined,
+          url: `${window.location.origin}/place/${id}`,
+        }
+      : null,
+  );
+
   useEffect(() => {
-    if (!place?.id) return;
+    if (!place?.id || !isAuthenticated) return;
     pushRecentlyViewedPlace({ id: place.id, type: place.type });
-  }, [place?.id, place?.type]);
+  }, [place?.id, place?.type, isAuthenticated]);
 
   const { data: reviews, isLoading: reviewsLoading } = useQuery<Review[]>({
     queryKey: ["/api/places", id, "reviews"],
-    enabled: !!id && isAuthenticated,
+    enabled: !!id,
   });
 
   const { data: favoriteStatus } = useQuery<FavoriteStatus>({
@@ -179,7 +178,7 @@ export default function PlaceDetails() {
     });
   };
 
-  if (authLoading || placeLoading) {
+  if (placeLoading) {
     return (
       <AppLayout contentClassName="py-8">
         <div className="animate-pulse">
@@ -242,17 +241,19 @@ export default function PlaceDetails() {
             className="w-full h-full object-cover"
           />
           <div className="absolute top-4 right-4 flex space-x-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => toggleFavoriteMutation.mutate()}
-              disabled={toggleFavoriteMutation.isPending}
-              className="ait-glass hover:bg-card/50"
-            >
-              <Heart
-                className={`h-4 w-4 ${favoriteStatus?.isFavorite ? "fill-primary text-primary" : "text-muted-foreground"}`}
-              />
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => toggleFavoriteMutation.mutate()}
+                disabled={toggleFavoriteMutation.isPending}
+                className="ait-glass hover:bg-card/50"
+              >
+                <Heart
+                  className={`h-4 w-4 ${favoriteStatus?.isFavorite ? "fill-primary text-primary" : "text-muted-foreground"}`}
+                />
+              </Button>
+            ) : null}
             <Button
               variant="secondary"
               size="sm"
@@ -350,11 +351,35 @@ export default function PlaceDetails() {
                 )}
               </div>
             </div>
+            <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
+              {isAuthenticated ? (
+                <AddPlaceToTripButton placeId={place.id} placeName={place.name} />
+              ) : (
+                <Button variant="premium" className="gap-2 rounded-2xl" asChild>
+                  <Link
+                    href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Войти и добавить в поездку
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </GlassCard>
+
+        {place.type === "hotel" && (
+          <div className="mb-6">
+            <AffiliateHotelWidget
+              placeName={place.name}
+              city={place.address?.split(",")[0]}
+            />
+          </div>
+        )}
       </div>
 
       {/* Add Review Section */}
+      {isAuthenticated ? (
       <GlassCard className="mb-8 p-6">
         <h3 className="text-lg font-semibold mb-4">Оставить отзыв</h3>
         <div className="space-y-4">
@@ -391,6 +416,16 @@ export default function PlaceDetails() {
           </Button>
         </div>
       </GlassCard>
+      ) : (
+        <GlassCard className="mb-8 p-6 text-center">
+          <p className="text-muted-foreground mb-3">Войдите, чтобы оставить отзыв.</p>
+          <Button variant="outline" asChild>
+            <Link href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}>
+              Войти
+            </Link>
+          </Button>
+        </GlassCard>
+      )}
 
       {/* Reviews Section */}
       <GlassCard className="p-6">

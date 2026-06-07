@@ -28,12 +28,13 @@ import {
   GripVertical,
   Film,
   MapPin,
-  Share2,
   Car,
   Footprints,
   Bus,
 } from "lucide-react";
 import TripCinema from "@/components/trips/TripCinema";
+import TripSharePanel from "@/components/trips/TripSharePanel";
+import TripCopilotPanel from "@/components/trips/TripCopilotPanel";
 import { apiRequest, apiRequestJson, toApiUrl } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { optimizeWaypointOrder, totalRouteKm } from "@/lib/routeUtils";
@@ -383,19 +384,6 @@ export default function TripPlannerLayout({
             variant="outline"
             className="gap-2 rounded-2xl"
             onClick={() => {
-              const url = `${window.location.origin}/trips/${tripId}`;
-              void navigator.clipboard.writeText(url);
-              toast({ title: "Ссылка на поездку скопирована" });
-            }}
-          >
-            <Share2 className="h-4 w-4" />
-            Поделиться
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2 rounded-2xl"
-            onClick={() => {
               void apiRequestJson("POST", `/api/trips/${tripId}/checkin`)
                 .then((r) => {
                   if ((r as { alreadyCheckedIn?: boolean }).alreadyCheckedIn) {
@@ -420,6 +408,17 @@ export default function TripPlannerLayout({
           </Button>
         </div>
       </div>
+
+      <TripSharePanel
+        trip={trip}
+        tripId={tripId}
+        stopCount={waypoints.length}
+        onTripUpdated={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId] });
+        }}
+      />
+
+      <TripCopilotPanel tripId={tripId} onApplied={invalidateRouteQueries} />
 
       {cinemaOpen && (
         <TripCinema

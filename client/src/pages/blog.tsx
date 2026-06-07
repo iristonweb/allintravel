@@ -10,6 +10,7 @@ import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { TravelPostWithAuthor } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 function excerpt(text: string, max = 140) {
   const t = text.trim();
@@ -18,6 +19,7 @@ function excerpt(text: string, max = 140) {
 }
 
 export function Blog() {
+  const { isAuthenticated } = useAuth();
   const {
     data: posts = [],
     isLoading,
@@ -35,12 +37,21 @@ export function Blog() {
           title="Блог"
           description="Истории путешественников, маршруты и практические советы."
         />
-        <Button variant="premium" className="shrink-0" asChild>
-          <Link href="/social-feed">
-            <PenLine className="h-4 w-4 mr-2" />
-            Написать статью
-          </Link>
-        </Button>
+        {isAuthenticated ? (
+          <Button variant="premium" className="shrink-0" asChild>
+            <Link href="/social-feed">
+              <PenLine className="h-4 w-4 mr-2" />
+              Написать статью
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="outline" className="shrink-0" asChild>
+            <Link href="/login?redirect=%2Fsocial-feed">
+              <PenLine className="h-4 w-4 mr-2" />
+              Войти и писать
+            </Link>
+          </Button>
+        )}
       </div>
 
       {isLoading && (

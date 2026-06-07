@@ -147,6 +147,7 @@ export const trips = pgTable("trips", {
   chatRoomId: uuid("chat_room_id"),
   tags: text("tags").array(),
   imageUrl: varchar("image_url"),
+  isPublic: boolean("is_public").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -911,6 +912,7 @@ export const updateTripSchema = z
     budgetMax: z.number().int().min(0).nullable().optional(),
     plannerNotes: z.string().max(16000).nullable().optional(),
     imageUrl: z.string().max(500).nullable().optional(),
+    isPublic: z.boolean().optional(),
     isActive: z.boolean().optional(),
   })
   .strict()

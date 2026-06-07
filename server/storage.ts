@@ -664,6 +664,7 @@ export class MemStorage implements IStorage {
         chatRoomId: null,
         tags: ["islands", "Greece", "sailing", "culture"],
         imageUrl: TRIP_CARD_FALLBACK_SRC,
+        isPublic: true,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -685,6 +686,7 @@ export class MemStorage implements IStorage {
         chatRoomId: null,
         tags: ["Japan", "culture", "food", "temples"],
         imageUrl: TRIP_CARD_FALLBACK_SRC,
+        isPublic: false,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -2452,6 +2454,10 @@ export async function initAppStorage(): Promise<void> {
   try {
     const { ensureAitReady } = await import("./ait/service");
     await ensureAitReady();
+    const { ensureTripFeatureSchema } = await import("./trip-features");
+    await ensureTripFeatureSchema();
+    const { ensureBookmarkSchema } = await import("./bookmarks");
+    await ensureBookmarkSchema();
     if (storage instanceof PgStorage) {
       await storage.ensureSchema();
       if (!process.env.VERCEL) {

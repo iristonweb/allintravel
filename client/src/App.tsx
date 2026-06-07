@@ -42,6 +42,12 @@ import GlobalMusicBar from "@/components/music/GlobalMusicBar";
 import AdminPage from "@/pages/admin";
 import { NotificationsPage } from "@/pages/notifications";
 import { captureReferralFromUrl } from "@/lib/referral-pending";
+import TripPublic from "@/pages/trip-public";
+import TripJoinPage from "@/pages/trip-join";
+import DestinationPage from "@/pages/destination";
+import DestinationsIndexPage from "@/pages/destinations";
+import TelegramAppPage from "@/pages/telegram-app";
+import { initTelegramMiniApp } from "@/lib/telegram";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -60,6 +66,10 @@ function Router() {
       navigate("/");
     }
   }, [isAuthenticated, isLoading, location, navigate]);
+
+  useEffect(() => {
+    initTelegramMiniApp();
+  }, []);
 
   // Show loading while checking auth status
   if (isLoading) {
@@ -83,17 +93,23 @@ function Router() {
         transition={{ duration: 0.22, ease: "easeOut" }}
       >
         <Switch>
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/map" component={MapPage} />
+          <Route path="/places" component={Places} />
+          <Route path="/place/:id" component={PlaceDetails} />
+          <Route path="/blog" component={Blog} />
+          <Route path="/blog/:id" component={BlogPostPage} />
+          <Route path="/trips/:id/public" component={TripPublic} />
+          <Route path="/trips/join/:token" component={TripJoinPage} />
+          <Route path="/destinations" component={DestinationsIndexPage} />
+          <Route path="/destinations/:slug" component={DestinationPage} />
+          <Route path="/telegram" component={TelegramAppPage} />
+
           {!isAuthenticated && <Route path="/login" component={Login} />}
-          {!isAuthenticated && <Route path="/privacy" component={Privacy} />}
           {!isAuthenticated && <Route path="/" component={Landing} />}
           {!isAuthenticated && <Route path="*" component={RequireLogin} />}
 
           {isAuthenticated && <Route path="/" component={Home} />}
-          {isAuthenticated && <Route path="/map" component={MapPage} />}
-          {isAuthenticated && <Route path="/blog" component={Blog} />}
-          {isAuthenticated && <Route path="/blog/:id" component={BlogPostPage} />}
-          {isAuthenticated && <Route path="/place/:id" component={PlaceDetails} />}
-          {isAuthenticated && <Route path="/places" component={Places} />}
           {isAuthenticated && <Route path="/profile/edit" component={ProfileEdit} />}
           {isAuthenticated && <Route path="/profile/settings" component={ProfileSettings} />}
           {isAuthenticated && <Route path="/profile/friends" component={Friends} />}

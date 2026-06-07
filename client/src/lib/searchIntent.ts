@@ -5,8 +5,10 @@ export type SearchIntent = {
   savedAt: number;
 };
 
+const ALLOWED_PREFIXES = ["/places", "/map", "/destinations", "/trips"];
+
 export function saveSearchIntent(path: string): void {
-  if (!path.startsWith("/places")) return;
+  if (!ALLOWED_PREFIXES.some((p) => path.startsWith(p))) return;
   sessionStorage.setItem(
     SEARCH_INTENT_KEY,
     JSON.stringify({ path, savedAt: Date.now() } satisfies SearchIntent),

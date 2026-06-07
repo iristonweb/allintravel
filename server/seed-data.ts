@@ -155,6 +155,7 @@ export function buildSeedData(now = new Date()) {
         budgetMin: 2000,
         budgetMax: 4000,
         tags: ["islands", "Greece", "sailing", "culture"],
+        isPublic: true,
       },
       {
         id: "33333333-3333-4333-a333-333333333302",
@@ -169,6 +170,7 @@ export function buildSeedData(now = new Date()) {
         budgetMin: 3000,
         budgetMax: 6000,
         tags: ["Japan", "culture", "food", "temples"],
+        isPublic: false,
       },
     ],
     posts: [

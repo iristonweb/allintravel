@@ -21,7 +21,7 @@ export function EventCard({ event, onRegister, isRegistered = false }: EventCard
 
   const formatPrice = (price: number | null) => {
     if (!price) return "Бесплатно";
-    return `${price} ₽`;
+    return `${(price / 100).toLocaleString("ru-RU")} ₽`;
   };
 
   const getTypeLabel = (type: string) => {

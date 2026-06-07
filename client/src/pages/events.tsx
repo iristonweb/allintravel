@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
@@ -65,8 +65,21 @@ export function Events() {
 
   const registeredSet = new Set(registrations.eventIds);
 
+  const checkoutMutation = useMutation({
+    mutationFn: (eventId: string) =>
+      apiRequestJson<{ confirmationUrl: string; status: string }>(
+        "POST",
+        `/api/events/${eventId}/checkout`,
+      ),
+    onSuccess: (data) => {
+      window.location.href = data.confirmationUrl;
+    },
+    onError: () => toast({ title: "Не удалось начать оплату", variant: "destructive" }),
+  });
+
   const registerMutation = useMutation({
-    mutationFn: (eventId: string) => apiRequestJson("POST", `/api/events/${eventId}/register`),
+    mutationFn: ({ eventId, paid }: { eventId: string; paid?: boolean }) =>
+      apiRequestJson("POST", `/api/events/${eventId}/register`, paid ? { paid: true } : {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events/registrations"] });
       toast({ title: "Вы зарегистрировались!", description: "Вы записаны на мероприятие." });
@@ -75,6 +88,27 @@ export function Events() {
       toast({ title: "Ошибка регистрации", variant: "destructive" });
     },
   });
+
+  const paidHandledRef = useRef(false);
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const paidId = params.get("paid");
+    const checkout = params.get("checkout");
+    if (paidId && checkout && !paidHandledRef.current) {
+      paidHandledRef.current = true;
+      registerMutation.mutate({ eventId: paidId, paid: true });
+      window.history.replaceState({}, "", "/events");
+    }
+  }, [searchString, registerMutation]);
+
+  const handleRegister = (eventId: string) => {
+    const ev = events.find((e) => e.id === eventId);
+    if (ev?.price && ev.price > 0) {
+      checkoutMutation.mutate(eventId);
+      return;
+    }
+    registerMutation.mutate({ eventId });
+  };
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -314,7 +348,7 @@ export function Events() {
                     key={event.id}
                     event={event}
                     isRegistered={registeredSet.has(event.id)}
-                    onRegister={(id) => registerMutation.mutate(id)}
+                    onRegister={handleRegister}
                   />
                 ))}
               </div>
