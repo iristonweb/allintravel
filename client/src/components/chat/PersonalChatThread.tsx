@@ -289,7 +289,13 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
                   messageId={message.id}
                   content={message.content}
                   isOwn={isOwn}
-                  senderInitial={isOwn ? (user ? getUserInitial(user) : "Я") : getUserInitial(peer)}
+                  senderInitial={
+                    isOwn
+                      ? user
+                        ? getUserInitial(user)
+                        : t("chat.page.group.me")
+                      : getUserInitial(peer)
+                  }
                   senderAvatarUrl={isOwn ? user?.profileImageUrl : peer.profileImageUrl}
                   createdAt={message.createdAt}
                   updatedAt={message.updatedAt}

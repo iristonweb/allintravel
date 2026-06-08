@@ -14,6 +14,8 @@ import type { UserProfile } from "@shared/schema";
 import { MessageCircle, UserPlus, MapPin, Compass, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import FollowButton from "@/components/social/FollowButton";
+import { TrustPanel } from "@/components/trust/TrustPanel";
+import PassportCard from "@/components/passport/PassportCard";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import EmptyState from "@/components/empty-state";
 
@@ -141,6 +143,9 @@ export function UserPublicProfile() {
           </div>
         </div>
         {profile?.bio && <p className="mt-4 text-muted-foreground">{profile.bio}</p>}
+        <div className="mt-4">
+          <TrustPanel userId={publicUser.id} />
+        </div>
         {profile?.location && (
           <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
@@ -224,6 +229,9 @@ export function UserPublicProfile() {
           <UserTipButton userId={publicUser.id} currentUserId={me?.id} />
         </div>
       </GlassCard>
+      <div className="mt-6">
+        <PassportCard username={publicUser.username} compact />
+      </div>
     </AppLayout>
   );
 }

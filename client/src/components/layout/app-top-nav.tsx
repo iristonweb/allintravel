@@ -11,42 +11,20 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrandLogo from "@/components/brand/brand-logo";
 import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
-import {
-  guestAnchors,
-  sidebarDiscoverNav,
-  sidebarPrimaryNav,
-  scrollToAnchor,
-} from "@/lib/nav-config";
+import { scrollToAnchor } from "@/lib/nav-config";
+import { useNavLabels } from "@/hooks/useNavLabels";
+import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 import WalletHeaderButton from "@/components/layout/wallet-header-button";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
 import AitBalancePill from "@/components/ait/AitBalancePill";
 
-const pageTitles: Record<string, string> = {
-  "/": "Главная",
-  "/map": "Карта",
-  "/trips": "Поездки",
-  "/social-feed": "Сообщество",
-  "/friends": "Друзья",
-  "/profile": "Профиль",
-  "/profile/music": "Моя музыка",
-  "/music": "Моя музыка",
-  "/places": "Места",
-  "/events": "События",
-  "/blog": "Блог",
-  "/wallet": "AIT Hub",
-  "/chat": "Чаты",
-  "/notifications": "Уведомления",
-  "/admin": "Админ",
-  "/profile/edit": "Редактирование",
-  "/profile/settings": "Настройки",
-};
-
-function resolvePageTitle(path: string): string | null {
-  if (path.startsWith("/messages")) return pageTitles["/chat"] ?? "Чаты";
-  if (pageTitles[path]) return pageTitles[path];
+function resolvePageTitle(path: string, titles: Record<string, string>): string | null {
+  if (path.startsWith("/messages")) return titles["/chat"] ?? null;
+  if (titles[path]) return titles[path];
   const base = `/${path.split("/").filter(Boolean)[0] ?? ""}`;
-  return pageTitles[base] ?? null;
+  return titles[base] ?? null;
 }
 
 type AppTopNavProps = {
@@ -57,6 +35,13 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { user, isAuthenticated } = useAuth();
   const [location, navigate] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useTranslation();
+  const {
+    guestAnchors,
+    sidebarPrimaryNav,
+    sidebarDiscoverNav,
+    pageTitles: navPageTitles,
+  } = useNavLabels();
 
   const queryClient = useQueryClient();
 
@@ -98,7 +83,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
     return location === href || location.startsWith(`${href}/`);
   };
 
-  const pageTitle = resolvePageTitle(location);
+  const pageTitle = resolvePageTitle(location, navPageTitles);
 
   if (!isAuthenticated) {
     return (
@@ -121,9 +106,10 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
               </GuestAnchorLink>
             ))}
           </nav>
+          <LanguageSwitcher className="hidden sm:inline-flex" />
           <Link href="/login">
             <Button className="ait-btn-glow rounded-2xl border-0 text-white font-semibold px-6 shrink-0">
-              Войти
+              {t("nav.login")}
             </Button>
           </Link>
         </div>
@@ -183,6 +169,8 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
           )}
 
           <AitBalancePill className="hidden sm:inline-flex" />
+
+          <LanguageSwitcher />
 
           <HeaderQuickActions
             unreadItems={unreadItems}

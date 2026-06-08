@@ -15,6 +15,7 @@ describe("feed-utils", () => {
     expect(feedModeFromQuery(null)).toBe("all");
     expect(feedModeFromQuery("following")).toBe("following");
     expect(feedModeFromQuery("popular")).toBe("popular");
+    expect(feedModeFromQuery("nearby")).toBe("nearby");
     expect(feedModeFromQuery("unknown")).toBe("all");
   });
 

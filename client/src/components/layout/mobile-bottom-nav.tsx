@@ -4,7 +4,6 @@ import {
   Home,
   Map,
   MapPin,
-  MessageCircle,
   MoreHorizontal,
   Plus,
   Sparkles,

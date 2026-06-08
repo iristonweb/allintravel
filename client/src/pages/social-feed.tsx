@@ -83,6 +83,17 @@ export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => undefined,
+      { maximumAge: 300_000, timeout: 8000 },
+    );
+  }, []);
+
   const [feedMode, setFeedMode] = useState<FeedMode>(() => {
     const fromUrl = feedModeFromQuery(new URLSearchParams(window.location.search).get("mode"));
     return fromUrl;
@@ -165,7 +176,14 @@ export function SocialFeed() {
     refetchInterval: isAuthenticated ? 20_000 : false,
   });
 
-  const displayedPosts = useMemo(() => filterPostsForFeedMode(posts, feedMode), [posts, feedMode]);
+  const displayedPosts = useMemo(
+    () =>
+      filterPostsForFeedMode(posts, feedMode, {
+        userLat: userCoords?.lat,
+        userLon: userCoords?.lon,
+      }),
+    [posts, feedMode, userCoords],
+  );
 
   const createPostMutation = useMutation({
     mutationFn: (postData: {

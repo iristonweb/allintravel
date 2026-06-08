@@ -47,11 +47,18 @@ import TripJoinPage from "@/pages/trip-join";
 import DestinationPage from "@/pages/destination";
 import DestinationsIndexPage from "@/pages/destinations";
 import TelegramAppPage from "@/pages/telegram-app";
+import PassportPage from "@/pages/passport";
+import NomadHubsPage from "@/pages/nomad-hubs";
+import CreatorsPage from "@/pages/creators";
+import LaunchPage from "@/pages/launch";
+import PageMeta from "@/components/seo/PageMeta";
 import { initTelegramMiniApp } from "@/lib/telegram";
+import { useTranslation } from "react-i18next";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [location, navigate] = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!isAuthenticated || isLoading) return;
@@ -77,7 +84,7 @@ function Router() {
       <AmbientBackground className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="loading-spinner mx-auto mb-4" />
-          <p className="text-muted-foreground">Загрузка...</p>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
         </div>
       </AmbientBackground>
     );
@@ -104,6 +111,9 @@ function Router() {
           <Route path="/destinations" component={DestinationsIndexPage} />
           <Route path="/destinations/:slug" component={DestinationPage} />
           <Route path="/telegram" component={TelegramAppPage} />
+          <Route path="/nomad-hubs" component={NomadHubsPage} />
+          <Route path="/creators" component={CreatorsPage} />
+          <Route path="/launch" component={LaunchPage} />
 
           {!isAuthenticated && <Route path="/login" component={Login} />}
           {!isAuthenticated && <Route path="/" component={Landing} />}
@@ -126,6 +136,7 @@ function Router() {
           {isAuthenticated && <Route path="/events" component={Events} />}
           {isAuthenticated && <Route path="/chat" component={Chat} />}
           {isAuthenticated && <Route path="/chat/join/:token" component={Chat} />}
+          {isAuthenticated && <Route path="/passport" component={PassportPage} />}
           {isAuthenticated && <Route path="/wallet" component={Wallet} />}
           {isAuthenticated && <Route path="/admin" component={AdminPage} />}
           {isAuthenticated && <Route path="/privacy" component={Privacy} />}
@@ -145,6 +156,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <MusicPlayerProvider>
         <TooltipProvider>
+          <PageMeta />
           <Toaster />
           <AitGrantListener />
           <ReferralAutoApply />

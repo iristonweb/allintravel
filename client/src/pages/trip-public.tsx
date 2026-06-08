@@ -10,6 +10,8 @@ import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Trip, TripWaypointWithPlace } from "@shared/schema";
+import TripMarketplaceActions from "@/components/trips/TripMarketplaceActions";
+import { useTranslation } from "react-i18next";
 import { MapPin, Copy, LogIn } from "lucide-react";
 
 type PublicTripPayload = {
@@ -20,8 +22,9 @@ type PublicTripPayload = {
 
 function TripPublicContent({ guest }: { guest: boolean }) {
   const { id } = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const { data, isLoading } = useQuery<PublicTripPayload>({
     queryKey: ["/api/trips", id, "public"],
@@ -102,16 +105,23 @@ function TripPublicContent({ guest }: { guest: boolean }) {
           ))}
         </ol>
 
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-2 items-center">
+          <TripMarketplaceActions
+            tripId={data.trip.id}
+            isOwner={user?.id === data.trip.userId}
+            isPublic
+            priceCents={data.trip.priceCents}
+            isForSale={data.trip.isForSale}
+          />
           {isAuthenticated ? (
             <Button
-              variant="premium"
+              variant="outline"
               className="gap-2"
               disabled={copyMutation.isPending}
               onClick={() => copyMutation.mutate()}
             >
               <Copy className="h-4 w-4" />
-              Скопировать маршрут
+              {t("marketplace.fork")}
             </Button>
           ) : (
             <Button variant="premium" className="gap-2" asChild>

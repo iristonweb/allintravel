@@ -25,15 +25,9 @@ import { useQuery } from "@tanstack/react-query";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import FormatToolbar from "@/components/rich-text/FormatToolbar";
 import { mergeTextAndMedia } from "@/lib/rich-text";
+import { useTranslation } from "react-i18next";
 
-const STICKERS = [
-  { id: "plane", src: "/stickers/plane.svg", label: "Самолёт" },
-  { id: "map", src: "/stickers/map.svg", label: "Карта" },
-  { id: "sun", src: "/stickers/sun.svg", label: "Солнце" },
-  { id: "camera", src: "/stickers/camera.svg", label: "Фото" },
-  { id: "heart", src: "/stickers/heart.svg", label: "Сердце" },
-  { id: "wave", src: "/stickers/wave.svg", label: "Привет" },
-] as const;
+const STICKER_IDS = ["plane", "map", "sun", "camera", "heart", "wave"] as const;
 
 type GiphyGif = { id: string; url: string; preview: string; title: string };
 
@@ -110,7 +104,7 @@ export default function MessageComposer({
   onChange,
   onSend,
   persistAfterMediaSend = false,
-  placeholder = "Сообщение…",
+  placeholder,
   disabled,
   className,
   suggestUsers,
@@ -137,6 +131,8 @@ export default function MessageComposer({
   const voiceChunksRef = useRef<Blob[]>([]);
   const voiceStartedRef = useRef<number>(0);
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("chat.composer.defaultPlaceholder");
 
   const commitMediaSend = (merged: string) => {
     onSend(merged);
@@ -197,7 +193,7 @@ export default function MessageComposer({
   const sendMusicTrack = (track: UserTrack) => {
     const url = resolveMediaUrl(track.fileUrl) ?? track.fileUrl;
     if (!url) {
-      toast({ title: "Трек недоступен", variant: "destructive" });
+      toast({ title: t("chat.composer.trackUnavailable"), variant: "destructive" });
       return;
     }
     setMusicOpen(false);
@@ -216,13 +212,13 @@ export default function MessageComposer({
       } else if (isAudioFile(file)) {
         token = encodeAudioMessage(url);
       } else {
-        toast({ title: "Неподдерживаемый тип файла", variant: "destructive" });
+        toast({ title: t("chat.composer.unsupportedFile"), variant: "destructive" });
         return;
       }
       commitMediaSend(mergeTextAndMedia(value, token));
     } catch (err) {
       toast({
-        title: "Не удалось загрузить",
+        title: t("chat.composer.uploadFailed"),
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       });
@@ -256,8 +252,8 @@ export default function MessageComposer({
           const blob = new Blob(voiceChunksRef.current, { type: mimeType });
           if (blob.size < 100) {
             toast({
-              title: "Слишком короткая запись",
-              description: "Удерживайте кнопку микрофона дольше.",
+              title: t("chat.composer.voiceTooShort"),
+              description: t("chat.composer.voiceTooShortHint"),
               variant: "destructive",
             });
             return;
@@ -274,7 +270,7 @@ export default function MessageComposer({
             commitMediaSend(mergeTextAndMedia(value, encodeVoiceMessage(url, durationSec)));
           } catch (err) {
             toast({
-              title: "Не удалось отправить голосовое",
+              title: t("chat.composer.voiceSendFailed"),
               description: err instanceof Error ? err.message : undefined,
               variant: "destructive",
             });
@@ -287,7 +283,7 @@ export default function MessageComposer({
       recorder.start();
       setRecording(true);
     } catch {
-      toast({ title: "Нет доступа к микрофону", variant: "destructive" });
+      toast({ title: t("chat.composer.micDenied"), variant: "destructive" });
     }
   };
 
@@ -350,7 +346,9 @@ export default function MessageComposer({
         <div className="flex items-center gap-2 rounded-xl border border-ait-purple/25 bg-ait-purple/5 px-3 py-2 text-xs">
           <Reply className="h-3.5 w-3.5 text-ait-purple shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-ait-purple truncate">Ответ @{replyTo.username}</p>
+            <p className="font-medium text-ait-purple truncate">
+              {t("chat.composer.replyTo", { username: replyTo.username })}
+            </p>
             {replyTo.preview && (
               <p className="text-muted-foreground truncate mt-0.5">{replyTo.preview}</p>
             )}
@@ -362,7 +360,7 @@ export default function MessageComposer({
               size="icon"
               className="h-6 w-6 shrink-0"
               onClick={onCancelReply}
-              aria-label="Отменить ответ"
+              aria-label={t("chat.composer.cancelReply")}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -395,8 +393,8 @@ export default function MessageComposer({
           size="icon"
           className="shrink-0"
           disabled={composerDisabled}
-          title="Прикрепить файл"
-          aria-label="Прикрепить файл"
+          title={t("chat.composer.attachFile")}
+          aria-label={t("chat.composer.attachFile")}
           onClick={() => fileInputRef.current?.click()}
         >
           <Paperclip className="h-5 w-5" />
@@ -409,21 +407,23 @@ export default function MessageComposer({
               size="icon"
               className="shrink-0"
               disabled={composerDisabled}
-              title="Музыка из библиотеки"
-              aria-label="Музыка из библиотеки"
+              title={t("chat.composer.musicLibrary")}
+              aria-label={t("chat.composer.musicLibrary")}
             >
               <Music className="h-5 w-5" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-72 p-2 ait-glass-ios" align="start" side="top">
-            <p className="text-xs font-medium px-1 pb-2 text-muted-foreground">Моя музыка</p>
+            <p className="text-xs font-medium px-1 pb-2 text-muted-foreground">
+              {t("chat.composer.myMusic")}
+            </p>
             {musicLoading ? (
-              <p className="text-xs text-muted-foreground px-1 py-3">Загрузка…</p>
+              <p className="text-xs text-muted-foreground px-1 py-3">{t("chat.composer.uploading")}</p>
             ) : musicTracks.length === 0 ? (
               <p className="text-xs text-muted-foreground px-1 py-3">
-                Добавьте треки в{" "}
+                {t("chat.composer.addMusicHint")}{" "}
                 <Link href="/profile/music" className="text-ait-purple hover:underline">
-                  Моя музыка
+                  {t("chat.composer.myMusicLink")}
                 </Link>
               </p>
             ) : (
@@ -453,8 +453,8 @@ export default function MessageComposer({
           size="icon"
           className={cn("shrink-0", recording && "text-red-400 animate-pulse")}
           disabled={composerDisabled}
-          title={recording ? "Остановить запись" : "Голосовое сообщение"}
-          aria-label={recording ? "Остановить запись" : "Голосовое сообщение"}
+          title={recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")}
+          aria-label={recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")}
           onClick={() => (recording ? stopVoiceRecording() : void startVoiceRecording())}
         >
           <Mic className="h-5 w-5" />
@@ -467,7 +467,7 @@ export default function MessageComposer({
               size="icon"
               className="shrink-0"
               disabled={composerDisabled}
-              aria-label="Эмодзи"
+              aria-label={t("chat.composer.emoji")}
             >
               <Smile className="h-5 w-5" />
             </Button>
@@ -485,7 +485,7 @@ export default function MessageComposer({
               size="icon"
               className="shrink-0"
               disabled={composerDisabled}
-              aria-label="Стикеры"
+              aria-label={t("chat.composer.stickers")}
             >
               <Sticker className="h-5 w-5" />
             </Button>
@@ -495,19 +495,23 @@ export default function MessageComposer({
             align="start"
             side="top"
           >
-            <p className="text-xs text-muted-foreground mb-2">Стикеры</p>
+            <p className="text-xs text-muted-foreground mb-2">{t("chat.composer.stickers")}</p>
             <div className="grid grid-cols-3 gap-2">
-              {STICKERS.map((s) => (
+              {STICKER_IDS.map((id) => {
+                const src = `/stickers/${id}.svg`;
+                const label = t(`chat.composer.stickerLabels.${id}`);
+                return (
                 <button
-                  key={s.id}
+                  key={id}
                   type="button"
                   className="rounded-lg p-2 hover:bg-muted transition-colors"
-                  onClick={() => insertSticker(s.src)}
-                  title={s.label}
+                  onClick={() => insertSticker(src)}
+                  title={label}
                 >
-                  <img src={s.src} alt={s.label} className="h-12 w-12 mx-auto" />
+                  <img src={src} alt={label} className="h-12 w-12 mx-auto" />
                 </button>
-              ))}
+                );
+              })}
             </div>
           </PopoverContent>
         </Popover>
@@ -521,7 +525,7 @@ export default function MessageComposer({
                 size="icon"
                 className="shrink-0"
                 disabled={composerDisabled}
-                aria-label="GIF"
+                aria-label={t("chat.composer.gif")}
               >
                 <ImageIcon className="h-5 w-5" />
               </Button>
@@ -532,25 +536,25 @@ export default function MessageComposer({
               side="top"
             >
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium">GIF</p>
+                <p className="text-xs font-medium">{t("chat.composer.gif")}</p>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
                   onClick={() => setGifOpen(false)}
-                  aria-label="Закрыть GIF"
+                  aria-label={t("chat.composer.closeGif")}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
               <Input
-                placeholder="Поиск GIF…"
+                placeholder={t("chat.composer.gifSearch")}
                 value={gifQuery}
                 onChange={(e) => handleGifSearch(e.target.value)}
                 className="mb-2 h-8"
               />
               {gifLoading && displayedGifs.length === 0 && (
-                <p className="text-xs text-muted-foreground mb-2">Загрузка…</p>
+                <p className="text-xs text-muted-foreground mb-2">{t("chat.composer.uploading")}</p>
               )}
               <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                 {displayedGifs.map((g) => (
@@ -601,7 +605,13 @@ export default function MessageComposer({
               const target = e.target as HTMLInputElement;
               setCursorPos(target.selectionStart ?? value.length);
             }}
-            placeholder={uploading ? "Загрузка…" : recording ? "Запись…" : placeholder}
+            placeholder={
+              uploading
+                ? t("chat.composer.uploading")
+                : recording
+                  ? t("chat.composer.recording")
+                  : resolvedPlaceholder
+            }
             disabled={composerDisabled}
             className="w-full border-0 bg-transparent shadow-none focus-visible:ring-0"
             onKeyDown={handleInputKeyDown}

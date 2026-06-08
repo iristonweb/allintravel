@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PassportCard from "@/components/passport/PassportCard";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
 import GlassCard from "@/components/brand/glass-card";
@@ -158,6 +159,8 @@ export function Profile() {
                 </div>
               )}
             </GlassCard>
+
+            <PassportCard compact />
 
             <GlassCard className="mb-6 p-4">
               <p className="text-sm font-medium mb-2 flex items-center gap-2">

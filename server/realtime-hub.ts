@@ -23,19 +23,28 @@ export function unregisterUserSocket(userId: string, ws: WsLike): void {
 
 export function broadcastToUser(userId: string, payload: Record<string, unknown>): void {
   const set = userSockets.get(userId);
-  if (!set?.size) return;
-  const data = JSON.stringify(payload);
-  for (const ws of Array.from(set)) {
-    if (ws.readyState === OPEN) {
-      try {
-        ws.send(data);
-      } catch {
+  if (set?.size) {
+    const data = JSON.stringify(payload);
+    for (const ws of Array.from(set)) {
+      if (ws.readyState === OPEN) {
+        try {
+          ws.send(data);
+        } catch {
+          set.delete(ws);
+        }
+      } else {
         set.delete(ws);
       }
-    } else {
-      set.delete(ws);
     }
   }
+
+  void import("./realtime/redis-pubsub")
+    .then(({ enqueueUserEvent, isRedisPubSubEnabled }) => {
+      if (isRedisPubSubEnabled()) {
+        return enqueueUserEvent(userId, payload);
+      }
+    })
+    .catch(() => undefined);
 }
 
 export function isUserOnline(userId: string): boolean {

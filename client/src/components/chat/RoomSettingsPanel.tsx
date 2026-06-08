@@ -16,6 +16,7 @@ import type { ChatRoom, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { CHAT_BACKGROUND_PRESETS, type ChatBackgroundId } from "@/lib/chat-backgrounds";
+import { useTranslation } from "react-i18next";
 
 type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null };
 
@@ -35,12 +36,6 @@ type RoomSettingsPanelProps = {
   onLeft?: () => void;
 };
 
-const roleLabels: Record<string, string> = {
-  owner: "Владелец",
-  admin: "Админ",
-  member: "Участник",
-};
-
 export default function RoomSettingsPanel({
   room,
   currentUserId,
@@ -48,7 +43,13 @@ export default function RoomSettingsPanel({
   onLeft,
 }: RoomSettingsPanelProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  const roleLabel = (role: string) =>
+    t(`chat.roomSettings.roles.${role}` as "chat.roomSettings.roles.owner", {
+      defaultValue: role,
+    });
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [editTitle, setEditTitle] = useState(room.title);
   const [editDescription, setEditDescription] = useState(room.description ?? "");
@@ -91,10 +92,10 @@ export default function RoomSettingsPanel({
       return (await res.json()) as ChatRoom;
     },
     onSuccess: () => {
-      toast({ title: "Группа обновлена" });
+      toast({ title: t("chat.roomSettings.updated") });
       invalidateRoom();
     },
-    onError: () => toast({ title: "Не удалось сохранить", variant: "destructive" }),
+    onError: () => toast({ title: t("chat.roomSettings.saveFailed"), variant: "destructive" }),
   });
 
   const inviteMutation = useMutation({
@@ -105,9 +106,9 @@ export default function RoomSettingsPanel({
     onSuccess: (data) => {
       const full = `${window.location.origin}${data.inviteUrl}`;
       void navigator.clipboard.writeText(full);
-      toast({ title: "Ссылка приглашения скопирована" });
+      toast({ title: t("chat.roomSettings.inviteCopied") });
     },
-    onError: () => toast({ title: "Не удалось создать ссылку", variant: "destructive" }),
+    onError: () => toast({ title: t("chat.roomSettings.inviteFailed"), variant: "destructive" }),
   });
 
   const joinMutation = useMutation({
@@ -116,10 +117,10 @@ export default function RoomSettingsPanel({
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Вы вступили в группу" });
+      toast({ title: t("chat.roomSettings.joined") });
       invalidateRoom();
     },
-    onError: () => toast({ title: "Не удалось вступить", variant: "destructive" }),
+    onError: () => toast({ title: t("chat.roomSettings.joinFailed"), variant: "destructive" }),
   });
 
   const leaveMutation = useMutation({
@@ -127,12 +128,12 @@ export default function RoomSettingsPanel({
       await apiRequest("POST", `/api/chat/rooms/${room.id}/leave`);
     },
     onSuccess: () => {
-      toast({ title: "Вы покинули группу" });
+      toast({ title: t("chat.roomSettings.left") });
       invalidateRoom();
       onLeft?.();
       onClose?.();
     },
-    onError: () => toast({ title: "Не удалось выйти", variant: "destructive" }),
+    onError: () => toast({ title: t("chat.roomSettings.leaveFailed"), variant: "destructive" }),
   });
 
   const addMemberMutation = useMutation({
@@ -141,11 +142,11 @@ export default function RoomSettingsPanel({
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Участник добавлен" });
+      toast({ title: t("chat.roomSettings.memberAdded") });
       setMemberSearch("");
       invalidateRoom();
     },
-    onError: () => toast({ title: "Не удалось добавить", variant: "destructive" }),
+    onError: () => toast({ title: t("chat.roomSettings.addFailed"), variant: "destructive" }),
   });
 
   const roleMutation = useMutation({
@@ -156,10 +157,10 @@ export default function RoomSettingsPanel({
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Роль обновлена" });
+      toast({ title: t("chat.roomSettings.roleUpdated") });
       invalidateRoom();
     },
-    onError: () => toast({ title: "Не удалось изменить роль", variant: "destructive" }),
+    onError: () => toast({ title: t("chat.roomSettings.roleFailed"), variant: "destructive" }),
   });
 
   const removeMemberMutation = useMutation({
@@ -167,10 +168,10 @@ export default function RoomSettingsPanel({
       await apiRequest("DELETE", `/api/chat/rooms/${room.id}/members/${userId}`);
     },
     onSuccess: () => {
-      toast({ title: "Участник удалён" });
+      toast({ title: t("chat.roomSettings.memberRemoved") });
       invalidateRoom();
     },
-    onError: () => toast({ title: "Не удалось удалить", variant: "destructive" }),
+    onError: () => toast({ title: t("chat.roomSettings.removeFailed"), variant: "destructive" }),
   });
 
   const handleAvatarChange = async (file: File) => {
@@ -178,8 +179,8 @@ export default function RoomSettingsPanel({
     const maxBytes = 4 * 1024 * 1024;
     if (file.size > maxBytes) {
       toast({
-        title: "Файл слишком большой",
-        description: "Для загрузки на сервер используйте изображение до 4 МБ.",
+        title: t("chat.roomSettings.fileTooLarge"),
+        description: t("chat.roomSettings.fileTooLargeHint"),
         variant: "destructive",
       });
       return;
@@ -187,11 +188,11 @@ export default function RoomSettingsPanel({
     setAvatarUploading(true);
     try {
       await uploadRoomAvatar(room.id, file);
-      toast({ title: "Аватар обновлён" });
+      toast({ title: t("chat.roomSettings.avatarUpdated") });
       invalidateRoom();
     } catch (err) {
       toast({
-        title: "Не удалось загрузить аватар",
+        title: t("chat.roomSettings.avatarFailed"),
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       });
@@ -237,7 +238,7 @@ export default function RoomSettingsPanel({
                 className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full"
                 disabled={avatarUploading}
                 onClick={() => avatarInputRef.current?.click()}
-                aria-label="Загрузить аватар группы"
+                aria-label={t("chat.roomSettings.uploadAvatar")}
               >
                 <Camera className="h-3.5 w-3.5" />
               </Button>
@@ -247,9 +248,11 @@ export default function RoomSettingsPanel({
         <div className="flex-1 min-w-0 pt-1">
           <p className="font-semibold truncate">{room.title}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {room.memberCount ?? members.length} участников ·{" "}
-            {room.visibility === "private" ? "Закрытая" : "Открытая"}
-            {effectiveRole && ` · ${roleLabels[effectiveRole] ?? effectiveRole}`}
+            {t("chat.roomSettings.memberCount", { count: room.memberCount ?? members.length })} ·{" "}
+            {room.visibility === "private"
+              ? t("chat.roomSettings.visibilityPrivate")
+              : t("chat.roomSettings.visibilityPublic")}
+            {effectiveRole && ` · ${roleLabel(effectiveRole)}`}
           </p>
         </div>
       </div>
@@ -261,17 +264,17 @@ export default function RoomSettingsPanel({
           disabled={joinMutation.isPending}
         >
           <UserPlus className="h-4 w-4 mr-2" />
-          Вступить в группу
+          {t("chat.roomSettings.joinGroup")}
         </Button>
       )}
 
       {isAdmin && (
         <div className="space-y-3 rounded-xl border border-border/40 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Настройки группы
+            {t("chat.roomSettings.settingsTitle")}
           </p>
           <div>
-            <Label className="text-xs">Название</Label>
+            <Label className="text-xs">{t("chat.roomSettings.name")}</Label>
             <Input
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
@@ -279,7 +282,7 @@ export default function RoomSettingsPanel({
             />
           </div>
           <div>
-            <Label className="text-xs">Описание</Label>
+            <Label className="text-xs">{t("chat.roomSettings.description")}</Label>
             <Textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
@@ -295,7 +298,7 @@ export default function RoomSettingsPanel({
               onClick={() => setEditVisibility("public")}
             >
               <Globe className="h-3.5 w-3.5 mr-1" />
-              Открытая
+              {t("chat.roomSettings.visibilityPublic")}
             </Button>
             <Button
               type="button"
@@ -304,11 +307,11 @@ export default function RoomSettingsPanel({
               onClick={() => setEditVisibility("private")}
             >
               <Lock className="h-3.5 w-3.5 mr-1" />
-              Закрытая
+              {t("chat.roomSettings.visibilityPrivate")}
             </Button>
           </div>
           <div>
-            <Label className="text-xs">Фон чата</Label>
+            <Label className="text-xs">{t("chat.roomSettings.chatBackground")}</Label>
             <div className="grid grid-cols-4 gap-2 mt-2">
               {CHAT_BACKGROUND_PRESETS.map((preset) => (
                 <button
@@ -327,7 +330,8 @@ export default function RoomSettingsPanel({
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5">
-              {CHAT_BACKGROUND_PRESETS.find((p) => p.id === chatBackground)?.label ?? "Стандарт"}
+              {CHAT_BACKGROUND_PRESETS.find((p) => p.id === chatBackground)?.label ??
+                t("chat.roomSettings.backgroundDefault")}
             </p>
           </div>
           <Button
@@ -336,7 +340,7 @@ export default function RoomSettingsPanel({
             onClick={handleSave}
             disabled={!editTitle.trim() || updateRoomMutation.isPending}
           >
-            Сохранить изменения
+            {t("chat.roomSettings.saveChanges")}
           </Button>
         </div>
       )}
@@ -351,18 +355,18 @@ export default function RoomSettingsPanel({
           disabled={inviteMutation.isPending}
         >
           <Link2 className="h-4 w-4 mr-1" />
-          Скопировать ссылку-приглашение
+          {t("chat.roomSettings.copyInvite")}
         </Button>
       )}
 
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Участники
+          {t("chat.roomSettings.members")}
         </p>
         {isAdmin && (
           <div className="space-y-2">
             <Input
-              placeholder="Добавить по @username"
+              placeholder={t("chat.roomSettings.addByUsername")}
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
               className="h-8"
@@ -391,7 +395,7 @@ export default function RoomSettingsPanel({
           </div>
         )}
         {membersLoading ? (
-          <p className="text-xs text-muted-foreground">Загрузка…</p>
+          <p className="text-xs text-muted-foreground">{t("chat.composer.uploading")}</p>
         ) : (
           <ul className="space-y-1 max-h-48 overflow-y-auto">
             {members.map((m) => {
@@ -410,13 +414,15 @@ export default function RoomSettingsPanel({
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm">{u ? getUserDisplayLabel(u) : "Участник"}</p>
+                    <p className="truncate text-sm">
+                      {u ? getUserDisplayLabel(u) : t("chat.roomSettings.memberFallback")}
+                    </p>
                     {u?.username && (
                       <p className="text-xs text-muted-foreground truncate">{getUserHandle(u)}</p>
                     )}
                   </div>
                   <Badge variant="secondary" className="text-[10px] shrink-0">
-                    {roleLabels[m.role] ?? m.role}
+                    {roleLabel(m.role)}
                   </Badge>
                   {canChangeRole && (
                     <Button
@@ -424,8 +430,16 @@ export default function RoomSettingsPanel({
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 shrink-0"
-                      title={m.role === "admin" ? "Снять админа" : "Назначить админом"}
-                      aria-label={m.role === "admin" ? "Снять админа" : "Назначить админом"}
+                      title={
+                        m.role === "admin"
+                          ? t("chat.roomSettings.demoteAdmin")
+                          : t("chat.roomSettings.promoteAdmin")
+                      }
+                      aria-label={
+                        m.role === "admin"
+                          ? t("chat.roomSettings.demoteAdmin")
+                          : t("chat.roomSettings.promoteAdmin")
+                      }
                       onClick={() =>
                         roleMutation.mutate({
                           userId: m.userId,
@@ -442,8 +456,8 @@ export default function RoomSettingsPanel({
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                      title="Удалить из группы"
-                      aria-label="Удалить из группы"
+                      title={t("chat.roomSettings.removeMember")}
+                      aria-label={t("chat.roomSettings.removeMember")}
                       onClick={() => removeMemberMutation.mutate(m.userId)}
                     >
                       <UserMinus className="h-3.5 w-3.5" />
@@ -465,7 +479,7 @@ export default function RoomSettingsPanel({
           disabled={leaveMutation.isPending}
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Покинуть группу
+          {t("chat.roomSettings.leaveGroup")}
         </Button>
       )}
     </div>

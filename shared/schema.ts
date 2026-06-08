@@ -149,6 +149,9 @@ export const trips = pgTable("trips", {
   imageUrl: varchar("image_url"),
   isPublic: boolean("is_public").default(false),
   isActive: boolean("is_active").default(true),
+  forkedFromTripId: uuid("forked_from_trip_id"),
+  priceCents: integer("price_cents"),
+  isForSale: boolean("is_for_sale").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -953,6 +956,131 @@ export const insertUserTrackSchema = createInsertSchema(userTracks).omit({
   id: true,
   createdAt: true,
 });
+
+// Travel Passport — country/city stamps from completed trips
+export const userPassportStamps = pgTable(
+  "user_passport_stamps",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    countryCode: varchar("country_code", { length: 2 }),
+    countryName: varchar("country_name", { length: 128 }).notNull(),
+    cityName: varchar("city_name", { length: 128 }),
+    tripId: uuid("trip_id").references(() => trips.id, { onDelete: "set null" }),
+    visitedAt: timestamp("visited_at").defaultNow(),
+    source: varchar("source", { length: 20 }).default("trip"),
+  },
+  (t) => [
+    index("IDX_passport_stamps_user").on(t.userId),
+    uniqueIndex("UQ_passport_stamp_user_country_city_trip").on(
+      t.userId,
+      t.countryName,
+      t.cityName,
+      t.tripId,
+    ),
+  ],
+);
+
+// Travel Reputation — trust scores and vouches
+export const userTrustScores = pgTable("user_trust_scores", {
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  score: integer("score").notNull().default(50),
+  tripCount: integer("trip_count").notNull().default(0),
+  reviewCount: integer("review_count").notNull().default(0),
+  vouchCount: integer("vouch_count").notNull().default(0),
+  isVerified: boolean("is_verified").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userVouches = pgTable(
+  "user_vouches",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    fromUserId: varchar("from_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    toUserId: varchar("to_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: varchar("message", { length: 280 }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("UQ_vouch_from_to").on(t.fromUserId, t.toUserId),
+    index("IDX_vouches_to").on(t.toUserId),
+  ],
+);
+
+// AI copilot multi-turn sessions
+export const aiCopilotSessions = pgTable(
+  "ai_copilot_sessions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tripId: uuid("trip_id").references(() => trips.id, { onDelete: "cascade" }),
+    messages: jsonb("messages").notNull().default([]),
+    updatedAt: timestamp("updated_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [index("IDX_copilot_user_trip").on(t.userId, t.tripId)],
+);
+
+// Stripe Connect for creator payouts
+export const stripeConnectAccounts = pgTable("stripe_connect_accounts", {
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  stripeAccountId: varchar("stripe_account_id").notNull(),
+  chargesEnabled: boolean("charges_enabled").default(false),
+  payoutsEnabled: boolean("payouts_enabled").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// AIT economy (migrated from runtime DDL)
+export const aitBalances = pgTable("ait_balances", {
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  spendBalance: integer("spend_balance").notNull().default(0),
+  creatorBalance: integer("creator_balance").notNull().default(0),
+  lifetimeSpendEarned: integer("lifetime_spend_earned").notNull().default(0),
+  lifetimeCreatorEarned: integer("lifetime_creator_earned").notNull().default(0),
+  streakDays: integer("streak_days").notNull().default(0),
+  lastActiveDate: varchar("last_active_date", { length: 10 }),
+  profileBonusClaimed: boolean("profile_bonus_claimed").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const aitTransactions = pgTable(
+  "ait_transactions",
+  {
+    id: varchar("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    wallet: varchar("wallet", { length: 10 }).notNull(),
+    delta: integer("delta").notNull(),
+    reasonCode: varchar("reason_code", { length: 40 }).notNull(),
+    title: varchar("title", { length: 120 }).notNull(),
+    entityType: varchar("entity_type", { length: 40 }),
+    entityId: varchar("entity_id", { length: 100 }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [index("idx_ait_tx_user").on(t.userId, t.createdAt)],
+);
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;

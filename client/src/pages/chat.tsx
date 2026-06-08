@@ -1,36 +1,17 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Link, useLocation, useSearch } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
-import ChatMessageRow from "@/components/chat/ChatMessageRow";
-import { Button } from "@/components/ui/button";
-import MessageComposer from "@/components/chat/MessageComposer";
-import RoomSettingsPanel from "@/components/chat/RoomSettingsPanel";
+import ChatSidebarPanel from "@/components/chat/ChatSidebarPanel";
+import GroupChatPanel from "@/components/chat/GroupChatPanel";
 import { getChatBackgroundClass } from "@/lib/chat-backgrounds";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Send,
-  MessageCircle,
-  Hash,
-  Lock,
-  Settings,
-  Pin,
-  Search,
-  Loader2,
-  ArrowLeft,
-} from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import RoomAvatar from "@/components/chat/RoomAvatar";
-import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
 import PersonalChatThread from "@/components/chat/PersonalChatThread";
-import CreateRoomDialog from "@/components/chat/CreateRoomDialog";
 import ChatThreadPlaceholder from "@/components/chat/ChatThreadPlaceholder";
 import {
   type ChatTab,
@@ -42,13 +23,10 @@ import {
   type ChatHistoryPayload,
   fetchChatHistory,
 } from "@/lib/chat-page-types";
-import { AvatarWithPresence } from "@/components/PresenceDot";
 import type { ChatRoom, MessageReactionMeta, Trip, User } from "@shared/schema";
-import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import { mergeChronologicalMessages } from "@/lib/chat-thread";
 import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
-import MessageContent from "@/components/chat/MessageContent";
-import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
+import { getUserDisplayLabel } from "@shared/user-display";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { useTranslation } from "react-i18next";
@@ -168,9 +146,8 @@ export function Chat() {
       (chatTab === "unread" && !urlRoom));
 
   const searchPlaceholder = useMemo(() => {
-    if (chatTab === "personal" || chatTab === "unread") {
-      return t("chat.sidebar.searchDialogsPlaceholder");
-    }
+    if (chatTab === "unread") return t("chat.sidebar.searchAllPlaceholder");
+    if (chatTab === "personal") return t("chat.sidebar.searchDialogsPlaceholder");
     return t("chat.sidebar.searchPlaceholder");
   }, [chatTab, t]);
   const urlDiscoverQ = useMemo(() => {
@@ -266,10 +243,10 @@ export function Chat() {
   const unreadGroupCount = rooms.reduce((sum, r) => sum + (r.unreadCount ?? 0), 0);
   const totalUnreadCount = unreadPersonalCount + unreadGroupCount;
 
-  const matchQuery = (text: string) => {
+  const matchQuery = useCallback((text: string) => {
     const q = roomQuery.trim().toLowerCase();
     return !q || text.toLowerCase().includes(q);
-  };
+  }, [roomQuery]);
 
   const filteredRooms = rooms
     .filter((r) => {
@@ -291,7 +268,7 @@ export function Chat() {
           ? conversations
           : [];
     return list.filter((c) => matchQuery(getUserDisplayLabel(c.user)));
-  }, [conversations, chatTab, roomQuery]);
+  }, [conversations, chatTab, matchQuery]);
 
   const historyKey = useMemo(() => [`/api/chat/${activeRoom}`] as const, [activeRoom]);
 
@@ -592,7 +569,7 @@ export function Chat() {
         /* ignore */
       }
     };
-  }, [isAuthenticated, user, useHttpMode, queryClient, activeRoom, toast, scrollToMessage]);
+  }, [isAuthenticated, user, useHttpMode, queryClient, activeRoom, toast, scrollToMessage, t]);
 
   useEffect(() => {
     if (useHttpMode) return;
@@ -784,241 +761,34 @@ export function Chat() {
           className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3"
           style={{ height: "calc(100dvh - var(--ait-header-h, 5rem))", minHeight: "560px" }}
         >
-          <div
-            className={cn(
-              "ait-chat-panel flex flex-col min-h-0",
-              mobileThreadOpen && "hidden lg:flex",
-            )}
-          >
-            <div className="ait-chat-panel-header p-4">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold flex items-center gap-2">
-                  {chatTab === "personal" || chatTab === "unread" ? (
-                    <>
-                      <MessageCircle className="h-4 w-4 text-ait-purple" />
-                      {chatTab === "unread"
-                        ? t("chat.page.sidebar.unread")
-                        : t("chat.page.sidebar.personal")}
-                    </>
-                  ) : (
-                    <>
-                      <Hash className="h-4 w-4 text-ait-purple" />
-                      {t("chat.page.sidebar.group")}
-                    </>
-                  )}
-                </span>
-                <div className="flex items-center gap-1">
-                  {chatTab !== "personal" && chatTab !== "unread" && (
-                    <CreateRoomDialog onCreated={(slug) => selectRoom(slug)} />
-                  )}
-                  {chatTab !== "personal" && chatTab !== "unread" && (
-                    <Badge variant="secondary" className="text-[10px] ait-glass">
-                      {statusLabel}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="border-t border-white/5 mt-1 px-3 pt-3 pb-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={roomQuery}
-                  onChange={(e) => setRoomQuery(e.target.value)}
-                  onFocus={() => setSearchFocused(true)}
-                  onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-                  placeholder={searchPlaceholder}
-                  className="h-9 pl-9 text-sm rounded-2xl ait-glass border-white/10 bg-transparent"
-                />
-                {chatTab !== "personal" &&
-                  discoverSearch.length >= 2 &&
-                  (searchFocused || urlDiscoverQ.length >= 2) && (
-                  <div
-                    className="absolute top-full left-0 right-0 z-20 mt-1.5 ait-glass-strong rounded-2xl border border-white/10 shadow-xl overflow-hidden max-h-[min(50vh,320px)] overflow-y-auto"
-                    onMouseDown={(e) => e.preventDefault()}
-                  >
-                    <GroupSearchPreview
-                      rooms={discoverRooms}
-                      loading={discoverLoading}
-                      empty={!discoverLoading && discoverRooms.length === 0}
-                      onJoin={(room) => joinRoomMutation.mutate(room.id)}
-                      joinPending={joinRoomMutation.isPending}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-            <ScrollArea className="flex-1">
-              <div className="p-2 space-y-1">
-                {(chatTab === "personal" || chatTab === "unread") && (
-                  <>
-                    {chatTab === "unread" && visibleConversations.length > 0 && (
-                      <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                        {t("chat.page.sidebar.personalSection")}
-                      </p>
-                    )}
-                    {chatTab === "unread" && conversationsLoading && roomsLoading ? (
-                      <div className="py-6 text-center text-sm text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                        {t("chat.page.loading.default")}
-                      </div>
-                    ) : conversationsLoading ? (
-                      <div className="py-4 text-center text-sm text-muted-foreground">
-                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                        {t("chat.page.loading.dialogs")}
-                      </div>
-                    ) : conversationsError ? (
-                      <div className="py-4 text-center text-sm space-y-2">
-                        <p className="text-muted-foreground">{t("chat.page.errors.dialogs")}</p>
-                        <Button variant="outline" size="sm" onClick={() => refetchConversations()}>
-                          {t("chat.page.errors.retry")}
-                        </Button>
-                      </div>
-                    ) : (
-                      visibleConversations.map((conversation) => (
-                        <button
-                          key={conversation.user.id}
-                          type="button"
-                          onClick={() => openPersonalChat(conversation.user.id)}
-                          className={cn(
-                            "ait-chat-room-item w-full text-left",
-                            urlWithUserId === conversation.user.id
-                              ? "ait-chat-room-item--active"
-                              : "text-slate-400 hover:text-slate-200",
-                          )}
-                        >
-                          <AvatarWithPresence
-                            src={conversation.user.profileImageUrl}
-                            fallback={getUserInitial(conversation.user)}
-                            isOnline={conversation.user.isOnline}
-                            className="h-14 w-14"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium block truncate">
-                              {getUserDisplayLabel(conversation.user)}
-                            </span>
-                            {conversation.lastMessage && (
-                              <span className="text-[11px] text-muted-foreground block truncate">
-                                <MessageContent
-                                  content={conversation.lastMessage.content}
-                                  compact
-                                />
-                              </span>
-                            )}
-                          </div>
-                          {conversation.unreadCount > 0 && (
-                            <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
-                              {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
-                            </Badge>
-                          )}
-                        </button>
-                      ))
-                    )}
-                    {chatTab === "unread" && visibleConversations.length > 0 && filteredRooms.length > 0 && (
-                      <p className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                        {t("chat.page.sidebar.groupsSection")}
-                      </p>
-                    )}
-                  </>
-                )}
-
-                {chatTab !== "personal" && (
-                  <>
-                    {chatTab === "unread" && conversationsLoading && roomsLoading ? null : roomsLoading ? (
-                      <div className="p-6 text-center text-sm text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                        {t("chat.page.loading.groups")}
-                      </div>
-                    ) : roomsError ? (
-                      <div className="p-6 text-center text-sm space-y-2">
-                        <p className="text-muted-foreground">{t("chat.page.errors.groups")}</p>
-                        <Button variant="outline" size="sm" onClick={() => refetchRooms()}>
-                          {t("chat.page.errors.retry")}
-                        </Button>
-                      </div>
-                    ) : filteredRooms.length === 0 ? (
-                      chatTab === "unread" && visibleConversations.length > 0 ? null : (
-                        <div className="p-6 text-center text-sm text-muted-foreground">
-                          {roomQuery.trim()
-                            ? discoverSearch.length >= 2
-                              ? t("chat.page.empty.noGroupsInSearchDiscover")
-                              : t("chat.page.empty.noGroupsInSearch")
-                            : chatTab === "mine"
-                              ? t("chat.page.empty.notInGroups")
-                              : chatTab === "unread"
-                                ? t("chat.page.empty.noUnreadGroups")
-                                : t("chat.page.empty.noGroups")}
-                        </div>
-                      )
-                    ) : (
-                      filteredRooms.map((room) => (
-                        <button
-                          key={room.id}
-                          type="button"
-                          onClick={() => selectRoom(room.slug)}
-                          className={cn(
-                            "ait-chat-room-item w-full text-left",
-                            activeRoom === room.slug
-                              ? "ait-chat-room-item--active"
-                              : "text-slate-400",
-                          )}
-                        >
-                          <RoomAvatar
-                            title={room.title}
-                            avatarUrl={room.avatarUrl}
-                            className="h-14 w-14"
-                          />
-                          <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
-                          {(room.unreadCount ?? 0) > 0 && (
-                            <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
-                              {room.unreadCount > 99 ? "99+" : room.unreadCount}
-                            </Badge>
-                          )}
-                          {room.visibility === "private" && (
-                            <Lock className="h-3 w-3 shrink-0 opacity-60" />
-                          )}
-                          {room.isLegacy && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0">
-                              {t("chat.legacy.badge")}
-                            </Badge>
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </>
-                )}
-
-                {chatTab === "personal" &&
-                  !conversationsLoading &&
-                  !conversationsError &&
-                  visibleConversations.length === 0 && (
-                    <div className="p-6 text-center text-sm text-muted-foreground space-y-3">
-                      <p>
-                        {roomQuery.trim()
-                          ? t("chat.page.empty.dialogsNotFound")
-                          : t("chat.page.empty.noPersonal")}
-                      </p>
-                      {!roomQuery.trim() && (
-                        <Link href="/friends">
-                          <Button variant="outline" size="sm" className="rounded-full">
-                            {t("chat.page.empty.findFriends")}
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  )}
-
-                {chatTab === "unread" &&
-                  !conversationsLoading &&
-                  !roomsLoading &&
-                  visibleConversations.length === 0 &&
-                  filteredRooms.length === 0 && (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
-                      {t("chat.page.empty.noUnread")}
-                    </div>
-                  )}
-              </div>
-            </ScrollArea>
+          <div className={cn(mobileThreadOpen && "hidden lg:flex")}>
+            <ChatSidebarPanel
+              chatTab={chatTab}
+              statusLabel={statusLabel}
+              roomQuery={roomQuery}
+              onRoomQueryChange={setRoomQuery}
+              onSearchFocus={() => setSearchFocused(true)}
+              onSearchBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+              searchPlaceholder={searchPlaceholder}
+              discoverSearch={discoverSearch}
+              searchFocused={searchFocused}
+              urlDiscoverQ={urlDiscoverQ}
+              discoverRooms={discoverRooms}
+              discoverLoading={discoverLoading}
+              joinRoomMutation={joinRoomMutation}
+              visibleConversations={visibleConversations}
+              conversationsLoading={conversationsLoading}
+              conversationsError={conversationsError}
+              refetchConversations={refetchConversations}
+              roomsLoading={roomsLoading}
+              roomsError={roomsError}
+              refetchRooms={refetchRooms}
+              filteredRooms={filteredRooms}
+              urlWithUserId={urlWithUserId}
+              activeRoom={activeRoom}
+              onOpenPersonalChat={openPersonalChat}
+              onSelectRoom={selectRoom}
+            />
           </div>
 
           <div
@@ -1035,261 +805,45 @@ export function Chat() {
             ) : showChatPlaceholder ? (
               <ChatThreadPlaceholder chatTab={chatTab === "unread" ? "unread" : "personal"} />
             ) : (
-              <>
-            {roomBreadcrumbs && (
-              <div className="px-4 pt-3 pb-0 border-b border-white/5">
-                <AppBreadcrumbs items={roomBreadcrumbs} className="mb-0" />
-              </div>
-            )}
-            <div className="ait-chat-panel-header p-4 flex items-center gap-3">
-              {mobileThreadOpen && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 lg:hidden"
-                  aria-label={t("chat.page.backToList")}
-                  onClick={clearThreadSelection}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              )}
-              <RoomAvatar
-                title={activeRoomMeta?.title ?? activeRoom}
-                avatarUrl={activeRoomMeta?.avatarUrl}
-                className="h-16 w-16"
+              <GroupChatPanel
+                mobileThreadOpen={mobileThreadOpen}
+                onBack={clearThreadSelection}
+                roomBreadcrumbs={roomBreadcrumbs}
+                activeRoom={activeRoom}
+                activeRoomMeta={activeRoomMeta}
+                showRoomInfo={showRoomInfo}
+                onShowRoomInfoChange={setShowRoomInfo}
+                currentUser={user}
+                onLeftRoom={() => selectRoom("general")}
+                latestPinned={latestPinned}
+                pinnedMessages={pinnedMessages}
+                pinnedIds={pinnedIds}
+                onScrollToMessage={scrollToMessage}
+                joinRequired={Boolean(joinRequired)}
+                joinPreview={joinPreview}
+                joinRoomMutation={joinRoomMutation}
+                historyLoading={historyLoading}
+                historyError={historyError}
+                onRefetchHistory={refetchHistory}
+                allMessages={allMessages}
+                chatBgClass={chatBgClass}
+                scrollRef={scrollRef}
+                roomId={roomId}
+                isRoomAdmin={isRoomAdmin}
+                reactionMutation={reactionMutation}
+                pinMutation={pinMutation}
+                deleteMutation={deleteMutation}
+                editMutation={editMutation}
+                onStartReply={startReply}
+                showLegacyJoinHint={showLegacyJoinHint}
+                messageText={messageText}
+                onMessageTextChange={setMessageText}
+                onSend={handleSend}
+                canSend={canSend}
+                mentionSuggestUsers={mentionSuggestUsers}
+                replyTo={replyTo}
+                onCancelReply={() => setReplyTo(null)}
               />
-              <div className="flex-1 min-w-0">
-                <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
-                <p className="text-xs text-muted-foreground truncate">
-                  {activeRoomMeta?.description ?? t("chat.page.group.defaultDescription")}
-                </p>
-              </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                title={t("chat.page.group.settings")}
-                aria-label={t("chat.page.group.settings")}
-                onClick={() => setShowRoomInfo(true)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <Sheet open={showRoomInfo} onOpenChange={setShowRoomInfo}>
-              <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0">
-                <SheetHeader className="p-4 pb-0">
-                  <SheetTitle>{t("chat.page.group.settings")}</SheetTitle>
-                </SheetHeader>
-                {activeRoomMeta && (
-                  <RoomSettingsPanel
-                    room={activeRoomMeta as RoomListItem}
-                    currentUserId={user?.id}
-                    onClose={() => setShowRoomInfo(false)}
-                    onLeft={() => {
-                      setShowRoomInfo(false);
-                      selectRoom("general");
-                    }}
-                  />
-                )}
-              </SheetContent>
-            </Sheet>
-
-            {latestPinned?.id && (
-              <button
-                type="button"
-                onClick={() => scrollToMessage(latestPinned.id!)}
-                className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-ait-orange/30 bg-ait-orange/10 px-3 py-2 text-left hover:bg-ait-orange/15 transition-colors"
-              >
-                <Pin className="h-3.5 w-3.5 shrink-0 text-ait-orange" />
-                <span className="text-xs text-ait-orange font-semibold shrink-0">
-                  {t("chat.page.group.pinned")}
-                </span>
-                <span className="text-sm truncate flex-1 min-w-0 text-foreground/90">
-                  <MessageContent content={latestPinned.content} compact />
-                </span>
-                {pinnedMessages.length > 1 && (
-                  <Badge variant="secondary" className="shrink-0 text-[10px]">
-                    +{pinnedMessages.length - 1}
-                  </Badge>
-                )}
-              </button>
-            )}
-
-            <ScrollArea className={cn("flex-1 p-4", chatBgClass)}>
-              {joinRequired && joinPreview ? (
-                <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-center px-6 space-y-4">
-                  <RoomAvatar
-                    title={joinPreview.title}
-                    avatarUrl={joinPreview.avatarUrl}
-                    className="h-20 w-20"
-                  />
-                  <div>
-                    <h3 className="text-lg font-semibold">{joinPreview.title}</h3>
-                    {joinPreview.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {joinPreview.description}
-                      </p>
-                    )}
-                    {joinPreview.memberCount != null && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {t("chat.joinGate.memberCount", { count: joinPreview.memberCount })}
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground max-w-sm">
-                    {t("chat.joinGate.title")}
-                  </p>
-                  <Button
-                    type="button"
-                    className="ait-btn-glow"
-                    disabled={joinRoomMutation.isPending}
-                    onClick={() => joinRoomMutation.mutate(joinPreview.id)}
-                  >
-                    {joinRoomMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      t("chat.joinGate.joinButton")
-                    )}
-                  </Button>
-                </div>
-              ) : historyLoading ? (
-                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-                  <Loader2 className="h-8 w-8 animate-spin mb-3" />
-                  <p className="text-sm">{t("chat.page.loading.messages")}</p>
-                </div>
-              ) : historyError ? (
-                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
-                  <p className="text-sm">{t("chat.page.errors.history")}</p>
-                  <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
-                    {t("chat.page.errors.retry")}
-                  </Button>
-                </div>
-              ) : allMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-                  <MessageCircle className="h-10 w-10 mb-3 opacity-40" />
-                  <p className="text-sm">{t("chat.page.empty.startTripChat")}</p>
-                </div>
-              ) : (
-                <div className="ait-chat-thread-inner space-y-4">
-                  {allMessages.map((msg) => {
-                    const isOwn = msg.userId === user?.id;
-                    const isPinned = Boolean(msg.id && pinnedIds.includes(msg.id));
-                    const senderName = isOwn
-                      ? user
-                        ? getUserDisplayLabel(user)
-                        : t("chat.page.group.me")
-                      : msg.sender
-                        ? getUserDisplayLabel(msg.sender)
-                        : t("chat.page.group.traveler");
-                    const senderInitial = isOwn
-                      ? user
-                        ? getUserInitial(user)
-                        : t("chat.page.group.me")
-                      : msg.sender
-                        ? getUserInitial(msg.sender)
-                        : "?";
-                    const senderAvatarUrl = isOwn
-                      ? user?.profileImageUrl
-                      : msg.sender?.profileImageUrl;
-
-                    return (
-                      <ChatMessageRow
-                        key={msg.id || `msg-${msg.content.slice(0, 8)}`}
-                        messageId={msg.id ?? `tmp-${msg.createdAt}`}
-                        content={msg.content}
-                        isOwn={isOwn}
-                        isPinned={isPinned}
-                        senderLabel={!isOwn ? senderName : undefined}
-                        senderInitial={senderInitial}
-                        senderAvatarUrl={senderAvatarUrl}
-                        createdAt={msg.createdAt}
-                        updatedAt={msg.updatedAt}
-                        meta={{ reactions: msg.reactions ?? [] }}
-                        deliveryStatus={msg.deliveryStatus}
-                        canPin={Boolean(roomId && (isOwn || isRoomAdmin))}
-                        canDelete={isOwn || isRoomAdmin}
-                        canEdit={isOwn}
-                        onReact={
-                          msg.id
-                            ? (emoji) => reactionMutation.mutate({ messageId: msg.id!, emoji })
-                            : undefined
-                        }
-                        insightsUrl={
-                          roomId && msg.id
-                            ? `/api/chat/rooms/${roomId}/messages/${msg.id}/insights`
-                            : undefined
-                        }
-                        onPin={
-                          msg.id && roomId && !isPinned
-                            ? () => pinMutation.mutate({ messageId: msg.id!, pin: true })
-                            : undefined
-                        }
-                        onUnpin={
-                          msg.id && isPinned
-                            ? () => pinMutation.mutate({ messageId: msg.id!, pin: false })
-                            : undefined
-                        }
-                        onDelete={msg.id ? () => deleteMutation.mutate(msg.id!) : undefined}
-                        onEdit={
-                          msg.id
-                            ? (c) => editMutation.mutate({ messageId: msg.id!, content: c })
-                            : undefined
-                        }
-                        reacting={
-                          reactionMutation.isPending &&
-                          reactionMutation.variables?.messageId === msg.id
-                        }
-                        onReply={
-                          !isOwn && msg.sender?.username
-                            ? () => startReply(msg, senderName, msg.sender?.username)
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
-                  <div ref={scrollRef} />
-                </div>
-              )}
-            </ScrollArea>
-
-            {!joinRequired && (
-              <div className="ait-chat-panel-header p-4 border-t">
-                {showLegacyJoinHint && (
-                  <p className="text-xs text-muted-foreground mb-2 px-1">
-                    {t("chat.legacy.joinHint")}
-                  </p>
-                )}
-                <div className="flex gap-2 items-center">
-                  <MessageComposer
-                    value={messageText}
-                    onChange={setMessageText}
-                    onSend={(content) => void handleSend(content)}
-                    placeholder={
-                      canSend
-                        ? t("chat.page.group.messagePlaceholder")
-                        : t("chat.page.group.connectingPlaceholder")
-                    }
-                    disabled={!canSend}
-                    className="flex-1"
-                    suggestUsers={mentionSuggestUsers}
-                    replyTo={replyTo}
-                    onCancelReply={() => setReplyTo(null)}
-                  />
-                  <Button
-                    variant="premium"
-                    size="icon"
-                    onClick={() => void handleSend()}
-                    disabled={!messageText.trim() || !canSend}
-                    className="rounded-2xl shrink-0 shadow-lg"
-                    aria-label={t("chat.page.sendMessage")}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-              </>
             )}
           </div>
         </div>
