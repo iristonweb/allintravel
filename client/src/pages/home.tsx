@@ -24,8 +24,10 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import { isOnboardingDone } from "@/lib/onboarding";
+import { useTranslation } from "react-i18next";
 
 export function Home() {
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
@@ -65,14 +67,14 @@ export function Home() {
       const res = await apiRequest("POST", `/api/trips/${tripId}/join`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? "Не удалось присоединиться");
+        throw new Error((body as { message?: string }).message ?? t("tripsPage.toast.joinFailed"));
       }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
-      toast({ title: "Вы присоединились к поездке" });
+      toast({ title: t("home.joinSuccess") });
     },
     onError: (err: Error) => {
       toast({ title: err.message, variant: "destructive" });
@@ -126,7 +128,9 @@ export function Home() {
           className="md:hidden space-y-4"
         >
           <h2 className="text-3xl font-bold">
-            {user?.firstName ? `Привет, ${user.firstName}!` : "Привет!"}
+            {user?.firstName
+              ? t("home.greetingNamed", { name: user.firstName })
+              : t("home.greeting")}
           </h2>
           <HomeQuickActions />
           {isAuthenticated && <AitDailyPulse />}
@@ -148,11 +152,11 @@ export function Home() {
         {dataError ? (
           <EmptyState
             icon={AlertCircle}
-            title="Не удалось загрузить данные"
-            description="Проверьте соединение и попробуйте снова."
+            title={t("home.loadError")}
+            description={t("home.connectionError")}
             action={
               <Button variant="outline" onClick={refetchAll}>
-                Повторить
+                {t("common.retry")}
               </Button>
             }
           />

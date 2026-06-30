@@ -16,6 +16,7 @@ import { homeDaysFromWaypoints, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
 import { fetchBuiltRoute } from "@/lib/fetch-route";
 import { DEMO_PLANNER_DAYS, DEST_ICELAND_SRC, SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
+import { useTranslation } from "react-i18next";
 
 const showcaseDestinations = [...SHOWCASE_DESTINATIONS];
 
@@ -86,6 +87,8 @@ function DayList({
   days: PlannerDayView[];
   className?: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <GlassCard strong className={cn("p-4 overflow-y-auto space-y-3 h-full min-h-0", className)}>
       <div className="flex items-center gap-2 text-sm font-semibold text-ait-purple mb-2 sticky top-0 bg-inherit pb-1">
@@ -110,7 +113,9 @@ function DayList({
             style={{ backgroundImage: `url('${d.image}')` }}
           />
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium text-ait-orange">День {d.day}</div>
+            <div className="text-xs font-medium text-ait-orange">
+              {t("home.explorePlanner.day", { day: d.day })}
+            </div>
             <div className="font-semibold text-sm truncate">{d.title}</div>
             <ul className="mt-1 space-y-0.5">
               {d.stops.map((s) => (
@@ -237,6 +242,8 @@ function WorkspaceToggle({
   onChange: (v: DesktopWorkspace) => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className={cn("flex gap-1 ait-nav-pill rounded-full p-1 w-fit", className)}>
       <button
@@ -248,7 +255,7 @@ function WorkspaceToggle({
         )}
       >
         <Globe className="h-4 w-4" />
-        Карта мира
+        {t("home.explorePlanner.worldMap")}
       </button>
       <button
         type="button"
@@ -259,7 +266,7 @@ function WorkspaceToggle({
         )}
       >
         <Route className="h-4 w-4" />
-        Маршрут
+        {t("home.explorePlanner.route")}
       </button>
     </div>
   );
@@ -270,6 +277,7 @@ export default function HomeExplorePlannerSection({
   trip,
   waypoints = [],
 }: HomeExplorePlannerSectionProps) {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const [selectedDay, setSelectedDay] = useState(1);
   const [desktopWorkspace, setDesktopWorkspace] = useState<DesktopWorkspace>("world");
@@ -287,7 +295,9 @@ export default function HomeExplorePlannerSection({
           routePlaces: d.routePlaces,
         }))
       : DEMO_DAYS;
-  const tripTitle = trip?.title ?? (hasRealRoute ? "Ваш маршрут" : "Создайте поездку");
+  const tripTitle =
+    trip?.title ??
+    (hasRealRoute ? t("home.explorePlanner.yourRoute") : t("home.explorePlanner.createTripTitle"));
   const mapPlaces = mapPlacesFromPlaces(places);
   const totalDays = trip ? tripCalendarDayCount(trip) : 12;
   const stopCount = waypoints.length;
@@ -322,13 +332,12 @@ export default function HomeExplorePlannerSection({
           className="col-span-full p-8 flex flex-col items-center justify-center text-center min-h-[320px]"
         >
           <Route className="h-10 w-10 text-ait-purple mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Спланируйте первую поездку</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("home.explorePlanner.emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground mb-6 max-w-md">
-            Добавьте остановки в планировщик — здесь появится ваш реальный маршрут по дням, а не
-            демо.
+            {t("home.explorePlanner.emptyHint")}
           </p>
           <Link href="/trips">
-            <Button variant="premium">Создать поездку</Button>
+            <Button variant="premium">{t("home.explorePlanner.createTrip")}</Button>
           </Link>
         </GlassCard>
       )}
@@ -345,19 +354,19 @@ export default function HomeExplorePlannerSection({
       className="space-y-6 scroll-mt-28"
     >
       <HomeSectionHeader
-        title="Исследуй и планируй"
-        description="Интерактивная карта мира и маршруты по дням — в одном рабочем пространстве"
+        title={t("home.explorePlanner.title")}
+        description={t("home.explorePlanner.description")}
         rightSlot={
           <div className="flex flex-wrap gap-2">
             <Link href="/map">
               <Button variant="glass" size="sm">
-                Карта
+                {t("home.explorePlanner.map")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link href={tripHref}>
               <Button variant="outline" size="sm" className="border-white/15">
-                Планировщик
+                {t("home.explorePlanner.planner")}
               </Button>
             </Link>
           </div>
@@ -385,13 +394,13 @@ export default function HomeExplorePlannerSection({
               value="map"
               className="flex-1 rounded-full data-[state=active]:ait-nav-active data-[state=active]:text-white text-slate-400"
             >
-              Карта мира
+              {t("home.explorePlanner.worldMap")}
             </TabsTrigger>
             <TabsTrigger
               value="route"
               className="flex-1 rounded-full data-[state=active]:ait-nav-active data-[state=active]:text-white text-slate-400"
             >
-              Маршрут
+              {t("home.explorePlanner.route")}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="map" className="mt-0">
@@ -411,27 +420,31 @@ export default function HomeExplorePlannerSection({
         <div className="flex flex-wrap gap-6 text-sm">
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-ait-purple" />
-            <strong className="text-white">{hasRealRoute ? totalDays : "—"}</strong> дней
+            <strong className="text-white">{hasRealRoute ? totalDays : "—"}</strong>{" "}
+            {t("home.explorePlanner.days")}
           </span>
           <span className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-ait-orange" />
-            <strong className="text-white">{hasRealRoute ? stopCount : "—"}</strong> локаций
+            <strong className="text-white">{hasRealRoute ? stopCount : "—"}</strong>{" "}
+            {t("home.explorePlanner.locations")}
           </span>
           <span>
             <strong className="text-white">{hasRealRoute && km ? km : "—"}</strong>{" "}
-            <span className="text-muted-foreground">км</span>
+            <span className="text-muted-foreground">{t("home.explorePlanner.km")}</span>
           </span>
           <span>
             <strong className="text-ait-gold">
               {budgetLabel != null ? `$${budgetLabel}` : "—"}
             </strong>{" "}
-            <span className="text-muted-foreground">бюджет</span>
+            <span className="text-muted-foreground">{t("home.explorePlanner.budget")}</span>
           </span>
         </div>
         <Button variant="premium" asChild>
           <Link href={tripHref} className="inline-flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
-            {hasRealRoute ? "Открыть планировщик" : "Создать поездку"}
+            {hasRealRoute
+              ? t("home.explorePlanner.openPlanner")
+              : t("home.explorePlanner.createTrip")}
           </Link>
         </Button>
       </GlassCard>

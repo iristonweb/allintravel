@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
 import AppDownloadButtons from "@/components/home/app-download-buttons";
 import { DEST_BALI_SRC, DEST_ICELAND_SRC, HERO_MAIN_SRC } from "@/lib/marketing-images";
+import { useTranslation } from "react-i18next";
 
 export default function HomeMobileShowcase() {
+  const { t } = useTranslation();
+
   return (
     <motion.section
       id="apps"
@@ -27,25 +30,23 @@ export default function HomeMobileShowcase() {
                 }}
               >
                 <p className="text-base font-bold">All In Travel</p>
-                <p className="text-xs text-slate-400 mt-1">Карта · маршруты · чаты</p>
+                <p className="text-xs text-slate-400 mt-1">{t("home.mobileShowcase.tagline")}</p>
               </div>
               <div className="p-4 flex-1 space-y-3">
                 <div className="ait-input-glass px-3 py-2.5 text-xs text-slate-500">
-                  Куда хотите поехать?
+                  {t("home.mobileShowcase.searchPlaceholder")}
                 </div>
                 <div className="flex gap-2">
-                  {["Бали", "Исландия"].map((d, i) => (
+                  {[DEST_BALI_SRC, DEST_ICELAND_SRC].map((src, i) => (
                     <div
-                      key={d}
+                      key={src}
                       className="flex-1 h-16 rounded-xl bg-cover bg-center border border-white/10"
-                      style={{
-                        backgroundImage: `url('${i === 0 ? DEST_BALI_SRC : DEST_ICELAND_SRC}')`,
-                      }}
+                      style={{ backgroundImage: `url('${src}')` }}
                     />
                   ))}
                 </div>
                 <div className="ait-glass rounded-2xl p-3">
-                  <p className="text-sm font-medium">Маршрут на неделе</p>
+                  <p className="text-sm font-medium">{t("home.mobileShowcase.routeThisWeek")}</p>
                   <div className="mt-2 h-1.5 rounded-full bg-white/10">
                     <div className="h-full w-[65%] ait-gradient-shimmer rounded-full" />
                   </div>
@@ -61,11 +62,11 @@ export default function HomeMobileShowcase() {
 
           <div className="flex-1 text-center lg:text-left max-w-lg">
             <h2 className="ait-section-title">
-              Приложения для <span className="ait-gradient-text">iOS, Android и Windows</span>
+              {t("home.mobileShowcase.title")}{" "}
+              <span className="ait-gradient-text">{t("home.mobileShowcase.titleHighlight")}</span>
             </h2>
             <p className="text-muted-foreground mt-4 leading-relaxed">
-              Те же интерактивная карта, планировщик маршрутов и чаты путешествий — в нативном
-              приложении с AMOLED-темой и офлайн-закладками.
+              {t("home.mobileShowcase.description")}
             </p>
             <div className="mt-8 flex justify-center lg:justify-start">
               <AppDownloadButtons />

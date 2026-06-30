@@ -3,21 +3,24 @@ import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Users, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 
 type HomeCommunityProps = {
   friendsCount: number;
 };
 
 export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
+  const { t } = useTranslation();
+
   return (
     <section className="space-y-6">
       <HomeSectionHeader
-        title="Сообщество"
-        description="Общайтесь и находите людей под ваши планы"
+        title={t("home.community.title")}
+        description={t("home.community.description")}
         rightSlot={
           <Link href="/social-feed">
             <Button variant="glass" size="sm">
-              Лента
+              {t("home.community.feed")}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
@@ -28,11 +31,9 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
         <GlassCard hover className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Ваши друзья</p>
+              <p className="text-sm text-muted-foreground">{t("home.community.yourFriends")}</p>
               <p className="text-4xl font-bold mt-1 ait-gradient-text">{friendsCount}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Добавляйте попутчиков, чтобы планировать поездки проще.
-              </p>
+              <p className="text-sm text-muted-foreground mt-2">{t("home.community.friendsHint")}</p>
             </div>
             <div className="h-12 w-12 rounded-2xl ait-nav-active flex items-center justify-center">
               <Users className="h-6 w-6 text-ait-purple" />
@@ -40,7 +41,7 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
           </div>
           <div className="mt-5">
             <Link href="/friends">
-              <Button variant="premium">Найти друзей</Button>
+              <Button variant="premium">{t("home.community.findFriends")}</Button>
             </Link>
           </div>
         </GlassCard>
@@ -48,11 +49,9 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
         <GlassCard hover className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Общий чат</p>
-              <p className="text-lg font-semibold mt-1">Советы, маршруты, вопросы</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Telegram + Discord vibe для путешественников.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("home.community.groupChat")}</p>
+              <p className="text-lg font-semibold mt-1">{t("home.community.groupChatTitle")}</p>
+              <p className="text-sm text-muted-foreground mt-2">{t("home.community.groupChatHint")}</p>
             </div>
             <div className="h-12 w-12 rounded-2xl ait-nav-active flex items-center justify-center">
               <MessageCircle className="h-6 w-6 text-ait-orange" />
@@ -60,7 +59,7 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
           </div>
           <div className="mt-5">
             <Link href="/chat">
-              <Button variant="glass">Открыть чат</Button>
+              <Button variant="glass">{t("home.community.openChat")}</Button>
             </Link>
           </div>
         </GlassCard>

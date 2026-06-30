@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import HomeSectionHeader from "@/components/home/home-section-header";
 import PlaceCard from "@/components/place-card";
@@ -9,6 +10,7 @@ import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { loadOnboardingPrefs } from "@/lib/onboarding";
 
 export default function HomePersonalized() {
+  const { t } = useTranslation();
   const recentlyViewed = useRecentlyViewed();
   const preferredType = getRecentTypePreference();
   const recentlyViewedCount = recentlyViewed.length;
@@ -25,21 +27,23 @@ export default function HomePersonalized() {
     ],
   });
 
+  const description = onboardingPrefs?.destination
+    ? t("home.personalized.forDestination", {
+        destination: onboardingPrefs.destination.split(",")[0]?.trim() ?? onboardingPrefs.destination,
+      })
+    : recentlyViewedCount > 0
+      ? t("home.personalized.fromHistory")
+      : t("home.personalized.startBrowsing");
+
   return (
     <section className="space-y-6">
       <HomeSectionHeader
-        title="Рекомендовано вам"
-        description={
-          onboardingPrefs?.destination
-            ? `Подборка для «${onboardingPrefs.destination.split(",")[0]?.trim()}»`
-            : recentlyViewedCount > 0
-              ? "Подборка на основе истории просмотров"
-              : "Сначала откройте пару мест — и мы начнём подстраиваться"
-        }
+        title={t("home.personalized.title")}
+        description={description}
         rightSlot={
           <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
             <Sparkles className="h-4 w-4" />
-            Персонально для вас
+            {t("home.personalized.badge")}
           </div>
         }
       />

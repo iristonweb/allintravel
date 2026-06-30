@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import GlassCard from "@/components/brand/glass-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -8,18 +8,15 @@ import HomeSectionHeader from "@/components/home/home-section-header";
 import { Bookmark, Heart, MapPin, MessageCircle, Share2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
-import {
-  type FeedMode,
-  FEED_MODE_LABELS,
-  feedModeToQuery,
-  filterPostsForFeedMode,
-} from "@/lib/feed-utils";
+import { type FeedMode, feedModeToQuery, filterPostsForFeedMode } from "@/lib/feed-utils";
 import { getDemoPostsForMode, type DemoCommunityPost } from "@/lib/demo-community-posts";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { useFilterLabels } from "@/hooks/useFilterLabels";
+import { Trans, useTranslation } from "react-i18next";
 
 const FEED_MODES: FeedMode[] = ["all", "following", "popular"];
 
@@ -31,9 +28,11 @@ function formatCount(n: number): string {
 function PostCard({
   post,
   onAction,
+  bookmarkLabel,
 }: {
   post: DemoCommunityPost;
   onAction: (e: React.MouseEvent) => void;
+  bookmarkLabel: string;
 }) {
   return (
     <GlassCard strong className="overflow-hidden min-w-[280px] max-w-sm flex-1 snap-start">
@@ -83,7 +82,7 @@ function PostCard({
           size="icon"
           className="text-ait-purple"
           onClick={onAction}
-          aria-label="Сохранить в закладки"
+          aria-label={bookmarkLabel}
         >
           <Bookmark className="h-4 w-4" />
         </Button>
@@ -92,14 +91,17 @@ function PostCard({
   );
 }
 
-function apiPostToDemo(post: TravelPostWithAuthor): DemoCommunityPost {
+function apiPostToDemo(
+  post: TravelPostWithAuthor,
+  t: (key: string) => string,
+): DemoCommunityPost {
   return {
     id: post.id,
     authorName: post.author?.firstName
       ? `${post.author.firstName} ${post.author.lastName ?? ""}`.trim()
-      : "Путешественник",
+      : t("home.communityPreview.traveler"),
     authorAvatar: post.author?.profileImageUrl ?? "https://i.pravatar.cc/120?img=1",
-    location: post.location ?? "В пути",
+    location: post.location ?? t("home.communityPreview.onTheRoad"),
     imageUrl: post.images?.[0] ?? COMMUNITY_TRAVEL_SRC,
     excerpt: post.content?.slice(0, 160) ?? post.title ?? "",
     likesCount: post.likesCount ?? 0,
@@ -118,10 +120,17 @@ function buildFeedHref(mode: FeedMode, isAuthenticated: boolean): string {
 }
 
 export default function HomeCommunityPreview({ useLiveData = false }: HomeCommunityPreviewProps) {
+  const { t, i18n } = useTranslation();
+  const filters = useFilterLabels();
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+
+  const feedModeLabels = useMemo(() => {
+    const map = new Map(filters.feedModeTabs.map((tab) => [tab.value, tab.label]));
+    return (mode: FeedMode) => map.get(mode) ?? mode;
+  }, [filters.feedModeTabs]);
 
   const { data: apiPosts = [] } = useQuery<TravelPostWithAuthor[]>({
     queryKey: feedMode === "following" ? ["/api/posts", { following: user?.id }] : ["/api/posts"],
@@ -129,10 +138,10 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
   });
 
   const liveFiltered = filterPostsForFeedMode(apiPosts, feedMode);
-  const demoPosts = getDemoPostsForMode(feedMode);
+  const demoPosts = getDemoPostsForMode(feedMode, i18n.language);
   const showLive = useLiveData && isAuthenticated && liveFiltered.length > 0;
   const posts: DemoCommunityPost[] = showLive
-    ? liveFiltered.slice(0, 3).map(apiPostToDemo)
+    ? liveFiltered.slice(0, 3).map((post) => apiPostToDemo(post, t))
     : demoPosts;
 
   const feedHref = buildFeedHref(feedMode, isAuthenticated);
@@ -142,9 +151,8 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
     e.stopPropagation();
     if (!isAuthenticated) {
       toast({
-        title: "Войдите",
-        description:
-          "После входа откроется лента с вашим режимом «" + FEED_MODE_LABELS[feedMode] + "».",
+        title: t("home.communityPreview.signInTitle"),
+        description: t("home.communityPreview.signInHint", { mode: feedModeLabels(feedMode) }),
       });
       navigate(feedHref);
       return;
@@ -162,8 +170,8 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
       className="space-y-6 scroll-mt-28"
     >
       <HomeSectionHeader
-        title="Сообщество путешественников"
-        description="Посты, Stories на 24ч, Reels и журналы путешественников"
+        title={t("home.communityPreview.title")}
+        description={t("home.communityPreview.description")}
         rightSlot={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-1 ait-nav-pill rounded-full p-1">
@@ -179,13 +187,13 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
                       : "text-slate-400 hover:text-white",
                   )}
                 >
-                  {FEED_MODE_LABELS[mode]}
+                  {feedModeLabels(mode)}
                 </button>
               ))}
             </div>
             <Link href={feedHref}>
               <Button variant="glass" size="sm">
-                Открыть ленту
+                {t("home.communityPreview.openFeed")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -195,27 +203,31 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
 
       {!isAuthenticated && feedMode === "following" && (
         <p className="text-sm text-muted-foreground text-center ait-glass rounded-2xl px-4 py-3">
-          Примеры постов людей, на которых вы подпишетесь после{" "}
-          <Link href={feedHref} className="text-ait-purple hover:underline">
-            входа
-          </Link>
-          . Вкладка «Подписки» на ленте будет показывать только их публикации.
+          <Trans
+            i18nKey="home.communityPreview.followingHint"
+            components={{
+              signIn: (
+                <Link href={feedHref} className="text-ait-purple hover:underline" />
+              ),
+            }}
+          />
         </p>
       )}
 
       {!isAuthenticated && feedMode === "popular" && (
         <p className="text-sm text-muted-foreground text-center">
-          Популярное — посты с наибольшим числом лайков. После входа список обновляется из
-          сообщества.
+          {t("home.communityPreview.popularHint")}
         </p>
       )}
 
       {!showLive && useLiveData && isAuthenticated && (
         <p className="text-sm text-muted-foreground text-center">
-          Пока нет постов в этой вкладке — смотрите примеры или{" "}
-          <Link href={feedHref} className="text-ait-purple hover:underline">
-            создайте первый пост
-          </Link>
+          <Trans
+            i18nKey="home.communityPreview.emptyLiveHint"
+            components={{
+              link: <Link href={feedHref} className="text-ait-purple hover:underline" />,
+            }}
+          />
         </p>
       )}
 
@@ -230,7 +242,12 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
           <Link href={feedHref}>
             <div className="flex gap-4 overflow-x-auto pb-2 snap-x scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible cursor-pointer">
               {posts.map((post) => (
-                <PostCard key={post.id} post={post} onAction={handlePostAction} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onAction={handlePostAction}
+                  bookmarkLabel={t("home.communityPreview.bookmark")}
+                />
               ))}
             </div>
           </Link>

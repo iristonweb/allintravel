@@ -6,6 +6,7 @@ import { Link } from "wouter";
 import type { Trip } from "@shared/schema";
 import { DEST_ICELAND_SRC } from "@/lib/marketing-images";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { useTranslation } from "react-i18next";
 
 type NextAdventureCardProps = {
   trip?: Trip | null;
@@ -13,7 +14,6 @@ type NextAdventureCardProps = {
 };
 
 const DEMO = {
-  title: "Исландия",
   days: 12,
   locations: 8,
   progress: 60,
@@ -21,7 +21,8 @@ const DEMO = {
 };
 
 export default function NextAdventureCard({ trip, premium }: NextAdventureCardProps) {
-  const title = trip?.title ?? DEMO.title;
+  const { t } = useTranslation();
+  const title = trip?.title ?? t("home.nextAdventure.demoTitle");
   const progress = trip ? 45 : DEMO.progress;
   const coverUrl = trip?.imageUrl ? resolveMediaUrl(trip.imageUrl) : DEMO.imageUrl;
   const href = trip ? `/trips/${trip.id}` : "/trips";
@@ -42,22 +43,22 @@ export default function NextAdventureCard({ trip, premium }: NextAdventureCardPr
       </div>
       <div className="p-6 space-y-4">
         <div className="text-xs font-medium uppercase tracking-widest text-ait-purple">
-          Следующее приключение
+          {t("home.nextAdventure.label")}
         </div>
         <h3 className="text-2xl font-bold text-white">{title}</h3>
         <div className="flex gap-4 text-sm text-slate-400">
           <span className="flex items-center gap-1">
             <Calendar className="h-4 w-4 text-ait-orange" />
-            {DEMO.days} дней
+            {t("home.nextAdventure.days", { count: DEMO.days })}
           </span>
           <span className="flex items-center gap-1">
             <MapPin className="h-4 w-4 text-ait-cyan" />
-            {DEMO.locations} локаций
+            {t("home.nextAdventure.locations", { count: DEMO.locations })}
           </span>
         </div>
         <div>
           <div className="flex justify-between text-xs text-slate-400 mb-2">
-            <span>Планирование</span>
+            <span>{t("home.nextAdventure.planning")}</span>
             <span className="text-white font-medium">{progress}%</span>
           </div>
           <Progress
@@ -74,7 +75,7 @@ export default function NextAdventureCard({ trip, premium }: NextAdventureCardPr
               </Avatar>
             ))}
           </div>
-          <span className="text-xs text-slate-400">+3 в поездке</span>
+          <span className="text-xs text-slate-400">{t("home.nextAdventure.inTrip")}</span>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layers } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import HomeSectionHeader from "@/components/home/home-section-header";
 import PlaceCard from "@/components/place-card";
@@ -8,6 +9,7 @@ import type { Place } from "@shared/schema";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 
 export default function HomeSimilar() {
+  const { t } = useTranslation();
   const recentlyViewed = useRecentlyViewed();
   const last = recentlyViewed[0];
 
@@ -57,12 +59,12 @@ export default function HomeSimilar() {
   return (
     <section className="space-y-6">
       <HomeSectionHeader
-        title="Похожие места"
-        description="На основе последнего просмотра"
+        title={t("home.similar.title")}
+        description={t("home.similar.description")}
         rightSlot={
           <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
             <Layers className="h-4 w-4" />
-            Похожие
+            {t("home.similar.badge")}
           </div>
         }
       />
