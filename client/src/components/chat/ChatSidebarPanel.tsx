@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Hash, Lock, MessageCircle, Search } from "lucide-react";
+import { Hash, Lock, MessageCircle, Search, Wifi } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Badge } from "@/components/ui/badge";
@@ -123,11 +123,12 @@ export default function ChatSidebarPanel({
             {chatTab !== "personal" && chatTab !== "unread" && (
               <CreateRoomDialog onCreated={onSelectRoom} />
             )}
-            {chatTab !== "personal" && chatTab !== "unread" && (
-              <Badge variant="secondary" className="text-[10px] ait-glass">
-                {statusLabel}
-              </Badge>
-            )}
+            <span
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground"
+              title={statusLabel}
+            >
+              <Wifi className="h-3.5 w-3.5" />
+            </span>
           </div>
         </div>
       </div>
@@ -165,7 +166,7 @@ export default function ChatSidebarPanel({
           {(chatTab === "personal" || chatTab === "unread") && (
             <>
               {chatTab === "unread" && visibleConversations.length > 0 && (
-                <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                <p className="px-2 pb-1 text-xs font-medium text-slate-500">
                   {t("chat.page.sidebar.personalSection")}
                 </p>
               )}
@@ -204,7 +205,7 @@ export default function ChatSidebarPanel({
                         {getUserDisplayLabel(conversation.user)}
                       </span>
                       {conversation.lastMessage && (
-                        <span className="text-[11px] text-muted-foreground block truncate">
+                        <span className="text-[11px] text-muted-foreground block line-clamp-2">
                           <MessageContent content={conversation.lastMessage.content} compact />
                         </span>
                       )}
@@ -220,7 +221,7 @@ export default function ChatSidebarPanel({
               {chatTab === "unread" &&
                 visibleConversations.length > 0 &&
                 filteredRooms.length > 0 && (
-                  <p className="px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <p className="px-2 pt-3 pb-1 text-xs font-medium text-slate-500">
                     {t("chat.page.sidebar.groupsSection")}
                   </p>
                 )}
@@ -290,7 +291,7 @@ export default function ChatSidebarPanel({
                     />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium block truncate">{room.title}</span>
-                      <span className="text-[11px] text-muted-foreground block truncate">
+                      <span className="text-[11px] text-muted-foreground block truncate line-clamp-2">
                         {room.lastMessagePreview ? (
                           <MessageContent content={room.lastMessagePreview} compact />
                         ) : (

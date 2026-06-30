@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ChatMessageRow from "@/components/chat/ChatMessageRow";
+import ChatThreadShell, { ChatComposerFooter } from "@/components/chat/ChatThreadShell";
 import MessageComposer from "@/components/chat/MessageComposer";
 import { AvatarWithPresence } from "@/components/PresenceDot";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
@@ -13,7 +13,12 @@ import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
 import { useToast } from "@/hooks/use-toast";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { useTranslation } from "react-i18next";
-import { mergeChronologicalMessages } from "@/lib/chat-thread";
+import {
+  mergeChronologicalMessages,
+  shouldGroupChatMessages,
+  chatDateSeparatorKey,
+  formatChatDateSeparator,
+} from "@/lib/chat-thread";
 import { chatPollIntervalMs } from "@/lib/chat-page-types";
 
 type ReplyTarget = { username: string; label: string; preview: string };
@@ -263,66 +268,114 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
   }
 
   return (
-    <>
-      <div className="ait-chat-panel-header p-4 flex items-center gap-3 border-b border-white/5">
-        {onBack && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 lg:hidden"
-            aria-label={t("chat.page.backToList")}
-            onClick={onBack}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <AvatarWithPresence
-          src={peer.profileImageUrl}
-          fallback={getUserInitial(peer)}
-          isOnline={peer.isOnline}
-          className="h-16 w-16"
-        />
-        <div className="flex-1 min-w-0">
-          <h2 className="font-semibold truncate">{getUserDisplayLabel(peer)}</h2>
-          {peer.isOnline !== undefined && (
-            <p className="text-xs mt-0.5">
-              {peer.isOnline ? (
-                <span className="text-green-500">{t("chat.personal.online")}</span>
-              ) : (
-                <span className="text-muted-foreground">{t("chat.personal.offline")}</span>
-              )}
-            </p>
+    <ChatThreadShell
+      scrollClassName="ait-chat-thread"
+      header={
+        <div className="p-4 flex items-center gap-3">
+          {onBack && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 lg:hidden"
+              aria-label={t("chat.page.backToList")}
+              onClick={onBack}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
           )}
-          {getUserHandle(peer) && (
-            <p className="text-sm text-ait-purple truncate">{getUserHandle(peer)}</p>
-          )}
+          <AvatarWithPresence
+            src={peer.profileImageUrl}
+            fallback={getUserInitial(peer)}
+            isOnline={peer.isOnline}
+            className="h-14 w-14"
+          />
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold truncate">{getUserDisplayLabel(peer)}</h2>
+            {peer.isOnline !== undefined && (
+              <p className="text-xs mt-0.5">
+                {peer.isOnline ? (
+                  <span className="text-green-500">{t("chat.personal.online")}</span>
+                ) : (
+                  <span className="text-muted-foreground">{t("chat.personal.offline")}</span>
+                )}
+              </p>
+            )}
+            {getUserHandle(peer) && (
+              <p className="text-sm text-ait-purple truncate">{getUserHandle(peer)}</p>
+            )}
+          </div>
         </div>
-      </div>
+      }
+      footer={
+        <ChatComposerFooter>
+          <MessageComposer
+            value={newMessage}
+            onChange={setNewMessage}
+            onSend={(content) => handleSendMessage(content)}
+            placeholder={t("chat.personal.messagePlaceholder")}
+            disabled={sendMessageMutation.isPending}
+            className="flex-1"
+            replyTo={replyTo}
+            onCancelReply={() => setReplyTo(null)}
+          />
+          <Button
+            variant="premium"
+            size="icon"
+            onClick={() => handleSendMessage()}
+            disabled={!newMessage.trim() || sendMessageMutation.isPending}
+            className="rounded-2xl shrink-0 shadow-lg"
+            aria-label={t("chat.page.sendMessage")}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </ChatComposerFooter>
+      }
+    >
+      <div className="ait-chat-thread-inner space-y-0 p-4 md:p-6">
+        {messagesLoading ? (
+          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin mb-3" />
+            <p className="text-sm">{t("chat.page.loading.messages")}</p>
+          </div>
+        ) : messagesError ? (
+          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
+            <p className="text-sm">{t("chat.page.errors.messages")}</p>
+            <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
+              {t("chat.page.errors.retry")}
+            </Button>
+          </div>
+        ) : (
+          messages.map((message, index) => {
+            const prev = messages[index - 1];
+            const isOwn = message.senderId === user?.id;
+            const sameAuthor =
+              Boolean(prev) &&
+              (prev!.senderId === user?.id) === isOwn &&
+              prev!.senderId === message.senderId;
+            const grouped = shouldGroupChatMessages(prev, message, sameAuthor);
+            const showDate =
+              message.createdAt &&
+              (!prev?.createdAt ||
+                chatDateSeparatorKey(prev.createdAt) !== chatDateSeparatorKey(message.createdAt));
 
-      <ScrollArea className="flex-1 min-h-0 ait-chat-thread">
-        <div className="ait-chat-thread-inner space-y-5 p-4 md:p-6">
-          {messagesLoading ? (
-            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin mb-3" />
-              <p className="text-sm">{t("chat.page.loading.messages")}</p>
-            </div>
-          ) : messagesError ? (
-            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
-              <p className="text-sm">{t("chat.page.errors.messages")}</p>
-              <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
-                {t("chat.page.errors.retry")}
-              </Button>
-            </div>
-          ) : (
-            messages.map((message) => {
-              const isOwn = message.senderId === user?.id;
-              return (
+            return (
+              <div key={message.id}>
+                {showDate && message.createdAt ? (
+                  <div className="flex justify-center py-3">
+                    <span className="text-[11px] font-medium text-muted-foreground px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                      {formatChatDateSeparator(message.createdAt, {
+                        today: t("chat.dates.today"),
+                        yesterday: t("chat.dates.yesterday"),
+                      })}
+                    </span>
+                  </div>
+                ) : null}
                 <ChatMessageRow
-                  key={message.id}
                   messageId={message.id}
                   content={message.content}
                   isOwn={isOwn}
+                  grouped={grouped}
                   senderInitial={
                     isOwn
                       ? user
@@ -347,37 +400,12 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
                   }
                   onReply={!isOwn ? () => startReply(message) : undefined}
                 />
-              );
-            })
-          )}
-          <div ref={scrollRef} />
-        </div>
-      </ScrollArea>
-
-      <div className="ait-chat-panel-header p-4 border-t border-white/5">
-        <div className="flex gap-2 items-center">
-          <MessageComposer
-            value={newMessage}
-            onChange={setNewMessage}
-            onSend={(content) => handleSendMessage(content)}
-            placeholder={t("chat.personal.messagePlaceholder")}
-            disabled={sendMessageMutation.isPending}
-            className="flex-1"
-            replyTo={replyTo}
-            onCancelReply={() => setReplyTo(null)}
-          />
-          <Button
-            variant="premium"
-            size="icon"
-            onClick={() => handleSendMessage()}
-            disabled={!newMessage.trim() || sendMessageMutation.isPending}
-            className="rounded-2xl shrink-0 shadow-lg"
-            aria-label={t("chat.page.sendMessage")}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={scrollRef} />
       </div>
-    </>
+    </ChatThreadShell>
   );
 }

@@ -34,7 +34,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, MapPin, Trash2, AlertCircle } from "lucide-react";
+import { Plus, MapPin, Trash2, AlertCircle, Users } from "lucide-react";
 import {
   addTripStopsFromDrafts,
   geoItemHasCoords,
@@ -44,7 +44,7 @@ import {
 } from "@/lib/trip-waypoints";
 import MediaUploadField from "@/components/media/MediaUploadField";
 import StatPill from "@/components/brand/stat-pill";
-import FilterChipRow from "@/components/filters/FilterChipRow";
+import CatalogFilterPanel from "@/components/filters/CatalogFilterPanel";
 import { useFilterLabels } from "@/hooks/useFilterLabels";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -587,16 +587,21 @@ export function Trips() {
               />
             }
             filters={
-              <FilterChipRow
-                label={t("tripsPage.filterGroup")}
-                options={filters.tripAvailability}
-                value={availability}
-                onChange={setAvailability}
-                showClear
+              <CatalogFilterPanel
+                showClear={Boolean(availability || search.trim())}
                 onClear={() => {
                   setAvailability("");
                   setSearch("");
                 }}
+                rows={[
+                  {
+                    label: t("tripsPage.filterGroup"),
+                    options: filters.tripAvailability,
+                    value: availability,
+                    onChange: setAvailability,
+                    icon: Users,
+                  },
+                ]}
               />
             }
             stats={

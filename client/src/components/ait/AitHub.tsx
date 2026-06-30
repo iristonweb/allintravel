@@ -1,10 +1,11 @@
 import GlassCard from "@/components/brand/glass-card";
+import PlatformWalletCard from "@/components/wallet/PlatformWalletCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ActivityRings from "@/components/ait/ActivityRings";
 import { useAitClaimQuest, useAitDashboard, useAitSpend } from "@/hooks/useAit";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Gift, ShoppingBag, TrendingUp, Flame } from "lucide-react";
+import { Gift, ShoppingBag, TrendingUp, Flame } from "lucide-react";
 import CreatorFundCard from "@/components/ait/CreatorFundCard";
 import ReferralCard from "@/components/ait/ReferralCard";
 import AitLeaderboard from "@/components/ait/AitLeaderboard";
@@ -44,38 +45,30 @@ export default function AitHub() {
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
-      <GlassCard strong className="p-6 relative overflow-hidden">
-        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-ait-orange/20 blur-3xl" />
-        <div className="absolute -left-4 bottom-0 h-24 w-24 rounded-full bg-ait-purple/25 blur-2xl" />
-        <div className="relative flex flex-wrap items-start justify-between gap-4">
+      <PlatformWalletCard embedded />
+
+      <GlassCard strong className="p-5 relative overflow-hidden">
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-ait-orange mb-1">
-              <Sparkles className="h-5 w-5" />
-              <span className="text-xs font-bold uppercase tracking-widest">
-                Валюта приключений
-              </span>
-            </div>
-            <p className="text-4xl font-bold tabular-nums">
-              {data.spendBalance.toLocaleString("ru-RU")}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">Spend AIT · для магазина и чаевых</p>
-          </div>
-          <div className="text-right">
-            <Badge className="bg-ait-purple/20 text-ait-purple border-ait-purple/30 mb-2">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Ранг создателя</p>
+            <Badge className="bg-ait-purple/20 text-ait-purple border-ait-purple/30 text-sm px-3 py-1">
               {data.creatorRank.title}
             </Badge>
-            <p className="text-2xl font-bold text-ait-cyan tabular-nums">
-              {data.creatorBalance.toLocaleString("ru-RU")}
+            <p className="text-xs text-muted-foreground mt-3">
+              Lifetime Creator:{" "}
+              <span className="text-ait-cyan font-semibold tabular-nums">
+                {data.lifetimeCreatorEarned.toLocaleString("ru-RU")}
+              </span>{" "}
+              AIT
             </p>
-            <p className="text-xs text-muted-foreground">Creator AIT · от аудитории</p>
           </div>
+          {data.streakDays > 0 ? (
+            <p className="text-sm flex items-center gap-2 text-ait-gold">
+              <Flame className="h-4 w-4" />
+              Серия входов: {data.streakDays} {data.streakDays === 1 ? "день" : "дней"}
+            </p>
+          ) : null}
         </div>
-        {data.streakDays > 0 && (
-          <p className="relative mt-4 text-sm flex items-center gap-2 text-ait-gold">
-            <Flame className="h-4 w-4" />
-            Серия входов: {data.streakDays} {data.streakDays === 1 ? "день" : "дней"}
-          </p>
-        )}
       </GlassCard>
 
       <section>

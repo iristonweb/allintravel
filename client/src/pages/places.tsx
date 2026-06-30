@@ -16,10 +16,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { MapPin, AlertCircle, Plus } from "lucide-react";
+import { MapPin, AlertCircle, Plus, Star, DollarSign } from "lucide-react";
 import { useLocation } from "wouter";
 import DestinationSearch from "@/components/search/DestinationSearch";
-import FilterChipRow from "@/components/filters/FilterChipRow";
+import CatalogFilterPanel from "@/components/filters/CatalogFilterPanel";
 import { useFilterLabels } from "@/hooks/useFilterLabels";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePlaceFavorites } from "@/hooks/usePlaceFavorites";
@@ -246,36 +246,33 @@ export function Places() {
             </>
           }
           filters={
-            <>
-              <FilterChipRow
-                label={t("places.filterType")}
-                options={filters.placeType}
-                value={typeFilter}
-                onChange={setTypeFilter}
-              />
-              <FilterChipRow
-                label={t("places.filterRating")}
-                options={filters.placeRating}
-                value={minRating}
-                onChange={setMinRating}
-              />
-              <FilterChipRow
-                label={t("places.filterPrice")}
-                options={filters.placePrice}
-                value={priceRange}
-                onChange={setPriceRange}
-              />
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="w-full sm:w-auto"
-                >
-                  {t("places.clearFilters")}
-                </Button>
-              )}
-            </>
+            <CatalogFilterPanel
+              onClear={clearFilters}
+              showClear={Boolean(hasActiveFilters)}
+              rows={[
+                {
+                  label: t("places.filterType"),
+                  options: filters.placeType,
+                  value: typeFilter,
+                  onChange: setTypeFilter,
+                  icon: MapPin,
+                },
+                {
+                  label: t("places.filterRating"),
+                  options: filters.placeRating,
+                  value: minRating,
+                  onChange: setMinRating,
+                  icon: Star,
+                },
+                {
+                  label: t("places.filterPrice"),
+                  options: filters.placePrice,
+                  value: priceRange,
+                  onChange: setPriceRange,
+                  icon: DollarSign,
+                },
+              ]}
+            />
           }
           stats={
             <Card className="bg-primary/5 border-primary/20">

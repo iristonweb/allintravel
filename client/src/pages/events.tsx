@@ -18,11 +18,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Calendar, Globe, Plus, AlertCircle } from "lucide-react";
+import { Calendar, Globe, Plus, AlertCircle, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
-import FilterChipRow from "@/components/filters/FilterChipRow";
+import CatalogFilterPanel from "@/components/filters/CatalogFilterPanel";
 import { useFilterLabels } from "@/hooks/useFilterLabels";
 import MediaUploadField from "@/components/media/MediaUploadField";
 import { useTranslation } from "react-i18next";
@@ -168,6 +168,14 @@ export function Events() {
   const showUpcoming = timeFilter !== "past";
   const showPast = timeFilter !== "upcoming";
 
+  const clearEventFilters = () => {
+    setActiveType("");
+    setTimeFilter("upcoming");
+    setSearch("");
+  };
+  const hasActiveEventFilters =
+    Boolean(search.trim()) || Boolean(activeType) || timeFilter !== "upcoming";
+
   return (
     <AppLayout>
       <PageShell
@@ -269,26 +277,26 @@ export function Events() {
             />
           }
           filters={
-            <>
-              <FilterChipRow
-                label={t("events.filterPeriod")}
-                options={filters.eventTime}
-                value={timeFilter}
-                onChange={setTimeFilter}
-              />
-              <FilterChipRow
-                label={t("events.filterType")}
-                options={filters.eventType}
-                value={activeType}
-                onChange={setActiveType}
-                showClear
-                onClear={() => {
-                  setActiveType("");
-                  setTimeFilter("upcoming");
-                  setSearch("");
-                }}
-              />
-            </>
+            <CatalogFilterPanel
+              onClear={clearEventFilters}
+              showClear={hasActiveEventFilters}
+              rows={[
+                {
+                  label: t("events.filterPeriod"),
+                  options: filters.eventTime,
+                  value: timeFilter,
+                  onChange: setTimeFilter,
+                  icon: Calendar,
+                },
+                {
+                  label: t("events.filterType"),
+                  options: filters.eventType,
+                  value: activeType,
+                  onChange: setActiveType,
+                  icon: Sparkles,
+                },
+              ]}
+            />
           }
           stats={
             <>

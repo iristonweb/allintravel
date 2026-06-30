@@ -163,6 +163,10 @@ const resources = {
           replyNoUsername: "У собеседника нет @username в профиле",
           sendError: "Не удалось отправить сообщение",
         },
+        dates: {
+          today: "Сегодня",
+          yesterday: "Вчера",
+        },
         composer: {
           defaultPlaceholder: "Сообщение…",
           uploading: "Загрузка…",
@@ -177,6 +181,7 @@ const resources = {
           replyTo: "Ответ @{{username}}",
           cancelReply: "Отменить ответ",
           attachFile: "Прикрепить файл",
+          moreActions: "Дополнительные действия",
           musicLibrary: "Музыка из библиотеки",
           myMusic: "Моя музыка",
           addMusicHint: "Добавьте треки в",
@@ -434,6 +439,10 @@ const resources = {
           replyNoUsername: "This user has no @username in their profile",
           sendError: "Could not send message",
         },
+        dates: {
+          today: "Today",
+          yesterday: "Yesterday",
+        },
         composer: {
           defaultPlaceholder: "Message…",
           uploading: "Uploading…",
@@ -448,6 +457,7 @@ const resources = {
           replyTo: "Reply to @{{username}}",
           cancelReply: "Cancel reply",
           attachFile: "Attach file",
+          moreActions: "More actions",
           musicLibrary: "Music library",
           myMusic: "My music",
           addMusicHint: "Add tracks in",

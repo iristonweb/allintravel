@@ -176,7 +176,7 @@ export default function ChatMessageBubble({
       {textContent.trim() ? (
         <div
           className={cn(
-            "px-4 py-2.5 rounded-2xl text-sm break-words max-w-[min(320px,85vw)] select-none",
+            "px-4 py-3 rounded-2xl text-sm break-words max-w-[min(320px,85vw)] select-none",
             isOwn
               ? "ait-chat-bubble-own text-white rounded-tr-md"
               : "ait-chat-bubble-other text-foreground rounded-tl-md",
@@ -219,7 +219,7 @@ export default function ChatMessageBubble({
       {onReact && reactions.length === 0 && (
         <div
           className={cn(
-            "flex flex-wrap gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity px-1",
+            "flex flex-wrap gap-0.5 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity px-1",
             isOwn ? "justify-end" : "justify-start",
           )}
         >

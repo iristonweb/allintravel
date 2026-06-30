@@ -74,6 +74,7 @@ export type ChatMessageRowProps = {
   insightsUrl?: string;
   deliveryStatus?: MessageDeliveryStatus;
   onReply?: () => void;
+  grouped?: boolean;
 };
 
 type InsightsPayload = {
@@ -105,6 +106,7 @@ export default function ChatMessageRow({
   insightsUrl,
   deliveryStatus,
   onReply,
+  grouped,
 }: ChatMessageRowProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [editText, setEditText] = useState(content);
@@ -188,7 +190,7 @@ export default function ChatMessageRow({
       onDoubleClickReact={onReact ? handleDoubleClick : undefined}
       onReactionDetails={insightsUrl ? () => setInsightsOpen(true) : undefined}
       senderLabel={
-        senderLabel ? (
+        senderLabel && !grouped ? (
           <span className="text-xs text-muted-foreground px-1">{senderLabel}</span>
         ) : undefined
       }
@@ -201,17 +203,25 @@ export default function ChatMessageRow({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            className={cn("group flex gap-2", isOwn && "flex-row-reverse", isPinned && "relative")}
+            className={cn(
+              "group flex gap-2",
+              grouped ? "mt-0.5" : "mt-3",
+              isOwn && "flex-row-reverse",
+              isPinned && "relative",
+            )}
             data-message-id={messageId}
           >
-            {senderInitial != null && (
-              <Avatar className="h-11 w-11 shrink-0">
-                <AvatarImage src={resolveMediaUrl(senderAvatarUrl)} />
-                <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
-                  {senderInitial}
-                </AvatarFallback>
-              </Avatar>
-            )}
+            {senderInitial != null &&
+              (grouped ? (
+                <div className="h-11 w-11 shrink-0" aria-hidden />
+              ) : (
+                <Avatar className="h-11 w-11 shrink-0">
+                  <AvatarImage src={resolveMediaUrl(senderAvatarUrl)} />
+                  <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
+                    {senderInitial}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
             <div className={cn("flex flex-col max-w-[82%] min-w-0", isOwn && "items-end")}>
               {isPinned && (
                 <span className="text-[10px] text-ait-orange font-medium px-1 mb-0.5 flex items-center gap-1">
@@ -229,7 +239,7 @@ export default function ChatMessageRow({
                         variant="ghost"
                         size="icon"
                         className={cn(
-                          "h-7 w-7 shrink-0 rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
+                          "h-7 w-7 shrink-0 rounded-full transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100",
                           isOwn ? "order-first" : "",
                         )}
                         aria-label="Действия с сообщением"

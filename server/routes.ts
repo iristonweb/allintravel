@@ -55,6 +55,7 @@ import {
 } from "./notification-service";
 import { registerUserSocket, unregisterUserSocket } from "./realtime-hub";
 import { registerAitRoutes } from "./ait/routes";
+import { registerWalletRoutes } from "./wallet/routes";
 import { registerPlatformModules } from "./modules/register";
 import {
   grantForChatMessage,
@@ -108,6 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   registerAitRoutes(app);
+  registerWalletRoutes(app);
   await registerPlatformModules(app, storage);
 
   // Geo autocomplete & destination search — see server/modules/geo/routes.ts

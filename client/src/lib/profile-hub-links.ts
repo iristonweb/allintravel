@@ -11,6 +11,7 @@ import {
   Music,
   Rss,
   Users,
+  Wallet,
 } from "lucide-react";
 
 export type ProfileHubLink = {
@@ -30,6 +31,13 @@ type ProfileHubLinkDef = {
 };
 
 const PROFILE_HUB_LINK_DEFS: ProfileHubLinkDef[] = [
+  {
+    href: "/wallet",
+    labelKey: "profileHub.wallet",
+    descKey: "profileHub.walletDesc",
+    icon: Wallet,
+    badge: "AIT",
+  },
   {
     href: "/social-feed",
     labelKey: "profileHub.myFeed",

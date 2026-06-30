@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import EmojiPicker, { type EmojiClickData, Theme } from "emoji-picker-react";
-import { ImageIcon, Mic, Music, Paperclip, Reply, Smile, Sticker, X } from "lucide-react";
+import { ImageIcon, Mic, Music, Paperclip, Plus, Reply, Smile, Sticker, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -123,6 +123,7 @@ export default function MessageComposer({
   const [cursorPos, setCursorPos] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [extrasOpen, setExtrasOpen] = useState(false);
   const gifSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mentionRef = useRef<MentionAutocompleteHandle>(null);
@@ -373,7 +374,7 @@ export default function MessageComposer({
         inputRef={inputRef}
         disabled={composerDisabled}
         compact
-        className="px-1"
+        className="px-1 hidden md:flex"
       />
       <div className="ait-chat-composer-bar flex items-center gap-1.5 min-w-0">
         <input
@@ -399,129 +400,22 @@ export default function MessageComposer({
         >
           <Paperclip className="h-5 w-5" />
         </Button>
-        <Popover open={musicOpen} onOpenChange={setMusicOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="shrink-0"
-              disabled={composerDisabled}
-              title={t("chat.composer.musicLibrary")}
-              aria-label={t("chat.composer.musicLibrary")}
-            >
-              <Music className="h-5 w-5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-2 ait-glass-ios" align="start" side="top">
-            <p className="text-xs font-medium px-1 pb-2 text-muted-foreground">
-              {t("chat.composer.myMusic")}
-            </p>
-            {musicLoading ? (
-              <p className="text-xs text-muted-foreground px-1 py-3">
-                {t("chat.composer.uploading")}
-              </p>
-            ) : musicTracks.length === 0 ? (
-              <p className="text-xs text-muted-foreground px-1 py-3">
-                {t("chat.composer.addMusicHint")}{" "}
-                <Link href="/profile/music" className="text-ait-purple hover:underline">
-                  {t("chat.composer.myMusicLink")}
-                </Link>
-              </p>
-            ) : (
-              <div className="max-h-48 overflow-y-auto space-y-1">
-                {musicTracks.map((track) => (
-                  <button
-                    key={track.id}
-                    type="button"
-                    className="w-full text-left rounded-lg px-2 py-1.5 hover:bg-accent text-sm truncate"
-                    onClick={() => sendMusicTrack(track)}
-                  >
-                    {track.title}
-                    {track.artist ? (
-                      <span className="text-muted-foreground text-xs block truncate">
-                        {track.artist}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            )}
-          </PopoverContent>
-        </Popover>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className={cn("shrink-0", recording && "text-red-400 animate-pulse")}
+          className="shrink-0 md:hidden"
           disabled={composerDisabled}
-          title={recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")}
-          aria-label={
-            recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")
-          }
-          onClick={() => (recording ? stopVoiceRecording() : void startVoiceRecording())}
+          aria-label={t("chat.composer.moreActions")}
+          aria-expanded={extrasOpen}
+          onClick={() => setExtrasOpen((open) => !open)}
         >
-          <Mic className="h-5 w-5" />
+          <Plus className={cn("h-5 w-5 transition-transform", extrasOpen && "rotate-45")} />
         </Button>
-        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="shrink-0"
-              disabled={composerDisabled}
-              aria-label={t("chat.composer.emoji")}
-            >
-              <Smile className="h-5 w-5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 border-0 ait-glass-ios" align="start" side="top">
-            <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.DARK} width={320} height={360} />
-          </PopoverContent>
-        </Popover>
-
-        <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="shrink-0"
-              disabled={composerDisabled}
-              aria-label={t("chat.composer.stickers")}
-            >
-              <Sticker className="h-5 w-5" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-64 p-3 ait-glass-ios border-white/15"
-            align="start"
-            side="top"
-          >
-            <p className="text-xs text-muted-foreground mb-2">{t("chat.composer.stickers")}</p>
-            <div className="grid grid-cols-3 gap-2">
-              {STICKER_IDS.map((id) => {
-                const src = `/stickers/${id}.svg`;
-                const label = t(`chat.composer.stickerLabels.${id}`);
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    className="rounded-lg p-2 hover:bg-muted transition-colors"
-                    onClick={() => insertSticker(src)}
-                    title={label}
-                  >
-                    <img src={src} alt={label} className="h-12 w-12 mx-auto" />
-                  </button>
-                );
-              })}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {giphyEnabled && (
-          <Popover open={gifOpen} onOpenChange={handleGifOpenChange}>
+        <div
+          className={cn("flex items-center gap-1 shrink-0", extrasOpen ? "flex" : "hidden md:flex")}
+        >
+          <Popover open={musicOpen} onOpenChange={setMusicOpen}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -529,59 +423,189 @@ export default function MessageComposer({
                 size="icon"
                 className="shrink-0"
                 disabled={composerDisabled}
-                aria-label={t("chat.composer.gif")}
+                title={t("chat.composer.musicLibrary")}
+                aria-label={t("chat.composer.musicLibrary")}
               >
-                <ImageIcon className="h-5 w-5" />
+                <Music className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-2 ait-glass-ios" align="start" side="top">
+              <p className="text-xs font-medium px-1 pb-2 text-muted-foreground">
+                {t("chat.composer.myMusic")}
+              </p>
+              {musicLoading ? (
+                <p className="text-xs text-muted-foreground px-1 py-3">
+                  {t("chat.composer.uploading")}
+                </p>
+              ) : musicTracks.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-1 py-3">
+                  {t("chat.composer.addMusicHint")}{" "}
+                  <Link href="/profile/music" className="text-ait-purple hover:underline">
+                    {t("chat.composer.myMusicLink")}
+                  </Link>
+                </p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {musicTracks.map((track) => (
+                    <button
+                      key={track.id}
+                      type="button"
+                      className="w-full text-left rounded-lg px-2 py-1.5 hover:bg-accent text-sm truncate"
+                      onClick={() => sendMusicTrack(track)}
+                    >
+                      {track.title}
+                      {track.artist ? (
+                        <span className="text-muted-foreground text-xs block truncate">
+                          {track.artist}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("shrink-0", recording && "text-red-400 animate-pulse")}
+            disabled={composerDisabled}
+            title={recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")}
+            aria-label={
+              recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")
+            }
+            onClick={() => (recording ? stopVoiceRecording() : void startVoiceRecording())}
+          >
+            <Mic className="h-5 w-5" />
+          </Button>
+          <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                disabled={composerDisabled}
+                aria-label={t("chat.composer.emoji")}
+              >
+                <Smile className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 border-0 ait-glass-ios" align="start" side="top">
+              <EmojiPicker
+                onEmojiClick={onEmojiClick}
+                theme={Theme.DARK}
+                width={320}
+                height={360}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover open={stickerOpen} onOpenChange={setStickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                disabled={composerDisabled}
+                aria-label={t("chat.composer.stickers")}
+              >
+                <Sticker className="h-5 w-5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-80 p-3 ait-glass-ios border-white/15"
+              className="w-64 p-3 ait-glass-ios border-white/15"
               align="start"
               side="top"
             >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium">{t("chat.composer.gif")}</p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setGifOpen(false)}
-                  aria-label={t("chat.composer.closeGif")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <Input
-                placeholder={t("chat.composer.gifSearch")}
-                value={gifQuery}
-                onChange={(e) => handleGifSearch(e.target.value)}
-                className="mb-2 h-8"
-              />
-              {gifLoading && displayedGifs.length === 0 && (
-                <p className="text-xs text-muted-foreground mb-2">{t("chat.composer.uploading")}</p>
-              )}
-              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                {displayedGifs.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    className="rounded-lg bg-transparent p-1 hover:bg-white/8 transition-colors"
-                    onClick={() => {
-                      setGifOpen(false);
-                      commitMediaSend(mergeTextAndMedia(value, encodeGifMessage(g.url)));
-                    }}
-                  >
-                    <img
-                      src={g.preview}
-                      alt={g.title}
-                      className="w-full h-16 object-contain bg-transparent"
-                    />
-                  </button>
-                ))}
+              <p className="text-xs text-muted-foreground mb-2">{t("chat.composer.stickers")}</p>
+              <div className="grid grid-cols-3 gap-2">
+                {STICKER_IDS.map((id) => {
+                  const src = `/stickers/${id}.svg`;
+                  const label = t(`chat.composer.stickerLabels.${id}`);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className="rounded-lg p-2 hover:bg-muted transition-colors"
+                      onClick={() => insertSticker(src)}
+                      title={label}
+                    >
+                      <img src={src} alt={label} className="h-12 w-12 mx-auto" />
+                    </button>
+                  );
+                })}
               </div>
             </PopoverContent>
           </Popover>
-        )}
+
+          {giphyEnabled && (
+            <Popover open={gifOpen} onOpenChange={handleGifOpenChange}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  disabled={composerDisabled}
+                  aria-label={t("chat.composer.gif")}
+                >
+                  <ImageIcon className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-80 p-3 ait-glass-ios border-white/15"
+                align="start"
+                side="top"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium">{t("chat.composer.gif")}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setGifOpen(false)}
+                    aria-label={t("chat.composer.closeGif")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Input
+                  placeholder={t("chat.composer.gifSearch")}
+                  value={gifQuery}
+                  onChange={(e) => handleGifSearch(e.target.value)}
+                  className="mb-2 h-8"
+                />
+                {gifLoading && displayedGifs.length === 0 && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {t("chat.composer.uploading")}
+                  </p>
+                )}
+                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  {displayedGifs.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className="rounded-lg bg-transparent p-1 hover:bg-white/8 transition-colors"
+                      onClick={() => {
+                        setGifOpen(false);
+                        commitMediaSend(mergeTextAndMedia(value, encodeGifMessage(g.url)));
+                      }}
+                    >
+                      <img
+                        src={g.preview}
+                        alt={g.title}
+                        className="w-full h-16 object-contain bg-transparent"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
 
         <div className="relative flex-1 min-w-0">
           {showMentions && mentionQuery !== null && (

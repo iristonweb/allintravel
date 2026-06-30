@@ -23,7 +23,9 @@ export default function CatalogPageLayout({
         <div className="ait-glass-strong rounded-card p-3 border border-white/10">{search}</div>
       ) : null}
       {filters ? (
-        <div className="ait-glass-strong rounded-card p-3 border border-white/10">{filters}</div>
+        <div className="ait-glass-strong rounded-card p-4 md:p-5 border border-white/10 ait-gradient-border space-y-0">
+          {filters}
+        </div>
       ) : null}
       {stats ? <div className="flex flex-wrap gap-2">{stats}</div> : null}
       {children}

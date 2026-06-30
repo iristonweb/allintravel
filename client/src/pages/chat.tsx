@@ -793,10 +793,10 @@ export function Chat() {
 
   return (
     <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-0 md:p-4">
-      <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6">
+      <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6 ait-chat-page">
         <PageShell
-          title={t("chat.page.title")}
-          description={t("chat.page.subtitle")}
+          title={mobileThreadOpen ? undefined : t("chat.page.title")}
+          description={mobileThreadOpen ? undefined : t("chat.page.subtitle")}
           titleVariant="immersive"
         >
           <ChatFilterTabs
@@ -824,11 +824,10 @@ export function Chat() {
             className="mb-4"
           />
 
-          <div
-            className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3"
-            style={{ height: "calc(100dvh - var(--ait-header-h, 5rem))", minHeight: "560px" }}
-          >
-            <div className={cn(mobileThreadOpen && "hidden lg:flex")}>
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3 ait-chat-grid min-h-[560px]">
+            <div
+              className={cn("h-full min-h-0 flex flex-col", mobileThreadOpen && "hidden lg:flex")}
+            >
               <ChatSidebarPanel
                 chatTab={chatTab}
                 statusLabel={statusLabel}

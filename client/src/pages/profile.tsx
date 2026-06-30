@@ -1,9 +1,11 @@
 import { useState } from "react";
 import PassportCard from "@/components/passport/PassportCard";
+import PlatformWalletCard from "@/components/wallet/PlatformWalletCard";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
 import PageShell from "@/components/layout/page-shell";
 import GlassCard from "@/components/brand/glass-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlatformWallet } from "@/hooks/usePlatformWallet";
 import { useQuery } from "@tanstack/react-query";
 import EmptyState from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +40,7 @@ export function Profile() {
   const [, navigate] = useLocation();
   const [nickSearch, setNickSearch] = useState("");
   const { linksWithMap } = useProfileHubLinks();
+  const { data: walletProfile } = usePlatformWallet(isAuthenticated);
 
   const {
     data: friends = [],
@@ -175,6 +179,8 @@ export function Profile() {
 
               <PassportCard compact />
 
+              <PlatformWalletCard compact className="mb-6" />
+
               <GlassCard className="mb-6 p-4">
                 <h2 className="text-sm font-medium mb-3">{t("profile.hubSection")}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -186,6 +192,17 @@ export function Profile() {
                           <p className="font-medium text-sm">{item.label}</p>
                           <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
                         </div>
+                        {item.href === "/wallet" && walletProfile ? (
+                          <Badge className="shrink-0 bg-ait-orange/90 border-0 text-[10px] tabular-nums">
+                            {walletProfile.spendBalance > 999
+                              ? `${Math.floor(walletProfile.spendBalance / 1000)}k`
+                              : walletProfile.spendBalance}
+                          </Badge>
+                        ) : item.badge ? (
+                          <Badge variant="secondary" className="shrink-0 text-[10px]">
+                            {item.badge}
+                          </Badge>
+                        ) : null}
                         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       </div>
                     </Link>

@@ -347,9 +347,25 @@ export const en = {
   },
   wallet: {
     description:
-      "Earn AIT for posts, chat, and supporting others. Spend on themes and boosts — or tip creators. Creator AIT is audience-driven reward.",
+      "All In Travel platform wallet: earn AIT, spend in the shop, and send to fellow travelers.",
+    platform: {
+      title: "AIT Crypto Wallet",
+      spendBalance: "Balance for tips and shop",
+      copy: "Copy address",
+      copied: "Address copied",
+      send: "Send",
+      sent: "Transfer sent",
+      sendError: "Could not send",
+      recipientPlaceholder: "Recipient @username",
+      receiveHint: "Transfers via {{username}}",
+      openHub: "AIT Hub",
+      manage: "Manage wallet",
+      loadError: "Could not load wallet",
+    },
   },
   filters: {
+    panelTitle: "Filters",
+    clearAll: "Clear all",
     placeType: {
       all: "All types",
       restaurant: "Restaurants",
@@ -506,6 +522,8 @@ export const en = {
     },
   },
   profileHub: {
+    wallet: "Crypto wallet",
+    walletDesc: "AIT balance and transfers",
     myFeed: "My feed",
     myFeedDesc: "Posts and community",
     public: "Public",

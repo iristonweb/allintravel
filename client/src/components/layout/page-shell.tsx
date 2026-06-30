@@ -4,7 +4,7 @@ import type { AppBreadcrumbItem } from "@/components/layout/app-breadcrumbs";
 import { cn } from "@/lib/utils";
 
 type PageShellProps = {
-  title: string;
+  title?: string;
   description?: string;
   rightSlot?: ReactNode;
   backHref?: string;
@@ -30,7 +30,7 @@ export default function PageShell({
     <div className={cn("space-y-6", className)}>
       {titleVariant === "page" ? (
         <PageHeader
-          title={title}
+          title={title ?? ""}
           description={description}
           rightSlot={rightSlot}
           backHref={backHref}
@@ -41,7 +41,7 @@ export default function PageShell({
           {breadcrumbs && breadcrumbs.length > 0 && (
             <PageHeader breadcrumbs={breadcrumbs} title="" />
           )}
-          <h1 className="ait-section-title">{title}</h1>
+          {title ? <h1 className="ait-section-title">{title}</h1> : null}
           {description ? <p className="text-muted-foreground mt-1">{description}</p> : null}
           {rightSlot ? <div className="mt-4 flex justify-end">{rightSlot}</div> : null}
         </div>

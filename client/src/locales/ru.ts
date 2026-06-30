@@ -348,9 +348,25 @@ export const ru = {
   },
   wallet: {
     description:
-      "Копите AIT за общение, посты и поддержку других. Тратьте на темы и буст — или отправляйте чаевые авторам. Creator AIT — награда от аудитории.",
+      "Платформенный кошелёк All In Travel: копите AIT, тратьте в магазине и отправляйте другим путешественникам.",
+    platform: {
+      title: "Криптокошелёк AIT",
+      spendBalance: "Баланс для трат и чаевых",
+      copy: "Скопировать адрес",
+      copied: "Адрес скопирован",
+      send: "Отправить",
+      sent: "Перевод отправлен",
+      sendError: "Не удалось отправить",
+      recipientPlaceholder: "@username получателя",
+      receiveHint: "Переводы по нику {{username}}",
+      openHub: "AIT Hub",
+      manage: "Управлять кошельком",
+      loadError: "Не удалось загрузить кошелёк",
+    },
   },
   filters: {
+    panelTitle: "Фильтры",
+    clearAll: "Сбросить все",
     placeType: {
       all: "Все типы",
       restaurant: "Рестораны",
@@ -509,6 +525,8 @@ export const ru = {
     },
   },
   profileHub: {
+    wallet: "Криптокошелёк",
+    walletDesc: "Баланс AIT и переводы",
     myFeed: "Моя лента",
     myFeedDesc: "Посты и сообщество",
     public: "Публичное",

@@ -10,11 +10,16 @@ import RoomAvatar from "@/components/chat/RoomAvatar";
 import RoomSettingsPanel from "@/components/chat/RoomSettingsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { ChatMessageWithSender, ReplyTarget, RoomListItem } from "@/lib/chat-page-types";
 import type { ChatRoom, MessageReactionMeta, User } from "@shared/schema";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
+import ChatThreadShell, { ChatComposerFooter } from "@/components/chat/ChatThreadShell";
+import {
+  shouldGroupChatMessages,
+  chatDateSeparatorKey,
+  formatChatDateSeparator,
+} from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
 
 type BreadcrumbItem = { label: string; href?: string };
@@ -116,46 +121,6 @@ export default function GroupChatPanel({
 
   return (
     <>
-      {roomBreadcrumbs && (
-        <div className="px-4 pt-3 pb-0 border-b border-white/5">
-          <AppBreadcrumbs items={roomBreadcrumbs} className="mb-0" />
-        </div>
-      )}
-      <div className="ait-chat-panel-header p-4 flex items-center gap-3">
-        {mobileThreadOpen && onBack && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 lg:hidden"
-            aria-label={t("chat.page.backToList")}
-            onClick={onBack}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <RoomAvatar
-          title={activeRoomMeta?.title ?? activeRoom}
-          avatarUrl={activeRoomMeta?.avatarUrl}
-          className="h-16 w-16"
-        />
-        <div className="flex-1 min-w-0">
-          <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
-          <p className="text-xs text-muted-foreground truncate">
-            {activeRoomMeta?.description ?? t("chat.page.group.defaultDescription")}
-          </p>
-        </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          title={t("chat.page.group.settings")}
-          aria-label={t("chat.page.group.settings")}
-          onClick={() => onShowRoomInfoChange(true)}
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-      </div>
-
       <Sheet open={showRoomInfo} onOpenChange={onShowRoomInfoChange}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-0">
           <SheetHeader className="p-4 pb-0">
@@ -175,28 +140,111 @@ export default function GroupChatPanel({
         </SheetContent>
       </Sheet>
 
-      {latestPinned?.id && (
-        <button
-          type="button"
-          onClick={() => onScrollToMessage(latestPinned.id!)}
-          className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-ait-orange/30 bg-ait-orange/10 px-3 py-2 text-left hover:bg-ait-orange/15 transition-colors"
-        >
-          <Pin className="h-3.5 w-3.5 shrink-0 text-ait-orange" />
-          <span className="text-xs text-ait-orange font-semibold shrink-0">
-            {t("chat.page.group.pinned")}
-          </span>
-          <span className="text-sm truncate flex-1 min-w-0 text-foreground/90">
-            <MessageContent content={latestPinned.content} compact />
-          </span>
-          {pinnedMessages.length > 1 && (
-            <Badge variant="secondary" className="shrink-0 text-[10px]">
-              +{pinnedMessages.length - 1}
-            </Badge>
-          )}
-        </button>
-      )}
-
-      <ScrollArea className={cn("flex-1 p-4", chatBgClass)}>
+      <ChatThreadShell
+        topSlot={
+          <>
+            {roomBreadcrumbs ? (
+              <div className="px-4 pt-3 pb-0 border-b border-white/5 shrink-0">
+                <AppBreadcrumbs items={roomBreadcrumbs} className="mb-0" />
+              </div>
+            ) : null}
+            {latestPinned?.id ? (
+              <button
+                type="button"
+                onClick={() => onScrollToMessage(latestPinned.id!)}
+                className="mx-4 mt-2 flex items-center gap-2 rounded-xl border border-ait-orange/30 bg-ait-orange/10 px-3 py-2 text-left hover:bg-ait-orange/15 transition-colors shrink-0"
+              >
+                <Pin className="h-3.5 w-3.5 shrink-0 text-ait-orange" />
+                <span className="text-xs text-ait-orange font-semibold shrink-0">
+                  {t("chat.page.group.pinned")}
+                </span>
+                <span className="text-sm truncate flex-1 min-w-0 text-foreground/90">
+                  <MessageContent content={latestPinned.content} compact />
+                </span>
+                {pinnedMessages.length > 1 && (
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                    +{pinnedMessages.length - 1}
+                  </Badge>
+                )}
+              </button>
+            ) : null}
+          </>
+        }
+        header={
+          <div className="p-4 flex items-center gap-3">
+            {mobileThreadOpen && onBack && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 lg:hidden"
+                aria-label={t("chat.page.backToList")}
+                onClick={onBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <RoomAvatar
+              title={activeRoomMeta?.title ?? activeRoom}
+              avatarUrl={activeRoomMeta?.avatarUrl}
+              className="h-14 w-14"
+            />
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
+              <p className="text-xs text-muted-foreground truncate">
+                {activeRoomMeta?.description ?? t("chat.page.group.defaultDescription")}
+              </p>
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              title={t("chat.page.group.settings")}
+              aria-label={t("chat.page.group.settings")}
+              onClick={() => onShowRoomInfoChange(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+        scrollClassName={cn("p-4", chatBgClass)}
+        footer={
+          !joinRequired ? (
+            <ChatComposerFooter
+              hint={
+                showLegacyJoinHint ? (
+                  <p className="text-xs text-muted-foreground px-1">{t("chat.legacy.joinHint")}</p>
+                ) : undefined
+              }
+            >
+              <MessageComposer
+                value={messageText}
+                onChange={onMessageTextChange}
+                onSend={(content) => void onSend(content)}
+                placeholder={
+                  canSend
+                    ? t("chat.page.group.messagePlaceholder")
+                    : t("chat.page.group.connectingPlaceholder")
+                }
+                disabled={!canSend}
+                className="flex-1"
+                suggestUsers={mentionSuggestUsers}
+                replyTo={replyTo}
+                onCancelReply={onCancelReply}
+              />
+              <Button
+                variant="premium"
+                size="icon"
+                onClick={() => void onSend()}
+                disabled={!messageText.trim() || !canSend}
+                className="rounded-2xl shrink-0 shadow-lg"
+                aria-label={t("chat.page.sendMessage")}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </ChatComposerFooter>
+          ) : undefined
+        }
+      >
         {joinRequired && joinPreview ? (
           <div className="flex flex-col items-center justify-center h-full min-h-[280px] text-center px-6 space-y-4">
             <RoomAvatar
@@ -247,9 +295,16 @@ export default function GroupChatPanel({
             <p className="text-sm">{t("chat.page.empty.startTripChat")}</p>
           </div>
         ) : (
-          <div className="ait-chat-thread-inner space-y-4">
-            {allMessages.map((msg) => {
+          <div className="ait-chat-thread-inner space-y-0">
+            {allMessages.map((msg, index) => {
+              const prev = allMessages[index - 1];
               const isOwn = msg.userId === currentUser?.id;
+              const sameAuthor = Boolean(prev) && prev!.userId === msg.userId;
+              const grouped = shouldGroupChatMessages(prev, msg, sameAuthor);
+              const showDate =
+                msg.createdAt &&
+                (!prev?.createdAt ||
+                  chatDateSeparatorKey(prev.createdAt) !== chatDateSeparatorKey(msg.createdAt));
               const isPinned = Boolean(msg.id && pinnedIds.includes(msg.id));
               const senderName = isOwn
                 ? currentUser
@@ -270,98 +325,75 @@ export default function GroupChatPanel({
                 : msg.sender?.profileImageUrl;
 
               return (
-                <ChatMessageRow
-                  key={msg.id || `msg-${msg.content.slice(0, 8)}`}
-                  messageId={msg.id ?? `tmp-${msg.createdAt}`}
-                  content={msg.content}
-                  isOwn={isOwn}
-                  isPinned={isPinned}
-                  senderLabel={!isOwn ? senderName : undefined}
-                  senderInitial={senderInitial}
-                  senderAvatarUrl={senderAvatarUrl}
-                  createdAt={msg.createdAt}
-                  updatedAt={msg.updatedAt}
-                  meta={{ reactions: msg.reactions ?? [] }}
-                  deliveryStatus={msg.deliveryStatus}
-                  canPin={Boolean(roomId && (isOwn || isRoomAdmin))}
-                  canDelete={isOwn || isRoomAdmin}
-                  canEdit={isOwn}
-                  onReact={
-                    msg.id
-                      ? (emoji) => reactionMutation.mutate({ messageId: msg.id!, emoji })
-                      : undefined
-                  }
-                  insightsUrl={
-                    roomId && msg.id
-                      ? `/api/chat/rooms/${roomId}/messages/${msg.id}/insights`
-                      : undefined
-                  }
-                  onPin={
-                    msg.id && roomId && !isPinned
-                      ? () => pinMutation.mutate({ messageId: msg.id!, pin: true })
-                      : undefined
-                  }
-                  onUnpin={
-                    msg.id && isPinned
-                      ? () => pinMutation.mutate({ messageId: msg.id!, pin: false })
-                      : undefined
-                  }
-                  onDelete={msg.id ? () => deleteMutation.mutate(msg.id!) : undefined}
-                  onEdit={
-                    msg.id
-                      ? (c) => editMutation.mutate({ messageId: msg.id!, content: c })
-                      : undefined
-                  }
-                  reacting={
-                    reactionMutation.isPending && reactionMutation.variables?.messageId === msg.id
-                  }
-                  onReply={
-                    !isOwn && msg.sender?.username
-                      ? () => onStartReply(msg, senderName, msg.sender?.username)
-                      : undefined
-                  }
-                />
+                <div key={msg.id || `msg-${msg.content.slice(0, 8)}`}>
+                  {showDate && msg.createdAt ? (
+                    <div className="flex justify-center py-3">
+                      <span className="text-[11px] font-medium text-muted-foreground px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                        {formatChatDateSeparator(msg.createdAt, {
+                          today: t("chat.dates.today"),
+                          yesterday: t("chat.dates.yesterday"),
+                        })}
+                      </span>
+                    </div>
+                  ) : null}
+                  <ChatMessageRow
+                    messageId={msg.id ?? `tmp-${msg.createdAt}`}
+                    content={msg.content}
+                    isOwn={isOwn}
+                    grouped={grouped}
+                    isPinned={isPinned}
+                    senderLabel={!isOwn ? senderName : undefined}
+                    senderInitial={senderInitial}
+                    senderAvatarUrl={senderAvatarUrl}
+                    createdAt={msg.createdAt}
+                    updatedAt={msg.updatedAt}
+                    meta={{ reactions: msg.reactions ?? [] }}
+                    deliveryStatus={msg.deliveryStatus}
+                    canPin={Boolean(roomId && (isOwn || isRoomAdmin))}
+                    canDelete={isOwn || isRoomAdmin}
+                    canEdit={isOwn}
+                    onReact={
+                      msg.id
+                        ? (emoji) => reactionMutation.mutate({ messageId: msg.id!, emoji })
+                        : undefined
+                    }
+                    insightsUrl={
+                      roomId && msg.id
+                        ? `/api/chat/rooms/${roomId}/messages/${msg.id}/insights`
+                        : undefined
+                    }
+                    onPin={
+                      msg.id && roomId && !isPinned
+                        ? () => pinMutation.mutate({ messageId: msg.id!, pin: true })
+                        : undefined
+                    }
+                    onUnpin={
+                      msg.id && isPinned
+                        ? () => pinMutation.mutate({ messageId: msg.id!, pin: false })
+                        : undefined
+                    }
+                    onDelete={msg.id ? () => deleteMutation.mutate(msg.id!) : undefined}
+                    onEdit={
+                      msg.id
+                        ? (c) => editMutation.mutate({ messageId: msg.id!, content: c })
+                        : undefined
+                    }
+                    reacting={
+                      reactionMutation.isPending && reactionMutation.variables?.messageId === msg.id
+                    }
+                    onReply={
+                      !isOwn && msg.sender?.username
+                        ? () => onStartReply(msg, senderName, msg.sender?.username)
+                        : undefined
+                    }
+                  />
+                </div>
               );
             })}
             <div ref={scrollRef} />
           </div>
         )}
-      </ScrollArea>
-
-      {!joinRequired && (
-        <div className="ait-chat-panel-header p-4 border-t">
-          {showLegacyJoinHint && (
-            <p className="text-xs text-muted-foreground mb-2 px-1">{t("chat.legacy.joinHint")}</p>
-          )}
-          <div className="flex gap-2 items-center">
-            <MessageComposer
-              value={messageText}
-              onChange={onMessageTextChange}
-              onSend={(content) => void onSend(content)}
-              placeholder={
-                canSend
-                  ? t("chat.page.group.messagePlaceholder")
-                  : t("chat.page.group.connectingPlaceholder")
-              }
-              disabled={!canSend}
-              className="flex-1"
-              suggestUsers={mentionSuggestUsers}
-              replyTo={replyTo}
-              onCancelReply={onCancelReply}
-            />
-            <Button
-              variant="premium"
-              size="icon"
-              onClick={() => void onSend()}
-              disabled={!messageText.trim() || !canSend}
-              className="rounded-2xl shrink-0 shadow-lg"
-              aria-label={t("chat.page.sendMessage")}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      </ChatThreadShell>
     </>
   );
 }
