@@ -74,9 +74,12 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) throw new Error("Failed to load messages");
     const incoming = (await res.json()) as PrivateMessageWithMeta[];
-    if (lastId && incoming.length > 0) {
-      lastActivityRef.current = Date.now();
-      return mergeChronologicalMessages(cached ?? [], incoming) as PrivateMessageWithMeta[];
+    if (lastId) {
+      if (incoming.length > 0) {
+        lastActivityRef.current = Date.now();
+        return mergeChronologicalMessages(cached ?? [], incoming) as PrivateMessageWithMeta[];
+      }
+      if (cached) return cached;
     }
     return incoming;
   };

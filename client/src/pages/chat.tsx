@@ -305,7 +305,11 @@ export function Chat() {
       const lastId =
         useHttpMode && existing.length > 0 ? existing[existing.length - 1]?.id : undefined;
       const payload = await fetchChatHistory(activeRoom, lastId ?? null);
-      if (!lastId || !payload.messages?.length) return payload;
+      if (!lastId) return payload;
+      if (!payload.messages?.length) {
+        if (cached) return cached;
+        return payload;
+      }
       groupChatActivityRef.current = Date.now();
       return {
         ...payload,

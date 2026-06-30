@@ -243,13 +243,15 @@ export async function getUnreadNotificationCountDb(db: Db, userId: string): Prom
         AND is_read = false
         AND type NOT IN ('post_like', 'post_comment')
       UNION ALL
-      SELECT DISTINCT ON (type, entity_id) 1
-      FROM notifications
-      WHERE user_id = ${userId}
-        AND is_read = false
-        AND type IN ('post_like', 'post_comment')
-        AND entity_id IS NOT NULL
-      ORDER BY type, entity_id, created_at DESC
+      SELECT 1 FROM (
+        SELECT DISTINCT ON (type, entity_id) type, entity_id
+        FROM notifications
+        WHERE user_id = ${userId}
+          AND is_read = false
+          AND type IN ('post_like', 'post_comment')
+          AND entity_id IS NOT NULL
+        ORDER BY type, entity_id, created_at DESC
+      ) AS deduped_social
     ) AS unread_rows
   `);
   const row = result.rows[0];

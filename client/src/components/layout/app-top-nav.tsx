@@ -20,6 +20,7 @@ import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 import WalletHeaderButton from "@/components/layout/wallet-header-button";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
 import AitBalancePill from "@/components/ait/AitBalancePill";
+import { toApiUrl } from "@/lib/queryClient";
 
 function resolvePageTitle(path: string, titles: Record<string, string>): string | null {
   if (path.startsWith("/messages")) return titles["/chat"] ?? null;
@@ -30,6 +31,13 @@ function resolvePageTitle(path: string, titles: Record<string, string>): string 
 
 type AppTopNavProps = {
   minimalChrome?: boolean;
+};
+
+const EMPTY_NOTIFICATIONS = {
+  friendRequests: 0,
+  unreadMessages: 0,
+  totalUnread: 0,
+  items: [] as AppNotification[],
 };
 
 export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
@@ -48,6 +56,11 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
     items: AppNotification[];
   }>({
     queryKey: ["/api/notifications"],
+    queryFn: async () => {
+      const res = await fetch(toApiUrl("/api/notifications"), { credentials: "include" });
+      if (!res.ok) return EMPTY_NOTIFICATIONS;
+      return res.json() as Promise<typeof EMPTY_NOTIFICATIONS>;
+    },
     enabled: isAuthenticated,
     refetchInterval: 8000,
     refetchOnWindowFocus: true,

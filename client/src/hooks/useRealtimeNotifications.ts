@@ -56,6 +56,7 @@ export function useRealtimeNotifications() {
     const pollAndNotify = async () => {
       try {
         const data = await fetchNotificationsSnapshot();
+        if (!data.items) return;
         invalidateNotifs();
         queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
         queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
