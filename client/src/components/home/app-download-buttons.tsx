@@ -4,6 +4,7 @@ import { Apple, Smartphone, Monitor } from "lucide-react";
 import { APP_STORE_URL, PLAY_STORE_URL, WINDOWS_STORE_URL } from "@/lib/site-meta";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 type Platform = "ios" | "android" | "windows";
 
@@ -36,6 +37,7 @@ const platforms: {
 ];
 
 export default function AppDownloadButtons({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const primary = useMemo(() => detectPrimaryPlatform(), []);
 
@@ -47,7 +49,10 @@ export default function AppDownloadButtons({ className }: { className?: string }
 
   const openStore = (url: string, label: string) => {
     if (!url) {
-      toast({ title: "Скоро", description: `${label} появится в ближайшем обновлении.` });
+      toast({
+        title: t("marketing.appDownload.comingSoon"),
+        description: t("marketing.appDownload.comingSoonHint", { label }),
+      });
       return;
     }
     window.open(url, "_blank", "noopener,noreferrer");
@@ -64,8 +69,10 @@ export default function AppDownloadButtons({ className }: { className?: string }
         onClick={() => openStore(main.url, main.label)}
       >
         <main.icon className="h-5 w-5 mr-2" />
-        Скачать для {main.short}
-        {!main.url && <span className="ml-2 text-xs opacity-80">(скоро)</span>}
+        {t("marketing.appDownload.downloadFor", { platform: main.short })}
+        {!main.url && (
+          <span className="ml-2 text-xs opacity-80">{t("marketing.appDownload.soonBadge")}</span>
+        )}
       </Button>
       <div className="flex flex-wrap justify-center gap-2 w-full">
         {others.map((p) => (

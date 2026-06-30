@@ -2,16 +2,10 @@ import { Headphones, Map, Shield, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
-import { footerAnchors } from "@/lib/nav-config";
-
-const features = [
-  { icon: Sparkles, label: "Персональные рекомендации", color: "text-ait-purple" },
-  { icon: Map, label: "Офлайн-карты", color: "text-ait-cyan" },
-  { icon: Headphones, label: "24/7 Support", color: "text-ait-orange" },
-  { icon: Shield, label: "Безопасные платежи", color: "text-ait-gold" },
-  { icon: Users, label: "Сообщество единомышленников", color: "text-ait-violet" },
-];
+import { useNavLabels } from "@/hooks/useNavLabels";
 
 type FeatureFooterProps = {
   className?: string;
@@ -19,6 +13,20 @@ type FeatureFooterProps = {
 };
 
 export default function FeatureFooter({ className, showAnchors = false }: FeatureFooterProps) {
+  const { t } = useTranslation();
+  const { footerAnchors } = useNavLabels();
+
+  const features = useMemo(
+    () => [
+      { icon: Sparkles, label: t("marketing.footer.personalRecs"), color: "text-ait-purple" },
+      { icon: Map, label: t("marketing.footer.offlineMaps"), color: "text-ait-cyan" },
+      { icon: Headphones, label: t("marketing.footer.support"), color: "text-ait-orange" },
+      { icon: Shield, label: t("marketing.footer.securePayments"), color: "text-ait-gold" },
+      { icon: Users, label: t("marketing.footer.community"), color: "text-ait-violet" },
+    ],
+    [t],
+  );
+
   return (
     <section
       className={cn(
@@ -39,7 +47,7 @@ export default function FeatureFooter({ className, showAnchors = false }: Featur
               </GuestAnchorLink>
             ))}
             <Link href="/login" className="text-ait-orange hover:underline font-medium">
-              Войти
+              {t("nav.login")}
             </Link>
           </div>
         )}

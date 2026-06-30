@@ -6,18 +6,9 @@ import GlobalSearchPanel from "@/components/search/GlobalSearchPanel";
 import HeroStats from "@/components/home/hero-stats";
 import type { Trip } from "@shared/schema";
 import { HERO_MAIN_SRC } from "@/lib/marketing-images";
-import { useRef } from "react";
-
-const ANCHOR_PILLS = [
-  { href: "#explore", label: "Исследуй" },
-  { href: "#community", label: "Сообщество" },
-  { href: "#apps", label: "Приложения" },
-] as const;
-
-function scrollToAnchor(href: string) {
-  const id = href.replace("#", "");
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
+import { useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { scrollToAnchor } from "@/lib/nav-config";
 
 type CinematicHeroProps = {
   trips?: Trip[];
@@ -30,17 +21,27 @@ export default function CinematicHero({
   showSearch = true,
   showAnchorPills = false,
 }: CinematicHeroProps) {
+  const { t } = useTranslation();
   const nextTrip = trips[0] ?? null;
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
+
+  const anchorPills = useMemo(
+    () => [
+      { href: "#explore", label: t("nav.explore") },
+      { href: "#community", label: t("nav.community") },
+      { href: "#apps", label: t("nav.apps") },
+    ],
+    [t],
+  );
 
   return (
     <section ref={ref} className="relative min-h-[100svh] flex flex-col overflow-hidden">
       <motion.div className="absolute inset-0 z-0" style={{ y: imageY }}>
         <img
           src={HERO_MAIN_SRC}
-          alt="Путешествия — горы, вода и лодки"
+          alt={t("marketing.hero.imageAlt")}
           className="h-full w-full object-cover object-[center_35%] scale-105"
           referrerPolicy="no-referrer"
         />
@@ -61,19 +62,18 @@ export default function CinematicHero({
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             >
               <h1 className="ait-text-hero text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
-                Путешествуй.
+                {t("marketing.hero.titleTravel")}
                 <br />
-                Исследуй.
+                {t("marketing.hero.titleExplore")}
                 <br />
-                <span className="ait-gradient-text">Делись.</span>
+                <span className="ait-gradient-text">{t("marketing.hero.titleShare")}</span>
               </h1>
               <p className="mt-6 text-lg md:text-xl text-slate-100 max-w-xl leading-relaxed drop-shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
-                Интерактивный гид по лучшим местам мира. Планируй маршруты, находи вдохновение и
-                делись впечатлениями.
+                {t("marketing.hero.subtitle")}
               </p>
               {showAnchorPills && (
                 <div className="mt-8 flex flex-wrap gap-2">
-                  {ANCHOR_PILLS.map((pill) => (
+                  {anchorPills.map((pill) => (
                     <button
                       key={pill.href}
                       type="button"
@@ -88,18 +88,17 @@ export default function CinematicHero({
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link href="/trips">
                   <Button variant="premium" size="lg" className="rounded-2xl px-8 py-4 text-base font-semibold">
-                    Планировать путешествие
+                    {t("marketing.hero.planTrip")}
                   </Button>
                 </Link>
                 <Link href="/map">
-                  <motion.button
-                    type="button"
-                    className="rounded-2xl px-8 py-4 text-base font-semibold text-white ait-glass border border-white/20 hover:bg-white/10 transition-colors"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  <Button
+                    variant="glass"
+                    size="lg"
+                    className="rounded-2xl px-8 py-4 text-base font-semibold text-white border border-white/20"
                   >
-                    Исследовать
-                  </motion.button>
+                    {t("marketing.hero.explore")}
+                  </Button>
                 </Link>
               </div>
             </motion.div>

@@ -1,19 +1,7 @@
-/** Shared navigation config — anchors and scroll helpers */
+/** Shared navigation config — anchor scroll helpers and types */
 
 export type NavItem = { href: string; label: string; badge?: string };
 export type SidebarNavItem = NavItem & { icon?: import("lucide-react").LucideIcon };
-
-export const guestAnchors: NavItem[] = [
-  { href: "#explore", label: "Исследовать" },
-  { href: "#community", label: "Сообщество" },
-  { href: "#apps", label: "Приложения" },
-];
-
-export const footerAnchors: NavItem[] = [
-  { href: "#explore", label: "Карта и маршруты" },
-  { href: "#community", label: "Лента" },
-  { href: "#apps", label: "Приложения" },
-];
 
 export { NAV_GROUPS } from "./nav-groups";
 

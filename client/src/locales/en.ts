@@ -517,6 +517,37 @@ export const en = {
     map: "Map",
     mapDesc: "Routes and places",
   },
+  marketing: {
+    hero: {
+      imageAlt: "Travel — mountains, water, and boats",
+      titleTravel: "Travel.",
+      titleExplore: "Explore.",
+      titleShare: "Share.",
+      subtitle:
+        "Your interactive guide to the world's best places. Plan routes, find inspiration, and share your experiences.",
+      planTrip: "Plan a trip",
+      explore: "Explore",
+    },
+    footer: {
+      personalRecs: "Personal recommendations",
+      offlineMaps: "Offline maps",
+      support: "24/7 support",
+      securePayments: "Secure payments",
+      community: "Like-minded community",
+    },
+    stats: {
+      countries: "countries",
+      places: "places",
+      travelers: "travelers",
+      rating: "rating",
+    },
+    appDownload: {
+      comingSoon: "Coming soon",
+      comingSoonHint: "{{label}} will be available in an upcoming update.",
+      downloadFor: "Download for {{platform}}",
+      soonBadge: "(soon)",
+    },
+  },
   seo: {
     homeTitle: "allintravel — map, planner & global life platform",
     homeDescription:

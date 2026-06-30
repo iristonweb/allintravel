@@ -524,6 +524,37 @@ export const ru = {
     map: "Карта",
     mapDesc: "Маршруты и места",
   },
+  marketing: {
+    hero: {
+      imageAlt: "Путешествия — горы, вода и лодки",
+      titleTravel: "Путешествуй.",
+      titleExplore: "Исследуй.",
+      titleShare: "Делись.",
+      subtitle:
+        "Интерактивный гид по лучшим местам мира. Планируй маршруты, находи вдохновение и делись впечатлениями.",
+      planTrip: "Планировать путешествие",
+      explore: "Исследовать",
+    },
+    footer: {
+      personalRecs: "Персональные рекомендации",
+      offlineMaps: "Офлайн-карты",
+      support: "Поддержка 24/7",
+      securePayments: "Безопасные платежи",
+      community: "Сообщество единомышленников",
+    },
+    stats: {
+      countries: "стран",
+      places: "мест",
+      travelers: "путешественников",
+      rating: "рейтинг",
+    },
+    appDownload: {
+      comingSoon: "Скоро",
+      comingSoonHint: "{{label}} появится в ближайшем обновлении.",
+      downloadFor: "Скачать для {{platform}}",
+      soonBadge: "(скоро)",
+    },
+  },
   seo: {
     homeTitle: "allintravel — карта, планировщик и платформа глобальной жизни",
     homeDescription:
