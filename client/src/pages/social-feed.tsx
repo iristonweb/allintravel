@@ -1,7 +1,7 @@
 import { useRef, useState, useMemo, useEffect } from "react";
-import { Link } from "wouter";
 import { feedModeFromQuery, filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
+import PageShell from "@/components/layout/page-shell";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,9 +48,12 @@ import { Label } from "@/components/ui/label";
 import type { PostFormat } from "@shared/post-formats";
 import StoryBar, { type StoryGroup } from "@/components/feed/StoryBar";
 import StoryViewer from "@/components/feed/StoryViewer";
-import StoriesStrip from "@/components/feed/StoriesStrip";
 import ReelFeed from "@/components/feed/ReelFeed";
 import JournalCard from "@/components/feed/JournalCard";
+import SocialFormatTabs from "@/components/social/SocialFormatTabs";
+import StoryCreateButton from "@/components/social/StoryCreateButton";
+import { useSocialFeedParams, type SocialContentFormat } from "@/hooks/useSocialFeedParams";
+import { useTranslation } from "react-i18next";
 import PostTipButton from "@/components/ait/PostTipButton";
 import CreatorSpotlight from "@/components/ait/CreatorSpotlight";
 import AitLeaderboard from "@/components/ait/AitLeaderboard";
@@ -65,25 +68,23 @@ const FEED_MODE_TABS = FEED_MODE_TAB_FILTERS.map(({ value, label }) => ({
   label,
 }));
 
-const CONTENT_FORMAT_TABS = [
-  { id: "feed", label: "Лента", icon: Sparkles },
-  { id: "stories", label: "Stories", icon: BookMarked },
-  { id: "reels", label: "Reels", icon: Film },
-  { id: "journals", label: "Journals", icon: Compass },
-] as const;
-
-function contentFormatToApi(format: "feed" | "stories" | "reels" | "journals"): PostFormat {
+function contentFormatToApi(format: SocialContentFormat): PostFormat | "public" {
   if (format === "stories") return "story";
   if (format === "reels") return "reel";
   if (format === "journals") return "journal";
+  if (format === "public") return "public";
   return "post";
 }
 
 export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+
+  const { feedMode, setFeedMode, contentFormat, setContentFormat, isCreating, setIsCreating } =
+    useSocialFeedParams(isAuthenticated);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -93,46 +94,12 @@ export function SocialFeed() {
       { maximumAge: 300_000, timeout: 8000 },
     );
   }, []);
-
-  const [feedMode, setFeedMode] = useState<FeedMode>(() => {
-    const fromUrl = feedModeFromQuery(new URLSearchParams(window.location.search).get("mode"));
-    return fromUrl;
-  });
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (!params.get("mode") && isAuthenticated) {
-      setFeedMode("following");
-    } else {
-      setFeedMode(feedModeFromQuery(params.get("mode")));
-    }
-    const formatParam = params.get("format");
-    if (formatParam === "stories") setContentFormat("stories");
-    else if (formatParam === "reels") setContentFormat("reels");
-    else if (formatParam === "journals") setContentFormat("journals");
-    if (params.get("create") === "1") {
-      setContentFormat("stories");
-      setIsCreating(true);
-    }
-  }, [isAuthenticated]);
-
-  const setFeedModeWithUrl = (mode: FeedMode) => {
-    setFeedMode(mode);
-    const url = new URL(window.location.href);
-    if (mode === "all") url.searchParams.delete("mode");
-    else url.searchParams.set("mode", mode);
-    window.history.replaceState({}, "", url.pathname + url.search);
-  };
-  const [contentFormat, setContentFormat] = useState<"feed" | "stories" | "reels" | "journals">(
-    "feed",
-  );
   const { data: bookmarkData } = useQuery<{ postIds: string[] }>({
     queryKey: ["/api/bookmarks"],
     enabled: isAuthenticated,
   });
   const bookmarkedSet = new Set(bookmarkData?.postIds ?? []);
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
   const [newPost, setNewPost] = useState({
     title: "",
     content: "",
@@ -156,13 +123,16 @@ export function SocialFeed() {
   const apiFormat = contentFormatToApi(contentFormat);
 
   const postsQueryParams = useMemo(() => {
-    const base: Record<string, string> = { format: apiFormat };
+    if (contentFormat === "public") {
+      return { public: "1", limit: "30" };
+    }
+    const base: Record<string, string> = { format: apiFormat as string };
     if (activeTag) base.tag = activeTag;
     if (user?.id && (feedMode === "following" || feedMode === "all")) {
       base.following = user.id;
     }
     return base;
-  }, [apiFormat, activeTag, feedMode, user?.id]);
+  }, [apiFormat, activeTag, feedMode, user?.id, contentFormat]);
 
   const {
     data: posts = [],
@@ -172,18 +142,19 @@ export function SocialFeed() {
     refetch,
   } = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", postsQueryParams],
-    enabled: isAuthenticated && (feedMode !== "following" || !!user?.id),
+    enabled:
+      isAuthenticated &&
+      (contentFormat === "public" || feedMode !== "following" || !!user?.id),
     refetchInterval: isAuthenticated ? 20_000 : false,
   });
 
-  const displayedPosts = useMemo(
-    () =>
-      filterPostsForFeedMode(posts, feedMode, {
-        userLat: userCoords?.lat,
-        userLon: userCoords?.lon,
-      }),
-    [posts, feedMode, userCoords],
-  );
+  const displayedPosts = useMemo(() => {
+    if (contentFormat === "public") return posts;
+    return filterPostsForFeedMode(posts, feedMode, {
+      userLat: userCoords?.lat,
+      userLon: userCoords?.lon,
+    });
+  }, [posts, feedMode, userCoords, contentFormat]);
 
   const createPostMutation = useMutation({
     mutationFn: (postData: {
@@ -279,7 +250,8 @@ export function SocialFeed() {
   };
 
   const handleCreatePost = () => {
-    const format = apiFormat;
+    if (contentFormat === "public") return;
+    const format = apiFormat as PostFormat;
     const { tagInput, images, ...postData } = newPost;
     void tagInput;
 
@@ -348,12 +320,16 @@ export function SocialFeed() {
 
   const composerPlaceholder =
     contentFormat === "stories"
-      ? "Новая Story (24ч)..."
+      ? t("social.composer.story")
       : contentFormat === "reels"
-        ? "Новый Reel..."
+        ? t("social.composer.reel")
         : contentFormat === "journals"
-          ? "Запись в журнал..."
-          : "Поделитесь впечатлениями от путешествия...";
+          ? t("social.composer.journal")
+          : t("social.composer.feed");
+
+  const showFeedModeTabs =
+    contentFormat === "feed" || contentFormat === "journals" || contentFormat === "public";
+  const showComposer = contentFormat !== "public";
 
   const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -402,47 +378,36 @@ export function SocialFeed() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
-        <div className="mb-2">
-          <h1 className="ait-section-title">Сообщество</h1>
-          <p className="text-muted-foreground mt-1">
-            Лента путешественников — Stories, Reels и Journals
-          </p>
-        </div>
+        <PageShell
+          title={t("nav.communityHub")}
+          description={t("social.subtitle")}
+          titleVariant="immersive"
+          breadcrumbs={[
+            { label: t("nav.communityHub"), href: "/social-feed" },
+            ...(contentFormat !== "feed"
+              ? [{ label: t(`social.formats.${contentFormat}`) }]
+              : []),
+          ]}
+        >
 
         <div className="my-4 space-y-4">
-          {contentFormat !== "stories" && <StoriesStrip compact title="Stories" />}
           <CreatorSpotlight />
           <AitLeaderboard compact />
         </div>
 
-        <div className="flex flex-wrap gap-1.5 mt-6 mb-4 ait-glass rounded-full p-1 w-fit">
-          {CONTENT_FORMAT_TABS.map(({ id, label, icon: Icon }) => (
-            <Button
-              key={id}
-              size="sm"
-              variant="filter"
-              className={cn(
-                contentFormat === id &&
-                  "ait-btn-glow border-0 text-white shadow-none hover:text-white",
-              )}
-              onClick={() => setContentFormat(id)}
-            >
-              <Icon className="h-4 w-4 mr-1" />
-              {label}
-            </Button>
-          ))}
-        </div>
+        <SocialFormatTabs value={contentFormat} onChange={setContentFormat} />
 
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <ChatFilterTabs
-            tabs={FEED_MODE_TABS}
-            value={feedMode}
-            onChange={(id) => {
-              setFeedModeWithUrl(id);
-              setActiveTag(null);
-            }}
-            layoutId="social-feed-mode-glider"
-          />
+        {showFeedModeTabs && (
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <ChatFilterTabs
+              tabs={FEED_MODE_TABS}
+              value={feedMode}
+              onChange={(id) => {
+                setFeedMode(id);
+                setActiveTag(null);
+              }}
+              layoutId="social-feed-mode-glider"
+            />
           {activeTag && (
             <Badge
               variant="default"
@@ -453,9 +418,10 @@ export function SocialFeed() {
             </Badge>
           )}
         </div>
+        )}
 
-        {/* Create post card */}
-        <GlassCard className="mb-6 mt-8 p-4">
+        {showComposer && (
+        <GlassCard className="mb-6 mt-4 p-4">
           <div className="pt-0">
             <div className="flex items-start gap-3">
               <Avatar>
@@ -584,7 +550,7 @@ export function SocialFeed() {
                             }
                           />
                           <Label htmlFor="post-public" className="text-sm text-muted-foreground">
-                            Публично (в блоге)
+                            {t("social.publicVisible")}
                           </Label>
                         </div>
                       )}
@@ -642,6 +608,7 @@ export function SocialFeed() {
             </div>
           </div>
         </GlassCard>
+        )}
 
         {storyView && (
           <StoryViewer
@@ -673,33 +640,44 @@ export function SocialFeed() {
           ) : contentFormat === "stories" ? (
             <div className="space-y-4">
               <div className="flex gap-3 items-start">
-                <Link href="/social-feed?format=stories&create=1">
-                  <button type="button" className="flex flex-col items-center gap-2 shrink-0">
-                    <div className="h-14 w-14 rounded-full border-2 border-dashed border-ait-purple/50 flex items-center justify-center bg-ait-purple/10">
-                      <Plus className="h-6 w-6 text-ait-purple" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Создать</span>
-                  </button>
-                </Link>
+                <StoryCreateButton />
                 <div className="flex-1 min-w-0">
                   <StoryBar posts={displayedPosts} onOpenGroup={openStoryGroup} inline />
                 </div>
               </div>
-              <p className="text-xs text-center text-muted-foreground">
-                Stories живут 24 часа · лайки и реакции видны автору
-              </p>
+              <p className="text-xs text-center text-muted-foreground">{t("social.storiesHint")}</p>
             </div>
           ) : contentFormat === "reels" ? (
             <ReelFeed posts={displayedPosts} />
+          ) : contentFormat === "public" ? (
+            displayedPosts.length === 0 ? (
+              <EmptyState
+                variant="glass"
+                title={t("social.publicEmpty")}
+                description={t("social.publicEmptyHint")}
+              />
+            ) : (
+              displayedPosts.map((post) => (
+                <JournalCard
+                  key={post.id}
+                  post={post}
+                  formatDate={formatDate}
+                  onTagClick={(tag) => setActiveTag(activeTag === tag ? null : tag)}
+                />
+              ))
+            )
           ) : displayedPosts.length === 0 ? (
-            <GlassCard className="py-16 text-center">
-              <Compass className="mx-auto h-12 w-12 text-ait-purple mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Пока нет публикаций</h3>
-              <p className="text-muted-foreground mb-4">Создайте первую запись в этом формате</p>
-              <Button variant="premium" onClick={() => setIsCreating(true)}>
-                Создать
-              </Button>
-            </GlassCard>
+            <EmptyState
+              variant="glass"
+              icon={Compass}
+              title={t("social.emptyTitle")}
+              description={t("social.emptyHint")}
+              action={
+                <Button variant="premium" onClick={() => setIsCreating(true)}>
+                  {t("social.create")}
+                </Button>
+              }
+            />
           ) : contentFormat === "journals" ? (
             displayedPosts.map((post) => (
               <JournalCard
@@ -730,9 +708,13 @@ export function SocialFeed() {
                         <span className="text-sm text-muted-foreground">
                           {formatDate(post.createdAt as unknown as string)}
                         </span>
-                        {(post as { isBoosted?: boolean }).isBoosted && (
+                        {(post as { promoteLabel?: string | null }).promoteLabel ? (
+                          <Badge className="bg-ait-orange/20 text-ait-orange text-xs">
+                            {(post as { promoteLabel?: string }).promoteLabel}
+                          </Badge>
+                        ) : (post as { isBoosted?: boolean }).isBoosted ? (
                           <Badge className="bg-ait-orange/20 text-ait-orange text-xs">Boost</Badge>
-                        )}
+                        ) : null}
                       </div>
                       {post.location && (
                         <div className="flex items-center gap-1 mt-0.5">
@@ -918,6 +900,7 @@ export function SocialFeed() {
             ))
           )}
         </div>
+        </PageShell>
       </div>
     </AppLayout>
   );

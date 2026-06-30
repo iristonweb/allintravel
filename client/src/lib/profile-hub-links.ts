@@ -11,7 +11,7 @@ export type ProfileHubLink = {
 
 export const profileHubLinks: ProfileHubLink[] = [
   { href: "/social-feed", label: "Моя лента", icon: Rss, desc: "Посты и сообщество" },
-  { href: "/blog", label: "Блог", icon: BookOpen, desc: "Публичные статьи" },
+  { href: "/social-feed?format=public", label: "Публичное", icon: BookOpen, desc: "Статьи для всех" },
   { href: "/events", label: "События", icon: Calendar, desc: "Мои и ближайшие события" },
   { href: "/profile/friends", label: "Друзья", icon: Users, desc: "По направлениям и поиск" },
   { href: "/profile/music", label: "Моя музыка", icon: Music, desc: "Загрузки и фоновый плеер" },

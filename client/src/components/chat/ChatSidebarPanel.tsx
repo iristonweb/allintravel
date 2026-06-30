@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AvatarWithPresence } from "@/components/PresenceDot";
+import EmptyState from "@/components/empty-state";
 import CreateRoomDialog from "@/components/chat/CreateRoomDialog";
 import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
 import MessageContent from "@/components/chat/MessageContent";
@@ -230,17 +231,21 @@ export default function ChatSidebarPanel({
                 </div>
               ) : filteredRooms.length === 0 ? (
                 chatTab === "unread" && visibleConversations.length > 0 ? null : (
-                  <div className="p-6 text-center text-sm text-muted-foreground">
-                    {roomQuery.trim()
-                      ? discoverSearch.length >= 2
-                        ? t("chat.page.empty.noGroupsInSearchDiscover")
-                        : t("chat.page.empty.noGroupsInSearch")
-                      : chatTab === "mine"
-                        ? t("chat.page.empty.notInGroups")
-                        : chatTab === "unread"
-                          ? t("chat.page.empty.noUnreadGroups")
-                          : t("chat.page.empty.noGroups")}
-                  </div>
+                  <EmptyState
+                    variant="compact"
+                    className="py-4"
+                    title={
+                      roomQuery.trim()
+                        ? discoverSearch.length >= 2
+                          ? t("chat.page.empty.noGroupsInSearchDiscover")
+                          : t("chat.page.empty.noGroupsInSearch")
+                        : chatTab === "mine"
+                          ? t("chat.page.empty.notInGroups")
+                          : chatTab === "unread"
+                            ? t("chat.page.empty.noUnreadGroups")
+                            : t("chat.page.empty.noGroups")
+                    }
+                  />
                 )
               ) : (
                 filteredRooms.map((room) => (
@@ -276,20 +281,24 @@ export default function ChatSidebarPanel({
             !conversationsLoading &&
             !conversationsError &&
             visibleConversations.length === 0 && (
-              <div className="p-6 text-center text-sm text-muted-foreground space-y-3">
-                <p>
-                  {roomQuery.trim()
+              <EmptyState
+                variant="compact"
+                className="py-4"
+                title={
+                  roomQuery.trim()
                     ? t("chat.page.empty.dialogsNotFound")
-                    : t("chat.page.empty.noPersonal")}
-                </p>
-                {!roomQuery.trim() && (
-                  <Link href="/friends">
-                    <Button variant="outline" size="sm" className="rounded-full">
-                      {t("chat.page.empty.findFriends")}
-                    </Button>
-                  </Link>
-                )}
-              </div>
+                    : t("chat.page.empty.noPersonal")
+                }
+                action={
+                  !roomQuery.trim() ? (
+                    <Link href="/friends">
+                      <Button variant="outline" size="sm" className="rounded-full">
+                        {t("chat.page.empty.findFriends")}
+                      </Button>
+                    </Link>
+                  ) : undefined
+                }
+              />
             )}
 
           {chatTab === "unread" &&
@@ -297,9 +306,11 @@ export default function ChatSidebarPanel({
             !roomsLoading &&
             visibleConversations.length === 0 &&
             filteredRooms.length === 0 && (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                {t("chat.page.empty.noUnread")}
-              </div>
+              <EmptyState
+                variant="compact"
+                className="py-4"
+                title={t("chat.page.empty.noUnread")}
+              />
             )}
         </div>
       </ScrollArea>

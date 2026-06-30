@@ -3,7 +3,7 @@ import { Link, useSearch } from "wouter";
 import { TRAVEL_DIRECTIONS } from "@shared/travel-directions";
 import type { TravelDirectionId } from "@shared/travel-directions";
 import AppLayout from "@/components/app-layout";
-import PageHeader from "@/components/page-header";
+import PageShell from "@/components/layout/page-shell";
 import EmptyState from "@/components/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -152,12 +152,11 @@ export function Friends() {
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto">
-        <PageHeader
+        <PageShell
           title="Друзья"
           description="Управляйте друзьями и находите попутчиков по направлению"
           breadcrumbs={[{ label: "Профиль", href: "/profile" }, { label: "Друзья" }]}
-        />
-
+        >
         {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mt-6" />}
 
         <Tabs defaultValue="friends" className="w-full mt-8">
@@ -555,6 +554,7 @@ export function Friends() {
             )}
           </TabsContent>
         </Tabs>
+        </PageShell>
       </div>
     </AppLayout>
   );

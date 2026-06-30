@@ -1,12 +1,65 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { NavItem } from "@/lib/nav-config";
+import {
+  NAV_GROUPS,
+  MOBILE_MAIN_NAV_HREFS,
+  MOBILE_ECOSYSTEM_HREFS,
+  type NavGroup,
+  type NavGroupItem,
+} from "@/lib/nav-groups";
+
+export type LabeledNavGroup = {
+  id: NavGroup["id"];
+  label: string;
+  items: Array<NavGroupItem & { label: string }>;
+};
 
 export function useNavLabels() {
   const { t } = useTranslation();
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const navGroups: LabeledNavGroup[] = NAV_GROUPS.map((group) => ({
+      id: group.id,
+      label: t(group.labelKey),
+      items: group.items.map((item) => ({
+        ...item,
+        label: t(item.labelKey),
+      })),
+    }));
+
+    const flatNav = navGroups.flatMap((g) => g.items);
+
+    const sidebarPrimaryNav = flatNav
+      .filter((item) => !["/places", "/events", "/passport"].includes(item.href))
+      .map(({ href, label }) => ({ href, label } satisfies NavItem));
+
+    const sidebarDiscoverNav = flatNav
+      .filter((item) => ["/places", "/events"].includes(item.href))
+      .map(({ href, label }) => ({ href, label } satisfies NavItem));
+
+    const mobileMainNav: NavItem[] = MOBILE_MAIN_NAV_HREFS.map((href) => {
+      const item = flatNav.find((i) => i.href === href);
+      return {
+        href,
+        label: href === "/trips" ? "" : (item?.label ?? ""),
+      };
+    });
+
+    const mobileEcosystemNav: NavItem[] = MOBILE_ECOSYSTEM_HREFS.map((href) => {
+      const item = flatNav.find((i) => i.href === href);
+      const fallbackLabels: Record<string, string> = {
+        "/wallet": t("nav.wallet"),
+        "/profile/music": t("nav.music"),
+      };
+      return {
+        href,
+        label: item?.label ?? fallbackLabels[href] ?? href,
+      };
+    });
+
+    return {
+      navGroups,
       guestAnchors: [
         { href: "#explore", label: t("nav.explore") },
         { href: "#community", label: t("nav.community") },
@@ -17,48 +70,21 @@ export function useNavLabels() {
         { href: "#community", label: t("nav.feed") },
         { href: "/nomad-hubs", label: t("nav.nomadHubs") },
       ] satisfies NavItem[],
-      sidebarPrimaryNav: [
-        { href: "/", label: t("nav.home") },
-        { href: "/map", label: t("nav.map") },
-        { href: "/trips", label: t("nav.trips") },
-        { href: "/social-feed", label: t("nav.feed") },
-        { href: "/friends", label: t("nav.friends") },
-        { href: "/chat", label: t("nav.chat") },
-      ] satisfies NavItem[],
-      sidebarDiscoverNav: [
-        { href: "/places", label: t("nav.places") },
-        { href: "/events", label: t("nav.events") },
-        { href: "/blog", label: t("nav.blog") },
-        { href: "/passport", label: t("nav.passport") },
-        { href: "/profile/music", label: t("nav.music") },
-      ] satisfies NavItem[],
-      mobileMainNav: [
-        { href: "/", label: t("nav.home") },
-        { href: "/map", label: t("nav.map") },
-        { href: "/trips", label: "" },
-        { href: "/chat", label: t("nav.chat") },
-      ] satisfies NavItem[],
-      mobileEcosystemNav: [
-        { href: "/places", label: t("nav.places") },
-        { href: "/events", label: t("nav.events") },
-        { href: "/social-feed", label: t("nav.feed") },
-        { href: "/friends", label: t("nav.friends") },
-        { href: "/passport", label: t("nav.passport") },
-        { href: "/wallet", label: t("nav.wallet") },
-        { href: "/profile/music", label: t("nav.music") },
-      ] satisfies NavItem[],
+      sidebarPrimaryNav,
+      sidebarDiscoverNav,
+      mobileMainNav,
+      mobileEcosystemNav,
       pageTitles: {
         "/": t("nav.home"),
         "/map": t("nav.map"),
         "/trips": t("nav.trips"),
-        "/social-feed": t("nav.feed"),
+        "/social-feed": t("nav.communityHub"),
         "/friends": t("nav.friends"),
         "/profile": t("nav.profile"),
         "/profile/music": t("nav.music"),
         "/music": t("nav.music"),
         "/places": t("nav.places"),
         "/events": t("nav.events"),
-        "/blog": t("nav.blog"),
         "/wallet": t("nav.wallet"),
         "/chat": t("nav.chat"),
         "/passport": t("nav.passport"),
@@ -68,7 +94,6 @@ export function useNavLabels() {
         "/creators": t("nav.creators"),
         "/launch": t("nav.launch"),
       } as Record<string, string>,
-    }),
-    [t],
-  );
+    };
+  }, [t]);
 }

@@ -11,7 +11,7 @@ await esbuild.build({
     index: path.join(projectRoot, "server/vercel/handler.ts"),
     health: path.join(projectRoot, "server/vercel/health.ts"),
   },
-  outdir: path.join(projectRoot, "api"),
+  outdir: path.join(projectRoot, "api", "_bundles"),
   bundle: true,
   platform: "node",
   format: "esm",
@@ -34,4 +34,4 @@ await esbuild.build({
   logLevel: "info",
 });
 
-console.log("[build-vercel-api] Wrote api/index.js and api/health.js");
+console.log("[build-vercel-api] Wrote api/_bundles/index.js and api/_bundles/health.js");

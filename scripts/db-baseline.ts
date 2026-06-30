@@ -7,13 +7,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import pg from "pg";
 import { readMigrationFiles } from "drizzle-orm/migrator";
+import { pgPoolConfig } from "../server/db";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsFolder = path.join(projectRoot, "migrations");
-
-function needsSsl(url: string): boolean {
-  return url.includes("neon.tech") || url.includes("sslmode=require") || url.includes("ssl=true");
-}
 
 async function main() {
   const url = process.env.DATABASE_URL?.trim();
@@ -23,10 +20,8 @@ async function main() {
   }
 
   const pool = new pg.Pool({
-    connectionString: url,
-    max: 1,
+    ...pgPoolConfig(url, 1),
     connectionTimeoutMillis: 25_000,
-    ...(needsSsl(url) ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   try {

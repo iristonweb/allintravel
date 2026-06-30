@@ -1082,6 +1082,99 @@ export const aitTransactions = pgTable(
   (t) => [index("idx_ait_tx_user").on(t.userId, t.createdAt)],
 );
 
+export const aitSupplyDaily = pgTable("ait_supply_daily", {
+  capDate: varchar("cap_date", { length: 10 }).primaryKey(),
+  mintedTotal: integer("minted_total").notNull().default(0),
+  emissionCap: integer("emission_cap").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const aitBurns = pgTable("ait_burns", {
+  id: varchar("id").primaryKey(),
+  amount: integer("amount").notNull(),
+  source: varchar("source", { length: 40 }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  entityType: varchar("entity_type", { length: 40 }),
+  entityId: varchar("entity_id", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitIdempotencyKeys = pgTable("ait_idempotency_keys", {
+  idempotencyKey: varchar("idempotency_key").primaryKey(),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  operation: varchar("operation", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitReferralMilestones = pgTable(
+  "ait_referral_milestones",
+  {
+    referredId: varchar("referred_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    milestone: varchar("milestone", { length: 32 }).notNull(),
+    referrerId: varchar("referrer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rewardedAt: timestamp("rewarded_at").defaultNow(),
+  },
+  (t) => [index("ait_referral_milestones_pk").on(t.referredId, t.milestone)],
+);
+
+export const aitFraudFlags = pgTable("ait_fraud_flags", {
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  level: integer("level").notNull().default(1),
+  reason: varchar("reason", { length: 200 }).notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitBoostCampaigns = pgTable("ait_boost_campaigns", {
+  id: varchar("id").primaryKey(),
+  postId: varchar("post_id").notNull(),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  budgetAit: integer("budget_ait").notNull(),
+  spentAit: integer("spent_ait").notNull().default(0),
+  qsAtLaunch: integer("qs_at_launch").notNull().default(60),
+  verifiedExperience: boolean("verified_experience").notNull().default(false),
+  targetScopes: jsonb("target_scopes").$type<string[]>().default([]),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitStreakFreezeUsage = pgTable(
+  "ait_streak_freeze_usage",
+  {
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    monthKey: varchar("month_key", { length: 7 }).notNull(),
+    usedCount: integer("used_count").notNull().default(0),
+  },
+  (t) => [index("ait_streak_freeze_pk").on(t.userId, t.monthKey)],
+);
+
+export const aitFogShares = pgTable(
+  "ait_fog_shares",
+  {
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    weekKey: varchar("week_key", { length: 12 }).notNull(),
+    sharedAt: timestamp("shared_at").defaultNow(),
+  },
+  (t) => [index("ait_fog_shares_pk").on(t.userId, t.weekKey)],
+);
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;

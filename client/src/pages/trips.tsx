@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import AppLayout from "@/components/app-layout";
-import PageHeader from "@/components/page-header";
+import PageShell from "@/components/layout/page-shell";
+import CatalogPageLayout, { CatalogSearchInput } from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
 import TravelCompanionCard from "@/components/travel-companion-card";
 import TripRouteMatches from "@/components/planner/trip-route-matches";
@@ -33,7 +34,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Search, MapPin, Trash2, AlertCircle } from "lucide-react";
+import { Plus, MapPin, Trash2, AlertCircle } from "lucide-react";
 import {
   addTripStopsFromDrafts,
   geoItemHasCoords,
@@ -557,7 +558,7 @@ export function Trips() {
       </Dialog>
 
       <AppLayout>
-        <PageHeader
+        <PageShell
           title="Поездки"
           description="Поездка = маршрут + чат группы. Приглашайте друзей через @ при создании."
           rightSlot={
@@ -566,53 +567,49 @@ export function Trips() {
               Создать поездку
             </Button>
           }
-        />
-
-        <div className="mb-6 mt-8 max-w-xl">
-          <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Поиск по направлению или названию..."
-              className="pl-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
+        >
+        <CatalogPageLayout
+          search={
+            <CatalogSearchInput
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
+              placeholder="Поиск по направлению или названию..."
             />
-          </div>
-        </div>
-
-        <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6">
-          <FilterChipRow
-            label="Группа"
-            options={TRIP_AVAILABILITY_FILTERS}
-            value={availability}
-            onChange={setAvailability}
-            showClear
-            onClear={() => {
-              setAvailability("");
-              setSearch("");
-            }}
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-3 mb-6">
-          <StatPill
-            value={q ? `${filtered.length} из ${trips.length}` : String(trips.length)}
-            label={q ? "найдено по запросу" : "поездок доступно"}
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-2xl ait-glass border border-white/10",
-                "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors",
+          }
+          filters={
+            <FilterChipRow
+              label="Группа"
+              options={TRIP_AVAILABILITY_FILTERS}
+              value={availability}
+              onChange={setAvailability}
+              showClear
+              onClear={() => {
+                setAvailability("");
+                setSearch("");
+              }}
+            />
+          }
+          stats={
+            <>
+              <StatPill
+                value={q ? `${filtered.length} из ${trips.length}` : String(trips.length)}
+                label={q ? "найдено по запросу" : "поездок доступно"}
+              />
+              {q && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-2xl ait-glass border border-white/10",
+                    "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors",
+                  )}
+                >
+                  Сбросить «{q}»
+                </button>
               )}
-            >
-              Сбросить «{q}»
-            </button>
-          )}
-        </div>
-
+            </>
+          }
+        >
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map((i) => (
@@ -640,10 +637,11 @@ export function Trips() {
                 : "Будьте первым — создайте поездку и найдите попутчиков!"
             }
             action={
-              <Button variant="premium" type="button" onClick={openCreateDialog}>
-                <Plus className="mr-2 h-4 w-4" />
-                Создать поездку
-              </Button>
+              q ? (
+                <Button variant="outline" type="button" onClick={() => setSearch("")}>
+                  Сбросить поиск
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -669,6 +667,8 @@ export function Trips() {
             </div>
           </>
         )}
+        </CatalogPageLayout>
+        </PageShell>
       </AppLayout>
     </>
   );

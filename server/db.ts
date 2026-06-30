@@ -13,17 +13,36 @@ function databaseUrl(): string | null {
 }
 
 function needsSsl(url: string): boolean {
-  return url.includes("neon.tech") || url.includes("sslmode=require") || url.includes("ssl=true");
+  return (
+    url.includes("neon.tech") ||
+    url.includes("supabase.co") ||
+    url.includes("pooler.supabase.com") ||
+    url.includes("sslmode=require") ||
+    url.includes("ssl=true")
+  );
 }
 
-function pgPoolOptions(url: string, max: number) {
+/** pg v8 treats sslmode=require in the URL as verify-full; strip it and use explicit ssl instead. */
+function stripConnectionSslParams(url: string): string {
+  return url
+    .replace(/([?&])sslmode=[^&]*&?/g, (_, sep) => (sep === "?" ? "?" : "&"))
+    .replace(/([?&])ssl=true&?/gi, (_, sep) => (sep === "?" ? "?" : "&"))
+    .replace(/[?&]$/, "");
+}
+
+export function pgPoolConfig(url: string, max: number) {
+  const sslRequired = needsSsl(url);
   return {
-    connectionString: url,
+    connectionString: sslRequired ? stripConnectionSslParams(url) : url,
     max,
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 15_000,
-    ...(needsSsl(url) ? { ssl: { rejectUnauthorized: false } } : {}),
+    ...(sslRequired ? { ssl: { rejectUnauthorized: false } } : {}),
   };
+}
+
+function pgPoolOptions(url: string, max: number) {
+  return pgPoolConfig(url, max);
 }
 
 /** Shared pool for Drizzle + express-session (fewer Neon connections on serverless). */

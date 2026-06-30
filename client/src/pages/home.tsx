@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import AitDailyPulse from "@/components/ait/AitDailyPulse";
-import StoriesStrip from "@/components/feed/StoriesStrip";
+import SocialTeaser from "@/components/social/SocialTeaser";
 import { useToast } from "@/hooks/use-toast";
 import EmptyState from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -130,7 +130,7 @@ export function Home() {
           </h2>
           <HomeQuickActions />
           {isAuthenticated && <AitDailyPulse />}
-          {isAuthenticated && <StoriesStrip compact title="Stories" />}
+          {isAuthenticated && <SocialTeaser />}
         </motion.section>
 
         {isAuthenticated && (
@@ -141,7 +141,7 @@ export function Home() {
             className="hidden md:block space-y-4 max-w-xl"
           >
             <AitDailyPulse />
-            <StoriesStrip compact title="Stories" />
+            <SocialTeaser />
           </motion.section>
         )}
 

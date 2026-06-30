@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
+import PageShell from "@/components/layout/page-shell";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import ChatSidebarPanel from "@/components/chat/ChatSidebarPanel";
 import GroupChatPanel from "@/components/chat/GroupChatPanel";
@@ -9,7 +10,6 @@ import { MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import PersonalChatThread from "@/components/chat/PersonalChatThread";
 import ChatThreadPlaceholder from "@/components/chat/ChatThreadPlaceholder";
@@ -22,6 +22,8 @@ import {
   type DiscoverRoom,
   type ChatHistoryPayload,
   fetchChatHistory,
+  chatPollIntervalMs,
+  chatHistoryErrorMessage,
 } from "@/lib/chat-page-types";
 import type { ChatRoom, MessageReactionMeta, Trip, User } from "@shared/schema";
 import { mergeChronologicalMessages } from "@/lib/chat-thread";
@@ -270,18 +272,52 @@ export function Chat() {
     return list.filter((c) => matchQuery(getUserDisplayLabel(c.user)));
   }, [conversations, chatTab, matchQuery]);
 
+  const [docVisible, setDocVisible] = useState(
+    typeof document !== "undefined" ? document.visibilityState === "visible" : true,
+  );
+
+  useEffect(() => {
+    const onVis = () => setDocVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   const historyKey = useMemo(() => [`/api/chat/${activeRoom}`] as const, [activeRoom]);
+  const groupChatActivityRef = useRef(Date.now());
 
   const {
     data: historyPayload,
     isLoading: historyLoading,
     isError: historyError,
+    error: historyFetchError,
     refetch: refetchHistory,
   } = useQuery<ChatHistoryPayload | ChatMessageWithSender[]>({
     queryKey: historyKey,
-    queryFn: () => fetchChatHistory(activeRoom),
+    queryFn: async () => {
+      const cached = queryClient.getQueryData<ChatHistoryPayload | ChatMessageWithSender[]>(
+        historyKey,
+      );
+      const existing: ChatMessageWithSender[] = Array.isArray(cached)
+        ? cached
+        : (cached?.messages ?? []);
+      const lastId =
+        useHttpMode && existing.length > 0 ? existing[existing.length - 1]?.id : undefined;
+      const payload = await fetchChatHistory(activeRoom, lastId ?? null);
+      if (!lastId || !payload.messages?.length) return payload;
+      groupChatActivityRef.current = Date.now();
+      return {
+        ...payload,
+        messages: mergeChronologicalMessages(existing, payload.messages),
+      };
+    },
     enabled: isAuthenticated && Boolean(activeRoom),
-    refetchInterval: useHttpMode ? 2000 : false,
+    refetchInterval: useHttpMode
+      ? () =>
+          chatPollIntervalMs(
+            docVisible,
+            Date.now() - groupChatActivityRef.current < 30_000,
+          )
+      : false,
   });
 
   const history: ChatMessageWithSender[] = Array.isArray(historyPayload)
@@ -719,7 +755,11 @@ export function Chat() {
   }
 
   const statusLabel = useHttpMode
-    ? t("chat.page.sidebar.statusHttp")
+    ? t("chat.page.sidebar.statusHttpDynamic", {
+        sec: Math.round(
+          chatPollIntervalMs(docVisible, Date.now() - groupChatActivityRef.current < 30_000) / 1000,
+        ),
+      })
     : wsConnected
       ? t("chat.page.sidebar.statusOnline")
       : t("chat.page.sidebar.statusConnecting");
@@ -727,10 +767,11 @@ export function Chat() {
   return (
     <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-0 md:p-4">
       <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <h1 className="ait-section-title">{t("chat.page.title")}</h1>
-          <p className="text-muted-foreground mt-1">{t("chat.page.subtitle")}</p>
-        </motion.div>
+        <PageShell
+          title={t("chat.page.title")}
+          description={t("chat.page.subtitle")}
+          titleVariant="immersive"
+        >
 
         <ChatFilterTabs
           layoutId="chat-page-filter"
@@ -824,6 +865,7 @@ export function Chat() {
                 joinRoomMutation={joinRoomMutation}
                 historyLoading={historyLoading}
                 historyError={historyError}
+                historyErrorMessage={chatHistoryErrorMessage(historyFetchError, t)}
                 onRefetchHistory={refetchHistory}
                 allMessages={allMessages}
                 chatBgClass={chatBgClass}
@@ -847,6 +889,7 @@ export function Chat() {
             )}
           </div>
         </div>
+        </PageShell>
       </div>
     </AppLayout>
   );

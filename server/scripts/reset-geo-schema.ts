@@ -1,5 +1,6 @@
 import "dotenv/config";
 import pg from "pg";
+import { pgPoolConfig } from "../db";
 
 /**
  * Drops geo reference tables when drizzle-kit push fails on cities/countries.
@@ -12,13 +13,7 @@ async function main() {
     process.exit(1);
   }
 
-  const needsSsl =
-    url.includes("neon.tech") || url.includes("sslmode=require") || url.includes("ssl=true");
-
-  const pool = new pg.Pool({
-    connectionString: url,
-    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-  });
+  const pool = new pg.Pool(pgPoolConfig(url, 1));
 
   try {
     await pool.query(`DROP TABLE IF EXISTS cities CASCADE`);

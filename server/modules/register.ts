@@ -7,8 +7,9 @@ import { registerMarketplaceRoutes } from "./marketplace/routes";
 import { registerAiRoutes } from "./ai/routes";
 import { registerGtmRoutes } from "./gtm/routes";
 import { registerGeoRoutes } from "./geo/routes";
+import { registerPostsRoutes } from "./posts/routes";
 
-/** Registers platform expansion modules (passport, trust, marketplace, AI, GTM, geo). */
+/** Registers platform expansion modules (passport, trust, marketplace, AI, GTM, geo, posts). */
 export async function registerPlatformModules(app: Express, storage: IStorage): Promise<void> {
   await ensurePlatformSchema();
   registerGeoRoutes(app, storage);
@@ -17,4 +18,5 @@ export async function registerPlatformModules(app: Express, storage: IStorage): 
   registerMarketplaceRoutes(app);
   registerAiRoutes(app);
   registerGtmRoutes(app);
+  registerPostsRoutes(app, storage);
 }

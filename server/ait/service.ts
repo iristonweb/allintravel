@@ -3,12 +3,15 @@ import {
   AIT_CREATOR_REWARDS,
   AIT_DAILY_CAPS,
   AIT_REWARDS,
+  AIT_STREAK_FREEZE_MAX_PER_MONTH,
+  AIT_TIP_BURN_RATE,
   AIT_TIP_CREATOR_SHARE,
   AIT_TIP_MAX,
   AIT_TIP_MIN,
   RING_REASON_MAP,
   WEEKLY_QUESTS,
   resolveCreatorRank,
+  resolveStreakBonus,
   type AitReasonCode,
   type ActivityRingId,
 } from "@shared/ait";
@@ -56,6 +59,10 @@ const REASON_TITLES: Partial<Record<AitReasonCode, string>> = {
   trip_checkin: "Check-in в поездке",
   referral_inviter: "Пригласил друга",
   referral_joined: "Реферальный бонус",
+  referral_milestone: "Реферальный этап",
+  streak_bonus: "Бонус стрика",
+  streak_freeze: "Заморозка стрика",
+  fog_share: "Шеринг карты тумана",
   creator_fund_payout: "Creator Fund",
 };
 
@@ -82,13 +89,10 @@ export async function tryGrantSpend(
   const amount = opts?.amountOverride ?? AIT_REWARDS[reason];
   if (!amount || amount <= 0) return null;
 
-  if (!opts?.skipCap) {
-    const cap = AIT_DAILY_CAPS[reason];
-    if (cap != null) {
-      const count = await store.getDailyCapCount(userId, reason);
-      if (count >= cap) return null;
-      await store.incrementDailyCap(userId, reason);
-    }
+  const dailyCap = opts?.skipCap ? undefined : AIT_DAILY_CAPS[reason];
+  if (dailyCap != null) {
+    const count = await store.getDailyCapCount(userId, reason);
+    if (count >= dailyCap) return null;
   }
 
   const title = REASON_TITLES[reason] ?? reason;
@@ -102,6 +106,10 @@ export async function tryGrantSpend(
     opts?.entityId ?? null,
   );
   if (!result) return null;
+
+  if (dailyCap != null) {
+    await store.incrementDailyCap(userId, reason);
+  }
 
   const ring = ringForReason(reason);
   if (ring) await store.incrementRing(userId, ring);
@@ -129,7 +137,6 @@ export async function tryGrantCreator(
   if (cap != null) {
     const count = await store.getDailyCapCount(userId, reason);
     if (count >= cap) return null;
-    await store.incrementDailyCap(userId, reason);
   }
 
   const title = REASON_TITLES[reason] ?? reason;
@@ -144,6 +151,10 @@ export async function tryGrantCreator(
   );
   if (!result) return null;
 
+  if (cap != null) {
+    await store.incrementDailyCap(userId, reason);
+  }
+
   const grant = { granted: true, amount, wallet: "creator" as const, title, reason };
   const { maybePushAitGrant } = await import("./push-notify");
   void maybePushAitGrant(userId, grant);
@@ -152,11 +163,27 @@ export async function tryGrantCreator(
 
 export async function onDailyPulse(userId: string): Promise<AitGrantResult[]> {
   const grants: AitGrantResult[] = [];
-  await store.touchStreak(userId);
+  const { streakDays } = await store.touchStreak(userId);
   const login = await tryGrantSpend(userId, "daily_login");
   if (login) grants.push(login);
   const pulse = await tryGrantSpend(userId, "presence_pulse");
   if (pulse) grants.push(pulse);
+
+  const streakBonus = resolveStreakBonus(streakDays);
+  if (streakBonus > 0) {
+    const bonus = await tryGrantSpend(userId, "streak_bonus", {
+      amountOverride: streakBonus,
+      skipCap: false,
+      entityType: "streak",
+      entityId: String(streakDays),
+    });
+    if (bonus) grants.push(bonus);
+  }
+
+  const { checkReferralActivityMilestones } = await import("./referral-milestones");
+  if (streakDays >= 7) await checkReferralActivityMilestones(userId, 7);
+  if (streakDays >= 30) await checkReferralActivityMilestones(userId, 30);
+
   return grants;
 }
 
@@ -184,6 +211,7 @@ export async function tipPost(
     "Чаевые автору",
     "post",
     postId,
+    { skipEmissionCap: true },
   );
   if (!spent) return { ok: false, message: "Недостаточно AIT" };
 
@@ -191,7 +219,20 @@ export async function tipPost(
     amountOverride: creatorShare,
     entityType: "post",
     entityId: postId,
+    skipCap: false,
   });
+
+  const { calculateBurnAmount, recordBurn } = await import("./burns");
+  const burnAmt = calculateBurnAmount(amt, AIT_TIP_BURN_RATE);
+  if (burnAmt > 0) {
+    await recordBurn({
+      amount: burnAmt,
+      source: "tip",
+      userId: fromUserId,
+      entityType: "post",
+      entityId: postId,
+    });
+  }
   void burned;
 
   return {
@@ -218,6 +259,37 @@ export async function spendCatalogItem(
     return { ok: false, message: "Укажите пост для буста" };
   }
 
+  if (sku === "boost_post_24h" && opts?.postId) {
+    const { canLaunchBoost, launchBoostCampaign } = await import("./boost/campaigns");
+    const check = await canLaunchBoost(userId);
+    if (!check.ok) return { ok: false, message: check.message };
+    const launched = await launchBoostCampaign(userId, opts.postId);
+    if (!launched.ok) return launched;
+    return { ok: true };
+  }
+
+  if (sku === "streak_freeze") {
+    const monthKey = new Date().toISOString().slice(0, 7);
+    const used = await store.getStreakFreezeUsage(userId, monthKey);
+    if (used >= AIT_STREAK_FREEZE_MAX_PER_MONTH) {
+      return { ok: false, message: "Лимит заморозок на месяц исчерпан" };
+    }
+    const spent = await store.applyBalanceDelta(
+      userId,
+      "spend",
+      -item.cost,
+      "streak_freeze",
+      item.title,
+      "sku",
+      sku,
+      { skipEmissionCap: true },
+    );
+    if (!spent) return { ok: false, message: "Недостаточно AIT" };
+    await store.applyStreakFreeze(userId);
+    await store.incrementStreakFreezeUsage(userId, monthKey);
+    return { ok: true };
+  }
+
   const entitlements = await store.getEntitlements(userId);
   if (
     item.durationDays == null &&
@@ -235,6 +307,7 @@ export async function spendCatalogItem(
     item.title,
     "sku",
     sku,
+    { skipEmissionCap: true },
   );
   if (!spent) return { ok: false, message: "Недостаточно AIT" };
 
@@ -242,14 +315,7 @@ export async function spendCatalogItem(
     item.durationDays != null
       ? new Date(Date.now() + item.durationDays * 24 * 60 * 60 * 1000)
       : null;
-  if (sku !== "boost_post_24h") {
-    await store.addEntitlement(userId, sku, expiresAt);
-  }
-
-  if (sku === "boost_post_24h" && opts?.postId) {
-    const { addPostBoost } = await import("./perks");
-    await addPostBoost(opts.postId, userId, 24);
-  }
+  await store.addEntitlement(userId, sku, expiresAt);
 
   return { ok: true };
 }
@@ -276,6 +342,7 @@ export async function tipUser(
     "Чаевые автору",
     "user",
     toUserId,
+    { skipEmissionCap: true },
   );
   if (!spent) return { ok: false, message: "Недостаточно AIT" };
 
@@ -284,6 +351,18 @@ export async function tipUser(
     entityType: "user",
     entityId: fromUserId,
   });
+
+  const { calculateBurnAmount, recordBurn } = await import("./burns");
+  const burnAmt = calculateBurnAmount(amt, AIT_TIP_BURN_RATE);
+  if (burnAmt > 0) {
+    await recordBurn({
+      amount: burnAmt,
+      source: "tip",
+      userId: fromUserId,
+      entityType: "user",
+      entityId: toUserId,
+    });
+  }
 
   return {
     ok: true,
@@ -330,6 +409,8 @@ export async function getAitDashboard(userId: string) {
   const quests = await store.getQuestProgress(userId);
   const entitlements = await store.getEntitlements(userId);
   const ledger = await store.getLedger(userId, 25);
+  const { getTodaySupplyState } = await import("./supply");
+  const supply = await getTodaySupplyState();
 
   const allRingsFull = Object.values(rings).every((r) => r.percent >= 100);
 
@@ -340,6 +421,7 @@ export async function getAitDashboard(userId: string) {
     lifetimeCreatorEarned: balance.lifetimeCreatorEarned,
     streakDays: balance.streakDays,
     creatorRank: rank,
+    supplyToday: supply,
     rings,
     allRingsFull,
     quests: WEEKLY_QUESTS.map((q) => ({
@@ -369,4 +451,8 @@ export async function ensureAitReady(): Promise<void> {
   await ensureCreatorFundSchema();
   const { ensureReferralSchema } = await import("./referral");
   await ensureReferralSchema();
+  const { ensureReferralMilestoneSchema } = await import("./referral-milestones");
+  await ensureReferralMilestoneSchema();
+  const { ensureFraudSchema } = await import("./fraud");
+  await ensureFraudSchema();
 }

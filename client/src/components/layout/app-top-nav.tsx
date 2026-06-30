@@ -13,6 +13,7 @@ import BrandLogo from "@/components/brand/brand-logo";
 import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
 import { scrollToAnchor } from "@/lib/nav-config";
 import { useNavLabels } from "@/hooks/useNavLabels";
+import { isNavActive } from "@/lib/nav-groups";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
@@ -38,8 +39,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { t } = useTranslation();
   const {
     guestAnchors,
-    sidebarPrimaryNav,
-    sidebarDiscoverNav,
+    navGroups,
     pageTitles: navPageTitles,
   } = useNavLabels();
 
@@ -117,10 +117,10 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
     );
   }
 
-  const menuSections = [
-    { title: "Основное", items: sidebarPrimaryNav },
-    { title: "Каталог", items: sidebarDiscoverNav },
-  ].filter((section) => section.items.length > 0);
+  const menuSections = navGroups.map((group) => ({
+    title: group.label,
+    items: group.items.map(({ href, label }) => ({ href, label })),
+  }));
 
   return (
     <header
@@ -209,10 +209,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
                 {section.title}
               </p>
               {section.items.map((item) => {
-                const active =
-                  item.href === "/chat"
-                    ? location.startsWith("/chat") || location.startsWith("/messages")
-                    : isActive(item.href);
+                const active = isNavActive(location, item.href);
                 return (
                   <Link
                     key={item.href}

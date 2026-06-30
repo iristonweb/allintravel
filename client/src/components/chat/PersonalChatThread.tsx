@@ -13,6 +13,8 @@ import { messagePreview, encodeReplyBlock } from "@/lib/chat-message";
 import { useToast } from "@/hooks/use-toast";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { useTranslation } from "react-i18next";
+import { mergeChronologicalMessages } from "@/lib/chat-thread";
+import { chatPollIntervalMs } from "@/lib/chat-page-types";
 
 type ReplyTarget = { username: string; label: string; preview: string };
 
@@ -59,6 +61,25 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
     (peerUser ? { ...peerUser, isOnline: undefined } : null);
 
   const messagesKey = ["/api/messages", peerUserId] as const;
+  const lastActivityRef = useRef(Date.now());
+
+  const fetchPrivateMessages = async (): Promise<PrivateMessageWithMeta[]> => {
+    const cached = queryClient.getQueryData<PrivateMessageWithMeta[]>(messagesKey);
+    const lastId =
+      isVercelHost && cached && cached.length > 0 ? cached[cached.length - 1]?.id : undefined;
+    const params = new URLSearchParams();
+    if (lastId) params.set("since", lastId);
+    const qs = params.toString();
+    const url = `/api/messages/${encodeURIComponent(peerUserId)}${qs ? `?${qs}` : ""}`;
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) throw new Error("Failed to load messages");
+    const incoming = (await res.json()) as PrivateMessageWithMeta[];
+    if (lastId && incoming.length > 0) {
+      lastActivityRef.current = Date.now();
+      return mergeChronologicalMessages(cached ?? [], incoming) as PrivateMessageWithMeta[];
+    }
+    return incoming;
+  };
 
   const {
     data: messages = [],
@@ -67,8 +88,15 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
     refetch: refetchMessages,
   } = useQuery<PrivateMessageWithMeta[]>({
     queryKey: messagesKey,
+    queryFn: fetchPrivateMessages,
     enabled: Boolean(peerUserId),
-    refetchInterval: isVercelHost ? 3000 : false,
+    refetchInterval: isVercelHost
+      ? () =>
+          chatPollIntervalMs(
+            document.visibilityState === "visible",
+            Date.now() - lastActivityRef.current < 30_000,
+          )
+      : false,
   });
 
   const reactionMutation = useMutation({

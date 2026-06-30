@@ -1,1 +1,1 @@
-export { default, config } from "./health.js";
+export { default, config } from "./_bundles/health.js";

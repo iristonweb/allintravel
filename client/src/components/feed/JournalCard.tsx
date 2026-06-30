@@ -56,9 +56,9 @@ export default function JournalCard({ post, formatDate, onTagClick }: JournalCar
         )}
         {post.isPublic && (
           <Button variant="outline" size="sm" className="mt-4" asChild>
-            <Link href={`/blog/${post.id}`}>
+            <Link href={`/post/${post.id}`}>
               <BookOpen className="h-4 w-4 mr-1" />
-              Читать в блоге
+              Читать статью
             </Link>
           </Button>
         )}

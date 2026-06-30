@@ -60,7 +60,7 @@ export function Landing() {
               </Link>
             </Button>
             <Button variant="outline" className="rounded-2xl gap-2" asChild>
-              <Link href="/blog">
+              <Link href="/social-feed?format=public">
                 <BookOpen className="h-4 w-4" />
                 {t("nav.blog")}
               </Link>

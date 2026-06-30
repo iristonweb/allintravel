@@ -1,6 +1,6 @@
 /**
  * Quick DB diagnostic: npm run db:check
- * Requires DATABASE_URL in .env (same as Vercel production Neon URL).
+ * Requires DATABASE_URL in .env (same as Vercel production Postgres URL).
  */
 import "dotenv/config";
 import { getDb } from "../db";

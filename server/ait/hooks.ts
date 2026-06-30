@@ -32,22 +32,23 @@ export async function grantForPostCreated(
   postId?: string,
 ): Promise<AitGrantResult | null> {
   const hasMedia = Boolean(images?.length);
+  let grant: AitGrantResult | null = null;
   if (format === "story") {
-    return tryGrantSpend(userId, "post_story", { entityType: "post", entityId: postId ?? null });
+    grant = await tryGrantSpend(userId, "post_story", { entityType: "post", entityId: postId ?? null });
+  } else if (format === "reel") {
+    grant = await tryGrantSpend(userId, "post_reel", { entityType: "post", entityId: postId ?? null });
+  } else if (format === "journal") {
+    grant = await tryGrantSpend(userId, "post_journal", { entityType: "post", entityId: postId ?? null });
+  } else if (hasMedia) {
+    grant = await tryGrantSpend(userId, "post_media", { entityType: "post", entityId: postId ?? null });
+  } else if (content.trim().length >= 40) {
+    grant = await tryGrantSpend(userId, "post_text", { entityType: "post", entityId: postId ?? null });
   }
-  if (format === "reel") {
-    return tryGrantSpend(userId, "post_reel", { entityType: "post", entityId: postId ?? null });
+  if (grant) {
+    const { rewardReferralMilestone } = await import("./referral-milestones");
+    void rewardReferralMilestone(userId, "first_post");
   }
-  if (format === "journal") {
-    return tryGrantSpend(userId, "post_journal", { entityType: "post", entityId: postId ?? null });
-  }
-  if (hasMedia) {
-    return tryGrantSpend(userId, "post_media", { entityType: "post", entityId: postId ?? null });
-  }
-  if (content.trim().length >= 40) {
-    return tryGrantSpend(userId, "post_text", { entityType: "post", entityId: postId ?? null });
-  }
-  return null;
+  return grant;
 }
 
 export async function grantForPostLiked(
@@ -165,7 +166,11 @@ export async function tryProfileCompleteBonus(
     Boolean(user.profileImageUrl?.trim());
   if (!ok) return null;
   await markProfileBonusClaimed(userId);
-  return tryGrantSpend(userId, "profile_complete", { skipCap: true });
+  const grant = await tryGrantSpend(userId, "profile_complete", { skipCap: true });
+  const { rewardReferralMilestone } = await import("./referral-milestones");
+  void rewardReferralMilestone(userId, "profile_complete");
+  void rewardReferralMilestone(userId, "email_verified");
+  return grant;
 }
 
 /** @deprecated use grantForPostCreated */

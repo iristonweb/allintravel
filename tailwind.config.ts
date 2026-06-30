@@ -24,6 +24,9 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--ait-radius-card)",
+        button: "var(--ait-radius-button)",
+        panel: "var(--ait-radius-hero)",
       },
       colors: {
         background: "var(--background)",

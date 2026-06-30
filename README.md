@@ -99,7 +99,7 @@ npm run geo:import
 
 | Переменная | Обязательно | Значение |
 |------------|-------------|----------|
-| `DATABASE_URL` | да | Connection string из Neon (Dashboard → Connect) |
+| `DATABASE_URL` | да | Supabase transaction pooler (`…pooler.supabase.com:6543/postgres?sslmode=require`) |
 | `SESSION_SECRET` | да | Случайная длинная строка (hex 64 символа) |
 | `APP_URL` | да для Google | `https://www.allintravel.online` |
 | `GOOGLE_CLIENT_ID` | нет | Google Cloud Console |
@@ -121,13 +121,15 @@ npm run geo:import
 
 На сервере включены лимиты ([`server/rate-limit.ts`](server/rate-limit.ts)): вход (`/api/auth/login`), поиск пользователей, сообщения/чат, загрузки файлов.
 
-### Neon
+### Supabase (PostgreSQL)
 
-В Neon **не нужны** переменные приложения — только база:
+В Supabase **не нужны** переменные приложения — только база:
 
-1. Создать проект → скопировать **Connection string** (pooler, `sslmode=require`)
-2. Вставить в `DATABASE_URL` на Vercel (и в локальный `.env` для `db:push` / `db:seed`)
-3. При утечке пароля: Neon → **Reset password** → обновить URL везде
+1. Создать проект → **Settings → Database** → **Connection pooling**
+2. **Vercel (runtime):** transaction mode, порт **6543** → `DATABASE_URL`
+3. **Локально (миграции):** session mode, порт **5432** → `DATABASE_URL` в `.env`
+4. Добавьте `?sslmode=require` в конец строки
+5. При утечке пароля: Supabase → **Database → Reset database password** → обновить URL везде
 
 > **Чат на Vercel:** WebSocket недоступен на serverless; группы работают через **HTTP** (`POST /api/chat/:room` + опрос истории каждые 4 с). Локально по-прежнему пробуется WebSocket.
 
@@ -153,9 +155,9 @@ npm run geo:import
 
 Чаще всего после обновления auth:
 
-1. В Neon/production не применена колонка `password_hash` — локально выполните:
+1. В production не применены миграции — локально выполните:
    ```bash
-   npm run db:push
+   npm run db:migrate
    ```
    с production `DATABASE_URL` в `.env`.
 2. На Vercel нет `DATABASE_URL` или `SESSION_SECRET` — добавьте в Environment Variables и redeploy.

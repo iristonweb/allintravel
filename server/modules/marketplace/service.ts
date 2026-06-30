@@ -178,5 +178,13 @@ export async function purchaseTripRoute(
   });
   if (!sessionRes.ok) throw new Error("Checkout session failed");
   const session = (await sessionRes.json()) as { url: string };
+
+  const { recordMarketplaceBurnFromFee } = await import("../../ait/burns");
+  void recordMarketplaceBurnFromFee({
+    priceCents: trip.priceCents,
+    userId: buyerId,
+    tripId,
+  }).catch((err) => console.warn("[ait] marketplace burn:", err));
+
   return { trip: forked, checkoutUrl: session.url };
 }

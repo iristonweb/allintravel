@@ -80,6 +80,7 @@ const resources = {
             statusOnline: "Онлайн",
             statusConnecting: "Подключение…",
             statusHttp: "HTTP · 4с",
+            statusHttpDynamic: "HTTP · {{sec}}с",
           },
           createRoom: {
             title: "Создать группу",
@@ -113,6 +114,10 @@ const resources = {
             reply: "Нельзя ответить",
             replyNoUsername: "У автора нет @username в профиле",
             retry: "Повторить",
+            unauthorized: "Сессия истекла — войдите снова",
+            privateRoom: "Закрытая группа — нужно приглашение",
+            banned: "Вы заблокированы в этой группе",
+            roomNotFound: "Группа не найдена",
           },
           empty: {
             dialogsNotFound: "Диалоги не найдены",
@@ -345,6 +350,7 @@ const resources = {
             statusOnline: "Online",
             statusConnecting: "Connecting…",
             statusHttp: "HTTP · 4s",
+            statusHttpDynamic: "HTTP · {{sec}}s",
           },
           createRoom: {
             title: "Create group",
@@ -378,6 +384,10 @@ const resources = {
             reply: "Cannot reply",
             replyNoUsername: "Author has no @username in profile",
             retry: "Retry",
+            unauthorized: "Session expired — sign in again",
+            privateRoom: "Private group — invite required",
+            banned: "You are banned from this group",
+            roomNotFound: "Group not found",
           },
           empty: {
             dialogsNotFound: "No conversations found",

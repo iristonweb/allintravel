@@ -48,6 +48,7 @@ export async function adminAdjustAit(
     title,
     "admin",
     adminUserId,
+    { skipEmissionCap: true, skipFraud: true },
   );
   if (!result) {
     return { ok: false, message: "Недостаточно баланса или ошибка записи" };

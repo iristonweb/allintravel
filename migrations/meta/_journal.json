@@ -29,6 +29,20 @@
       "when": 1780880000000,
       "tag": "0003_platform_expansion",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780890000000,
+      "tag": "0004_ait_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780891000000,
+      "tag": "0005_ait_hard_reset",
+      "breakpoints": true
     }
   ]
 }

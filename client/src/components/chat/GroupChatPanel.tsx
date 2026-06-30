@@ -50,6 +50,7 @@ type GroupChatPanelProps = {
   joinRoomMutation: { mutate: (roomId: string) => void; isPending: boolean };
   historyLoading: boolean;
   historyError: boolean;
+  historyErrorMessage?: string;
   onRefetchHistory: () => void;
   allMessages: ChatMessageWithSender[];
   chatBgClass: string;
@@ -94,6 +95,7 @@ export default function GroupChatPanel({
   joinRoomMutation,
   historyLoading,
   historyError,
+  historyErrorMessage,
   onRefetchHistory,
   allMessages,
   chatBgClass,
@@ -220,7 +222,7 @@ export default function GroupChatPanel({
             <p className="text-sm text-muted-foreground max-w-sm">{t("chat.joinGate.title")}</p>
             <Button
               type="button"
-              className="ait-btn-glow"
+              variant="premium"
               disabled={joinRoomMutation.isPending}
               onClick={() => joinRoomMutation.mutate(joinPreview.id)}
             >
@@ -237,8 +239,8 @@ export default function GroupChatPanel({
             <p className="text-sm">{t("chat.page.loading.messages")}</p>
           </div>
         ) : historyError ? (
-          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
-            <p className="text-sm">{t("chat.page.errors.history")}</p>
+          <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3 px-4 text-center">
+            <p className="text-sm">{historyErrorMessage ?? t("chat.page.errors.history")}</p>
             <Button variant="outline" size="sm" onClick={() => onRefetchHistory()}>
               {t("chat.page.errors.retry")}
             </Button>

@@ -1,10 +1,14 @@
-/** Shared navigation config — single source of truth for app shell nav */
+/** Shared navigation config — re-exports from nav-groups for backward compatibility */
 
-import type { LucideIcon } from "lucide-react";
+import {
+  NAV_GROUPS,
+  flattenNavGroups,
+  MOBILE_MAIN_NAV_HREFS,
+  MOBILE_ECOSYSTEM_HREFS,
+} from "./nav-groups";
 
 export type NavItem = { href: string; label: string; badge?: string };
-
-export type SidebarNavItem = NavItem & { icon?: LucideIcon };
+export type SidebarNavItem = NavItem & { icon?: import("lucide-react").LucideIcon };
 
 export const guestAnchors: NavItem[] = [
   { href: "#explore", label: "Исследовать" },
@@ -18,55 +22,34 @@ export const footerAnchors: NavItem[] = [
   { href: "#apps", label: "Приложения" },
 ];
 
-/** Sidebar: основные разделы */
-export const sidebarPrimaryNav: NavItem[] = [
-  { href: "/", label: "Главная" },
-  { href: "/map", label: "Карта" },
-  { href: "/trips", label: "Поездки" },
-  { href: "/social-feed", label: "Лента" },
-  { href: "/friends", label: "Друзья" },
-  { href: "/chat", label: "Чаты" },
-];
+/** @deprecated Use NAV_GROUPS via useNavLabels — flat list for legacy callers */
+export const sidebarPrimaryNav: NavItem[] = flattenNavGroups(NAV_GROUPS)
+  .filter((item) => !["/places", "/events", "/passport"].includes(item.href))
+  .map(({ href }) => ({ href, label: "" }));
 
-/** Sidebar: каталог и контент */
-export const sidebarDiscoverNav: NavItem[] = [
-  { href: "/places", label: "Места" },
-  { href: "/events", label: "События" },
-  { href: "/blog", label: "Блог" },
-  { href: "/profile/music", label: "Моя музыка" },
-];
+/** @deprecated Use NAV_GROUPS via useNavLabels */
+export const sidebarDiscoverNav: NavItem[] = [];
 
-/** Sidebar: AIT — дублируется иконкой кошелька в шапке */
 export const sidebarExtraNav: NavItem[] = [];
-
-/** Ссылки аккаунта — только на странице профиля и аватар в шапке */
 export const sidebarAccountNav: SidebarNavItem[] = [];
 
-/** Полное меню для мобильного drawer в шапке */
-export const authenticatedMenuNav: NavItem[] = [
-  ...sidebarPrimaryNav,
-  ...sidebarDiscoverNav,
-  ...sidebarExtraNav,
-  ...sidebarAccountNav.map(({ href, label }) => ({ href, label })),
-];
+export const authenticatedMenuNav: NavItem[] = flattenNavGroups(NAV_GROUPS).map(({ href }) => ({
+  href,
+  label: "",
+}));
 
-export const mobileMainNav: NavItem[] = [
-  { href: "/", label: "Главная" },
-  { href: "/map", label: "Карта" },
-  { href: "/trips", label: "" },
-  { href: "/chat", label: "Чаты" },
-];
+export const mobileMainNav: NavItem[] = MOBILE_MAIN_NAV_HREFS.map((href) => ({
+  href,
+  label: href === "/trips" ? "" : "",
+}));
 
-export const mobileEcosystemNav: NavItem[] = [
-  { href: "/places", label: "Места" },
-  { href: "/events", label: "События" },
-  { href: "/social-feed", label: "Лента" },
-  { href: "/friends", label: "Друзья" },
-  { href: "/wallet", label: "AIT Hub" },
-  { href: "/profile/music", label: "Музыка" },
-];
+export const mobileEcosystemNav: NavItem[] = MOBILE_ECOSYSTEM_HREFS.map((href) => ({
+  href,
+  label: "",
+}));
 
-/** Landing hash → full path for guest pages without section IDs */
+export { NAV_GROUPS };
+
 export function anchorToRoute(hash: string): string {
   const h = hash.startsWith("#") ? hash : `#${hash}`;
   return `/${h}`;

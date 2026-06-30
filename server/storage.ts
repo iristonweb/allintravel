@@ -133,7 +133,7 @@ export interface IStorage {
   getRegisteredEventIds(userId: string): Promise<string[]>;
   isRegisteredForEvent(eventId: string, userId: string): Promise<boolean>;
 
-  getChatMessages(chatRoom: string, limit?: number): Promise<ChatMessage[]>;
+  getChatMessages(chatRoom: string, limit?: number, since?: string): Promise<ChatMessage[]>;
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
 
   getUserFavorites(userId: string): Promise<UserFavorite[]>;
@@ -168,7 +168,7 @@ export interface IStorage {
   isFollowing(followerId: string, followingId: string): Promise<boolean>;
 
   sendPrivateMessage(message: InsertPrivateMessage): Promise<PrivateMessage>;
-  getPrivateMessages(userId1: string, userId2: string, limit?: number): Promise<PrivateMessage[]>;
+  getPrivateMessages(userId1: string, userId2: string, limit?: number, since?: string): Promise<PrivateMessage[]>;
   getConversations(
     userId: string,
   ): Promise<{ user: User; lastMessage: PrivateMessage; unreadCount: number }[]>;
@@ -1174,10 +1174,18 @@ export class MemStorage implements IStorage {
   }
 
   // Chat operations
-  async getChatMessages(chatRoom: string, limit = 50): Promise<ChatMessage[]> {
+  async getChatMessages(chatRoom: string, limit = 50, since?: string): Promise<ChatMessage[]> {
     const msgs = Array.from(this.chatMessages.values())
       .filter((m) => m.chatRoom === chatRoom)
       .sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
+    if (since) {
+      const idx = msgs.findIndex((m) => m.id === since);
+      if (idx >= 0) return msgs.slice(idx + 1);
+      const sinceTime = msgs.find((m) => m.id === since)?.createdAt;
+      if (sinceTime) {
+        return msgs.filter((m) => new Date(m.createdAt!).getTime() > new Date(sinceTime).getTime());
+      }
+    }
     return msgs.slice(-limit);
   }
 
@@ -1382,6 +1390,7 @@ export class MemStorage implements IStorage {
     userId1: string,
     userId2: string,
     limit = 50,
+    since?: string,
   ): Promise<PrivateMessage[]> {
     const msgs = Array.from(this.privateMessages.values())
       .filter(
@@ -1390,6 +1399,10 @@ export class MemStorage implements IStorage {
           (m.senderId === userId2 && m.receiverId === userId1),
       )
       .sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
+    if (since) {
+      const idx = msgs.findIndex((m) => m.id === since);
+      if (idx >= 0) return msgs.slice(idx + 1);
+    }
     return msgs.slice(-limit);
   }
 

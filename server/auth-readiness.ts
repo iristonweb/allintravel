@@ -25,13 +25,13 @@ export function clientAuthErrorCode(code?: string): string {
 export function publicAuthErrorMessage(code: string, devDetail?: string): string {
   switch (code) {
     case "NO_DATABASE":
-      return "База данных не подключена. В Vercel → Environment Variables добавьте DATABASE_URL (Neon) и redeploy.";
+      return "База данных не подключена. В Vercel → Environment Variables добавьте DATABASE_URL (Supabase/Postgres) и redeploy.";
     case "NO_SESSION_SECRET":
       return "SESSION_SECRET не задан или короче 32 символов. Добавьте случайную строку в Vercel и redeploy.";
     case "SCHEMA":
       return "Схема БД не готова. Подключите production DATABASE_URL локально и выполните npm run db:migrate.";
     case "DB_CONNECT":
-      return "Не удалось подключиться к базе. Проверьте DATABASE_URL и доступ Neon.";
+      return "Не удалось подключиться к базе. Проверьте DATABASE_URL и доступ к Postgres.";
     case "SESSION":
       return "Не удалось сохранить сессию. Убедитесь, что таблица sessions создана (npm run db:migrate).";
     default:

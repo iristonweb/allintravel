@@ -25,8 +25,8 @@ import { Events } from "@/pages/events";
 import { Chat } from "@/pages/chat";
 import { Places } from "@/pages/places";
 import MapPage from "@/pages/map";
-import Blog from "@/pages/blog";
-import BlogPostPage from "@/pages/blog-post";
+import { BlogRedirect, BlogPostRedirect } from "@/pages/blog-redirect";
+import PostDetailPage from "@/pages/post-detail";
 import { Wallet } from "@/pages/wallet";
 import { Privacy } from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
@@ -104,8 +104,9 @@ function Router() {
           <Route path="/map" component={MapPage} />
           <Route path="/places" component={Places} />
           <Route path="/place/:id" component={PlaceDetails} />
-          <Route path="/blog" component={Blog} />
-          <Route path="/blog/:id" component={BlogPostPage} />
+          <Route path="/blog/:id" component={BlogPostRedirect} />
+          <Route path="/blog" component={BlogRedirect} />
+          <Route path="/post/:id" component={PostDetailPage} />
           <Route path="/trips/:id/public" component={TripPublic} />
           <Route path="/trips/join/:token" component={TripJoinPage} />
           <Route path="/destinations" component={DestinationsIndexPage} />

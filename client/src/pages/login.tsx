@@ -164,7 +164,7 @@ export function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {configWarning === "database" && !formError && (
               <p className="text-sm text-destructive">
-                Сервер не видит DATABASE_URL. Добавьте Neon URL в Vercel → Environment Variables
+                Сервер не видит DATABASE_URL. Добавьте Postgres URL (Supabase) в Vercel → Environment Variables
                 (Production) и redeploy.
               </p>
             )}
@@ -179,7 +179,7 @@ export function Login() {
             {formError === "database" && (
               <p className="text-sm text-destructive">
                 {errorDetail ??
-                  "База данных не подключена. В Vercel → Settings → Environment Variables добавьте DATABASE_URL (Neon) и перезапустите деплой."}
+                  "База данных не подключена. В Vercel → Settings → Environment Variables добавьте DATABASE_URL (Supabase) и перезапустите деплой."}
               </p>
             )}
             {formError === "session_secret" && (
@@ -191,7 +191,7 @@ export function Login() {
             {formError === "db_connect" && (
               <p className="text-sm text-destructive">
                 {errorDetail ??
-                  "Не удалось подключиться к базе данных. Проверьте DATABASE_URL и Neon."}
+                  "Не удалось подключиться к базе данных. Проверьте DATABASE_URL и Supabase."}
               </p>
             )}
             {formError === "schema" && (

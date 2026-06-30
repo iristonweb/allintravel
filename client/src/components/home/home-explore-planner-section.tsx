@@ -428,12 +428,12 @@ export default function HomeExplorePlannerSection({
             <span className="text-muted-foreground">бюджет</span>
           </span>
         </div>
-        <Link href={tripHref}>
-          <span className="ait-btn-glow rounded-2xl px-6 py-3 text-sm font-semibold text-white inline-flex items-center gap-2 cursor-pointer hover:opacity-95 transition-opacity">
+        <Button variant="premium" asChild>
+          <Link href={tripHref} className="inline-flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
             {hasRealRoute ? "Открыть планировщик" : "Создать поездку"}
-          </span>
-        </Link>
+          </Link>
+        </Button>
       </GlassCard>
     </motion.section>
   );

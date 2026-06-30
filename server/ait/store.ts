@@ -204,6 +204,93 @@ export async function ensureAitSchema(): Promise<void> {
       PRIMARY KEY (user_id, quest_id, week_key)
     )
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_supply_daily (
+      cap_date date PRIMARY KEY,
+      minted_total integer NOT NULL DEFAULT 0,
+      emission_cap integer NOT NULL,
+      updated_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_burns (
+      id varchar PRIMARY KEY,
+      amount integer NOT NULL,
+      source varchar(40) NOT NULL,
+      user_id varchar REFERENCES users(id) ON DELETE SET NULL,
+      entity_type varchar(40),
+      entity_id varchar(100),
+      created_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_idempotency_keys (
+      idempotency_key varchar PRIMARY KEY,
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      operation varchar(40) NOT NULL,
+      created_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_referral_milestones (
+      referred_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      milestone varchar(32) NOT NULL,
+      referrer_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rewarded_at timestamp DEFAULT now(),
+      PRIMARY KEY (referred_id, milestone)
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_fraud_flags (
+      user_id varchar PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      level integer NOT NULL DEFAULT 1,
+      reason varchar(200) NOT NULL,
+      expires_at timestamp,
+      created_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_boost_campaigns (
+      id varchar PRIMARY KEY,
+      post_id varchar NOT NULL,
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      budget_ait integer NOT NULL,
+      spent_ait integer NOT NULL DEFAULT 0,
+      qs_at_launch integer NOT NULL DEFAULT 60,
+      verified_experience boolean NOT NULL DEFAULT false,
+      target_scopes jsonb DEFAULT '[]'::jsonb,
+      impressions integer NOT NULL DEFAULT 0,
+      clicks integer NOT NULL DEFAULT 0,
+      status varchar(20) NOT NULL DEFAULT 'active',
+      expires_at timestamp NOT NULL,
+      created_at timestamp DEFAULT now()
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_streak_freeze_usage (
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      month_key varchar(7) NOT NULL,
+      used_count integer NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, month_key)
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_fog_shares (
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      week_key varchar(12) NOT NULL,
+      shared_at timestamp DEFAULT now(),
+      PRIMARY KEY (user_id, week_key)
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS ait_fraud_rate (
+      user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reason_code varchar(40) NOT NULL,
+      bucket_minute timestamptz NOT NULL,
+      action_count integer NOT NULL DEFAULT 1,
+      PRIMARY KEY (user_id, reason_code, bucket_minute)
+    )
+  `);
 }
 
 export async function getOrCreateBalance(userId: string): Promise<AitBalanceRow> {
@@ -213,26 +300,15 @@ export async function getOrCreateBalance(userId: string): Promise<AitBalanceRow>
     if (!row) {
       row = {
         userId,
-        spendBalance: 100,
+        spendBalance: 0,
         creatorBalance: 0,
-        lifetimeSpendEarned: 100,
+        lifetimeSpendEarned: 0,
         lifetimeCreatorEarned: 0,
         streakDays: 0,
         lastActiveDate: null,
         profileBonusClaimed: false,
       };
       memBalances.set(userId, row);
-      memTx.unshift({
-        id: genTxId(),
-        userId,
-        wallet: "spend",
-        delta: 100,
-        reasonCode: "welcome",
-        title: "Добро пожаловать в All In Travel",
-        entityType: null,
-        entityId: null,
-        createdAt: new Date(),
-      });
     }
     return { ...row };
   }
@@ -258,18 +334,9 @@ export async function getOrCreateBalance(userId: string): Promise<AitBalanceRow>
   }
 
   await db.execute(sql`
-    INSERT INTO ait_balances (user_id, spend_balance, lifetime_spend_earned)
-    VALUES (${userId}, 100, 100)
+    INSERT INTO ait_balances (user_id) VALUES (${userId})
+    ON CONFLICT (user_id) DO NOTHING
   `);
-  await insertTransactionDb(db, {
-    userId,
-    wallet: "spend",
-    delta: 100,
-    reasonCode: "welcome",
-    title: "Добро пожаловать в All In Travel",
-    entityType: null,
-    entityId: null,
-  });
   return getOrCreateBalance(userId);
 }
 
@@ -333,7 +400,32 @@ export async function incrementDailyCap(userId: string, reason: AitReasonCode): 
   return getDailyCapCount(userId, reason);
 }
 
+/** Public API — routes through ledger (supply, fraud, idempotency). */
 export async function applyBalanceDelta(
+  userId: string,
+  wallet: AitWallet,
+  delta: number,
+  reason: AitReasonCode,
+  title: string,
+  entityType: string | null,
+  entityId: string | null,
+  opts?: import("./ledger").LedgerApplyOpts,
+): Promise<{ balance: AitBalanceRow; transaction: AitTransactionRow } | null> {
+  const { applyBalanceDeltaLedger } = await import("./ledger");
+  return applyBalanceDeltaLedger(
+    userId,
+    wallet,
+    delta,
+    reason,
+    title,
+    entityType,
+    entityId,
+    opts,
+  );
+}
+
+/** Low-level balance mutation (no ledger guards). */
+export async function applyBalanceDeltaRaw(
   userId: string,
   wallet: AitWallet,
   delta: number,
@@ -790,6 +882,47 @@ export async function isFundPayoutSeen(userId: string, monthKey: string): Promis
     SELECT 1 FROM ait_fund_payout_seen WHERE user_id = ${userId} AND month_key = ${monthKey}
   `);
   return ((res as unknown as { rows?: unknown[] }).rows?.length ?? 0) > 0;
+}
+
+const memStreakFreeze = new Map<string, number>();
+
+export async function getStreakFreezeUsage(userId: string, monthKey: string): Promise<number> {
+  const db = getDb();
+  if (!db) return memStreakFreeze.get(`${userId}:${monthKey}`) ?? 0;
+  const res = await db.execute(sql`
+    SELECT used_count FROM ait_streak_freeze_usage
+    WHERE user_id = ${userId} AND month_key = ${monthKey}
+  `);
+  return Number((res as unknown as { rows?: { used_count: number }[] }).rows?.[0]?.used_count ?? 0);
+}
+
+export async function incrementStreakFreezeUsage(userId: string, monthKey: string): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const key = `${userId}:${monthKey}`;
+    memStreakFreeze.set(key, (memStreakFreeze.get(key) ?? 0) + 1);
+    return;
+  }
+  await db.execute(sql`
+    INSERT INTO ait_streak_freeze_usage (user_id, month_key, used_count)
+    VALUES (${userId}, ${monthKey}, 1)
+    ON CONFLICT (user_id, month_key) DO UPDATE SET used_count = ait_streak_freeze_usage.used_count + 1
+  `);
+}
+
+/** Preserve streak by setting last_active_date to today without incrementing. */
+export async function applyStreakFreeze(userId: string): Promise<void> {
+  const today = todayUtc();
+  const db = getDb();
+  if (!db) {
+    const row = memBalances.get(userId);
+    if (row) row.lastActiveDate = today;
+    return;
+  }
+  await db.execute(sql`
+    UPDATE ait_balances SET last_active_date = ${today}::date, updated_at = now()
+    WHERE user_id = ${userId}
+  `);
 }
 
 export function getMemTransactions(): AitTransactionRow[] {

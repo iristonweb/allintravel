@@ -1,16 +1,13 @@
 import { Link, useLocation } from "wouter";
 import {
-  BookOpen,
   Home,
   Map,
   MapPin,
   MoreHorizontal,
   Plus,
-  Sparkles,
-  Users,
+  Rss,
   User,
   Wallet,
-  MessageSquare,
   Music,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,20 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mobileEcosystemNav, mobileMainNav } from "@/lib/nav-config";
+import { useNavLabels } from "@/hooks/useNavLabels";
+import { isNavActive, navItemByHref } from "@/lib/nav-groups";
 import type { LucideIcon } from "lucide-react";
 
-const iconByHref: Record<string, LucideIcon> = {
-  "/": Home,
-  "/map": Map,
-  "/trips": Plus,
-  "/chat": MessageSquare,
-  "/places": MapPin,
-  "/events": Sparkles,
-  "/blog": BookOpen,
+const extraIcons: Record<string, LucideIcon> = {
   "/wallet": Wallet,
-  "/social-feed": Users,
-  "/friends": Users,
   "/profile/music": Music,
   "/profile": User,
 };
@@ -43,22 +32,21 @@ const walletBadge = "AIT";
 
 export default function MobileBottomNav() {
   const [location] = useLocation();
+  const { mobileMainNav, mobileEcosystemNav } = useNavLabels();
 
-  const isActive = (href: string) => {
-    if (href === "/") return location === "/";
-    if (href === "/profile") return location === "/profile";
-    return location === href || location.startsWith(`${href}/`);
-  };
-
-  const ecosystemActive = mobileEcosystemNav.some((item) => isActive(item.href));
+  const ecosystemActive = mobileEcosystemNav.some((item) => isNavActive(location, item.href));
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-3 pb-4 pt-2">
-      <div className="ait-glass-strong rounded-[28px] px-1.5 py-2 flex items-center justify-between border border-white/10 shadow-2xl max-w-lg mx-auto">
+      <div className="ait-glass-strong rounded-panel px-1.5 py-2 flex items-center justify-between border border-white/10 shadow-2xl max-w-lg mx-auto">
         {mobileMainNav.map((item) => {
-          const Icon = iconByHref[item.href] ?? Home;
+          const navMeta = navItemByHref(item.href);
+          const Icon =
+            item.href === "/trips"
+              ? Plus
+              : (navMeta?.icon ?? extraIcons[item.href] ?? Home);
           const isFab = item.href === "/trips" && !item.label;
-          const active = !isFab && isActive(item.href);
+          const active = !isFab && isNavActive(location, item.href);
 
           if (isFab) {
             return (
@@ -109,7 +97,8 @@ export default function MobileBottomNav() {
             className="ait-glass-strong border-white/10 mb-2 min-w-[200px]"
           >
             {mobileEcosystemNav.map((item) => {
-              const Icon = iconByHref[item.href] ?? MapPin;
+              const navMeta = navItemByHref(item.href);
+              const Icon = navMeta?.icon ?? extraIcons[item.href] ?? MapPin;
               const badge = item.href === "/wallet" ? walletBadge : undefined;
               return (
                 <DropdownMenuItem key={item.href} asChild>

@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { isAuthenticated } from "../../auth";
 import { storage } from "../../storage";
 import { getPassportForUser } from "./service";
+import { getFogMapForUser, recordFogShare } from "./fog";
 import { canViewProfile } from "../../privacy-helpers";
 import { toPublicUser } from "../../user-utils";
 
@@ -53,6 +54,29 @@ export function registerPassportRoutes(app: Express): void {
     } catch (error) {
       console.error("passport/public:", error);
       res.status(500).json({ message: "Failed to load passport" });
+    }
+  });
+
+  app.get("/api/passport/fog-map", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
+      const fog = await getFogMapForUser(storage, userId);
+      res.json(fog);
+    } catch (error) {
+      console.error("passport/fog-map:", error);
+      res.status(500).json({ message: "Failed to load fog map" });
+    }
+  });
+
+  app.post("/api/passport/fog-share", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
+      const result = await recordFogShare(userId);
+      const fog = await getFogMapForUser(storage, userId);
+      res.json({ ...result, fog });
+    } catch (error) {
+      console.error("passport/fog-share:", error);
+      res.status(500).json({ message: "Failed to record fog share" });
     }
   });
 }

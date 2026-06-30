@@ -97,7 +97,7 @@ export function DestinationPage() {
           <div className="grid gap-3">
             {data.posts.map((post) => (
               <GlassCard key={post.id} className="p-4">
-                <Link href={`/blog/${post.id}`} className="font-medium hover:text-primary">
+                <Link href={`/post/${post.id}`} className="font-medium hover:text-primary">
                   {post.title || "Без названия"}
                 </Link>
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.content}</p>

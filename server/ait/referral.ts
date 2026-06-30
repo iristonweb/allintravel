@@ -3,8 +3,6 @@ import { AIT_REFERRAL_REWARD } from "@shared/ait";
 import { getDb } from "../db";
 import { storage } from "../storage";
 import type { AitGrantResult } from "./service";
-import { tryGrantSpend } from "./service";
-import * as store from "./store";
 
 const memCodes = new Map<string, string>();
 const memCodeToUser = new Map<string, string>();
@@ -146,49 +144,18 @@ async function completeReferralRewards(
   referredUserId: string,
   referrerId: string,
 ): Promise<{ ok: boolean; message?: string; grant?: AitGrantResult }> {
-  const alreadyJoined = await store.hasGrantForEntity(
-    referredUserId,
-    "referral_joined",
-    referrerId,
-  );
-  const alreadyInviter = await store.hasGrantForEntity(
-    referrerId,
-    "referral_inviter",
-    referredUserId,
-  );
+  const { rewardReferralMilestone } = await import("./referral-milestones");
+  await rewardReferralMilestone(referredUserId, "signup");
 
-  const joined =
-    alreadyJoined ||
-    (await tryGrantSpend(referredUserId, "referral_joined", {
-      skipCap: true,
-      entityType: "referral",
-      entityId: referrerId,
-    }));
-  const inviter =
-    alreadyInviter ||
-    (await tryGrantSpend(referrerId, "referral_inviter", {
-      skipCap: true,
-      entityType: "referral",
-      entityId: referredUserId,
-    }));
-
-  if (!joined || !inviter) {
-    return { ok: false, message: "Не удалось начислить реферальный бонус. Попробуйте позже." };
-  }
+  const grant: AitGrantResult = {
+    granted: true,
+    amount: AIT_REFERRAL_REWARD,
+    wallet: "spend",
+    title: "Реферальный бонус",
+    reason: "referral_joined",
+  };
 
   await markReferralRewarded(referredUserId);
-
-  const grant: AitGrantResult =
-    typeof joined === "object" && joined !== null && "granted" in joined
-      ? joined
-      : {
-          granted: true,
-          amount: AIT_REFERRAL_REWARD,
-          wallet: "spend",
-          title: "Реферальный бонус",
-          reason: "referral_joined",
-        };
-
   return { ok: true, grant };
 }
 
@@ -293,12 +260,15 @@ export async function getReferralInfo(userId: string): Promise<ReferralInfo> {
   }
 
   const invitees = await listInvitees(userId);
+  const totalEarned = db
+    ? await (await import("./referral-milestones")).sumReferralMilestoneEarnings(userId)
+    : rewardedCount * AIT_REFERRAL_REWARD;
 
   return {
     code,
     invited,
     rewardedCount,
-    totalEarned: rewardedCount * AIT_REFERRAL_REWARD,
+    totalEarned,
     hasUsedCode: Boolean(myReferrerId),
     myReferrerCode,
     invitees,

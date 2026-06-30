@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
-import PageHeader from "@/components/page-header";
+import PageShell from "@/components/layout/page-shell";
+import CatalogPageLayout from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
 import PlaceCard from "@/components/place-card";
 import { Button } from "@/components/ui/button";
@@ -136,7 +137,7 @@ export function Places() {
 
   return (
     <AppLayout>
-      <PageHeader
+      <PageShell
         title="Места"
         description="Рестораны, отели и достопримечательности, которые рекомендуют путешественники"
         rightSlot={
@@ -212,71 +213,73 @@ export function Places() {
           </Dialog>
           ) : null
         }
-      />
-
-      <div className="mb-6 mt-8 max-w-2xl">
-        <DestinationSearch
-          value={search}
-          onChange={setSearch}
-          onNavigate={(href) => {
-            if (href.startsWith("/place/")) {
-              navigate(href);
-              return;
-            }
-            if (href.startsWith("/map")) {
-              navigate(href);
-              return;
-            }
-            const params = new URLSearchParams(href.split("?")[1] ?? "");
-            applySearch(params.get("search") ?? search);
-          }}
-          placeType={typeFilter || undefined}
-          placeholder="Город, страна или название места…"
-        />
-        <p className="text-xs text-muted-foreground mt-2">
-          Подсказки: база GeoNames (страны и города) + каталог мест. Для полной базы выполните{" "}
-          <code className="text-ait-purple">npm run geo:import</code>
-        </p>
-      </div>
-
-      <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6 space-y-4">
-        <FilterChipRow
-          label="Тип"
-          options={PLACE_TYPE_FILTERS}
-          value={typeFilter}
-          onChange={setTypeFilter}
-        />
-        <FilterChipRow
-          label="Рейтинг"
-          options={PLACE_RATING_FILTERS}
-          value={minRating}
-          onChange={setMinRating}
-        />
-        <FilterChipRow
-          label="Цена"
-          options={PLACE_PRICE_FILTERS}
-          value={priceRange}
-          onChange={setPriceRange}
-        />
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
-            Сбросить все фильтры
-          </Button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 flex items-center gap-3">
-            <MapPin className="h-8 w-8 text-primary" />
-            <div>
-              <p className="font-semibold">{places.length} мест</p>
-              <p className="text-sm text-muted-foreground">в каталоге</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+      >
+      <CatalogPageLayout
+        search={
+          <>
+            <DestinationSearch
+              value={search}
+              onChange={setSearch}
+              onNavigate={(href) => {
+                if (href.startsWith("/place/")) {
+                  navigate(href);
+                  return;
+                }
+                if (href.startsWith("/map")) {
+                  navigate(href);
+                  return;
+                }
+                const params = new URLSearchParams(href.split("?")[1] ?? "");
+                applySearch(params.get("search") ?? search);
+              }}
+              placeType={typeFilter || undefined}
+              placeholder="Город, страна или название места…"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Подсказки: база GeoNames (страны и города) + каталог мест. Для полной базы выполните{" "}
+              <code className="text-ait-purple">npm run geo:import</code>
+            </p>
+          </>
+        }
+        filters={
+          <>
+            <FilterChipRow
+              label="Тип"
+              options={PLACE_TYPE_FILTERS}
+              value={typeFilter}
+              onChange={setTypeFilter}
+            />
+            <FilterChipRow
+              label="Рейтинг"
+              options={PLACE_RATING_FILTERS}
+              value={minRating}
+              onChange={setMinRating}
+            />
+            <FilterChipRow
+              label="Цена"
+              options={PLACE_PRICE_FILTERS}
+              value={priceRange}
+              onChange={setPriceRange}
+            />
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
+                Сбросить все фильтры
+              </Button>
+            )}
+          </>
+        }
+        stats={
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-4 flex items-center gap-3">
+              <MapPin className="h-8 w-8 text-primary" />
+              <div>
+                <p className="font-semibold">{places.length} мест</p>
+                <p className="text-sm text-muted-foreground">в каталоге</p>
+              </div>
+            </CardContent>
+          </Card>
+        }
+      >
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -317,6 +320,8 @@ export function Places() {
           ))}
         </div>
       )}
+      </CatalogPageLayout>
+      </PageShell>
     </AppLayout>
   );
 }

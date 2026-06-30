@@ -1,39 +1,17 @@
 import { Link, useLocation } from "wouter";
-import {
-  Calendar,
-  Home,
-  Map,
-  MapPin,
-  Users,
-  BookOpen,
-  Sparkles,
-  MessageSquare,
-  Music,
-} from "lucide-react";
+import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { sidebarPrimaryNav, sidebarDiscoverNav } from "@/lib/nav-config";
+import { useNavLabels } from "@/hooks/useNavLabels";
+import { isNavActive } from "@/lib/nav-groups";
 import type { LucideIcon } from "lucide-react";
 
 export const SIDEBAR_WIDTH_COLLAPSED = 72;
 export const SIDEBAR_WIDTH_EXPANDED = 220;
 
-const iconByHref: Record<string, LucideIcon> = {
-  "/": Home,
-  "/map": Map,
-  "/trips": Calendar,
-  "/social-feed": Users,
-  "/friends": Users,
-  "/places": MapPin,
-  "/events": Sparkles,
-  "/blog": BookOpen,
-  "/chat": MessageSquare,
-  "/profile/music": Music,
-};
-
 type NavItemWithMeta = { href: string; label: string; badge?: string; icon?: LucideIcon };
 
 function NavItem({ item, active }: { item: NavItemWithMeta; active: boolean }) {
-  const Icon = item.icon ?? iconByHref[item.href] ?? MapPin;
+  const Icon = item.icon ?? MapPin;
   return (
     <Link href={item.href}>
       <span
@@ -86,24 +64,22 @@ function NavSection({
   items,
   activeFn,
 }: {
-  label?: string;
+  label: string;
   items: NavItemWithMeta[];
   activeFn: (href: string) => boolean;
 }) {
   return (
     <div className="flex flex-col gap-0.5 w-full">
-      {label && (
-        <p
-          className={cn(
-            "px-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1",
-            "opacity-0 max-h-0 overflow-hidden transition-all duration-200",
-            "group-hover/sidebar:opacity-100 group-hover/sidebar:max-h-8",
-            "group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-h-8",
-          )}
-        >
-          {label}
-        </p>
-      )}
+      <p
+        className={cn(
+          "px-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1",
+          "opacity-0 max-h-0 overflow-hidden transition-all duration-200",
+          "group-hover/sidebar:opacity-100 group-hover/sidebar:max-h-8",
+          "group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-h-8",
+        )}
+      >
+        {label}
+      </p>
       {items.map((item) => (
         <NavItem key={item.href} item={item} active={activeFn(item.href)} />
       ))}
@@ -130,16 +106,7 @@ type AppIconSidebarProps = {
 
 export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
   const [location] = useLocation();
-
-  const isActive = (href: string) => {
-    if (href === "/") return location === "/";
-    if (href === "/profile") return location === "/profile";
-    if (href === "/friends")
-      return location === "/friends" || location.startsWith("/profile/friends");
-    if (href === "/chat")
-      return location.startsWith("/chat") || location.startsWith("/messages");
-    return location === href || location.startsWith(`${href}/`);
-  };
+  const { navGroups } = useNavLabels();
 
   return (
     <aside
@@ -154,9 +121,16 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
       )}
       aria-label="Основная навигация"
     >
-      <NavSection items={sidebarPrimaryNav} activeFn={isActive} />
-      <SectionDivider />
-      <NavSection label="Каталог" items={sidebarDiscoverNav} activeFn={isActive} />
+      {navGroups.map((group, index) => (
+        <div key={group.id}>
+          {index > 0 && <SectionDivider />}
+          <NavSection
+            label={group.label}
+            items={group.items}
+            activeFn={(href) => isNavActive(location, href)}
+          />
+        </div>
+      ))}
     </aside>
   );
 }

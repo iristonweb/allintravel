@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
-import PageHeader from "@/components/page-header";
+import PageShell from "@/components/layout/page-shell";
+import CatalogPageLayout, { CatalogSearchInput } from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
 import EventCard from "@/components/event-card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, Calendar, Globe, Plus, AlertCircle } from "lucide-react";
+import { Calendar, Globe, Plus, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
@@ -166,7 +167,7 @@ export function Events() {
 
   return (
     <AppLayout>
-      <PageHeader
+      <PageShell
         title="События"
         description="Открывайте фестивали, воркшопы и приключения по всему миру"
         rightSlot={
@@ -253,62 +254,60 @@ export function Events() {
             </DialogContent>
           </Dialog>
         }
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 mt-8">
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Calendar className="h-8 w-8 text-primary" />
-            <div>
-              <p className="font-semibold">{upcoming.length} предстоящих</p>
-              <p className="text-sm text-muted-foreground">событий скоро</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-accent/5 border-accent/20 md:col-span-2">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Globe className="h-8 w-8 text-accent" />
-            <div>
-              <p className="font-semibold">Разные страны и форматы</p>
-              <p className="text-sm text-muted-foreground">фестивали, приключения, воркшопы</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mb-6 mt-8 max-w-2xl">
-        <div className="relative ait-glass-strong rounded-2xl border border-white/10 px-2 py-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Название, город или описание события…"
-            className="pl-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
+      >
+      <CatalogPageLayout
+        search={
+          <CatalogSearchInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
+            placeholder="Название, город или описание события…"
           />
-        </div>
-      </div>
-
-      <div className="ait-glass-strong rounded-2xl border border-white/10 p-4 mb-6 space-y-4">
-        <FilterChipRow
-          label="Период"
-          options={EVENT_TIME_FILTERS}
-          value={timeFilter}
-          onChange={setTimeFilter}
-        />
-        <FilterChipRow
-          label="Тип"
-          options={EVENT_TYPE_FILTERS}
-          value={activeType}
-          onChange={setActiveType}
-          showClear
-          onClear={() => {
-            setActiveType("");
-            setTimeFilter("upcoming");
-            setSearch("");
-          }}
-        />
-      </div>
-
+        }
+        filters={
+          <>
+            <FilterChipRow
+              label="Период"
+              options={EVENT_TIME_FILTERS}
+              value={timeFilter}
+              onChange={setTimeFilter}
+            />
+            <FilterChipRow
+              label="Тип"
+              options={EVENT_TYPE_FILTERS}
+              value={activeType}
+              onChange={setActiveType}
+              showClear
+              onClear={() => {
+                setActiveType("");
+                setTimeFilter("upcoming");
+                setSearch("");
+              }}
+            />
+          </>
+        }
+        stats={
+          <>
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <Calendar className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="font-semibold">{upcoming.length} предстоящих</p>
+                  <p className="text-sm text-muted-foreground">событий скоро</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-accent/5 border-accent/20 flex-1 min-w-[240px]">
+              <CardContent className="p-4 flex items-center gap-3">
+                <Globe className="h-8 w-8 text-accent" />
+                <div>
+                  <p className="font-semibold">Разные страны и форматы</p>
+                  <p className="text-sm text-muted-foreground">фестивали, приключения, воркшопы</p>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        }
+      >
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -372,6 +371,8 @@ export function Events() {
           )}
         </>
       )}
+      </CatalogPageLayout>
+      </PageShell>
     </AppLayout>
   );
 }

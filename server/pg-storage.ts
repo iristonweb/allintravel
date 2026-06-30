@@ -578,7 +578,29 @@ export class PgStorage implements IStorage {
     return Boolean(row);
   }
 
-  async getChatMessages(chatRoom: string, limit = 50): Promise<ChatMessage[]> {
+  async getChatMessages(chatRoom: string, limit = 50, since?: string): Promise<ChatMessage[]> {
+    if (since) {
+      const [anchor] = await this.db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.id, since))
+        .limit(1);
+      if (anchor?.createdAt) {
+        const rows = await this.db
+          .select()
+          .from(chatMessages)
+          .where(
+            and(
+              eq(chatMessages.chatRoom, chatRoom),
+              gte(chatMessages.createdAt, anchor.createdAt),
+              sql`${chatMessages.id} <> ${since}`,
+            ),
+          )
+          .orderBy(asc(chatMessages.createdAt))
+          .limit(limit);
+        return rows;
+      }
+    }
     const rows = await this.db
       .select()
       .from(chatMessages)
@@ -791,7 +813,32 @@ export class PgStorage implements IStorage {
     userId1: string,
     userId2: string,
     limit = 50,
+    since?: string,
   ): Promise<PrivateMessage[]> {
+    if (since) {
+      const [anchor] = await this.db
+        .select()
+        .from(privateMessages)
+        .where(eq(privateMessages.id, since))
+        .limit(1);
+      if (anchor?.createdAt) {
+        return this.db
+          .select()
+          .from(privateMessages)
+          .where(
+            and(
+              or(
+                and(eq(privateMessages.senderId, userId1), eq(privateMessages.receiverId, userId2)),
+                and(eq(privateMessages.senderId, userId2), eq(privateMessages.receiverId, userId1)),
+              )!,
+              gte(privateMessages.createdAt, anchor.createdAt),
+              sql`${privateMessages.id} <> ${since}`,
+            ),
+          )
+          .orderBy(asc(privateMessages.createdAt))
+          .limit(limit);
+      }
+    }
     const rows = await this.db
       .select()
       .from(privateMessages)
