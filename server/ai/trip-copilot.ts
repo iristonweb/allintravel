@@ -56,7 +56,7 @@ async function suggestFromOpenAI(
         {
           role: "system",
           content:
-            "You are a travel planner. Pick 5-8 place ids from the catalog that best match the user request. Reply JSON only: {\"suggestions\":[{\"placeId\":\"uuid\",\"reason\":\"short ru\"}]}",
+            'You are a travel planner. Pick 5-8 place ids from the catalog that best match the user request. Reply JSON only: {"suggestions":[{"placeId":"uuid","reason":"short ru"}]}',
         },
         {
           role: "user",
@@ -138,9 +138,7 @@ export async function generateTripCopilotPlan(
   const places = await storage.getPlaces({ search: city, limit: 40 });
 
   const aiSuggestions = await suggestFromOpenAI(`${destination}. ${prompt}`, places);
-  const suggestions = aiSuggestions?.length
-    ? aiSuggestions
-    : heuristicSuggestions(prompt, places);
+  const suggestions = aiSuggestions?.length ? aiSuggestions : heuristicSuggestions(prompt, places);
 
   const styleNote = detectStyles(prompt).length
     ? ` Стиль: ${detectStyles(prompt).join(", ")}.`

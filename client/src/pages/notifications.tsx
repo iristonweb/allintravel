@@ -26,14 +26,14 @@ export function NotificationsPage() {
           title={t("notifications.page.title")}
           description={t("notifications.page.description")}
         >
-        <div className="rounded-3xl border border-white/10 ait-glass-strong p-4 sm:p-5 min-h-[60vh]">
-          <NotificationList
-            filter={filter}
-            onFilterChange={setFilter}
-            queryKeySuffix="page"
-            listClassName="max-h-[calc(100vh-14rem)] pr-1"
-          />
-        </div>
+          <div className="rounded-3xl border border-white/10 ait-glass-strong p-4 sm:p-5 min-h-[60vh]">
+            <NotificationList
+              filter={filter}
+              onFilterChange={setFilter}
+              queryKeySuffix="page"
+              listClassName="max-h-[calc(100vh-14rem)] pr-1"
+            />
+          </div>
         </PageShell>
       </div>
     </AppLayout>

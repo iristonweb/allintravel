@@ -40,7 +40,9 @@ export default function LaunchPage() {
         <Rocket className="h-12 w-12 mx-auto text-[#a78bfa]" />
         <div className="space-y-3">
           <h1 className="ait-section-title">{t("gtm.launchTitle")}</h1>
-          <p className="text-muted-foreground text-lg">{data?.tagline ?? t("gtm.launchSubtitle")}</p>
+          <p className="text-muted-foreground text-lg">
+            {data?.tagline ?? t("gtm.launchSubtitle")}
+          </p>
           {data?.launchDate && (
             <p className="text-sm text-[#ff7a18] font-medium">Product Hunt · {data.launchDate}</p>
           )}

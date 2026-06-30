@@ -164,8 +164,8 @@ export function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {configWarning === "database" && !formError && (
               <p className="text-sm text-destructive">
-                Сервер не видит DATABASE_URL. Добавьте Postgres URL (Supabase) в Vercel → Environment Variables
-                (Production) и redeploy.
+                Сервер не видит DATABASE_URL. Добавьте Postgres URL (Supabase) в Vercel →
+                Environment Variables (Production) и redeploy.
               </p>
             )}
             {configWarning === "session_secret" && !formError && (

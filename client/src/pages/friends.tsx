@@ -31,7 +31,6 @@ import UserPreviewCell, { friendProfileHref } from "@/components/social/UserPrev
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import TripRouteMatches from "@/components/planner/trip-route-matches";
-import { cn } from "@/lib/utils";
 
 export function Friends() {
   const { t } = useTranslation();
@@ -114,7 +113,9 @@ export function Friends() {
     mutationFn: ({ friendshipId, status }: { friendshipId: string; status: string }) =>
       apiRequestJson("PUT", `/api/friends/respond/${friendshipId}`, { status }),
     onSuccess: (_, { status }) => {
-      toast({ title: status === "accepted" ? t("friends.requestAccepted") : t("friends.requestDeclined") });
+      toast({
+        title: status === "accepted" ? t("friends.requestAccepted") : t("friends.requestDeclined"),
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/received"] });
     },
@@ -157,391 +158,402 @@ export function Friends() {
         <PageShell
           title={t("friends.title")}
           description={t("friends.description")}
-          breadcrumbs={[{ label: t("friends.breadcrumbProfile"), href: "/profile" }, { label: t("friends.title") }]}
+          breadcrumbs={[
+            { label: t("friends.breadcrumbProfile"), href: "/profile" },
+            { label: t("friends.title") },
+          ]}
         >
-        {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mt-6" />}
+          {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mt-6" />}
 
-        <Tabs defaultValue="friends" className="w-full mt-8">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="friends">
-              <Users className="mr-2 h-4 w-4" />
-              {t("friends.tabFriends")} ({friends.length})
-            </TabsTrigger>
-            <TabsTrigger value="search">
-              <Search className="mr-2 h-4 w-4" />
-              {t("friends.tabSearch")}
-            </TabsTrigger>
-            <TabsTrigger value="received">
-              <UserPlus className="mr-2 h-4 w-4" />
-              {t("friends.tabReceived")} ({receivedRequests.length})
-            </TabsTrigger>
-            <TabsTrigger value="sent">
-              {t("friends.tabSent")} ({sentRequests.length})
-            </TabsTrigger>
-          </TabsList>
+          <Tabs defaultValue="friends" className="w-full mt-8">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="friends">
+                <Users className="mr-2 h-4 w-4" />
+                {t("friends.tabFriends")} ({friends.length})
+              </TabsTrigger>
+              <TabsTrigger value="search">
+                <Search className="mr-2 h-4 w-4" />
+                {t("friends.tabSearch")}
+              </TabsTrigger>
+              <TabsTrigger value="received">
+                <UserPlus className="mr-2 h-4 w-4" />
+                {t("friends.tabReceived")} ({receivedRequests.length})
+              </TabsTrigger>
+              <TabsTrigger value="sent">
+                {t("friends.tabSent")} ({sentRequests.length})
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Friends tab */}
-          <TabsContent value="friends" className="space-y-4 mt-4">
-            <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
-              <Button
-                size="sm"
-                variant={friendDirection === "" ? "premium" : "filter"}
-                onClick={() => setFriendDirection("")}
-              >
-                {t("friends.allDirections")}
-              </Button>
-              {TRAVEL_DIRECTIONS.map((d) => (
+            {/* Friends tab */}
+            <TabsContent value="friends" className="space-y-4 mt-4">
+              <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
                 <Button
-                  key={d.id}
                   size="sm"
-                  variant={friendDirection === d.id ? "premium" : "filter"}
-                  onClick={() => setFriendDirection(d.id)}
+                  variant={friendDirection === "" ? "premium" : "filter"}
+                  onClick={() => setFriendDirection("")}
                 >
-                  {d.label}
+                  {t("friends.allDirections")}
                 </Button>
-              ))}
-            </div>
-            {friendsError ? (
-              <EmptyState
-                icon={AlertCircle}
-                title={t("friends.loadError")}
-                description={t("friends.connectionError")}
-                action={
-                  <Button variant="outline" onClick={() => refetchFriends()}>
-                    {t("common.retry")}
+                {TRAVEL_DIRECTIONS.map((d) => (
+                  <Button
+                    key={d.id}
+                    size="sm"
+                    variant={friendDirection === d.id ? "premium" : "filter"}
+                    onClick={() => setFriendDirection(d.id)}
+                  >
+                    {d.label}
                   </Button>
-                }
-              />
-            ) : friendsLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <Card key={i} className="h-32 animate-pulse bg-muted" />
                 ))}
               </div>
-            ) : friends.length === 0 ? (
-              <Card>
-                <CardContent className="py-10 text-center">
-                  <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">{t("friends.emptyFriendsTitle")}</h3>
-                  <p className="text-muted-foreground">{t("friends.emptyFriendsHint")}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {friends.map((friend) => (
-                  <div key={friend.id} className="flex flex-col gap-2">
-                    <UserPreviewCell user={friend} />
-                    <div className="flex gap-1 justify-center">
-                      <Link href={`/chat?with=${friend.id}&tab=personal`}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2"
-                          title={t("friends.message")}
-                          aria-label={t("friends.message")}
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      {friendProfileHref(friend) ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2"
-                          asChild
-                          title={t("friends.profile")}
-                          aria-label={t("friends.profile")}
-                        >
-                          <Link href={friendProfileHref(friend)!}>
-                            <UserCheck className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      ) : null}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-2"
-                        title={t("friends.remove")}
-                        aria-label={t("friends.removeFromFriends")}
-                        onClick={() => removeFriendMutation.mutate(friend.id)}
-                        disabled={removeFriendMutation.isPending}
-                      >
-                        <UserX className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Search tab */}
-          <TabsContent value="search" className="space-y-4 mt-4">
-            <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
-              <span className="text-sm text-muted-foreground w-full px-2 pt-1">{t("friends.directionLabel")}</span>
-              <Button
-                size="sm"
-                variant={discoverDirection === "" ? "premium" : "filter"}
-                onClick={() => setDiscoverDirection("")}
-              >
-                {t("friends.anyDirection")}
-              </Button>
-              {TRAVEL_DIRECTIONS.map((d) => (
-                <Button
-                  key={d.id}
-                  size="sm"
-                  variant={discoverDirection === d.id ? "premium" : "filter"}
-                  onClick={() => setDiscoverDirection(d.id)}
-                >
-                  {d.label}
-                </Button>
-              ))}
-            </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("friends.searchUsersTitle")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={t("friends.searchPlaceholder")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                  <Button onClick={handleSearch} disabled={isSearching}>
-                    <Search className="h-4 w-4" />
-                  </Button>
+              {friendsError ? (
+                <EmptyState
+                  icon={AlertCircle}
+                  title={t("friends.loadError")}
+                  description={t("friends.connectionError")}
+                  action={
+                    <Button variant="outline" onClick={() => refetchFriends()}>
+                      {t("common.retry")}
+                    </Button>
+                  }
+                />
+              ) : friendsLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Card key={i} className="h-32 animate-pulse bg-muted" />
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            {activeSearch && searchResults.length === 0 && !isSearching && (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <p className="text-muted-foreground">{t("friends.noUsersFound")}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {searchResults.length > 0 && (
-              <div className="space-y-3">
-                {searchResults
-                  .filter((r) => r.id !== user?.id)
-                  .map((result) => {
-                    const alreadyFriend = friends.some((f) => f.id === result.id);
-                    const requestSent = isSentRequest(result.id);
-                    return (
-                      <Card key={result.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={resolveMediaUrl(result.profileImageUrl)} />
-                                <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
-                                  {getUserInitial(result)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                {result.username ? (
-                                  <Link href={`/u/${result.username}`}>
-                                    <h3 className="font-semibold hover:underline">
-                                      {getUserDisplayLabel(result)}
-                                    </h3>
-                                  </Link>
-                                ) : (
-                                  <h3 className="font-semibold">{getUserDisplayLabel(result)}</h3>
-                                )}
-                                {getUserHandle(result) && (
-                                  <p className="text-sm text-ait-purple">{getUserHandle(result)}</p>
-                                )}
-                              </div>
-                            </div>
-                            {alreadyFriend ? (
-                              <div className="flex gap-2 items-center">
-                                <Badge variant="secondary">
-                                  <UserCheck className="mr-1 h-3.5 w-3.5" />
-                                  {t("friends.friendBadge")}
-                                </Badge>
-                                <FollowButton userId={result.id} />
-                              </div>
-                            ) : requestSent ? (
-                              <div className="flex gap-2 items-center">
-                                <Badge variant="outline">{t("friends.requestSentBadge")}</Badge>
-                                <FollowButton userId={result.id} />
-                              </div>
-                            ) : (
-                              <div className="flex gap-2">
-                                <FollowButton userId={result.id} />
-                                <Button
-                                  size="sm"
-                                  variant="premium"
-                                  onClick={() => sendRequestMutation.mutate(result.id)}
-                                  disabled={sendRequestMutation.isPending}
-                                >
-                                  <UserPlus className="mr-2 h-4 w-4" />
-                                  {t("friends.addFriend")}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Received requests tab */}
-          <TabsContent value="received" className="space-y-4 mt-4">
-            {receivedError ? (
-              <EmptyState
-                icon={AlertCircle}
-                title={t("friends.loadRequestsError")}
-                action={
-                  <Button variant="outline" onClick={() => refetchReceived()}>
-                    {t("common.retry")}
-                  </Button>
-                }
-              />
-            ) : receivedLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <Card key={i} className="h-24 animate-pulse bg-muted" />
-                ))}
-              </div>
-            ) : receivedRequests.length === 0 ? (
-              <Card>
-                <CardContent className="py-10 text-center">
-                  <UserPlus className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">{t("friends.noReceivedTitle")}</h3>
-                  <p className="text-muted-foreground">{t("friends.noReceivedHint")}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {receivedRequests.map((request) => (
-                  <Card key={request.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={resolveMediaUrl(request.user?.profileImageUrl)} />
-                            <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
-                              {request.user ? getUserInitial(request.user) : "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-semibold">
-                              {request.user ? getUserDisplayLabel(request.user) : t("friends.userFallback")}
-                            </h3>
-                            {request.user && getUserHandle(request.user) && (
-                              <p className="text-sm text-ait-purple">
-                                {getUserHandle(request.user)}
-                              </p>
-                            )}
-                            <Badge variant="secondary" className="mt-1">
-                              {t("friends.incomingRequest")}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              respondToRequestMutation.mutate({
-                                friendshipId: request.id,
-                                status: "accepted",
-                              })
-                            }
-                            disabled={respondToRequestMutation.isPending}
-                            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-                          >
-                            <UserCheck className="mr-2 h-4 w-4" />
-                            {t("friends.accept")}
-                          </Button>
+              ) : friends.length === 0 ? (
+                <Card>
+                  <CardContent className="py-10 text-center">
+                    <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">{t("friends.emptyFriendsTitle")}</h3>
+                    <p className="text-muted-foreground">{t("friends.emptyFriendsHint")}</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {friends.map((friend) => (
+                    <div key={friend.id} className="flex flex-col gap-2">
+                      <UserPreviewCell user={friend} />
+                      <div className="flex gap-1 justify-center">
+                        <Link href={`/chat?with=${friend.id}&tab=personal`}>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() =>
-                              respondToRequestMutation.mutate({
-                                friendshipId: request.id,
-                                status: "rejected",
-                              })
-                            }
-                            disabled={respondToRequestMutation.isPending}
+                            className="h-8 px-2"
+                            title={t("friends.message")}
+                            aria-label={t("friends.message")}
                           >
-                            <UserX className="mr-2 h-4 w-4" />
-                            {t("friends.decline")}
+                            <MessageCircle className="h-4 w-4" />
                           </Button>
-                        </div>
+                        </Link>
+                        {friendProfileHref(friend) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2"
+                            asChild
+                            title={t("friends.profile")}
+                            aria-label={t("friends.profile")}
+                          >
+                            <Link href={friendProfileHref(friend)!}>
+                              <UserCheck className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                          title={t("friends.remove")}
+                          aria-label={t("friends.removeFromFriends")}
+                          onClick={() => removeFriendMutation.mutate(friend.id)}
+                          disabled={removeFriendMutation.isPending}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
-          {/* Sent requests tab */}
-          <TabsContent value="sent" className="space-y-4 mt-4">
-            {sentError ? (
-              <EmptyState
-                icon={AlertCircle}
-                title={t("friends.loadRequestsError")}
-                action={
-                  <Button variant="outline" onClick={() => refetchSent()}>
-                    {t("common.retry")}
+            {/* Search tab */}
+            <TabsContent value="search" className="space-y-4 mt-4">
+              <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
+                <span className="text-sm text-muted-foreground w-full px-2 pt-1">
+                  {t("friends.directionLabel")}
+                </span>
+                <Button
+                  size="sm"
+                  variant={discoverDirection === "" ? "premium" : "filter"}
+                  onClick={() => setDiscoverDirection("")}
+                >
+                  {t("friends.anyDirection")}
+                </Button>
+                {TRAVEL_DIRECTIONS.map((d) => (
+                  <Button
+                    key={d.id}
+                    size="sm"
+                    variant={discoverDirection === d.id ? "premium" : "filter"}
+                    onClick={() => setDiscoverDirection(d.id)}
+                  >
+                    {d.label}
                   </Button>
-                }
-              />
-            ) : sentLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <Card key={i} className="h-24 animate-pulse bg-muted" />
                 ))}
               </div>
-            ) : sentRequests.length === 0 ? (
               <Card>
-                <CardContent className="py-10 text-center">
-                  <h3 className="text-lg font-semibold mb-2">{t("friends.noSentTitle")}</h3>
-                  <p className="text-muted-foreground">{t("friends.noSentHint")}</p>
+                <CardHeader>
+                  <CardTitle>{t("friends.searchUsersTitle")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t("friends.searchPlaceholder")}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    />
+                    <Button onClick={handleSearch} disabled={isSearching}>
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="space-y-3">
-                {sentRequests.map((request) => (
-                  <Card key={request.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={resolveMediaUrl(request.user?.profileImageUrl)} />
-                            <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
-                              {request.user ? getUserInitial(request.user) : "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-semibold">
-                              {request.user ? getUserDisplayLabel(request.user) : t("friends.userFallback")}
-                            </h3>
-                            {request.user && getUserHandle(request.user) && (
-                              <p className="text-sm text-ait-purple">
-                                {getUserHandle(request.user)}
-                              </p>
-                            )}
+
+              {activeSearch && searchResults.length === 0 && !isSearching && (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <p className="text-muted-foreground">{t("friends.noUsersFound")}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {searchResults.length > 0 && (
+                <div className="space-y-3">
+                  {searchResults
+                    .filter((r) => r.id !== user?.id)
+                    .map((result) => {
+                      const alreadyFriend = friends.some((f) => f.id === result.id);
+                      const requestSent = isSentRequest(result.id);
+                      return (
+                        <Card key={result.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Avatar>
+                                  <AvatarImage src={resolveMediaUrl(result.profileImageUrl)} />
+                                  <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
+                                    {getUserInitial(result)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  {result.username ? (
+                                    <Link href={`/u/${result.username}`}>
+                                      <h3 className="font-semibold hover:underline">
+                                        {getUserDisplayLabel(result)}
+                                      </h3>
+                                    </Link>
+                                  ) : (
+                                    <h3 className="font-semibold">{getUserDisplayLabel(result)}</h3>
+                                  )}
+                                  {getUserHandle(result) && (
+                                    <p className="text-sm text-ait-purple">
+                                      {getUserHandle(result)}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {alreadyFriend ? (
+                                <div className="flex gap-2 items-center">
+                                  <Badge variant="secondary">
+                                    <UserCheck className="mr-1 h-3.5 w-3.5" />
+                                    {t("friends.friendBadge")}
+                                  </Badge>
+                                  <FollowButton userId={result.id} />
+                                </div>
+                              ) : requestSent ? (
+                                <div className="flex gap-2 items-center">
+                                  <Badge variant="outline">{t("friends.requestSentBadge")}</Badge>
+                                  <FollowButton userId={result.id} />
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <FollowButton userId={result.id} />
+                                  <Button
+                                    size="sm"
+                                    variant="premium"
+                                    onClick={() => sendRequestMutation.mutate(result.id)}
+                                    disabled={sendRequestMutation.isPending}
+                                  >
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    {t("friends.addFriend")}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Received requests tab */}
+            <TabsContent value="received" className="space-y-4 mt-4">
+              {receivedError ? (
+                <EmptyState
+                  icon={AlertCircle}
+                  title={t("friends.loadRequestsError")}
+                  action={
+                    <Button variant="outline" onClick={() => refetchReceived()}>
+                      {t("common.retry")}
+                    </Button>
+                  }
+                />
+              ) : receivedLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <Card key={i} className="h-24 animate-pulse bg-muted" />
+                  ))}
+                </div>
+              ) : receivedRequests.length === 0 ? (
+                <Card>
+                  <CardContent className="py-10 text-center">
+                    <UserPlus className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">{t("friends.noReceivedTitle")}</h3>
+                    <p className="text-muted-foreground">{t("friends.noReceivedHint")}</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {receivedRequests.map((request) => (
+                    <Card key={request.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={resolveMediaUrl(request.user?.profileImageUrl)} />
+                              <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
+                                {request.user ? getUserInitial(request.user) : "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h3 className="font-semibold">
+                                {request.user
+                                  ? getUserDisplayLabel(request.user)
+                                  : t("friends.userFallback")}
+                              </h3>
+                              {request.user && getUserHandle(request.user) && (
+                                <p className="text-sm text-ait-purple">
+                                  {getUserHandle(request.user)}
+                                </p>
+                              )}
+                              <Badge variant="secondary" className="mt-1">
+                                {t("friends.incomingRequest")}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                respondToRequestMutation.mutate({
+                                  friendshipId: request.id,
+                                  status: "accepted",
+                                })
+                              }
+                              disabled={respondToRequestMutation.isPending}
+                              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                            >
+                              <UserCheck className="mr-2 h-4 w-4" />
+                              {t("friends.accept")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                respondToRequestMutation.mutate({
+                                  friendshipId: request.id,
+                                  status: "rejected",
+                                })
+                              }
+                              disabled={respondToRequestMutation.isPending}
+                            >
+                              <UserX className="mr-2 h-4 w-4" />
+                              {t("friends.decline")}
+                            </Button>
                           </div>
                         </div>
-                        <Badge variant="outline">{t("friends.awaitingResponse")}</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Sent requests tab */}
+            <TabsContent value="sent" className="space-y-4 mt-4">
+              {sentError ? (
+                <EmptyState
+                  icon={AlertCircle}
+                  title={t("friends.loadRequestsError")}
+                  action={
+                    <Button variant="outline" onClick={() => refetchSent()}>
+                      {t("common.retry")}
+                    </Button>
+                  }
+                />
+              ) : sentLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map((i) => (
+                    <Card key={i} className="h-24 animate-pulse bg-muted" />
+                  ))}
+                </div>
+              ) : sentRequests.length === 0 ? (
+                <Card>
+                  <CardContent className="py-10 text-center">
+                    <h3 className="text-lg font-semibold mb-2">{t("friends.noSentTitle")}</h3>
+                    <p className="text-muted-foreground">{t("friends.noSentHint")}</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {sentRequests.map((request) => (
+                    <Card key={request.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={resolveMediaUrl(request.user?.profileImageUrl)} />
+                              <AvatarFallback className="bg-primary/20 text-foreground font-semibold">
+                                {request.user ? getUserInitial(request.user) : "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h3 className="font-semibold">
+                                {request.user
+                                  ? getUserDisplayLabel(request.user)
+                                  : t("friends.userFallback")}
+                              </h3>
+                              {request.user && getUserHandle(request.user) && (
+                                <p className="text-sm text-ait-purple">
+                                  {getUserHandle(request.user)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <Badge variant="outline">{t("friends.awaitingResponse")}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </PageShell>
       </div>
     </AppLayout>

@@ -19,9 +19,7 @@ export async function checkProofOfExperience(
   const passport = await getPassportForUser(storage, userId, false);
   const countries = new Set(passport.stamps.map((s) => s.countryName.toLowerCase()));
 
-  const countryMatch = Boolean(
-    postCountry && countries.has(postCountry.toLowerCase()),
-  );
+  const countryMatch = Boolean(postCountry && countries.has(postCountry.toLowerCase()));
 
   const db = getDb();
   let hasGeoPosts = false;

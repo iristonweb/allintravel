@@ -418,7 +418,9 @@ export default function MessageComposer({
               {t("chat.composer.myMusic")}
             </p>
             {musicLoading ? (
-              <p className="text-xs text-muted-foreground px-1 py-3">{t("chat.composer.uploading")}</p>
+              <p className="text-xs text-muted-foreground px-1 py-3">
+                {t("chat.composer.uploading")}
+              </p>
             ) : musicTracks.length === 0 ? (
               <p className="text-xs text-muted-foreground px-1 py-3">
                 {t("chat.composer.addMusicHint")}{" "}
@@ -454,7 +456,9 @@ export default function MessageComposer({
           className={cn("shrink-0", recording && "text-red-400 animate-pulse")}
           disabled={composerDisabled}
           title={recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")}
-          aria-label={recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")}
+          aria-label={
+            recording ? t("chat.composer.stopRecording") : t("chat.composer.voiceMessage")
+          }
           onClick={() => (recording ? stopVoiceRecording() : void startVoiceRecording())}
         >
           <Mic className="h-5 w-5" />
@@ -501,15 +505,15 @@ export default function MessageComposer({
                 const src = `/stickers/${id}.svg`;
                 const label = t(`chat.composer.stickerLabels.${id}`);
                 return (
-                <button
-                  key={id}
-                  type="button"
-                  className="rounded-lg p-2 hover:bg-muted transition-colors"
-                  onClick={() => insertSticker(src)}
-                  title={label}
-                >
-                  <img src={src} alt={label} className="h-12 w-12 mx-auto" />
-                </button>
+                  <button
+                    key={id}
+                    type="button"
+                    className="rounded-lg p-2 hover:bg-muted transition-colors"
+                    onClick={() => insertSticker(src)}
+                    title={label}
+                  >
+                    <img src={src} alt={label} className="h-12 w-12 mx-auto" />
+                  </button>
                 );
               })}
             </div>

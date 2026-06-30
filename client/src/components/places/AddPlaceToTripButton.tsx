@@ -56,8 +56,7 @@ export default function AddPlaceToTripButton({ placeId, placeName }: AddPlaceToT
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="premium" className="gap-2 rounded-2xl">
-          <MapPinned className="h-4 w-4" />
-          В поездку
+          <MapPinned className="h-4 w-4" />В поездку
         </Button>
       </DialogTrigger>
       <DialogContent className="ait-glass border-white/10 max-w-md">

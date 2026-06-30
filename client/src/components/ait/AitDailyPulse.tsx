@@ -2,7 +2,9 @@ import { Link } from "wouter";
 import { Sparkles, MessageCircle, Image, Heart, LogIn } from "lucide-react";
 import GlassCard from "@/components/brand/glass-card";
 import { useAitDashboard } from "@/hooks/useAit";
-import { RING_LABELS, type ActivityRingId } from "@shared/ait";
+import { type ActivityRingId } from "@shared/ait";
+import { useAitRingLabels } from "@/hooks/useAitRingLabels";
+import { useTranslation } from "react-i18next";
 
 const RING_ICONS: Record<ActivityRingId, typeof Sparkles> = {
   voice: MessageCircle,
@@ -18,23 +20,25 @@ const RING_LINKS: Record<ActivityRingId, string> = {
   pulse: "/",
 };
 
+const RING_ORDER: ActivityRingId[] = ["voice", "story", "echo", "pulse"];
+
 export default function AitDailyPulse() {
+  const { t } = useTranslation();
+  const ringLabels = useAitRingLabels();
   const { data } = useAitDashboard();
   if (!data) return null;
 
   const rings = data.rings as Record<ActivityRingId, { count: number; percent: number }>;
-  const incomplete = (Object.keys(RING_LABELS) as ActivityRingId[]).filter(
-    (id) => (rings[id]?.percent ?? 0) < 100,
-  );
+  const incomplete = RING_ORDER.filter((id) => (rings[id]?.percent ?? 0) < 100);
   if (incomplete.length === 0 && data.allRingsFull) {
     return (
       <GlassCard className="p-4 border-ait-orange/30 bg-gradient-to-r from-ait-orange/10 to-transparent">
         <p className="text-sm font-medium flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-ait-orange" />
-          Все кольца закрыты — зайдите в AIT Hub за бонусом!
+          {t("ait.dailyPulse.allComplete")}
         </p>
         <Link href="/wallet" className="text-xs text-ait-orange hover:underline mt-2 inline-block">
-          Открыть AIT Hub →
+          {t("ait.dailyPulse.openHub")}
         </Link>
       </GlassCard>
     );
@@ -46,16 +50,21 @@ export default function AitDailyPulse() {
 
   return (
     <GlassCard className="p-4 border-ait-purple/20">
-      <p className="text-xs font-bold uppercase tracking-widest text-ait-purple mb-2">Пульс дня</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-ait-purple mb-2">
+        {t("ait.dailyPulse.title")}
+      </p>
       <p className="text-sm text-muted-foreground mb-3">
-        Закройте кольцо «{RING_LABELS[focus]}» — {rings[focus]?.count ?? 0}/5 сегодня
+        {t("ait.dailyPulse.ringProgress", {
+          ring: ringLabels[focus],
+          count: rings[focus]?.count ?? 0,
+        })}
       </p>
       <Link
         href={RING_LINKS[focus]}
         className="inline-flex items-center gap-2 text-sm font-semibold text-ait-orange hover:underline"
       >
         <Icon className="h-4 w-4" />
-        Продолжить
+        {t("ait.dailyPulse.continue")}
       </Link>
     </GlassCard>
   );

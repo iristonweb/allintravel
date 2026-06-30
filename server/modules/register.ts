@@ -11,7 +11,11 @@ import { registerPostsRoutes } from "./posts/routes";
 
 /** Registers platform expansion modules (passport, trust, marketplace, AI, GTM, geo, posts). */
 export async function registerPlatformModules(app: Express, storage: IStorage): Promise<void> {
-  await ensurePlatformSchema();
+  try {
+    await ensurePlatformSchema();
+  } catch (error) {
+    console.error("[registerPlatformModules] ensurePlatformSchema failed (continuing):", error);
+  }
   registerGeoRoutes(app, storage);
   registerPassportRoutes(app);
   registerTrustRoutes(app);

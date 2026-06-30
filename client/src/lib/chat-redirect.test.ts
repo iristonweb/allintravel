@@ -7,9 +7,7 @@ describe("buildChatRedirectPath", () => {
   });
 
   it("preserves unread from param", () => {
-    expect(buildChatRedirectPath("with=user-1&from=unread")).toBe(
-      "/chat?with=user-1&tab=unread",
-    );
+    expect(buildChatRedirectPath("with=user-1&from=unread")).toBe("/chat?with=user-1&tab=unread");
   });
 
   it("redirects tab=unread without with", () => {

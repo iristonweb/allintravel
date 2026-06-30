@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
 import PageShell from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,9 +54,10 @@ export function SocialFeed() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [storyView, setStoryView] = useState<{ posts: TravelPostWithAuthor[]; index: number } | null>(
-    null,
-  );
+  const [storyView, setStoryView] = useState<{
+    posts: TravelPostWithAuthor[];
+    index: number;
+  } | null>(null);
 
   const { feedMode, setFeedMode, contentFormat, setContentFormat, isCreating, setIsCreating } =
     useSocialFeedParams(isAuthenticated);
@@ -86,14 +86,18 @@ export function SocialFeed() {
     return base;
   }, [apiFormat, activeTag, feedMode, user?.id, contentFormat]);
 
-  const { data: posts = [], isLoading, isError, error, refetch } = useQuery<TravelPostWithAuthor[]>(
-    {
-      queryKey: ["/api/posts", postsQueryParams],
-      enabled:
-        isAuthenticated && (contentFormat === "public" || feedMode !== "following" || !!user?.id),
-      refetchInterval: isAuthenticated ? 20_000 : false,
-    },
-  );
+  const {
+    data: posts = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<TravelPostWithAuthor[]>({
+    queryKey: ["/api/posts", postsQueryParams],
+    enabled:
+      isAuthenticated && (contentFormat === "public" || feedMode !== "following" || !!user?.id),
+    refetchInterval: isAuthenticated ? 20_000 : false,
+  });
 
   const displayedPosts = useMemo(() => {
     if (contentFormat === "public") return posts;
@@ -173,8 +177,7 @@ export function SocialFeed() {
       return { postId, saved: true };
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] }),
-    onError: () =>
-      toast({ title: t("social.toasts.bookmarkFailed"), variant: "destructive" }),
+    onError: () => toast({ title: t("social.toasts.bookmarkFailed"), variant: "destructive" }),
   });
 
   const handleSubmitComment = (postId: string) => {
@@ -315,9 +318,7 @@ export function SocialFeed() {
           titleVariant="immersive"
           breadcrumbs={[
             { label: t("nav.communityHub"), href: "/social-feed" },
-            ...(contentFormat !== "feed"
-              ? [{ label: t(`social.formats.${contentFormat}`) }]
-              : []),
+            ...(contentFormat !== "feed" ? [{ label: t(`social.formats.${contentFormat}`) }] : []),
           ]}
         >
           <div className="my-4 space-y-4">

@@ -328,7 +328,8 @@ export const en = {
     pushTitle: "Phone & browser push",
     pushHint: "Instant alerts for requests, messages, trips, and events (Web Push).",
     pushUnsupported: "This browser does not support push notifications.",
-    pushNoVapid: "VAPID keys are not configured on the server. Add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to .env.",
+    pushNoVapid:
+      "VAPID keys are not configured on the server. Add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to .env.",
     pushEnabled: "Notifications are enabled on this device.",
     pushDisabled: "Allow notifications to receive them even when the tab is closed.",
     pushSubscribe: "Enable push",
@@ -399,7 +400,8 @@ export const en = {
   profile: {
     signInRequired: "Sign in required",
     loadError: "Could not load profile",
-    hubHint: "Edit profile, settings, AIT wallet, and sign out here. Other sections are in the sidebar.",
+    hubHint:
+      "Edit profile, settings, AIT wallet, and sign out here. Other sections are in the sidebar.",
     edit: "Edit profile",
     settings: "Settings",
     myMusic: "My music",
@@ -421,6 +423,11 @@ export const en = {
     geocoding: "Resolving coordinates…",
   },
   searchPanel: {
+    where: "Where to",
+    wherePlaceholder: "Country, city, or place",
+    dates: "Dates",
+    dateFrom: "From",
+    dateTo: "To",
     travelers: "Travelers",
     searchIn: "Search in",
     find: "Find",
@@ -432,7 +439,8 @@ export const en = {
     notFound: "No trips found",
     empty: "No trips yet",
     emptyHint: "Be the first — create a trip and find travel companions!",
-    notFoundHint: "Nothing found for «{{q}}» among {{total}} trips. Try another city or create your own.",
+    notFoundHint:
+      "Nothing found for «{{q}}» among {{total}} trips. Try another city or create your own.",
     resetSearch: "Clear search",
     resetQuery: "Clear «{{q}}»",
     found: "Found: {{count}}",
@@ -477,8 +485,7 @@ export const en = {
     },
     toast: {
       createFailed: "Could not create trip.",
-      createdPartialRoute:
-        "Some route stops could not be saved. Add them on the trip page.",
+      createdPartialRoute: "Some route stops could not be saved. Add them on the trip page.",
       createdTitle: "Trip and group chat created",
       createdWithInvites: "Route{{routeSaved}}. Invited to chat: {{count}}.",
       createdWithRoute: "Route saved. Open the Group tab for chat.",
@@ -488,7 +495,8 @@ export const en = {
       routeStopTooShort: "Enter a place name",
       routeStopTooShortHint: "At least 2 characters.",
       routeGeoFailed: "Could not resolve place",
-      routeGeoFailedHint: "Pick a city or address from suggestions — coordinates fill in automatically.",
+      routeGeoFailedHint:
+        "Pick a city or address from suggestions — coordinates fill in automatically.",
       routeStopAdded: "Stop added to route",
       joinSuccess: "You joined!",
       joinSuccessHint: "You were added to the trip participants.",
@@ -650,6 +658,49 @@ export const en = {
       title: "Similar places",
       description: "Based on your last view",
       badge: "Similar",
+    },
+  },
+  onboarding: {
+    title: "Where are we headed?",
+    description: "Three steps — and you'll have a personal trip on your home screen.",
+    destinationPlaceholder: "City or country",
+    startDate: "Start",
+    endDate: "End",
+    styles: {
+      budget: "Budget",
+      balanced: "Balanced",
+      luxury: "Luxury",
+      adventure: "Adventure",
+    },
+    back: "Back",
+    next: "Next",
+    creating: "Creating…",
+    createTrip: "Create trip",
+    tripTitle: "Trip to {{destination}}",
+    styleDescription: "Style: {{style}}",
+    tags: {
+      budget: "budget",
+      luxury: "luxury",
+      adventure: "adventure",
+    },
+    successTitle: "Trip created",
+    successDescription: "Welcome to All In Travel!",
+    failTitle: "Trip not created",
+    failDescription: "You can create one later in Trips.",
+  },
+  ait: {
+    rings: {
+      voice: "Voice",
+      story: "Story",
+      echo: "Echo",
+      pulse: "Pulse",
+    },
+    dailyPulse: {
+      title: "Daily pulse",
+      ringProgress: "Close the «{{ring}}» ring — {{count}}/5 today",
+      continue: "Continue",
+      allComplete: "All rings complete — visit AIT Hub for a bonus!",
+      openHub: "Open AIT Hub →",
     },
   },
   seo: {

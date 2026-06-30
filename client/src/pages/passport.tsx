@@ -12,10 +12,10 @@ export function PassportPage() {
     <AppLayout>
       <PageMeta title={t("passport.title")} description={t("passport.subtitle")} path="/passport" />
       <PageShell title={t("passport.title")} description={t("passport.subtitle")}>
-      <div className="max-w-2xl mx-auto space-y-6">
-        <PassportCard />
-        <FogOfWarMap />
-      </div>
+        <div className="max-w-2xl mx-auto space-y-6">
+          <PassportCard />
+          <FogOfWarMap />
+        </div>
       </PageShell>
     </AppLayout>
   );

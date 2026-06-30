@@ -32,11 +32,11 @@ export function useNavLabels() {
 
     const sidebarPrimaryNav = flatNav
       .filter((item) => !["/places", "/events", "/passport"].includes(item.href))
-      .map(({ href, label }) => ({ href, label } satisfies NavItem));
+      .map(({ href, label }) => ({ href, label }) satisfies NavItem);
 
     const sidebarDiscoverNav = flatNav
       .filter((item) => ["/places", "/events"].includes(item.href))
-      .map(({ href, label }) => ({ href, label } satisfies NavItem));
+      .map(({ href, label }) => ({ href, label }) satisfies NavItem);
 
     const mobileMainNav: NavItem[] = MOBILE_MAIN_NAV_HREFS.map((href) => {
       const item = flatNav.find((i) => i.href === href);

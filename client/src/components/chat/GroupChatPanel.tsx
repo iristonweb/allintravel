@@ -12,11 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import type {
-  ChatMessageWithSender,
-  ReplyTarget,
-  RoomListItem,
-} from "@/lib/chat-page-types";
+import type { ChatMessageWithSender, ReplyTarget, RoomListItem } from "@/lib/chat-page-types";
 import type { ChatRoom, MessageReactionMeta, User } from "@shared/schema";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import { cn } from "@/lib/utils";
@@ -317,8 +313,7 @@ export default function GroupChatPanel({
                       : undefined
                   }
                   reacting={
-                    reactionMutation.isPending &&
-                    reactionMutation.variables?.messageId === msg.id
+                    reactionMutation.isPending && reactionMutation.variables?.messageId === msg.id
                   }
                   onReply={
                     !isOwn && msg.sender?.username

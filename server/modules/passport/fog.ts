@@ -16,14 +16,9 @@ export type FogMapPayload = {
   fogLevel: number;
 };
 
-export async function getFogMapForUser(
-  storage: IStorage,
-  userId: string,
-): Promise<FogMapPayload> {
+export async function getFogMapForUser(storage: IStorage, userId: string): Promise<FogMapPayload> {
   const passport = await getPassportForUser(storage, userId);
-  const exploredCountries = Array.from(
-    new Set(passport.stamps.map((s) => s.countryName)),
-  );
+  const exploredCountries = Array.from(new Set(passport.stamps.map((s) => s.countryName)));
   const exploredCount = exploredCountries.length;
   const totalCountries = WORLD_COUNTRY_COUNT;
   const exploredPercent = Math.round((exploredCount / totalCountries) * 1000) / 10;
@@ -38,7 +33,9 @@ export async function getFogMapForUser(
   };
 }
 
-export async function recordFogShare(userId: string): Promise<{ granted: boolean; amount: number }> {
+export async function recordFogShare(
+  userId: string,
+): Promise<{ granted: boolean; amount: number }> {
   const wk = weekKey();
   const db = getDb();
   if (db) {

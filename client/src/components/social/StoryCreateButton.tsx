@@ -5,7 +5,9 @@ type StoryCreateButtonProps = {
   href?: string;
 };
 
-export default function StoryCreateButton({ href = "/social-feed?format=stories&create=1" }: StoryCreateButtonProps) {
+export default function StoryCreateButton({
+  href = "/social-feed?format=stories&create=1",
+}: StoryCreateButtonProps) {
   return (
     <Link href={href}>
       <button type="button" className="flex flex-col items-center gap-2 shrink-0">

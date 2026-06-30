@@ -34,12 +34,7 @@ export default function EmptyState({
         {title}
       </h3>
       {description ? (
-        <p
-          className={cn(
-            "text-muted-foreground",
-            variant === "compact" ? "text-xs mb-2" : "mb-4",
-          )}
-        >
+        <p className={cn("text-muted-foreground", variant === "compact" ? "text-xs mb-2" : "mb-4")}>
           {description}
         </p>
       ) : null}
@@ -48,19 +43,11 @@ export default function EmptyState({
   );
 
   if (variant === "glass") {
-    return (
-      <GlassCard className={cn("py-12 text-center", className)}>{content}</GlassCard>
-    );
+    return <GlassCard className={cn("py-12 text-center", className)}>{content}</GlassCard>;
   }
 
   return (
-    <div
-      className={cn(
-        "text-center",
-        variant === "compact" ? "py-6 px-2" : "py-16",
-        className,
-      )}
-    >
+    <div className={cn("text-center", variant === "compact" ? "py-6 px-2" : "py-16", className)}>
       {content}
     </div>
   );

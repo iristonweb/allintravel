@@ -87,7 +87,11 @@ export default function CinematicHero({
               )}
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link href="/trips">
-                  <Button variant="premium" size="lg" className="rounded-2xl px-8 py-4 text-base font-semibold">
+                  <Button
+                    variant="premium"
+                    size="lg"
+                    className="rounded-2xl px-8 py-4 text-base font-semibold"
+                  >
                     {t("marketing.hero.planTrip")}
                   </Button>
                 </Link>

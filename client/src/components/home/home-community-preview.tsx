@@ -91,10 +91,7 @@ function PostCard({
   );
 }
 
-function apiPostToDemo(
-  post: TravelPostWithAuthor,
-  t: (key: string) => string,
-): DemoCommunityPost {
+function apiPostToDemo(post: TravelPostWithAuthor, t: (key: string) => string): DemoCommunityPost {
   return {
     id: post.id,
     authorName: post.author?.firstName
@@ -206,9 +203,7 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
           <Trans
             i18nKey="home.communityPreview.followingHint"
             components={{
-              signIn: (
-                <Link href={feedHref} className="text-ait-purple hover:underline" />
-              ),
+              signIn: <Link href={feedHref} className="text-ait-purple hover:underline" />,
             }}
           />
         </p>

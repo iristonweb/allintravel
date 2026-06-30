@@ -208,11 +208,13 @@ export function Events() {
                   value={newEvent.type}
                   onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
                 >
-                  {filters.eventType.filter((opt) => opt.value).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
+                  {filters.eventType
+                    .filter((opt) => opt.value)
+                    .map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
                 </select>
                 <LocationAutocompleteInput
                   placeholder={t("events.form.location")}
@@ -258,123 +260,125 @@ export function Events() {
           </Dialog>
         }
       >
-      <CatalogPageLayout
-        search={
-          <CatalogSearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder={t("events.searchPlaceholder")}
-          />
-        }
-        filters={
-          <>
-            <FilterChipRow
-              label={t("events.filterPeriod")}
-              options={filters.eventTime}
-              value={timeFilter}
-              onChange={setTimeFilter}
+        <CatalogPageLayout
+          search={
+            <CatalogSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder={t("events.searchPlaceholder")}
             />
-            <FilterChipRow
-              label={t("events.filterType")}
-              options={filters.eventType}
-              value={activeType}
-              onChange={setActiveType}
-              showClear
-              onClear={() => {
-                setActiveType("");
-                setTimeFilter("upcoming");
-                setSearch("");
-              }}
-            />
-          </>
-        }
-        stats={
-          <>
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4 flex items-center gap-3">
-                <Calendar className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="font-semibold">{t("events.upcomingCount", { count: upcoming.length })}</p>
-                  <p className="text-sm text-muted-foreground">{t("events.upcomingSoon")}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-accent/5 border-accent/20 flex-1 min-w-[240px]">
-              <CardContent className="p-4 flex items-center gap-3">
-                <Globe className="h-8 w-8 text-accent" />
-                <div>
-                  <p className="font-semibold">{t("events.formatsTitle")}</p>
-                  <p className="text-sm text-muted-foreground">{t("events.formatsHint")}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        }
-      >
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="h-72 animate-pulse bg-muted" />
-          ))}
-        </div>
-      ) : isError ? (
-        <EmptyState
-          icon={AlertCircle}
-          title={t("events.loadError")}
-          description={error instanceof Error ? error.message : t("social.errors.connection")}
-          action={
-            <Button variant="outline" onClick={() => refetch()}>
-              {t("common.retry")}
-            </Button>
           }
-        />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={Calendar}
-          title={t("events.notFound")}
-          description={t("events.notFoundHint")}
-        />
-      ) : (
-        <>
-          {showUpcoming && upcoming.length > 0 && (
-            <section className="mb-10">
-              <h2 className="text-xl font-semibold mb-4">
-                {t("events.upcomingSection")}
-                <Badge variant="secondary" className="ml-2">
-                  {upcoming.length}
-                </Badge>
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {upcoming.map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    isRegistered={registeredSet.has(event.id)}
-                    onRegister={handleRegister}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+          filters={
+            <>
+              <FilterChipRow
+                label={t("events.filterPeriod")}
+                options={filters.eventTime}
+                value={timeFilter}
+                onChange={setTimeFilter}
+              />
+              <FilterChipRow
+                label={t("events.filterType")}
+                options={filters.eventType}
+                value={activeType}
+                onChange={setActiveType}
+                showClear
+                onClear={() => {
+                  setActiveType("");
+                  setTimeFilter("upcoming");
+                  setSearch("");
+                }}
+              />
+            </>
+          }
+          stats={
+            <>
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Calendar className="h-8 w-8 text-primary" />
+                  <div>
+                    <p className="font-semibold">
+                      {t("events.upcomingCount", { count: upcoming.length })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{t("events.upcomingSoon")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="bg-accent/5 border-accent/20 flex-1 min-w-[240px]">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <Globe className="h-8 w-8 text-accent" />
+                  <div>
+                    <p className="font-semibold">{t("events.formatsTitle")}</p>
+                    <p className="text-sm text-muted-foreground">{t("events.formatsHint")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          }
+        >
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} className="h-72 animate-pulse bg-muted" />
+              ))}
+            </div>
+          ) : isError ? (
+            <EmptyState
+              icon={AlertCircle}
+              title={t("events.loadError")}
+              description={error instanceof Error ? error.message : t("social.errors.connection")}
+              action={
+                <Button variant="outline" onClick={() => refetch()}>
+                  {t("common.retry")}
+                </Button>
+              }
+            />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={Calendar}
+              title={t("events.notFound")}
+              description={t("events.notFoundHint")}
+            />
+          ) : (
+            <>
+              {showUpcoming && upcoming.length > 0 && (
+                <section className="mb-10">
+                  <h2 className="text-xl font-semibold mb-4">
+                    {t("events.upcomingSection")}
+                    <Badge variant="secondary" className="ml-2">
+                      {upcoming.length}
+                    </Badge>
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {upcoming.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        isRegistered={registeredSet.has(event.id)}
+                        onRegister={handleRegister}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
 
-          {showPast && past.length > 0 && (
-            <section>
-              <h2 className="text-xl font-semibold mb-4 text-muted-foreground">
-                {t("events.pastSection")}
-                <Badge variant="outline" className="ml-2">
-                  {past.length}
-                </Badge>
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-70">
-                {past.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))}
-              </div>
-            </section>
+              {showPast && past.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-semibold mb-4 text-muted-foreground">
+                    {t("events.pastSection")}
+                    <Badge variant="outline" className="ml-2">
+                      {past.length}
+                    </Badge>
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-70">
+                    {past.map((event) => (
+                      <EventCard key={event.id} event={event} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
           )}
-        </>
-      )}
-      </CatalogPageLayout>
+        </CatalogPageLayout>
       </PageShell>
     </AppLayout>
   );

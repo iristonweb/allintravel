@@ -30,9 +30,7 @@ function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: num
   const dLon = ((b.lon - a.lon) * Math.PI) / 180;
   const lat1 = (a.lat * Math.PI) / 180;
   const lat2 = (b.lat * Math.PI) / 180;
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
@@ -53,10 +51,7 @@ export function filterPostsForFeedMode(
       .filter((p) => p.latitude != null && p.longitude != null)
       .map((p) => ({
         post: p,
-        dist: haversineKm(
-          { lat, lon },
-          { lat: Number(p.latitude), lon: Number(p.longitude) },
-        ),
+        dist: haversineKm({ lat, lon }, { lat: Number(p.latitude), lon: Number(p.longitude) }),
       }))
       .filter(({ dist }) => dist <= radius)
       .sort((a, b) => a.dist - b.dist)

@@ -32,10 +32,13 @@ export function registerTrustRoutes(app: Express): void {
     try {
       const fromUserId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
       const toUserId = req.params.userId;
-      const message = typeof req.body?.message === "string" ? req.body.message.slice(0, 280) : undefined;
+      const message =
+        typeof req.body?.message === "string" ? req.body.message.slice(0, 280) : undefined;
       const result = await addVouch(fromUserId, toUserId, message);
       if (!result.ok) {
-        return res.status(result.reason === "duplicate" ? 409 : 400).json({ message: result.reason });
+        return res
+          .status(result.reason === "duplicate" ? 409 : 400)
+          .json({ message: result.reason });
       }
       const profile = await recalculateTrust(storage, toUserId);
       res.json(profile);

@@ -48,7 +48,9 @@ export default function CreatorsPage() {
         <div className="text-center space-y-4">
           <Sparkles className="h-10 w-10 mx-auto text-[#ff7a18]" />
           <h1 className="ait-section-title">{t("gtm.creatorsTitle")}</h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">{t("gtm.creatorsSubtitle")}</p>
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+            {t("gtm.creatorsSubtitle")}
+          </p>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">

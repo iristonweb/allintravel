@@ -79,7 +79,7 @@ export function Chat() {
     params.delete("room");
     params.delete("message");
     const qs = params.toString();
-    navigate(`/chat?${qs ? `?${qs}` : ""}`);
+    navigate(`/chat${qs ? `?${qs}` : ""}`);
   }, [chatTab, urlRoom, urlWithUserId, searchString, navigate]);
 
   const handleChatTabChange = useCallback(
@@ -137,15 +137,12 @@ export function Chat() {
   }, [navigate, searchString]);
 
   const mobileGroupThreadOpen =
-    Boolean(urlRoom) &&
-    (chatTab === "unread" || chatTab === "all" || chatTab === "mine");
+    Boolean(urlRoom) && (chatTab === "unread" || chatTab === "all" || chatTab === "mine");
   const mobileThreadOpen = Boolean(urlWithUserId) || mobileGroupThreadOpen;
   const mobileGroupListOnly =
     (chatTab === "all" || chatTab === "mine") && !urlRoom && !urlWithUserId;
   const showChatPlaceholder =
-    !urlWithUserId &&
-    ((chatTab === "personal" && !urlRoom) ||
-      (chatTab === "unread" && !urlRoom));
+    !urlWithUserId && ((chatTab === "personal" && !urlRoom) || (chatTab === "unread" && !urlRoom));
 
   const searchPlaceholder = useMemo(() => {
     if (chatTab === "unread") return t("chat.sidebar.searchAllPlaceholder");
@@ -245,10 +242,13 @@ export function Chat() {
   const unreadGroupCount = rooms.reduce((sum, r) => sum + (r.unreadCount ?? 0), 0);
   const totalUnreadCount = unreadPersonalCount + unreadGroupCount;
 
-  const matchQuery = useCallback((text: string) => {
-    const q = roomQuery.trim().toLowerCase();
-    return !q || text.toLowerCase().includes(q);
-  }, [roomQuery]);
+  const matchQuery = useCallback(
+    (text: string) => {
+      const q = roomQuery.trim().toLowerCase();
+      return !q || text.toLowerCase().includes(q);
+    },
+    [roomQuery],
+  );
 
   const filteredRooms = rooms
     .filter((r) => {
@@ -259,7 +259,9 @@ export function Chat() {
     })
     .filter(
       (r) =>
-        matchQuery(r.title) || (r.description ? matchQuery(r.description) : false),
+        matchQuery(r.title) ||
+        (r.description ? matchQuery(r.description) : false) ||
+        (r.lastMessagePreview ? matchQuery(r.lastMessagePreview) : false),
     );
 
   const visibleConversations = useMemo(() => {
@@ -312,22 +314,26 @@ export function Chat() {
     },
     enabled: isAuthenticated && Boolean(activeRoom),
     refetchInterval: useHttpMode
-      ? () =>
-          chatPollIntervalMs(
-            docVisible,
-            Date.now() - groupChatActivityRef.current < 30_000,
-          )
+      ? () => chatPollIntervalMs(docVisible, Date.now() - groupChatActivityRef.current < 30_000)
       : false,
   });
 
-  const history: ChatMessageWithSender[] = Array.isArray(historyPayload)
-    ? historyPayload
-    : (historyPayload?.messages ?? []);
+  const history = useMemo(
+    (): ChatMessageWithSender[] =>
+      Array.isArray(historyPayload) ? historyPayload : (historyPayload?.messages ?? []),
+    [historyPayload],
+  );
   const listRoom = rooms.find((r) => r.slug === activeRoom);
   const historyRoom = Array.isArray(historyPayload) ? undefined : historyPayload?.room;
   const activeRoomMeta: RoomListItem | ChatRoom | undefined =
     listRoom && historyRoom
-      ? { ...historyRoom, memberCount: listRoom.memberCount, myRole: listRoom.myRole }
+      ? {
+          ...historyRoom,
+          memberCount: listRoom.memberCount,
+          myRole: listRoom.myRole,
+          unreadCount: listRoom.unreadCount,
+          lastMessagePreview: listRoom.lastMessagePreview,
+        }
       : (listRoom ?? historyRoom);
   const pinnedIds = Array.isArray(historyPayload) ? [] : (historyPayload?.pinnedMessageIds ?? []);
 
@@ -412,6 +418,7 @@ export function Chat() {
     onSuccess: (saved) => {
       appendMessageToHistory(saved);
       setReplyTo(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
     },
     onError: (err) =>
       toast({
@@ -434,7 +441,6 @@ export function Chat() {
 
   const invalidateThread = () => {
     queryClient.invalidateQueries({ queryKey: historyKey });
-    setWsMessages((prev) => ({ ...prev, [activeRoom]: [] }));
   };
 
   const reactionMutation = useMutation({
@@ -567,6 +573,7 @@ export function Chat() {
             if (withoutTemp.some((m) => m.id === messageWithSender.id)) return prev;
             return { ...prev, [room]: [...withoutTemp, messageWithSender] };
           });
+          queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
         } else if (
           (data.type === "reaction_updated" || data.type === "read_cursor_updated") &&
           data.roomId
@@ -619,12 +626,28 @@ export function Chat() {
     };
   }, [connect, useHttpMode]);
 
-  useEffect(() => {
-    setWsMessages((prev) => ({ ...prev, [activeRoom]: [] }));
-  }, [activeRoom]);
-
   const currentWsMessages = wsMessages[activeRoom] || [];
   const allMessages = mergeChronologicalMessages(history, currentWsMessages);
+
+  useEffect(() => {
+    if (historyLoading) return;
+    const roomHistory = Array.isArray(historyPayload)
+      ? historyPayload
+      : (historyPayload?.messages ?? []);
+    setWsMessages((prev) => {
+      const roomMsgs = prev[activeRoom];
+      if (!roomMsgs?.length) return prev;
+      const pruned = roomMsgs.filter((m) => {
+        if (roomHistory.some((h) => h.id === m.id)) return false;
+        if (String(m.id).startsWith("temp-")) {
+          return !roomHistory.some((h) => h.userId === m.userId && h.content === m.content);
+        }
+        return true;
+      });
+      if (pruned.length === roomMsgs.length) return prev;
+      return { ...prev, [activeRoom]: pruned };
+    });
+  }, [activeRoom, historyLoading, historyPayload]);
 
   const prevScrollRoomRef = useRef(activeRoom);
   const prevScrollLenRef = useRef(0);
@@ -772,123 +795,124 @@ export function Chat() {
           description={t("chat.page.subtitle")}
           titleVariant="immersive"
         >
-
-        <ChatFilterTabs
-          layoutId="chat-page-filter"
-          tabs={[
-            { id: "all", label: t("chat.page.tabs.all") },
-            {
-              id: "unread",
-              label:
-                totalUnreadCount > 0
-                  ? t("chat.page.tabs.unreadCount", { count: totalUnreadCount })
-                  : t("chat.page.tabs.unread"),
-            },
-            { id: "mine", label: t("chat.page.tabs.mine") },
-            {
-              id: "personal",
-              label:
-                conversations.length > 0
-                  ? t("chat.page.tabs.personalCount", { count: conversations.length })
-                  : t("chat.page.tabs.personal"),
-            },
-          ]}
-          value={chatTab}
-          onChange={handleChatTabChange}
-          className="mb-4"
-        />
-
-        <div
-          className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3"
-          style={{ height: "calc(100dvh - var(--ait-header-h, 5rem))", minHeight: "560px" }}
-        >
-          <div className={cn(mobileThreadOpen && "hidden lg:flex")}>
-            <ChatSidebarPanel
-              chatTab={chatTab}
-              statusLabel={statusLabel}
-              roomQuery={roomQuery}
-              onRoomQueryChange={setRoomQuery}
-              onSearchFocus={() => setSearchFocused(true)}
-              onSearchBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-              searchPlaceholder={searchPlaceholder}
-              discoverSearch={discoverSearch}
-              searchFocused={searchFocused}
-              urlDiscoverQ={urlDiscoverQ}
-              discoverRooms={discoverRooms}
-              discoverLoading={discoverLoading}
-              joinRoomMutation={joinRoomMutation}
-              visibleConversations={visibleConversations}
-              conversationsLoading={conversationsLoading}
-              conversationsError={conversationsError}
-              refetchConversations={refetchConversations}
-              roomsLoading={roomsLoading}
-              roomsError={roomsError}
-              refetchRooms={refetchRooms}
-              filteredRooms={filteredRooms}
-              urlWithUserId={urlWithUserId}
-              activeRoom={activeRoom}
-              onOpenPersonalChat={openPersonalChat}
-              onSelectRoom={selectRoom}
-            />
-          </div>
+          <ChatFilterTabs
+            layoutId="chat-page-filter"
+            tabs={[
+              { id: "all", label: t("chat.page.tabs.all") },
+              {
+                id: "unread",
+                label:
+                  totalUnreadCount > 0
+                    ? t("chat.page.tabs.unreadCount", { count: totalUnreadCount })
+                    : t("chat.page.tabs.unread"),
+              },
+              { id: "mine", label: t("chat.page.tabs.mine") },
+              {
+                id: "personal",
+                label:
+                  conversations.length > 0
+                    ? t("chat.page.tabs.personalCount", { count: conversations.length })
+                    : t("chat.page.tabs.personal"),
+              },
+            ]}
+            value={chatTab}
+            onChange={handleChatTabChange}
+            className="mb-4"
+          />
 
           <div
-            className={cn(
-              "ait-chat-panel flex flex-col overflow-hidden min-h-0",
-              !mobileThreadOpen && (showChatPlaceholder || mobileGroupListOnly) && "hidden lg:flex",
-            )}
+            className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3"
+            style={{ height: "calc(100dvh - var(--ait-header-h, 5rem))", minHeight: "560px" }}
           >
-            {urlWithUserId ? (
-              <PersonalChatThread
-                peerUserId={urlWithUserId}
-                onBack={mobileThreadOpen ? clearThreadSelection : undefined}
-              />
-            ) : showChatPlaceholder ? (
-              <ChatThreadPlaceholder chatTab={chatTab === "unread" ? "unread" : "personal"} />
-            ) : (
-              <GroupChatPanel
-                mobileThreadOpen={mobileThreadOpen}
-                onBack={clearThreadSelection}
-                roomBreadcrumbs={roomBreadcrumbs}
-                activeRoom={activeRoom}
-                activeRoomMeta={activeRoomMeta}
-                showRoomInfo={showRoomInfo}
-                onShowRoomInfoChange={setShowRoomInfo}
-                currentUser={user}
-                onLeftRoom={() => selectRoom("general")}
-                latestPinned={latestPinned}
-                pinnedMessages={pinnedMessages}
-                pinnedIds={pinnedIds}
-                onScrollToMessage={scrollToMessage}
-                joinRequired={Boolean(joinRequired)}
-                joinPreview={joinPreview}
+            <div className={cn(mobileThreadOpen && "hidden lg:flex")}>
+              <ChatSidebarPanel
+                chatTab={chatTab}
+                statusLabel={statusLabel}
+                roomQuery={roomQuery}
+                onRoomQueryChange={setRoomQuery}
+                onSearchFocus={() => setSearchFocused(true)}
+                onSearchBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+                searchPlaceholder={searchPlaceholder}
+                discoverSearch={discoverSearch}
+                searchFocused={searchFocused}
+                urlDiscoverQ={urlDiscoverQ}
+                discoverRooms={discoverRooms}
+                discoverLoading={discoverLoading}
                 joinRoomMutation={joinRoomMutation}
-                historyLoading={historyLoading}
-                historyError={historyError}
-                historyErrorMessage={chatHistoryErrorMessage(historyFetchError, t)}
-                onRefetchHistory={refetchHistory}
-                allMessages={allMessages}
-                chatBgClass={chatBgClass}
-                scrollRef={scrollRef}
-                roomId={roomId}
-                isRoomAdmin={isRoomAdmin}
-                reactionMutation={reactionMutation}
-                pinMutation={pinMutation}
-                deleteMutation={deleteMutation}
-                editMutation={editMutation}
-                onStartReply={startReply}
-                showLegacyJoinHint={showLegacyJoinHint}
-                messageText={messageText}
-                onMessageTextChange={setMessageText}
-                onSend={handleSend}
-                canSend={canSend}
-                mentionSuggestUsers={mentionSuggestUsers}
-                replyTo={replyTo}
-                onCancelReply={() => setReplyTo(null)}
+                visibleConversations={visibleConversations}
+                conversationsLoading={conversationsLoading}
+                conversationsError={conversationsError}
+                refetchConversations={refetchConversations}
+                roomsLoading={roomsLoading}
+                roomsError={roomsError}
+                refetchRooms={refetchRooms}
+                filteredRooms={filteredRooms}
+                urlWithUserId={urlWithUserId}
+                activeRoom={activeRoom}
+                onOpenPersonalChat={openPersonalChat}
+                onSelectRoom={selectRoom}
               />
-            )}
+            </div>
+
+            <div
+              className={cn(
+                "ait-chat-panel flex flex-col overflow-hidden min-h-0",
+                !mobileThreadOpen &&
+                  (showChatPlaceholder || mobileGroupListOnly) &&
+                  "hidden lg:flex",
+              )}
+            >
+              {urlWithUserId ? (
+                <PersonalChatThread
+                  peerUserId={urlWithUserId}
+                  onBack={mobileThreadOpen ? clearThreadSelection : undefined}
+                />
+              ) : showChatPlaceholder ? (
+                <ChatThreadPlaceholder chatTab={chatTab === "unread" ? "unread" : "personal"} />
+              ) : (
+                <GroupChatPanel
+                  mobileThreadOpen={mobileThreadOpen}
+                  onBack={clearThreadSelection}
+                  roomBreadcrumbs={roomBreadcrumbs}
+                  activeRoom={activeRoom}
+                  activeRoomMeta={activeRoomMeta}
+                  showRoomInfo={showRoomInfo}
+                  onShowRoomInfoChange={setShowRoomInfo}
+                  currentUser={user}
+                  onLeftRoom={() => selectRoom("general")}
+                  latestPinned={latestPinned}
+                  pinnedMessages={pinnedMessages}
+                  pinnedIds={pinnedIds}
+                  onScrollToMessage={scrollToMessage}
+                  joinRequired={Boolean(joinRequired)}
+                  joinPreview={joinPreview}
+                  joinRoomMutation={joinRoomMutation}
+                  historyLoading={historyLoading}
+                  historyError={historyError}
+                  historyErrorMessage={chatHistoryErrorMessage(historyFetchError, t)}
+                  onRefetchHistory={refetchHistory}
+                  allMessages={allMessages}
+                  chatBgClass={chatBgClass}
+                  scrollRef={scrollRef}
+                  roomId={roomId}
+                  isRoomAdmin={isRoomAdmin}
+                  reactionMutation={reactionMutation}
+                  pinMutation={pinMutation}
+                  deleteMutation={deleteMutation}
+                  editMutation={editMutation}
+                  onStartReply={startReply}
+                  showLegacyJoinHint={showLegacyJoinHint}
+                  messageText={messageText}
+                  onMessageTextChange={setMessageText}
+                  onSend={handleSend}
+                  canSend={canSend}
+                  mentionSuggestUsers={mentionSuggestUsers}
+                  replyTo={replyTo}
+                  onCancelReply={() => setReplyTo(null)}
+                />
+              )}
+            </div>
           </div>
-        </div>
         </PageShell>
       </div>
     </AppLayout>

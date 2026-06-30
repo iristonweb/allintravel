@@ -183,9 +183,12 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
     },
     onSuccess: (saved, _vars, context) => {
       if (!context) return;
-      const current = queryClient.getQueryData<PrivateMessageWithMeta[]>(context.key) ?? [];
-      const withoutTemp = current.filter((m) => !String(m.id).startsWith("temp-"));
-      queryClient.setQueryData(context.key, [...withoutTemp, saved]);
+      queryClient.setQueryData<PrivateMessageWithMeta[]>(context.key, (current) => {
+        const list = current ?? [];
+        const withoutTemp = list.filter((m) => !String(m.id).startsWith("temp-"));
+        if (withoutTemp.some((m) => m.id === saved.id)) return withoutTemp;
+        return [...withoutTemp, saved];
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       setReplyTo(null);
     },
@@ -303,10 +306,10 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
             </div>
           ) : messagesError ? (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground space-y-3">
-                  <p className="text-sm">{t("chat.page.errors.messages")}</p>
-                  <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
-                    {t("chat.page.errors.retry")}
-                  </Button>
+              <p className="text-sm">{t("chat.page.errors.messages")}</p>
+              <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
+                {t("chat.page.errors.retry")}
+              </Button>
             </div>
           ) : (
             messages.map((message) => {

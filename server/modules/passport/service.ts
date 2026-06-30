@@ -34,10 +34,7 @@ function achievementIds(countries: number, cities: number, trips: number): strin
 }
 
 /** Sync stamps from user's trips (destination field → country/city). */
-export async function syncPassportFromTrips(
-  storage: IStorage,
-  userId: string,
-): Promise<void> {
+export async function syncPassportFromTrips(storage: IStorage, userId: string): Promise<void> {
   await ensurePlatformSchema();
   const trips = await storage.getTrips({ userId, limit: 100 });
   const db = getDb();
@@ -94,9 +91,7 @@ export async function getPassportForUser(
       WHERE user_id = ${userId}
       ORDER BY visited_at DESC NULLS LAST
     `);
-    stamps = (
-      (res as unknown as { rows?: Record<string, unknown>[] }).rows ?? []
-    ).map((r) => ({
+    stamps = ((res as unknown as { rows?: Record<string, unknown>[] }).rows ?? []).map((r) => ({
       id: String(r.id),
       countryCode: r.country_code ? String(r.country_code) : null,
       countryName: String(r.country_name),

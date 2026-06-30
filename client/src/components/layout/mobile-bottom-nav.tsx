@@ -1,15 +1,5 @@
 import { Link, useLocation } from "wouter";
-import {
-  Home,
-  Map,
-  MapPin,
-  MoreHorizontal,
-  Plus,
-  Rss,
-  User,
-  Wallet,
-  Music,
-} from "lucide-react";
+import { Home, MapPin, MoreHorizontal, Plus, User, Wallet, Music } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
@@ -42,9 +32,7 @@ export default function MobileBottomNav() {
         {mobileMainNav.map((item) => {
           const navMeta = navItemByHref(item.href);
           const Icon =
-            item.href === "/trips"
-              ? Plus
-              : (navMeta?.icon ?? extraIcons[item.href] ?? Home);
+            item.href === "/trips" ? Plus : (navMeta?.icon ?? extraIcons[item.href] ?? Home);
           const isFab = item.href === "/trips" && !item.label;
           const active = !isFab && isNavActive(location, item.href);
 

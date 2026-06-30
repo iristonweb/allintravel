@@ -19,10 +19,7 @@ type LanguageSwitcherProps = {
   variant?: "ghost" | "outline";
 };
 
-export default function LanguageSwitcher({
-  className,
-  variant = "ghost",
-}: LanguageSwitcherProps) {
+export default function LanguageSwitcher({ className, variant = "ghost" }: LanguageSwitcherProps) {
   const { i18n, t } = useTranslation();
   const current = i18n.language?.startsWith("en") ? "en" : "ru";
 

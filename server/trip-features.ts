@@ -88,9 +88,11 @@ export async function resolveTripInvite(
     const result = await db.execute(sql`
       SELECT trip_id, referrer_id, referral_code FROM trip_invites WHERE token = ${token}
     `);
-    const row = (result as unknown as {
-      rows?: { trip_id: string; referrer_id: string; referral_code: string | null }[];
-    }).rows?.[0];
+    const row = (
+      result as unknown as {
+        rows?: { trip_id: string; referrer_id: string; referral_code: string | null }[];
+      }
+    ).rows?.[0];
     if (!row) return null;
     const trip = await storage.getTrip(row.trip_id);
     if (!trip) return null;

@@ -115,11 +115,7 @@ export async function findCompanionMatches(
       username: friend.username ?? null,
       displayName: friend.displayName ?? friend.firstName ?? null,
       profileImageUrl: friend.profileImageUrl ?? null,
-      compatibilityScore: compatibilityScore(
-        myTags,
-        theirTags,
-        sharedDestinations.length > 0,
-      ),
+      compatibilityScore: compatibilityScore(myTags, theirTags, sharedDestinations.length > 0),
       sharedDestinations,
     });
   }
@@ -164,14 +160,18 @@ export function registerAiRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/trips/:id/companion-matches", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
-      const matches = await findCompanionMatches(storage, userId, req.params.id);
-      res.json({ matches });
-    } catch (error) {
-      console.error("companion-matches:", error);
-      res.status(500).json({ message: "Failed to find companions" });
-    }
-  });
+  app.get(
+    "/api/trips/:id/companion-matches",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
+        const matches = await findCompanionMatches(storage, userId, req.params.id);
+        res.json({ matches });
+      } catch (error) {
+        console.error("companion-matches:", error);
+        res.status(500).json({ message: "Failed to find companions" });
+      }
+    },
+  );
 }

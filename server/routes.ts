@@ -14,8 +14,6 @@ import {
   insertPrivateMessageSchema,
   updateChatMessageSchema,
   updatePrivateMessageSchema,
-  insertPostCommentSchema,
-  updateTravelPostSchema,
   updateUserProfileSchema,
   insertUserTrackSchema,
 } from "@shared/schema";
@@ -44,7 +42,6 @@ import {
   canSendFriendRequest,
   canSeeOnlineStatus,
 } from "./privacy-helpers";
-import { parseCreateTravelPostBody } from "./post-validation";
 import {
   notifyFriendRequest,
   notifyFriendAccepted,
@@ -53,9 +50,6 @@ import {
   notifyEventRegistration,
   notifyGroupJoin,
   notifyChatMessagePinned,
-  notifyPostLiked,
-  syncPostLikeNotification,
-  notifyPostCommented,
   notifyPrivateMessageReaction,
   notifyChatMessageReaction,
 } from "./notification-service";
@@ -67,13 +61,9 @@ import {
   grantForDmMessage,
   grantForFollow,
   grantForFriendAccepted,
-  grantForPostCommented,
-  grantForPostCreated,
-  grantForPostLiked,
   tryProfileCompleteBonus,
   grantSpend,
   voidAit,
-  type AitGrantResult,
 } from "./ait/hooks";
 import {
   NOTIFICATION_FILTERS,
@@ -1088,15 +1078,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { getOrCreateReferralCode } = await import("./ait/referral");
       const referralCode = await getOrCreateReferralCode(userId);
       const appUrl =
-        process.env.APP_URL?.trim() ||
-        `${req.protocol}://${req.get("host") || "localhost:5000"}`;
-      const info = await createTripInviteLink(
-        storage,
-        req.params.id,
-        userId,
-        referralCode,
-        appUrl,
-      );
+        process.env.APP_URL?.trim() || `${req.protocol}://${req.get("host") || "localhost:5000"}`;
+      const info = await createTripInviteLink(storage, req.params.id, userId, referralCode, appUrl);
       res.json(info);
     } catch (error) {
       console.error("Error creating trip invite:", error);
@@ -1286,8 +1269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { createEventCheckout, yukassaEnabled } = await import("./payments/yukassa");
       const appUrl =
-        process.env.APP_URL?.trim() ||
-        `${req.protocol}://${req.get("host") || "localhost:5000"}`;
+        process.env.APP_URL?.trim() || `${req.protocol}://${req.get("host") || "localhost:5000"}`;
       const returnUrl = `${appUrl}/events?paid=${event.id}`;
       const session = await createEventCheckout({
         eventId: event.id,
@@ -2882,12 +2864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { limit = 50, since } = req.query;
       await storage.markPrivateMessagesDelivered(currentUserId, otherUserId);
       const messages = since
-        ? await storage.getPrivateMessages(
-            currentUserId,
-            otherUserId,
-            Number(limit),
-            String(since),
-          )
+        ? await storage.getPrivateMessages(currentUserId, otherUserId, Number(limit), String(since))
         : await storage.getPrivateMessages(currentUserId, otherUserId, Number(limit));
       const ids = messages.map((m) => m.id).filter(Boolean) as string[];
       const reactionMeta = await storage.getPrivateMessageReactionsMeta(ids, currentUserId);

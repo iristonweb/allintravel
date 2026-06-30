@@ -221,7 +221,11 @@ export function Trips() {
       if (trip?.id) setLocation(`/trips/${trip.id}`);
     },
     onError: (err) => {
-      toast({ title: t("common.error"), description: parseApiError(err, t), variant: "destructive" });
+      toast({
+        title: t("common.error"),
+        description: parseApiError(err, t),
+        variant: "destructive",
+      });
     },
   });
 
@@ -553,7 +557,9 @@ export function Trips() {
                   className="flex-1"
                   disabled={createMutation.isPending}
                 >
-                  {createMutation.isPending ? t("tripsPage.create.creating") : t("tripsPage.create.submit")}
+                  {createMutation.isPending
+                    ? t("tripsPage.create.creating")
+                    : t("tripsPage.create.submit")}
                 </Button>
               </div>
             </form>
@@ -572,112 +578,116 @@ export function Trips() {
             </Button>
           }
         >
-        <CatalogPageLayout
-          search={
-            <CatalogSearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder={t("tripsPage.searchPlaceholder")}
-            />
-          }
-          filters={
-            <FilterChipRow
-              label={t("tripsPage.filterGroup")}
-              options={filters.tripAvailability}
-              value={availability}
-              onChange={setAvailability}
-              showClear
-              onClear={() => {
-                setAvailability("");
-                setSearch("");
-              }}
-            />
-          }
-          stats={
-            <>
-              <StatPill
-                value={
-                  q
-                    ? t("tripsPage.statsOf", { found: filtered.length, total: trips.length })
-                    : String(trips.length)
-                }
-                label={q ? t("tripsPage.statsFound") : t("tripsPage.statsAvailable")}
+          <CatalogPageLayout
+            search={
+              <CatalogSearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder={t("tripsPage.searchPlaceholder")}
               />
-              {q && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-2xl ait-glass border border-white/10",
-                    "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors",
-                  )}
-                >
-                  {t("tripsPage.resetQuery", { q })}
-                </button>
-              )}
-            </>
-          }
-        >
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="h-64 animate-pulse bg-muted" />
-            ))}
-          </div>
-        ) : isError ? (
-          <EmptyState
-            icon={AlertCircle}
-            title={t("tripsPage.loadError")}
-            description={error instanceof Error ? error.message : t("social.errors.connection")}
-            action={
-              <Button variant="outline" onClick={() => refetch()}>
-                {t("common.retry")}
-              </Button>
             }
-          />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={MapPin}
-            title={q ? t("tripsPage.notFound") : t("tripsPage.empty")}
-            description={
-              q
-                ? t("tripsPage.notFoundHint", { q, total: trips.length })
-                : t("tripsPage.emptyHint")
+            filters={
+              <FilterChipRow
+                label={t("tripsPage.filterGroup")}
+                options={filters.tripAvailability}
+                value={availability}
+                onChange={setAvailability}
+                showClear
+                onClear={() => {
+                  setAvailability("");
+                  setSearch("");
+                }}
+              />
             }
-            action={
-              q ? (
-                <Button variant="outline" type="button" onClick={() => setSearch("")}>
-                  {t("tripsPage.resetSearch")}
-                </Button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <>
-            {primaryTripId && <TripRouteMatches tripId={primaryTripId} />}
-            {q && (
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm text-muted-foreground">
-                  {t("tripsPage.found", { count: filtered.length })}
-                </span>
-                <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearch("")}>
-                  {q} ✕
-                </Badge>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filtered.map((trip) => (
-                <TravelCompanionCard
-                  key={trip.id}
-                  trip={trip}
-                  onJoin={(id) => joinMutation.mutate(id)}
-                  isJoined={participations.tripIds.includes(trip.id)}
+            stats={
+              <>
+                <StatPill
+                  value={
+                    q
+                      ? t("tripsPage.statsOf", { found: filtered.length, total: trips.length })
+                      : String(trips.length)
+                  }
+                  label={q ? t("tripsPage.statsFound") : t("tripsPage.statsAvailable")}
                 />
-              ))}
-            </div>
-          </>
-        )}
-        </CatalogPageLayout>
+                {q && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-2xl ait-glass border border-white/10",
+                      "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors",
+                    )}
+                  >
+                    {t("tripsPage.resetQuery", { q })}
+                  </button>
+                )}
+              </>
+            }
+          >
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <Card key={i} className="h-64 animate-pulse bg-muted" />
+                ))}
+              </div>
+            ) : isError ? (
+              <EmptyState
+                icon={AlertCircle}
+                title={t("tripsPage.loadError")}
+                description={error instanceof Error ? error.message : t("social.errors.connection")}
+                action={
+                  <Button variant="outline" onClick={() => refetch()}>
+                    {t("common.retry")}
+                  </Button>
+                }
+              />
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                icon={MapPin}
+                title={q ? t("tripsPage.notFound") : t("tripsPage.empty")}
+                description={
+                  q
+                    ? t("tripsPage.notFoundHint", { q, total: trips.length })
+                    : t("tripsPage.emptyHint")
+                }
+                action={
+                  q ? (
+                    <Button variant="outline" type="button" onClick={() => setSearch("")}>
+                      {t("tripsPage.resetSearch")}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : (
+              <>
+                {primaryTripId && <TripRouteMatches tripId={primaryTripId} />}
+                {q && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm text-muted-foreground">
+                      {t("tripsPage.found", { count: filtered.length })}
+                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="cursor-pointer"
+                      onClick={() => setSearch("")}
+                    >
+                      {q} ✕
+                    </Badge>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filtered.map((trip) => (
+                    <TravelCompanionCard
+                      key={trip.id}
+                      trip={trip}
+                      onJoin={(id) => joinMutation.mutate(id)}
+                      isJoined={participations.tripIds.includes(trip.id)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </CatalogPageLayout>
         </PageShell>
       </AppLayout>
     </>

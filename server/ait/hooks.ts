@@ -34,15 +34,30 @@ export async function grantForPostCreated(
   const hasMedia = Boolean(images?.length);
   let grant: AitGrantResult | null = null;
   if (format === "story") {
-    grant = await tryGrantSpend(userId, "post_story", { entityType: "post", entityId: postId ?? null });
+    grant = await tryGrantSpend(userId, "post_story", {
+      entityType: "post",
+      entityId: postId ?? null,
+    });
   } else if (format === "reel") {
-    grant = await tryGrantSpend(userId, "post_reel", { entityType: "post", entityId: postId ?? null });
+    grant = await tryGrantSpend(userId, "post_reel", {
+      entityType: "post",
+      entityId: postId ?? null,
+    });
   } else if (format === "journal") {
-    grant = await tryGrantSpend(userId, "post_journal", { entityType: "post", entityId: postId ?? null });
+    grant = await tryGrantSpend(userId, "post_journal", {
+      entityType: "post",
+      entityId: postId ?? null,
+    });
   } else if (hasMedia) {
-    grant = await tryGrantSpend(userId, "post_media", { entityType: "post", entityId: postId ?? null });
+    grant = await tryGrantSpend(userId, "post_media", {
+      entityType: "post",
+      entityId: postId ?? null,
+    });
   } else if (content.trim().length >= 40) {
-    grant = await tryGrantSpend(userId, "post_text", { entityType: "post", entityId: postId ?? null });
+    grant = await tryGrantSpend(userId, "post_text", {
+      entityType: "post",
+      entityId: postId ?? null,
+    });
   }
   if (grant) {
     const { rewardReferralMilestone } = await import("./referral-milestones");

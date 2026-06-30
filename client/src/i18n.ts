@@ -125,10 +125,12 @@ const resources = {
             findFriends: "Найти друзей",
             noUnread: "Нет непрочитанных",
             noGroupsInSearch: "В ваших группах ничего не найдено",
-            noGroupsInSearchDiscover: "В ваших группах ничего не найдено — смотрите результаты в поиске выше",
+            noGroupsInSearchDiscover:
+              "В ваших группах ничего не найдено — смотрите результаты в поиске выше",
             notInGroups: "Вы ещё не состоите в группах",
             noUnreadGroups: "Нет непрочитанных групп",
             noGroups: "Нет групп — создайте или найдите через поиск",
+            openGeneralChat: "Открыть общий чат",
             startTripChat: "Начните разговор о следующей поездке",
           },
           placeholder: {
@@ -399,6 +401,7 @@ const resources = {
             notInGroups: "You haven't joined any groups yet",
             noUnreadGroups: "No unread groups",
             noGroups: "No groups — create one or search",
+            openGeneralChat: "Open general chat",
             startTripChat: "Start talking about your next trip",
           },
           placeholder: {

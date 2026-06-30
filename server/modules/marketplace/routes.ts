@@ -55,28 +55,36 @@ export function registerMarketplaceRoutes(app: Express): void {
     }
   });
 
-  app.get("/api/marketplace/stripe/status", isAuthenticated, async (req: Request, res: Response) => {
-    const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
-    const status = await getStripeConnectStatus(userId);
-    res.json(status);
-  });
-
-  app.post("/api/marketplace/stripe/connect", isAuthenticated, async (req: Request, res: Response) => {
-    try {
+  app.get(
+    "/api/marketplace/stripe/status",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
       const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user?.email) return res.status(400).json({ message: "Email required" });
-      const appUrl = process.env.APP_URL?.trim() || `${req.protocol}://${req.get("host")}`;
-      const link = await createStripeConnectLink(
-        userId,
-        user.email,
-        `${appUrl}/creators?stripe=return`,
-        `${appUrl}/creators?stripe=refresh`,
-      );
-      res.json(link);
-    } catch (error) {
-      console.error("stripe/connect:", error);
-      res.status(500).json({ message: "Stripe connect failed" });
-    }
-  });
+      const status = await getStripeConnectStatus(userId);
+      res.json(status);
+    },
+  );
+
+  app.post(
+    "/api/marketplace/stripe/connect",
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
+        const user = await storage.getUser(userId);
+        if (!user?.email) return res.status(400).json({ message: "Email required" });
+        const appUrl = process.env.APP_URL?.trim() || `${req.protocol}://${req.get("host")}`;
+        const link = await createStripeConnectLink(
+          userId,
+          user.email,
+          `${appUrl}/creators?stripe=return`,
+          `${appUrl}/creators?stripe=refresh`,
+        );
+        res.json(link);
+      } catch (error) {
+        console.error("stripe/connect:", error);
+        res.status(500).json({ message: "Stripe connect failed" });
+      }
+    },
+  );
 }

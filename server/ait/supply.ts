@@ -11,9 +11,7 @@ function todayUtc(): string {
 export function getPlatformAgeMonths(): number {
   const launch = new Date(AIT_PLATFORM_LAUNCH_DATE);
   const now = new Date();
-  return (
-    (now.getFullYear() - launch.getFullYear()) * 12 + (now.getMonth() - launch.getMonth())
-  );
+  return (now.getFullYear() - launch.getFullYear()) * 12 + (now.getMonth() - launch.getMonth());
 }
 
 export async function getTodaySupplyState(): Promise<{ minted: number; cap: number }> {

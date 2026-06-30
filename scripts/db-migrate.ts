@@ -36,7 +36,10 @@ async function runStatement(url: string, sql: string, retries = 3): Promise<void
     } catch (err) {
       lastError = err;
       const code = (err as NodeJS.ErrnoException).code;
-      if (attempt < retries && (code === "ECONNRESET" || code === "ETIMEDOUT" || code === "ECONNREFUSED")) {
+      if (
+        attempt < retries &&
+        (code === "ECONNRESET" || code === "ETIMEDOUT" || code === "ECONNREFUSED")
+      ) {
         console.warn(`[db:migrate] ${code}, retry ${attempt}/${retries - 1}…`);
         await new Promise((r) => setTimeout(r, 1500 * attempt));
         continue;
@@ -62,7 +65,9 @@ async function ensureMigrationsTable(url: string): Promise<void> {
 
 async function appliedHashes(url: string): Promise<Set<string>> {
   return withClient(url, async (client) => {
-    const res = await client.query<{ hash: string }>(`SELECT hash FROM drizzle.__drizzle_migrations`);
+    const res = await client.query<{ hash: string }>(
+      `SELECT hash FROM drizzle.__drizzle_migrations`,
+    );
     return new Set(res.rows.map((r) => r.hash));
   });
 }
@@ -88,7 +93,9 @@ async function main() {
       if (done.has(entry.hash)) continue;
 
       const statements = entry.sql.map((s) => s.trim()).filter(Boolean);
-      console.log(`[db:migrate] migration ${entry.hash.slice(0, 12)}… (${statements.length} statements)`);
+      console.log(
+        `[db:migrate] migration ${entry.hash.slice(0, 12)}… (${statements.length} statements)`,
+      );
 
       for (let i = 0; i < statements.length; i++) {
         await runStatement(url, statements[i]!);
@@ -98,10 +105,10 @@ async function main() {
       }
 
       await withClient(url, (client) =>
-        client.query(`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)`, [
-          entry.hash,
-          entry.folderMillis,
-        ]),
+        client.query(
+          `INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)`,
+          [entry.hash, entry.folderMillis],
+        ),
       );
       applied++;
       console.log(`[db:migrate] ✓ ${entry.hash.slice(0, 12)}…`);

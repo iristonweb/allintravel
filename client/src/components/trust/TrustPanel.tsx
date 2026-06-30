@@ -92,7 +92,9 @@ export function TrustPanel({ userId }: { userId: string }) {
         {data.vouchCount} {t("trust.vouches")}
       </span>
       {data.isVerified && (
-        <Badge className="rounded-full bg-emerald-600/20 text-emerald-200">{t("trust.verified")}</Badge>
+        <Badge className="rounded-full bg-emerald-600/20 text-emerald-200">
+          {t("trust.verified")}
+        </Badge>
       )}
       <VouchButton userId={userId} />
     </div>

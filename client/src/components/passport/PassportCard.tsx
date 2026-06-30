@@ -82,7 +82,13 @@ export default function PassportCard({ username, compact }: PassportCardProps) {
             <p className="text-sm text-muted-foreground mt-1">{t("passport.subtitle")}</p>
           )}
         </div>
-        <Button type="button" variant="outline" size="sm" className="rounded-xl gap-2" onClick={handleShare}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-xl gap-2"
+          onClick={handleShare}
+        >
           <Share2 className="h-4 w-4" />
           {t("passport.shareCard")}
         </Button>
@@ -94,7 +100,10 @@ export default function PassportCard({ username, compact }: PassportCardProps) {
           { icon: MapPin, value: data.citiesCount, label: t("passport.cities") },
           { icon: Plane, value: data.tripsCount, label: t("passport.trips") },
         ].map(({ icon: Icon, value, label }) => (
-          <div key={label} className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center">
+          <div
+            key={label}
+            className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center"
+          >
             <Icon className="h-4 w-4 mx-auto text-[#ff7a18] mb-1" />
             <p className="text-2xl font-bold text-white">{value}</p>
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -105,7 +114,11 @@ export default function PassportCard({ username, compact }: PassportCardProps) {
       {data.achievements.length > 0 && (
         <div className="relative flex flex-wrap gap-2">
           {data.achievements.map((id) => (
-            <Badge key={id} variant="secondary" className="rounded-full gap-1 bg-[#a78bfa]/20 text-[#e9d5ff]">
+            <Badge
+              key={id}
+              variant="secondary"
+              className="rounded-full gap-1 bg-[#a78bfa]/20 text-[#e9d5ff]"
+            >
               <Trophy className="h-3 w-3" />
               {t(ACHIEVEMENT_LABELS[id] ?? "passport.explorer")}
             </Badge>

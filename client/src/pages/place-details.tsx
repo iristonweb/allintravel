@@ -356,9 +356,7 @@ export default function PlaceDetails() {
                 <AddPlaceToTripButton placeId={place.id} placeName={place.name} />
               ) : (
                 <Button variant="premium" className="gap-2 rounded-2xl" asChild>
-                  <Link
-                    href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
-                  >
+                  <Link href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}>
                     <LogIn className="h-4 w-4" />
                     Войти и добавить в поездку
                   </Link>
@@ -370,52 +368,49 @@ export default function PlaceDetails() {
 
         {place.type === "hotel" && (
           <div className="mb-6">
-            <AffiliateHotelWidget
-              placeName={place.name}
-              city={place.address?.split(",")[0]}
-            />
+            <AffiliateHotelWidget placeName={place.name} city={place.address?.split(",")[0]} />
           </div>
         )}
       </div>
 
       {/* Add Review Section */}
       {isAuthenticated ? (
-      <GlassCard className="mb-8 p-6">
-        <h3 className="text-lg font-semibold mb-4">Оставить отзыв</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Оценка</label>
-            <Select value={reviewRating} onValueChange={setReviewRating}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="4">4</SelectItem>
-                <SelectItem value="3">3</SelectItem>
-                <SelectItem value="2">2</SelectItem>
-                <SelectItem value="1">1</SelectItem>
-              </SelectContent>
-            </Select>
+        <GlassCard className="mb-8 p-6">
+          <h3 className="text-lg font-semibold mb-4">Оставить отзыв</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Оценка</label>
+              <Select value={reviewRating} onValueChange={setReviewRating}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="4">4</SelectItem>
+                  <SelectItem value="3">3</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="1">1</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Текст отзыва</label>
+              <Textarea
+                placeholder="Поделитесь впечатлениями о месте…"
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            <Button
+              onClick={handleSubmitReview}
+              disabled={createReviewMutation.isPending}
+              variant="premium"
+            >
+              {createReviewMutation.isPending ? "Публикуем…" : "Опубликовать"}
+            </Button>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Текст отзыва</label>
-            <Textarea
-              placeholder="Поделитесь впечатлениями о месте…"
-              value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
-              className="min-h-[100px]"
-            />
-          </div>
-          <Button
-            onClick={handleSubmitReview}
-            disabled={createReviewMutation.isPending}
-            variant="premium"
-          >
-            {createReviewMutation.isPending ? "Публикуем…" : "Опубликовать"}
-          </Button>
-        </div>
-      </GlassCard>
+        </GlassCard>
       ) : (
         <GlassCard className="mb-8 p-6 text-center">
           <p className="text-muted-foreground mb-3">Войдите, чтобы оставить отзыв.</p>

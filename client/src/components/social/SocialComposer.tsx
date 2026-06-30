@@ -59,8 +59,7 @@ export default function SocialComposer({
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const postContentRef = useRef<HTMLTextAreaElement>(null);
 
-  const setDraft = (patch: Partial<SocialNewPostDraft>) =>
-    onDraftChange({ ...draft, ...patch });
+  const setDraft = (patch: Partial<SocialNewPostDraft>) => onDraftChange({ ...draft, ...patch });
 
   return (
     <GlassCard className="mb-6 mt-4 p-4">

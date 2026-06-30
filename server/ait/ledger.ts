@@ -79,15 +79,7 @@ export async function applyBalanceDeltaLedger(
 
   const db = getDb();
   if (!db) {
-    return store.applyBalanceDeltaRaw(
-      userId,
-      wallet,
-      delta,
-      reason,
-      title,
-      entityType,
-      entityId,
-    );
+    return store.applyBalanceDeltaRaw(userId, wallet, delta, reason, title, entityType, entityId);
   }
 
   if (!opts?.skipIdempotency) {
@@ -178,7 +170,8 @@ export async function applyBalanceDeltaLedger(
                lifetime_creator_earned, streak_days, last_active_date::text, profile_bonus_claimed
         FROM ait_balances WHERE user_id = ${userId}
       `);
-      const balRow = (updated as unknown as { rows?: Record<string, unknown>[] }).rows?.[0]!;
+      const balRow = (updated as unknown as { rows?: Record<string, unknown>[] }).rows?.[0];
+      if (!balRow) return null;
 
       const transaction: AitTransactionRow = {
         id: txId,

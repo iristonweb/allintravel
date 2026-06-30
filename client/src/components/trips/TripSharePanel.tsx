@@ -43,7 +43,8 @@ export default function TripSharePanel({
   });
 
   const inviteMutation = useMutation({
-    mutationFn: () => apiRequestJson<{ inviteUrl: string }>("POST", `/api/trips/${tripId}/invite-link`),
+    mutationFn: () =>
+      apiRequestJson<{ inviteUrl: string }>("POST", `/api/trips/${tripId}/invite-link`),
     onSuccess: (data) => {
       void navigator.clipboard.writeText(data.inviteUrl);
       toast({

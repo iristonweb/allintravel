@@ -1,9 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  AIT_BOOST_BASE_COST,
-  AIT_BOOST_MAX_PER_DAY,
-  AIT_BURN_RATES,
-} from "@shared/ait";
+import { AIT_BOOST_BASE_COST, AIT_BOOST_MAX_PER_DAY, AIT_BURN_RATES } from "@shared/ait";
 import { getDb } from "../../db";
 import { storage } from "../../storage";
 import * as store from "../store";
@@ -27,9 +23,7 @@ function genCampaignId(): string {
   return `boost-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export async function canLaunchBoost(
-  userId: string,
-): Promise<{ ok: boolean; message?: string }> {
+export async function canLaunchBoost(userId: string): Promise<{ ok: boolean; message?: string }> {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
   if (!db) {

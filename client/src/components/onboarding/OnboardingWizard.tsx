@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Compass, Calendar, Wallet } from "lucide-react";
@@ -18,49 +18,58 @@ import { apiRequestJson } from "@/lib/queryClient";
 import { markOnboardingDone, saveOnboardingPrefs } from "@/lib/onboarding";
 import { saveSearchIntent } from "@/lib/searchIntent";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 type OnboardingWizardProps = {
   open: boolean;
   onClose: () => void;
 };
 
-const STYLES = [
-  { id: "budget" as const, label: "Бюджетно", icon: Wallet },
-  { id: "balanced" as const, label: "Баланс", icon: Compass },
-  { id: "luxury" as const, label: "Люкс", icon: Compass },
-  { id: "adventure" as const, label: "Приключения", icon: Compass },
-];
+type TravelStyleId = "budget" | "balanced" | "luxury" | "adventure";
 
 export default function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [destination, setDestination] = useState("");
   const [geo, setGeo] = useState<GeoAutocompleteItem | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [travelStyle, setTravelStyle] = useState<(typeof STYLES)[number]["id"]>("balanced");
+  const [travelStyle, setTravelStyle] = useState<TravelStyleId>("balanced");
   const [, navigate] = useLocation();
   const { toast } = useToast();
+
+  const styles = useMemo(
+    () =>
+      [
+        { id: "budget" as const, label: t("onboarding.styles.budget"), icon: Wallet },
+        { id: "balanced" as const, label: t("onboarding.styles.balanced"), icon: Compass },
+        { id: "luxury" as const, label: t("onboarding.styles.luxury"), icon: Compass },
+        { id: "adventure" as const, label: t("onboarding.styles.adventure"), icon: Compass },
+      ] satisfies { id: TravelStyleId; label: string; icon: typeof Wallet }[],
+    [t],
+  );
 
   const createTripMutation = useMutation({
     mutationFn: async (): Promise<{ id: string }> => {
       const dest = geo?.label || destination;
-      const title = `Поездка в ${dest.split(",")[0]?.trim() || dest}`;
+      const destShort = dest.split(",")[0]?.trim() || dest;
+      const title = t("onboarding.tripTitle", { destination: destShort });
       const tags =
         travelStyle === "budget"
-          ? ["бюджет"]
+          ? [t("onboarding.tags.budget")]
           : travelStyle === "luxury"
-            ? ["люкс"]
+            ? [t("onboarding.tags.luxury")]
             : travelStyle === "adventure"
-              ? ["приключения"]
+              ? [t("onboarding.tags.adventure")]
               : [];
       return apiRequestJson<{ id: string }>("POST", "/api/trips", {
         title,
         destination: dest,
         startDate: startDate || new Date().toISOString().slice(0, 10),
-        endDate:
-          endDate ||
-          new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-        description: `Стиль: ${travelStyle}`,
+        endDate: endDate || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+        description: t("onboarding.styleDescription", {
+          style: t(`onboarding.styles.${travelStyle}`),
+        }),
         tags,
         maxParticipants: 5,
       });
@@ -74,14 +83,20 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
         travelStyle,
       });
       saveSearchIntent(`/places?search=${encodeURIComponent(geo?.label || destination)}`);
-      toast({ title: "Поездка создана", description: "Добро пожаловать в All In Travel!" });
+      toast({
+        title: t("onboarding.successTitle"),
+        description: t("onboarding.successDescription"),
+      });
       onClose();
       navigate(`/trips/${trip.id}`);
     },
     onError: () => {
       markOnboardingDone();
       onClose();
-      toast({ title: "Поездка не создана", description: "Можно создать позже в разделе Поездки." });
+      toast({
+        title: t("onboarding.failTitle"),
+        description: t("onboarding.failDescription"),
+      });
     },
   });
 
@@ -96,10 +111,8 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="ait-glass border-white/10 max-w-lg">
         <DialogHeader>
-          <DialogTitle>Куда отправимся?</DialogTitle>
-          <DialogDescription>
-            Три шага — и у вас будет персональная поездка на главной.
-          </DialogDescription>
+          <DialogTitle>{t("onboarding.title")}</DialogTitle>
+          <DialogDescription>{t("onboarding.description")}</DialogDescription>
         </DialogHeader>
 
         {step === 0 && (
@@ -111,7 +124,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
                 setGeo(item);
                 setDestination(item.label);
               }}
-              placeholder="Город или страна"
+              placeholder={t("onboarding.destinationPlaceholder")}
             />
           </div>
         )}
@@ -120,13 +133,13 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                <Calendar className="h-3 w-3" /> Начало
+                <Calendar className="h-3 w-3" /> {t("onboarding.startDate")}
               </label>
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                <Calendar className="h-3 w-3" /> Конец
+                <Calendar className="h-3 w-3" /> {t("onboarding.endDate")}
               </label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
@@ -135,7 +148,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
 
         {step === 2 && (
           <div className="grid grid-cols-2 gap-2">
-            {STYLES.map((s) => (
+            {styles.map((s) => (
               <Button
                 key={s.id}
                 type="button"
@@ -156,11 +169,16 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
             disabled={step === 0}
             onClick={() => setStep((s) => s - 1)}
           >
-            Назад
+            {t("onboarding.back")}
           </Button>
           {step < 2 ? (
-            <Button type="button" variant="premium" disabled={!canNext} onClick={() => setStep((s) => s + 1)}>
-              Далее
+            <Button
+              type="button"
+              variant="premium"
+              disabled={!canNext}
+              onClick={() => setStep((s) => s + 1)}
+            >
+              {t("onboarding.next")}
             </Button>
           ) : (
             <Button
@@ -169,7 +187,7 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
               disabled={createTripMutation.isPending}
               onClick={() => createTripMutation.mutate()}
             >
-              {createTripMutation.isPending ? "Создаём…" : "Создать поездку"}
+              {createTripMutation.isPending ? t("onboarding.creating") : t("onboarding.createTrip")}
             </Button>
           )}
         </div>

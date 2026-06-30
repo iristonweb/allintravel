@@ -412,16 +412,7 @@ export async function applyBalanceDelta(
   opts?: import("./ledger").LedgerApplyOpts,
 ): Promise<{ balance: AitBalanceRow; transaction: AitTransactionRow } | null> {
   const { applyBalanceDeltaLedger } = await import("./ledger");
-  return applyBalanceDeltaLedger(
-    userId,
-    wallet,
-    delta,
-    reason,
-    title,
-    entityType,
-    entityId,
-    opts,
-  );
+  return applyBalanceDeltaLedger(userId, wallet, delta, reason, title, entityType, entityId, opts);
 }
 
 /** Low-level balance mutation (no ledger guards). */

@@ -20,11 +20,7 @@ function computeScore(row: TrustProfile): number {
     100,
     Math.max(
       0,
-      50 +
-        row.tripCount * 3 +
-        row.reviewCount * 2 +
-        row.vouchCount * 5 +
-        (row.isVerified ? 10 : 0),
+      50 + row.tripCount * 3 + row.reviewCount * 2 + row.vouchCount * 5 + (row.isVerified ? 10 : 0),
     ),
   );
 }
@@ -101,10 +97,7 @@ export async function recalculateTrust(storage: IStorage, userId: string): Promi
   return updated;
 }
 
-export async function getTrustProfile(
-  storage: IStorage,
-  userId: string,
-): Promise<TrustProfile> {
+export async function getTrustProfile(storage: IStorage, userId: string): Promise<TrustProfile> {
   await recalculateTrust(storage, userId);
   return ensureTrustRow(userId);
 }

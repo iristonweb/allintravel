@@ -83,7 +83,6 @@ export function isNavActive(location: string, href: string): boolean {
   if (href === "/friends")
     return location === "/friends" || location.startsWith("/profile/friends");
   if (href === "/chat") return location.startsWith("/chat") || location.startsWith("/messages");
-  if (href === "/social-feed")
-    return location === "/social-feed" || location.startsWith("/post/");
+  if (href === "/social-feed") return location === "/social-feed" || location.startsWith("/post/");
   return location === href || location.startsWith(`${href}/`);
 }

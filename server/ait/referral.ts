@@ -142,7 +142,7 @@ async function insertReferralLink(referredUserId: string, referrerId: string): P
 
 async function completeReferralRewards(
   referredUserId: string,
-  referrerId: string,
+  _referrerId: string,
 ): Promise<{ ok: boolean; message?: string; grant?: AitGrantResult }> {
   const { rewardReferralMilestone } = await import("./referral-milestones");
   await rewardReferralMilestone(referredUserId, "signup");

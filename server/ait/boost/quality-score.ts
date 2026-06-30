@@ -1,8 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  BOOST_QS_REJECT_THRESHOLD,
-  boostPriceMultiplier,
-} from "@shared/ait";
+import { BOOST_QS_REJECT_THRESHOLD, boostPriceMultiplier } from "@shared/ait";
 import { getDb } from "../../db";
 import { storage } from "../../storage";
 
@@ -66,9 +63,7 @@ export async function computeQualityScore(
     }
   }
 
-  const score = Math.round(
-    engagement * 0.4 + relevance * 0.3 + trust * 0.2 + boostHistory * 0.1,
-  );
+  const score = Math.round(engagement * 0.4 + relevance * 0.3 + trust * 0.2 + boostHistory * 0.1);
 
   return {
     score: Math.min(100, Math.max(0, score)),
@@ -83,9 +78,10 @@ export function isBoostAllowed(qs: number): boolean {
   return qs >= BOOST_QS_REJECT_THRESHOLD;
 }
 
-export function computeBoostCost(baseCost: number, qs: number, experienceMultiplier: number): number {
-  return Math.max(
-    1,
-    Math.floor(baseCost * boostPriceMultiplier(qs) * experienceMultiplier),
-  );
+export function computeBoostCost(
+  baseCost: number,
+  qs: number,
+  experienceMultiplier: number,
+): number {
+  return Math.max(1, Math.floor(baseCost * boostPriceMultiplier(qs) * experienceMultiplier));
 }

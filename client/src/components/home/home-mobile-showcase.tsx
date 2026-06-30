@@ -37,7 +37,7 @@ export default function HomeMobileShowcase() {
                   {t("home.mobileShowcase.searchPlaceholder")}
                 </div>
                 <div className="flex gap-2">
-                  {[DEST_BALI_SRC, DEST_ICELAND_SRC].map((src, i) => (
+                  {[DEST_BALI_SRC, DEST_ICELAND_SRC].map((src) => (
                     <div
                       key={src}
                       className="flex-1 h-16 rounded-xl bg-cover bg-center border border-white/10"

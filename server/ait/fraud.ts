@@ -16,10 +16,7 @@ function bucketMinute(): string {
   return d.toISOString();
 }
 
-async function recordAndCountAction(
-  userId: string,
-  reason: AitReasonCode,
-): Promise<number> {
+async function recordAndCountAction(userId: string, reason: AitReasonCode): Promise<number> {
   const db = getDb();
   const bucket = bucketMinute();
 
@@ -41,7 +38,9 @@ async function recordAndCountAction(
         AND reason_code = ${reason}
         AND bucket_minute > now() - interval '1 minute'
     `);
-    return Number((windowRes as unknown as { rows?: { total: number }[] }).rows?.[0]?.total ?? minuteCount);
+    return Number(
+      (windowRes as unknown as { rows?: { total: number }[] }).rows?.[0]?.total ?? minuteCount,
+    );
   }
 
   const key = `${userId}:${reason}`;

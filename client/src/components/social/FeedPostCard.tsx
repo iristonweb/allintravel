@@ -55,8 +55,7 @@ export default function FeedPostCard({
   const { t } = useTranslation();
   const commentInputRef = useRef<HTMLInputElement>(null);
   const authorName = post.author
-    ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() ||
-      t("social.traveler")
+    ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || t("social.traveler")
     : t("social.traveler");
 
   return (

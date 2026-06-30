@@ -1,8 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  AIT_REFERRAL_MILESTONES,
-  type ReferralMilestoneId,
-} from "@shared/ait";
+import { AIT_REFERRAL_MILESTONES, type ReferralMilestoneId } from "@shared/ait";
 import { getDb } from "../db";
 import { tryGrantSpend } from "./service";
 import { getReferrerIdForUser } from "./referral";
@@ -23,7 +20,10 @@ export async function ensureReferralMilestoneSchema(): Promise<void> {
   `);
 }
 
-async function isMilestoneRewarded(referredId: string, milestone: ReferralMilestoneId): Promise<boolean> {
+async function isMilestoneRewarded(
+  referredId: string,
+  milestone: ReferralMilestoneId,
+): Promise<boolean> {
   const db = getDb();
   if (!db) return memMilestones.has(`${referredId}:${milestone}`);
   const res = await db.execute(sql`

@@ -55,56 +55,55 @@ export function DestinationPage() {
   return (
     <Layout contentClassName="py-8">
       <PageShell title={data.name} description={t("destinations.pageDescription")}>
+        {data.places.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <MapPin className="h-4 w-4" /> {t("destinations.topPlaces")}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {data.places.map((p) => (
+                <PlaceCard key={p.id} place={p} />
+              ))}
+            </div>
+          </section>
+        )}
 
-      {data.places.length > 0 && (
-        <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <MapPin className="h-4 w-4" /> {t("destinations.topPlaces")}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data.places.map((p) => (
-              <PlaceCard key={p.id} place={p} />
-            ))}
-          </div>
-        </section>
-      )}
+        {data.trips.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Route className="h-4 w-4" /> {t("destinations.publicRoutes")}
+            </h2>
+            <div className="grid gap-3">
+              {data.trips.map((trip) => (
+                <GlassCard key={trip.id} className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{trip.title}</p>
+                    <p className="text-sm text-muted-foreground">{trip.destination}</p>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/trips/${trip.id}/public`}>{t("common.open")}</Link>
+                  </Button>
+                </GlassCard>
+              ))}
+            </div>
+          </section>
+        )}
 
-      {data.trips.length > 0 && (
-        <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Route className="h-4 w-4" /> {t("destinations.publicRoutes")}
-          </h2>
-          <div className="grid gap-3">
-            {data.trips.map((trip) => (
-              <GlassCard key={trip.id} className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{trip.title}</p>
-                  <p className="text-sm text-muted-foreground">{trip.destination}</p>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/trips/${trip.id}/public`}>{t("common.open")}</Link>
-                </Button>
-              </GlassCard>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {data.posts.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold mb-4">{t("destinations.stories")}</h2>
-          <div className="grid gap-3">
-            {data.posts.map((post) => (
-              <GlassCard key={post.id} className="p-4">
-                <Link href={`/post/${post.id}`} className="font-medium hover:text-primary">
-                  {post.title || t("destinations.untitled")}
-                </Link>
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.content}</p>
-              </GlassCard>
-            ))}
-          </div>
-        </section>
-      )}
+        {data.posts.length > 0 && (
+          <section>
+            <h2 className="text-lg font-semibold mb-4">{t("destinations.stories")}</h2>
+            <div className="grid gap-3">
+              {data.posts.map((post) => (
+                <GlassCard key={post.id} className="p-4">
+                  <Link href={`/post/${post.id}`} className="font-medium hover:text-primary">
+                    {post.title || t("destinations.untitled")}
+                  </Link>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.content}</p>
+                </GlassCard>
+              ))}
+            </div>
+          </section>
+        )}
       </PageShell>
     </Layout>
   );

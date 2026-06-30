@@ -78,12 +78,7 @@ export function Landing() {
               </Link>
             </Button>
           </div>
-          <Button
-            variant="premium"
-            size="lg"
-            className="px-10"
-            onClick={() => navigate("/login")}
-          >
+          <Button variant="premium" size="lg" className="px-10" onClick={() => navigate("/login")}>
             {t("landing.cta")}
             <ArrowRight className="h-5 w-5" />
           </Button>

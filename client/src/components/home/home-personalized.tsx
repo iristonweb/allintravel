@@ -29,7 +29,8 @@ export default function HomePersonalized() {
 
   const description = onboardingPrefs?.destination
     ? t("home.personalized.forDestination", {
-        destination: onboardingPrefs.destination.split(",")[0]?.trim() ?? onboardingPrefs.destination,
+        destination:
+          onboardingPrefs.destination.split(",")[0]?.trim() ?? onboardingPrefs.destination,
       })
     : recentlyViewedCount > 0
       ? t("home.personalized.fromHistory")

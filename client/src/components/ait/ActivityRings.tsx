@@ -1,5 +1,6 @@
-import { RING_LABELS, type ActivityRingId } from "@shared/ait";
+import { type ActivityRingId } from "@shared/ait";
 import { cn } from "@/lib/utils";
+import { useAitRingLabels } from "@/hooks/useAitRingLabels";
 
 const RING_ORDER: ActivityRingId[] = ["voice", "story", "echo", "pulse"];
 
@@ -16,6 +17,8 @@ type ActivityRingsProps = {
 };
 
 export default function ActivityRings({ rings, compact }: ActivityRingsProps) {
+  const ringLabels = useAitRingLabels();
+
   return (
     <div className={cn("grid gap-3", compact ? "grid-cols-4" : "grid-cols-2 sm:grid-cols-4")}>
       {RING_ORDER.map((id) => {
@@ -49,7 +52,7 @@ export default function ActivityRings({ rings, compact }: ActivityRingsProps) {
               />
             </svg>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground text-center">
-              {RING_LABELS[id]}
+              {ringLabels[id]}
             </span>
             {!compact && (
               <span className="text-xs font-medium text-foreground/80">{r.count}/5</span>

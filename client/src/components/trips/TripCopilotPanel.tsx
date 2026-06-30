@@ -171,7 +171,10 @@ export default function TripCopilotPanel({ tripId, onApplied }: TripCopilotPanel
                     <AvatarFallback>{(m.displayName ?? "?")[0]}</AvatarFallback>
                   </Avatar>
                   {m.username ? (
-                    <Link href={`/u/${m.username}`} className="text-sm font-medium truncate hover:underline">
+                    <Link
+                      href={`/u/${m.username}`}
+                      className="text-sm font-medium truncate hover:underline"
+                    >
                       @{m.username}
                     </Link>
                   ) : (

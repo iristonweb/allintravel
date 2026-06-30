@@ -1,22 +1,19 @@
 import { Link } from "wouter";
-import { Hash, Loader2, Lock, MessageCircle, Search } from "lucide-react";
+import { Hash, Lock, MessageCircle, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AvatarWithPresence } from "@/components/PresenceDot";
 import EmptyState from "@/components/empty-state";
 import CreateRoomDialog from "@/components/chat/CreateRoomDialog";
 import GroupSearchPreview from "@/components/chat/GroupSearchPreview";
 import MessageContent from "@/components/chat/MessageContent";
 import RoomAvatar from "@/components/chat/RoomAvatar";
-import type {
-  ChatTab,
-  Conversation,
-  DiscoverRoom,
-  RoomListItem,
-} from "@/lib/chat-page-types";
+import type { ChatTab, Conversation, DiscoverRoom, RoomListItem } from "@/lib/chat-page-types";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +49,27 @@ type ChatSidebarPanelProps = {
   onOpenPersonalChat: (userId: string) => void;
   onSelectRoom: (slug: string) => void;
 };
+
+function ChatListSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-1.5 px-1 py-2">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
+          <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
+          <div className="flex-1 space-y-1.5 min-w-0">
+            <Skeleton className="h-3.5 w-2/3" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function groupFallbackSubtitle(room: RoomListItem, t: TFunction) {
+  if (room.description?.trim()) return room.description.trim();
+  return t("chat.discover.memberCount", { count: room.memberCount });
+}
 
 export default function ChatSidebarPanel({
   chatTab,
@@ -143,7 +161,7 @@ export default function ChatSidebarPanel({
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="p-2 space-y-0.5">
           {(chatTab === "personal" || chatTab === "unread") && (
             <>
               {chatTab === "unread" && visibleConversations.length > 0 && (
@@ -152,15 +170,9 @@ export default function ChatSidebarPanel({
                 </p>
               )}
               {chatTab === "unread" && conversationsLoading && roomsLoading ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                  {t("chat.page.loading.default")}
-                </div>
+                <ChatListSkeleton />
               ) : conversationsLoading ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
-                  {t("chat.page.loading.dialogs")}
-                </div>
+                <ChatListSkeleton count={3} />
               ) : conversationsError ? (
                 <div className="py-4 text-center text-sm space-y-2">
                   <p className="text-muted-foreground">{t("chat.page.errors.dialogs")}</p>
@@ -178,14 +190,14 @@ export default function ChatSidebarPanel({
                       "ait-chat-room-item w-full text-left",
                       urlWithUserId === conversation.user.id
                         ? "ait-chat-room-item--active"
-                        : "text-slate-400 hover:text-slate-200",
+                        : "text-slate-300 hover:text-slate-100",
                     )}
                   >
                     <AvatarWithPresence
                       src={conversation.user.profileImageUrl}
                       fallback={getUserInitial(conversation.user)}
                       isOnline={conversation.user.isOnline}
-                      className="h-14 w-14"
+                      className="h-12 w-12 shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium block truncate">
@@ -217,11 +229,10 @@ export default function ChatSidebarPanel({
 
           {chatTab !== "personal" && (
             <>
-              {chatTab === "unread" && conversationsLoading && roomsLoading ? null : roomsLoading ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                  {t("chat.page.loading.groups")}
-                </div>
+              {chatTab === "unread" &&
+              conversationsLoading &&
+              roomsLoading ? null : roomsLoading ? (
+                <ChatListSkeleton />
               ) : roomsError ? (
                 <div className="p-6 text-center text-sm space-y-2">
                   <p className="text-muted-foreground">{t("chat.page.errors.groups")}</p>
@@ -245,6 +256,18 @@ export default function ChatSidebarPanel({
                             ? t("chat.page.empty.noUnreadGroups")
                             : t("chat.page.empty.noGroups")
                     }
+                    action={
+                      chatTab === "all" && !roomQuery.trim() ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => onSelectRoom("general")}
+                        >
+                          {t("chat.page.empty.openGeneralChat")}
+                        </Button>
+                      ) : undefined
+                    }
                   />
                 )
               ) : (
@@ -255,22 +278,39 @@ export default function ChatSidebarPanel({
                     onClick={() => onSelectRoom(room.slug)}
                     className={cn(
                       "ait-chat-room-item w-full text-left",
-                      activeRoom === room.slug ? "ait-chat-room-item--active" : "text-slate-400",
+                      activeRoom === room.slug
+                        ? "ait-chat-room-item--active"
+                        : "text-slate-300 hover:text-slate-100",
                     )}
                   >
-                    <RoomAvatar title={room.title} avatarUrl={room.avatarUrl} className="h-14 w-14" />
-                    <span className="text-sm font-medium flex-1 truncate">{room.title}</span>
-                    {(room.unreadCount ?? 0) > 0 && (
-                      <Badge className="shrink-0 bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
-                        {room.unreadCount > 99 ? "99+" : room.unreadCount}
-                      </Badge>
-                    )}
-                    {room.visibility === "private" && <Lock className="h-3 w-3 shrink-0 opacity-60" />}
-                    {room.isLegacy && (
-                      <Badge variant="outline" className="text-[9px] px-1 py-0">
-                        {t("chat.legacy.badge")}
-                      </Badge>
-                    )}
+                    <RoomAvatar
+                      title={room.title}
+                      avatarUrl={room.avatarUrl}
+                      className="h-12 w-12 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium block truncate">{room.title}</span>
+                      <span className="text-[11px] text-muted-foreground block truncate">
+                        {room.lastMessagePreview ? (
+                          <MessageContent content={room.lastMessagePreview} compact />
+                        ) : (
+                          groupFallbackSubtitle(room, t)
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {(room.unreadCount ?? 0) > 0 && (
+                        <Badge className="bg-ait-orange border-0 text-[10px] min-w-[1.25rem] justify-center">
+                          {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                        </Badge>
+                      )}
+                      {room.visibility === "private" && <Lock className="h-3 w-3 opacity-60" />}
+                      {room.isLegacy && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0">
+                          {t("chat.legacy.badge")}
+                        </Badge>
+                      )}
+                    </div>
                   </button>
                 ))
               )}

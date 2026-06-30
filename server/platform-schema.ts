@@ -10,7 +10,9 @@ export async function ensurePlatformSchema(): Promise<void> {
     ALTER TABLE trips ADD COLUMN IF NOT EXISTS forked_from_trip_id uuid REFERENCES trips(id) ON DELETE SET NULL
   `);
   await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS price_cents integer`);
-  await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_for_sale boolean DEFAULT false`);
+  await db.execute(
+    sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_for_sale boolean DEFAULT false`,
+  );
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS user_passport_stamps (

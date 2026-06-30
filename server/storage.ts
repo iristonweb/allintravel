@@ -168,7 +168,12 @@ export interface IStorage {
   isFollowing(followerId: string, followingId: string): Promise<boolean>;
 
   sendPrivateMessage(message: InsertPrivateMessage): Promise<PrivateMessage>;
-  getPrivateMessages(userId1: string, userId2: string, limit?: number, since?: string): Promise<PrivateMessage[]>;
+  getPrivateMessages(
+    userId1: string,
+    userId2: string,
+    limit?: number,
+    since?: string,
+  ): Promise<PrivateMessage[]>;
   getConversations(
     userId: string,
   ): Promise<{ user: User; lastMessage: PrivateMessage; unreadCount: number }[]>;
@@ -217,9 +222,14 @@ export interface IStorage {
   ensureLegacyChatRooms(): Promise<void>;
   getChatRoomBySlug(slug: string): Promise<ChatRoom | undefined>;
   getChatRoom(id: string): Promise<ChatRoom | undefined>;
-  listChatRoomsForUser(
-    userId: string,
-  ): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]>;
+  listChatRoomsForUser(userId: string): Promise<
+    (ChatRoom & {
+      memberCount: number;
+      myRole: string | null;
+      unreadCount: number;
+      lastMessagePreview: string | null;
+    })[]
+  >;
   discoverChatRooms(
     userId: string,
     query: string,
@@ -1667,6 +1677,12 @@ export class MemStorage implements IStorage {
           if (!afterTime) return true;
           return m.createdAt && new Date(m.createdAt) > afterTime;
         }).length;
+        const roomMessages = Array.from(this.chatMessages.values()).filter(
+          (m) => m.chatRoom === room.slug,
+        );
+        const lastMessage = roomMessages.sort(
+          (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+        )[0];
         return {
           ...room,
           memberCount: Array.from(this.memChatMembers.values()).filter(
@@ -1677,6 +1693,7 @@ export class MemStorage implements IStorage {
               (m) => m.roomId === room.id && m.userId === userId,
             )?.role ?? null,
           unreadCount,
+          lastMessagePreview: lastMessage?.content ?? null,
         };
       });
   }

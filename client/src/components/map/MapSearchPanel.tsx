@@ -54,9 +54,7 @@ export default function MapSearchPanel({
               </Button>
             ))}
           </div>
-          {showPlacesHint && (
-            <p className="text-xs text-slate-400 px-1">{t("mapPage.osmHint")}</p>
-          )}
+          {showPlacesHint && <p className="text-xs text-slate-400 px-1">{t("mapPage.osmHint")}</p>}
         </div>
       </div>
     </div>

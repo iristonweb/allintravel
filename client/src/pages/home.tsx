@@ -13,7 +13,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import AitDailyPulse from "@/components/ait/AitDailyPulse";
-import SocialTeaser from "@/components/social/SocialTeaser";
 import { useToast } from "@/hooks/use-toast";
 import EmptyState from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -125,29 +124,18 @@ export function Home() {
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="md:hidden space-y-4"
+          className="space-y-4 max-w-xl"
         >
-          <h2 className="text-3xl font-bold">
+          <h2 className="text-3xl font-bold md:hidden">
             {user?.firstName
               ? t("home.greetingNamed", { name: user.firstName })
               : t("home.greeting")}
           </h2>
-          <HomeQuickActions />
+          <div className="md:hidden">
+            <HomeQuickActions hideSearch />
+          </div>
           {isAuthenticated && <AitDailyPulse />}
-          {isAuthenticated && <SocialTeaser />}
         </motion.section>
-
-        {isAuthenticated && (
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="hidden md:block space-y-4 max-w-xl"
-          >
-            <AitDailyPulse />
-            <SocialTeaser />
-          </motion.section>
-        )}
 
         {dataError ? (
           <EmptyState

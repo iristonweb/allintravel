@@ -145,185 +145,193 @@ export function Places() {
         description={t("places.description")}
         rightSlot={
           isAuthenticated ? (
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button variant="premium">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("places.addPlace")}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("places.newPlace")}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <Input
-                  placeholder={t("places.form.name")}
-                  value={newPlace.name}
-                  onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
-                />
-                <Textarea
-                  placeholder={t("places.form.description")}
-                  value={newPlace.description}
-                  onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })}
-                />
-                <select
-                  className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                  value={newPlace.type}
-                  onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}
-                >
-                  {filters.placeType.filter((opt) => opt.value).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                <Input
-                  placeholder={t("places.form.address")}
-                  value={newPlace.address}
-                  onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder={t("places.form.latitude")}
-                    value={newPlace.latitude}
-                    onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })}
-                  />
-                  <Input
-                    placeholder={t("places.form.longitude")}
-                    value={newPlace.longitude}
-                    onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })}
-                  />
-                </div>
-                <MediaUploadField
-                  label={t("places.form.photoLabel")}
-                  accept="image/jpeg,image/png,image/webp,image/gif,.gif"
-                  multiple={false}
-                  maxFiles={1}
-                  value={newPlace.imageUrl ? [newPlace.imageUrl] : []}
-                  onChange={(urls) => setNewPlace({ ...newPlace, imageUrl: urls[0] ?? "" })}
-                />
-                <Button
-                  className="w-full"
-                  variant="premium"
-                  disabled={!newPlace.name || createPlaceMutation.isPending}
-                  onClick={() => createPlaceMutation.mutate()}
-                >
-                  {t("places.form.save")}
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button variant="premium">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("places.addPlace")}
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t("places.newPlace")}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <Input
+                    placeholder={t("places.form.name")}
+                    value={newPlace.name}
+                    onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+                  />
+                  <Textarea
+                    placeholder={t("places.form.description")}
+                    value={newPlace.description}
+                    onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })}
+                  />
+                  <select
+                    className="w-full rounded-md border px-3 py-2 text-sm bg-background"
+                    value={newPlace.type}
+                    onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}
+                  >
+                    {filters.placeType
+                      .filter((opt) => opt.value)
+                      .map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                  </select>
+                  <Input
+                    placeholder={t("places.form.address")}
+                    value={newPlace.address}
+                    onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder={t("places.form.latitude")}
+                      value={newPlace.latitude}
+                      onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })}
+                    />
+                    <Input
+                      placeholder={t("places.form.longitude")}
+                      value={newPlace.longitude}
+                      onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })}
+                    />
+                  </div>
+                  <MediaUploadField
+                    label={t("places.form.photoLabel")}
+                    accept="image/jpeg,image/png,image/webp,image/gif,.gif"
+                    multiple={false}
+                    maxFiles={1}
+                    value={newPlace.imageUrl ? [newPlace.imageUrl] : []}
+                    onChange={(urls) => setNewPlace({ ...newPlace, imageUrl: urls[0] ?? "" })}
+                  />
+                  <Button
+                    className="w-full"
+                    variant="premium"
+                    disabled={!newPlace.name || createPlaceMutation.isPending}
+                    onClick={() => createPlaceMutation.mutate()}
+                  >
+                    {t("places.form.save")}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           ) : null
         }
       >
-      <CatalogPageLayout
-        search={
-          <>
-            <DestinationSearch
-              value={search}
-              onChange={setSearch}
-              onNavigate={(href) => {
-                if (href.startsWith("/place/")) {
-                  navigate(href);
-                  return;
-                }
-                if (href.startsWith("/map")) {
-                  navigate(href);
-                  return;
-                }
-                const params = new URLSearchParams(href.split("?")[1] ?? "");
-                applySearch(params.get("search") ?? search);
-              }}
-              placeType={typeFilter || undefined}
-              placeholder={t("places.searchPlaceholder")}
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              {t("places.searchHint")}{" "}
-              <code className="text-ait-purple">npm run geo:import</code>
-            </p>
-          </>
-        }
-        filters={
-          <>
-            <FilterChipRow
-              label={t("places.filterType")}
-              options={filters.placeType}
-              value={typeFilter}
-              onChange={setTypeFilter}
-            />
-            <FilterChipRow
-              label={t("places.filterRating")}
-              options={filters.placeRating}
-              value={minRating}
-              onChange={setMinRating}
-            />
-            <FilterChipRow
-              label={t("places.filterPrice")}
-              options={filters.placePrice}
-              value={priceRange}
-              onChange={setPriceRange}
-            />
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
-                {t("places.clearFilters")}
-              </Button>
-            )}
-          </>
-        }
-        stats={
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <MapPin className="h-8 w-8 text-primary" />
-              <div>
-                <p className="font-semibold">{t("places.placesCount", { count: places.length })}</p>
-                <p className="text-sm text-muted-foreground">{t("places.statsInCatalog")}</p>
-              </div>
-            </CardContent>
-          </Card>
-        }
-      >
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="h-80 animate-pulse bg-muted" />
-          ))}
-        </div>
-      ) : isError ? (
-        <EmptyState
-          icon={AlertCircle}
-          title={t("places.loadError")}
-          description={error instanceof Error ? error.message : t("social.errors.connection")}
-          action={
-            <Button variant="outline" onClick={() => refetch()}>
-              {t("common.retry")}
-            </Button>
+        <CatalogPageLayout
+          search={
+            <>
+              <DestinationSearch
+                value={search}
+                onChange={setSearch}
+                onNavigate={(href) => {
+                  if (href.startsWith("/place/")) {
+                    navigate(href);
+                    return;
+                  }
+                  if (href.startsWith("/map")) {
+                    navigate(href);
+                    return;
+                  }
+                  const params = new URLSearchParams(href.split("?")[1] ?? "");
+                  applySearch(params.get("search") ?? search);
+                }}
+                placeType={typeFilter || undefined}
+                placeholder={t("places.searchPlaceholder")}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                {t("places.searchHint")} <code className="text-ait-purple">npm run geo:import</code>
+              </p>
+            </>
           }
-        />
-      ) : places.length === 0 ? (
-        <EmptyState
-          icon={MapPin}
-          title={t("places.notFound")}
-          description={t("places.notFoundHint")}
-          action={
-            <Button variant="outline" onClick={clearFilters}>
-              {t("places.resetFilters")}
-            </Button>
+          filters={
+            <>
+              <FilterChipRow
+                label={t("places.filterType")}
+                options={filters.placeType}
+                value={typeFilter}
+                onChange={setTypeFilter}
+              />
+              <FilterChipRow
+                label={t("places.filterRating")}
+                options={filters.placeRating}
+                value={minRating}
+                onChange={setMinRating}
+              />
+              <FilterChipRow
+                label={t("places.filterPrice")}
+                options={filters.placePrice}
+                value={priceRange}
+                onChange={setPriceRange}
+              />
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="w-full sm:w-auto"
+                >
+                  {t("places.clearFilters")}
+                </Button>
+              )}
+            </>
           }
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {places.map((place) => (
-            <PlaceCard
-              key={place.id}
-              place={place}
-              isFavorite={isFavorite(place.id)}
-              onToggleFavorite={toggleFavorite}
+          stats={
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4 flex items-center gap-3">
+                <MapPin className="h-8 w-8 text-primary" />
+                <div>
+                  <p className="font-semibold">
+                    {t("places.placesCount", { count: places.length })}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{t("places.statsInCatalog")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          }
+        >
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} className="h-80 animate-pulse bg-muted" />
+              ))}
+            </div>
+          ) : isError ? (
+            <EmptyState
+              icon={AlertCircle}
+              title={t("places.loadError")}
+              description={error instanceof Error ? error.message : t("social.errors.connection")}
+              action={
+                <Button variant="outline" onClick={() => refetch()}>
+                  {t("common.retry")}
+                </Button>
+              }
             />
-          ))}
-        </div>
-      )}
-      </CatalogPageLayout>
+          ) : places.length === 0 ? (
+            <EmptyState
+              icon={MapPin}
+              title={t("places.notFound")}
+              description={t("places.notFoundHint")}
+              action={
+                <Button variant="outline" onClick={clearFilters}>
+                  {t("places.resetFilters")}
+                </Button>
+              }
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {places.map((place) => (
+                <PlaceCard
+                  key={place.id}
+                  place={place}
+                  isFavorite={isFavorite(place.id)}
+                  onToggleFavorite={toggleFavorite}
+                />
+              ))}
+            </div>
+          )}
+        </CatalogPageLayout>
       </PageShell>
     </AppLayout>
   );

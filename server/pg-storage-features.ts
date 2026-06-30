@@ -1027,10 +1027,37 @@ export async function countUnreadInRoomDb(
   return Number(value);
 }
 
+async function getLastMessagePreviewsBySlugDb(
+  db: PgFeaturesDb,
+  slugs: string[],
+): Promise<Map<string, string>> {
+  const previews = new Map<string, string>();
+  if (slugs.length === 0) return previews;
+  await Promise.all(
+    slugs.map(async (slug) => {
+      const [row] = await db
+        .select({ content: chatMessages.content })
+        .from(chatMessages)
+        .where(eq(chatMessages.chatRoom, slug))
+        .orderBy(desc(chatMessages.createdAt))
+        .limit(1);
+      if (row?.content) previews.set(slug, row.content);
+    }),
+  );
+  return previews;
+}
+
 export async function listChatRoomsForUserDb(
   db: PgFeaturesDb,
   userId: string,
-): Promise<(ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number })[]> {
+): Promise<
+  (ChatRoom & {
+    memberCount: number;
+    myRole: string | null;
+    unreadCount: number;
+    lastMessagePreview: string | null;
+  })[]
+> {
   const rows = await db
     .select({
       room: chatRooms,
@@ -1068,11 +1095,17 @@ export async function listChatRoomsForUserDb(
     userId,
   );
 
+  const lastPreviews = await getLastMessagePreviewsBySlugDb(
+    db,
+    eligible.map(({ room }) => room.slug),
+  );
+
   return eligible.map(({ room, myRole, myStatus }) => ({
     ...room,
     memberCount: countByRoom.get(room.id) ?? 0,
     myRole: myStatus === "active" ? (myRole ?? null) : null,
     unreadCount: unreadByRoomId.get(room.id) ?? 0,
+    lastMessagePreview: lastPreviews.get(room.slug) ?? null,
   }));
 }
 

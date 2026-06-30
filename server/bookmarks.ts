@@ -25,9 +25,7 @@ export async function listBookmarkedPostIds(userId: string): Promise<string[]> {
   const res = await db.execute(sql`
     SELECT post_id FROM post_bookmarks WHERE user_id = ${userId} ORDER BY created_at DESC
   `);
-  return (
-    (res as unknown as { rows?: { post_id: string }[] }).rows?.map((r) => r.post_id) ?? []
-  );
+  return (res as unknown as { rows?: { post_id: string }[] }).rows?.map((r) => r.post_id) ?? [];
 }
 
 export async function isPostBookmarked(userId: string, postId: string): Promise<boolean> {

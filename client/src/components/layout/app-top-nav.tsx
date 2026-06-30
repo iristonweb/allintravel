@@ -37,11 +37,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const [location, navigate] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
-  const {
-    guestAnchors,
-    navGroups,
-    pageTitles: navPageTitles,
-  } = useNavLabels();
+  const { guestAnchors, navGroups, pageTitles: navPageTitles } = useNavLabels();
 
   const queryClient = useQueryClient();
 
@@ -75,12 +71,6 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
       /* ignore */
     }
     if (item.link) navigate(item.link);
-  };
-
-  const isActive = (href: string) => {
-    if (href === "/") return location === "/";
-    if (href === "/profile") return location === "/profile";
-    return location === href || location.startsWith(`${href}/`);
   };
 
   const pageTitle = resolvePageTitle(location, navPageTitles);

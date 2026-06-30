@@ -93,8 +93,16 @@ export type CreatorPerk = {
 };
 
 export const CREATOR_PERKS: CreatorPerk[] = [
-  { id: "routes", title: "Sell premium routes", description: "15% platform fee, Stripe Connect payouts" },
-  { id: "guides", title: "Publish destination guides", description: "SEO pages + affiliate revenue share" },
+  {
+    id: "routes",
+    title: "Sell premium routes",
+    description: "15% platform fee, Stripe Connect payouts",
+  },
+  {
+    id: "guides",
+    title: "Publish destination guides",
+    description: "SEO pages + affiliate revenue share",
+  },
   { id: "fund", title: "Creator fund", description: "Monthly AIT pool for top contributors" },
   { id: "boost", title: "Post boosts", description: "Promote content to the travel feed" },
 ];

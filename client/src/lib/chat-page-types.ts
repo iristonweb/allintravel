@@ -1,4 +1,11 @@
-import type { ChatMessage, ChatRoom, MessageReactionMeta, MessageReadMeta, PrivateMessage, User } from "@shared/schema";
+import type {
+  ChatMessage,
+  ChatRoom,
+  MessageReactionMeta,
+  MessageReadMeta,
+  PrivateMessage,
+  User,
+} from "@shared/schema";
 import type { UserLabelFields } from "@shared/user-display";
 import { toApiUrl } from "@/lib/queryClient";
 
@@ -12,7 +19,12 @@ export interface Conversation {
   unreadCount: number;
 }
 
-export type RoomListItem = ChatRoom & { memberCount: number; myRole: string | null; unreadCount: number };
+export type RoomListItem = ChatRoom & {
+  memberCount: number;
+  myRole: string | null;
+  unreadCount: number;
+  lastMessagePreview?: string | null;
+};
 
 export type ChatMessageWithSender = ChatMessage &
   MessageReactionMeta &

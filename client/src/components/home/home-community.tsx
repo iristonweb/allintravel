@@ -33,7 +33,9 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
             <div>
               <p className="text-sm text-muted-foreground">{t("home.community.yourFriends")}</p>
               <p className="text-4xl font-bold mt-1 ait-gradient-text">{friendsCount}</p>
-              <p className="text-sm text-muted-foreground mt-2">{t("home.community.friendsHint")}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {t("home.community.friendsHint")}
+              </p>
             </div>
             <div className="h-12 w-12 rounded-2xl ait-nav-active flex items-center justify-center">
               <Users className="h-6 w-6 text-ait-purple" />
@@ -51,7 +53,9 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
             <div>
               <p className="text-sm text-muted-foreground">{t("home.community.groupChat")}</p>
               <p className="text-lg font-semibold mt-1">{t("home.community.groupChatTitle")}</p>
-              <p className="text-sm text-muted-foreground mt-2">{t("home.community.groupChatHint")}</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {t("home.community.groupChatHint")}
+              </p>
             </div>
             <div className="h-12 w-12 rounded-2xl ait-nav-active flex items-center justify-center">
               <MessageCircle className="h-6 w-6 text-ait-orange" />

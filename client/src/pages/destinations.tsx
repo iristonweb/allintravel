@@ -14,7 +14,6 @@ function slugLabel(slug: string): string {
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-
 export default function DestinationsIndexPage() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
@@ -35,22 +34,22 @@ export default function DestinationsIndexPage() {
   return (
     <Layout contentClassName="py-8">
       <PageShell title={t("destinations.title")} description={t("destinations.description")}>
-      {slugs.length === 0 ? (
-        <p className="text-muted-foreground">{t("destinations.empty")}</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {slugs.map((slug) => (
-            <Link key={slug} href={`/destinations/${slug}`}>
-              <GlassCard className="p-4 hover:border-primary/40 transition-colors cursor-pointer h-full">
-                <div className="flex items-center gap-3">
-                  <Compass className="h-5 w-5 text-primary shrink-0" />
-                  <span className="font-medium">{slugLabel(slug)}</span>
-                </div>
-              </GlassCard>
-            </Link>
-          ))}
-        </div>
-      )}
+        {slugs.length === 0 ? (
+          <p className="text-muted-foreground">{t("destinations.empty")}</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {slugs.map((slug) => (
+              <Link key={slug} href={`/destinations/${slug}`}>
+                <GlassCard className="p-4 hover:border-primary/40 transition-colors cursor-pointer h-full">
+                  <div className="flex items-center gap-3">
+                    <Compass className="h-5 w-5 text-primary shrink-0" />
+                    <span className="font-medium">{slugLabel(slug)}</span>
+                  </div>
+                </GlassCard>
+              </Link>
+            ))}
+          </div>
+        )}
       </PageShell>
     </Layout>
   );
