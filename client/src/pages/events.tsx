@@ -25,9 +25,11 @@ import LocationAutocompleteInput from "@/components/location-autocomplete-input"
 import FilterChipRow from "@/components/filters/FilterChipRow";
 import { EVENT_TYPE_FILTERS, EVENT_TIME_FILTERS } from "@/lib/filter-config";
 import MediaUploadField from "@/components/media/MediaUploadField";
+import { useTranslation } from "react-i18next";
 import type { Event } from "@shared/schema";
 
 export function Events() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
@@ -75,7 +77,7 @@ export function Events() {
     onSuccess: (data) => {
       window.location.href = data.confirmationUrl;
     },
-    onError: () => toast({ title: "Не удалось начать оплату", variant: "destructive" }),
+    onError: () => toast({ title: t("events.checkoutFailed"), variant: "destructive" }),
   });
 
   const registerMutation = useMutation({
@@ -83,10 +85,10 @@ export function Events() {
       apiRequestJson("POST", `/api/events/${eventId}/register`, paid ? { paid: true } : {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events/registrations"] });
-      toast({ title: "Вы зарегистрировались!", description: "Вы записаны на мероприятие." });
+      toast({ title: t("events.registered"), description: t("events.registeredHint") });
     },
     onError: () => {
-      toast({ title: "Ошибка регистрации", variant: "destructive" });
+      toast({ title: t("events.registerFailed"), variant: "destructive" });
     },
   });
 
@@ -137,10 +139,10 @@ export function Events() {
         price: "",
         imageUrl: "",
       });
-      toast({ title: "Событие создано" });
+      toast({ title: t("events.created") });
     },
     onError: () => {
-      toast({ title: "Не удалось создать событие", variant: "destructive" });
+      toast({ title: t("events.createFailed"), variant: "destructive" });
     },
   });
 
@@ -168,14 +170,14 @@ export function Events() {
   return (
     <AppLayout>
       <PageShell
-        title="События"
-        description="Открывайте фестивали, воркшопы и приключения по всему миру"
+        title={t("events.title")}
+        description={t("events.description")}
         rightSlot={
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button variant="premium">
                 <Plus className="mr-2 h-4 w-4" />
-                Создать событие
+                {t("events.create")}
               </Button>
             </DialogTrigger>
             <DialogContent
@@ -187,7 +189,7 @@ export function Events() {
               }}
             >
               <DialogHeader>
-                <DialogTitle>Новое событие</DialogTitle>
+                <DialogTitle>{t("events.newEvent")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <Input
@@ -248,7 +250,7 @@ export function Events() {
                   disabled={!newEvent.title || !newEvent.startDate || createMutation.isPending}
                   onClick={() => createMutation.mutate()}
                 >
-                  Опубликовать
+                  {t("events.publish")}
                 </Button>
               </div>
             </DialogContent>
@@ -260,19 +262,19 @@ export function Events() {
           <CatalogSearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Название, город или описание события…"
+            placeholder={t("events.searchPlaceholder")}
           />
         }
         filters={
           <>
             <FilterChipRow
-              label="Период"
+              label={t("events.filterPeriod")}
               options={EVENT_TIME_FILTERS}
               value={timeFilter}
               onChange={setTimeFilter}
             />
             <FilterChipRow
-              label="Тип"
+              label={t("events.filterType")}
               options={EVENT_TYPE_FILTERS}
               value={activeType}
               onChange={setActiveType}
@@ -291,8 +293,8 @@ export function Events() {
               <CardContent className="p-4 flex items-center gap-3">
                 <Calendar className="h-8 w-8 text-primary" />
                 <div>
-                  <p className="font-semibold">{upcoming.length} предстоящих</p>
-                  <p className="text-sm text-muted-foreground">событий скоро</p>
+                  <p className="font-semibold">{t("events.upcomingCount", { count: upcoming.length })}</p>
+                  <p className="text-sm text-muted-foreground">{t("events.upcomingSoon")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -300,8 +302,8 @@ export function Events() {
               <CardContent className="p-4 flex items-center gap-3">
                 <Globe className="h-8 w-8 text-accent" />
                 <div>
-                  <p className="font-semibold">Разные страны и форматы</p>
-                  <p className="text-sm text-muted-foreground">фестивали, приключения, воркшопы</p>
+                  <p className="font-semibold">{t("events.formatsTitle")}</p>
+                  <p className="text-sm text-muted-foreground">{t("events.formatsHint")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -317,26 +319,26 @@ export function Events() {
       ) : isError ? (
         <EmptyState
           icon={AlertCircle}
-          title="Не удалось загрузить события"
-          description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
+          title={t("events.loadError")}
+          description={error instanceof Error ? error.message : t("social.errors.connection")}
           action={
             <Button variant="outline" onClick={() => refetch()}>
-              Повторить
+              {t("common.retry")}
             </Button>
           }
         />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={Calendar}
-          title="События не найдены"
-          description="Попробуйте изменить фильтры или создайте своё событие"
+          title={t("events.notFound")}
+          description={t("events.notFoundHint")}
         />
       ) : (
         <>
           {showUpcoming && upcoming.length > 0 && (
             <section className="mb-10">
               <h2 className="text-xl font-semibold mb-4">
-                Предстоящие события
+                {t("events.upcomingSection")}
                 <Badge variant="secondary" className="ml-2">
                   {upcoming.length}
                 </Badge>
@@ -357,7 +359,7 @@ export function Events() {
           {showPast && past.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold mb-4 text-muted-foreground">
-                Прошедшие события
+                {t("events.pastSection")}
                 <Badge variant="outline" className="ml-2">
                   {past.length}
                 </Badge>

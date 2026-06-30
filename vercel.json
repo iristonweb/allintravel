@@ -4,6 +4,18 @@
   "installCommand": "npm install",
   "framework": null,
   "outputDirectory": "dist/public",
+  "redirects": [
+    {
+      "source": "/blog",
+      "destination": "/social-feed?format=public",
+      "permanent": true
+    },
+    {
+      "source": "/blog/:id",
+      "destination": "/post/:id",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/health",

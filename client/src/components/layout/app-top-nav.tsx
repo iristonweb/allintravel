@@ -108,7 +108,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
           </nav>
           <LanguageSwitcher className="hidden sm:inline-flex" />
           <Link href="/login">
-            <Button className="ait-btn-glow rounded-2xl border-0 text-white font-semibold px-6 shrink-0">
+            <Button variant="premium" className="shrink-0 px-6">
               {t("nav.login")}
             </Button>
           </Link>

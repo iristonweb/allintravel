@@ -3,7 +3,6 @@ import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import TravelMap from "@/components/maps/TravelMap";
 import GlassCard from "@/components/brand/glass-card";
-import GradientButton from "@/components/brand/gradient-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AddStopSearch from "@/components/planner/add-stop-search";
@@ -761,12 +760,13 @@ export default function TripPlannerLayout({
             <strong>${budgetMax || "—"}</strong> бюджет
           </span>
         </div>
-        <GradientButton
+        <Button
+          variant="premium"
           onClick={handleOptimize}
           disabled={allRoutePlacesCount < 2 || reorderMutation.isPending}
         >
           {reorderMutation.isPending ? "Оптимизация…" : "Оптимизировать порядок"}
-        </GradientButton>
+        </Button>
       </div>
     </div>
   );

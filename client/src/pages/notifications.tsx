@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
-import PageHeader from "@/components/page-header";
+import PageShell from "@/components/layout/page-shell";
 import NotificationList from "@/components/notifications/NotificationList";
 import type { NotificationFilter } from "@shared/notification-types";
 import { NOTIFICATION_FILTERS } from "@shared/notification-types";
@@ -22,11 +22,11 @@ export function NotificationsPage() {
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
-        <PageHeader
+        <PageShell
           title={t("notifications.page.title")}
           description={t("notifications.page.description")}
-        />
-        <div className="mt-6 rounded-3xl border border-white/10 ait-glass-strong p-4 sm:p-5 min-h-[60vh]">
+        >
+        <div className="rounded-3xl border border-white/10 ait-glass-strong p-4 sm:p-5 min-h-[60vh]">
           <NotificationList
             filter={filter}
             onFilterChange={setFilter}
@@ -34,6 +34,7 @@ export function NotificationsPage() {
             listClassName="max-h-[calc(100vh-14rem)] pr-1"
           />
         </div>
+        </PageShell>
       </div>
     </AppLayout>
   );

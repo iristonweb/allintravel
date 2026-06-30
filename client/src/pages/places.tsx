@@ -28,8 +28,10 @@ import { useToast } from "@/hooks/use-toast";
 import MediaUploadField from "@/components/media/MediaUploadField";
 import type { Place } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 export function Places() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const searchString = useSearch();
@@ -118,10 +120,10 @@ export function Places() {
         priceRange: "$$",
         imageUrl: "",
       });
-      toast({ title: "Место добавлено" });
+      toast({ title: t("places.saved") });
     },
     onError: () => {
-      toast({ title: "Не удалось добавить место", variant: "destructive" });
+      toast({ title: t("places.saveFailed"), variant: "destructive" });
     },
   });
 
@@ -138,20 +140,20 @@ export function Places() {
   return (
     <AppLayout>
       <PageShell
-        title="Места"
-        description="Рестораны, отели и достопримечательности, которые рекомендуют путешественники"
+        title={t("places.title")}
+        description={t("places.description")}
         rightSlot={
           isAuthenticated ? (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button variant="premium">
                 <Plus className="mr-2 h-4 w-4" />
-                Добавить место
+                {t("places.addPlace")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Новое место</DialogTitle>
+                <DialogTitle>{t("places.newPlace")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <Input
@@ -233,10 +235,10 @@ export function Places() {
                 applySearch(params.get("search") ?? search);
               }}
               placeType={typeFilter || undefined}
-              placeholder="Город, страна или название места…"
+              placeholder={t("places.searchPlaceholder")}
             />
             <p className="text-xs text-muted-foreground mt-2">
-              Подсказки: база GeoNames (страны и города) + каталог мест. Для полной базы выполните{" "}
+              {t("places.searchHint")}{" "}
               <code className="text-ait-purple">npm run geo:import</code>
             </p>
           </>
@@ -244,26 +246,26 @@ export function Places() {
         filters={
           <>
             <FilterChipRow
-              label="Тип"
+              label={t("places.filterType")}
               options={PLACE_TYPE_FILTERS}
               value={typeFilter}
               onChange={setTypeFilter}
             />
             <FilterChipRow
-              label="Рейтинг"
+              label={t("places.filterRating")}
               options={PLACE_RATING_FILTERS}
               value={minRating}
               onChange={setMinRating}
             />
             <FilterChipRow
-              label="Цена"
+              label={t("places.filterPrice")}
               options={PLACE_PRICE_FILTERS}
               value={priceRange}
               onChange={setPriceRange}
             />
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full sm:w-auto">
-                Сбросить все фильтры
+                {t("places.clearFilters")}
               </Button>
             )}
           </>
@@ -273,8 +275,8 @@ export function Places() {
             <CardContent className="p-4 flex items-center gap-3">
               <MapPin className="h-8 w-8 text-primary" />
               <div>
-                <p className="font-semibold">{places.length} мест</p>
-                <p className="text-sm text-muted-foreground">в каталоге</p>
+                <p className="font-semibold">{t("places.placesCount", { count: places.length })}</p>
+                <p className="text-sm text-muted-foreground">{t("places.statsInCatalog")}</p>
               </div>
             </CardContent>
           </Card>
@@ -289,22 +291,22 @@ export function Places() {
       ) : isError ? (
         <EmptyState
           icon={AlertCircle}
-          title="Не удалось загрузить места"
-          description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
+          title={t("places.loadError")}
+          description={error instanceof Error ? error.message : t("social.errors.connection")}
           action={
             <Button variant="outline" onClick={() => refetch()}>
-              Повторить
+              {t("common.retry")}
             </Button>
           }
         />
       ) : places.length === 0 ? (
         <EmptyState
           icon={MapPin}
-          title="Места не найдены"
-          description="Попробуйте изменить фильтры или поисковый запрос"
+          title={t("places.notFound")}
+          description={t("places.notFoundHint")}
           action={
             <Button variant="outline" onClick={clearFilters}>
-              Сбросить фильтры
+              {t("places.resetFilters")}
             </Button>
           }
         />

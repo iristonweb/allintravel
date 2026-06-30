@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
-import PageHeader from "@/components/page-header";
+import PageShell from "@/components/layout/page-shell";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import type { UserPrivacySettings } from "@shared/privacy";
 import type { PrivacyAudience } from "@shared/privacy";
 import { Smartphone, Shield, Bell, AlertCircle } from "lucide-react";
@@ -29,13 +30,14 @@ import {
   playNotificationSound,
 } from "@/lib/notification-sound";
 
-const audienceOptions: { value: PrivacyAudience; label: string }[] = [
-  { value: "everyone", label: "Все" },
-  { value: "friends", label: "Только друзья" },
-  { value: "nobody", label: "Никто" },
+const audienceOptions = (t: (key: string) => string): { value: PrivacyAudience; label: string }[] => [
+  { value: "everyone", label: t("profileSettings.audienceEveryone") },
+  { value: "friends", label: t("profileSettings.audienceFriends") },
+  { value: "nobody", label: t("profileSettings.audienceNobody") },
 ];
 
 export function ProfileSettings() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const {
     supported: pushSupported,
@@ -69,11 +71,11 @@ export function ProfileSettings() {
       return (await res.json()) as UserPrivacySettings;
     },
     onSuccess: () => {
-      toast({ title: "Настройки сохранены" });
+      toast({ title: t("profileSettings.saved") });
       queryClient.invalidateQueries({ queryKey: ["/api/settings/privacy"] });
     },
     onError: () => {
-      toast({ title: "Не удалось сохранить", variant: "destructive" });
+      toast({ title: t("profileSettings.saveFailed"), variant: "destructive" });
     },
   });
 
@@ -88,16 +90,14 @@ export function ProfileSettings() {
       a.download = `all-in-travel-export.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ title: "Экспорт загружен" });
+      toast({ title: t("profileSettings.exportDone") });
     } catch {
-      toast({ title: "Не удалось экспортировать", variant: "destructive" });
+      toast({ title: t("profileSettings.exportFailed"), variant: "destructive" });
     }
   };
 
   const handleDelete = async () => {
-    if (
-      !window.confirm("Удалить аккаунт безвозвратно? Все посты, сообщения и поездки будут удалены.")
-    ) {
+    if (!window.confirm(t("profileSettings.deleteConfirm"))) {
       return;
     }
     try {
@@ -105,24 +105,27 @@ export function ProfileSettings() {
       if (!res.ok) throw new Error("Delete failed");
       window.location.href = "/";
     } catch {
-      toast({ title: "Не удалось удалить аккаунт", variant: "destructive" });
+      toast({ title: t("profileSettings.deleteFailed"), variant: "destructive" });
     }
   };
 
   if (!isAuthenticated) {
     return (
       <AppLayout contentClassName="py-16">
-        <p className="text-center text-muted-foreground">Войдите в систему</p>
+        <p className="text-center text-muted-foreground">{t("profileSettings.signInRequired")}</p>
       </AppLayout>
     );
   }
 
   return (
     <AppLayout contentClassName="py-6 max-w-2xl mx-auto">
-      <PageHeader
-        title="Настройки"
-        breadcrumbs={[{ label: "Профиль", href: "/profile" }, { label: "Настройки" }]}
-      />
+      <PageShell
+        title={t("profileSettings.title")}
+        breadcrumbs={[
+          { label: t("profileSettings.breadcrumbProfile"), href: "/profile" },
+          { label: t("profileSettings.title") },
+        ]}
+      >
       {isLoading ? (
         <div className="space-y-6">
           <Skeleton className="h-48 w-full rounded-2xl" />
@@ -131,10 +134,10 @@ export function ProfileSettings() {
       ) : isError ? (
         <EmptyState
           icon={AlertCircle}
-          title="Не удалось загрузить настройки"
+          title={t("profileSettings.loadError")}
           action={
             <Button variant="outline" onClick={() => refetch()}>
-              Повторить
+              {t("common.retry")}
             </Button>
           }
         />
@@ -302,6 +305,7 @@ export function ProfileSettings() {
           </GlassCard>
         </div>
       )}
+      </PageShell>
     </AppLayout>
   );
 }
@@ -315,6 +319,8 @@ function AudienceSelect({
   value: PrivacyAudience;
   onChange: (v: PrivacyAudience) => void;
 }) {
+  const { t } = useTranslation();
+  const options = audienceOptions(t);
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
@@ -323,7 +329,7 @@ function AudienceSelect({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {audienceOptions.map((o) => (
+          {options.map((o) => (
             <SelectItem key={o.value} value={o.value}>
               {o.label}
             </SelectItem>

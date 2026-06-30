@@ -78,14 +78,15 @@ export function Landing() {
               </Link>
             </Button>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="premium"
+            size="lg"
+            className="px-10"
             onClick={() => navigate("/login")}
-            className="ait-btn-glow rounded-2xl px-10 py-4 text-lg font-semibold text-white inline-flex items-center gap-2"
           >
             {t("landing.cta")}
             <ArrowRight className="h-5 w-5" />
-          </button>
+          </Button>
         </section>
       </div>
     </PublicLayout>

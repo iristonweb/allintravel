@@ -1,6 +1,5 @@
 import { BookMarked, Compass, Film, Globe, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { SocialContentFormat } from "@/hooks/useSocialFeedParams";
 import { useTranslation } from "react-i18next";
 
@@ -30,10 +29,7 @@ export default function SocialFormatTabs({ value, onChange }: SocialFormatTabsPr
         <Button
           key={id}
           size="sm"
-          variant="filter"
-          className={cn(
-            value === id && "ait-btn-glow border-0 text-white shadow-none hover:text-white",
-          )}
+          variant={value === id ? "premium" : "filter"}
           onClick={() => onChange(id)}
         >
           <Icon className="h-4 w-4 mr-1" />

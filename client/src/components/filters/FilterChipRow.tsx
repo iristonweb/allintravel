@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FilterOption } from "@/lib/filter-config";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type FilterChipRowProps = {
   label: string;
@@ -22,6 +23,7 @@ export default function FilterChipRow({
   showClear,
   className,
 }: FilterChipRowProps) {
+  const { t } = useTranslation();
   const hasActive = value !== "" && value !== "all" && value !== "upcoming";
 
   return (
@@ -37,10 +39,7 @@ export default function FilterChipRow({
               key={opt.value || "__all"}
               type="button"
               size="sm"
-              variant="filter"
-              className={cn(
-                active && "ait-btn-glow border-0 text-white shadow-none hover:text-white",
-              )}
+              variant={active ? "premium" : "filter"}
               onClick={() => onChange(opt.value)}
             >
               {opt.label}
@@ -57,7 +56,7 @@ export default function FilterChipRow({
           onClick={onClear}
         >
           <X className="h-3 w-3 mr-1" />
-          Сбросить
+          {t("common.reset")}
         </Button>
       )}
     </div>

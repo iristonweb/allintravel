@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import type { User, FriendshipWithUser, Trip } from "@shared/schema";
 import FollowButton from "@/components/social/FollowButton";
 import UserPreviewCell, { friendProfileHref } from "@/components/social/UserPreviewCell";
@@ -33,6 +34,7 @@ import TripRouteMatches from "@/components/planner/trip-route-matches";
 import { cn } from "@/lib/utils";
 
 export function Friends() {
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -100,11 +102,11 @@ export function Friends() {
   const sendRequestMutation = useMutation({
     mutationFn: (userId: string) => apiRequest("POST", `/api/friends/request/${userId}`),
     onSuccess: () => {
-      toast({ title: "Запрос отправлен" });
+      toast({ title: t("friends.requestSent") });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/sent"] });
     },
     onError: () => {
-      toast({ title: "Ошибка при отправке запроса", variant: "destructive" });
+      toast({ title: t("friends.requestFailed"), variant: "destructive" });
     },
   });
 
@@ -112,23 +114,23 @@ export function Friends() {
     mutationFn: ({ friendshipId, status }: { friendshipId: string; status: string }) =>
       apiRequestJson("PUT", `/api/friends/respond/${friendshipId}`, { status }),
     onSuccess: (_, { status }) => {
-      toast({ title: status === "accepted" ? "Запрос принят" : "Запрос отклонён" });
+      toast({ title: status === "accepted" ? t("friends.requestAccepted") : t("friends.requestDeclined") });
       queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/received"] });
     },
     onError: () => {
-      toast({ title: "Ошибка при обработке запроса", variant: "destructive" });
+      toast({ title: t("friends.requestProcessFailed"), variant: "destructive" });
     },
   });
 
   const removeFriendMutation = useMutation({
     mutationFn: (friendId: string) => apiRequest("DELETE", `/api/friends/${friendId}`),
     onSuccess: () => {
-      toast({ title: "Друг удалён" });
+      toast({ title: t("friends.friendRemoved") });
       queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
     },
     onError: () => {
-      toast({ title: "Не удалось удалить друга", variant: "destructive" });
+      toast({ title: t("friends.removeFailed"), variant: "destructive" });
     },
   });
 
@@ -153,9 +155,9 @@ export function Friends() {
     <AppLayout>
       <div className="max-w-4xl mx-auto">
         <PageShell
-          title="Друзья"
-          description="Управляйте друзьями и находите попутчиков по направлению"
-          breadcrumbs={[{ label: "Профиль", href: "/profile" }, { label: "Друзья" }]}
+          title={t("friends.title")}
+          description={t("friends.description")}
+          breadcrumbs={[{ label: t("friends.breadcrumbProfile"), href: "/profile" }, { label: t("friends.title") }]}
         >
         {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mt-6" />}
 
@@ -181,24 +183,16 @@ export function Friends() {
             <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
               <Button
                 size="sm"
-                variant="filter"
-                className={cn(
-                  friendDirection === "" &&
-                    "ait-btn-glow border-0 text-white shadow-none hover:text-white",
-                )}
+                variant={friendDirection === "" ? "premium" : "filter"}
                 onClick={() => setFriendDirection("")}
               >
-                Все
+                {t("friends.allDirections")}
               </Button>
               {TRAVEL_DIRECTIONS.map((d) => (
                 <Button
                   key={d.id}
                   size="sm"
-                  variant="filter"
-                  className={cn(
-                    friendDirection === d.id &&
-                      "ait-btn-glow border-0 text-white shadow-none hover:text-white",
-                  )}
+                  variant={friendDirection === d.id ? "premium" : "filter"}
                   onClick={() => setFriendDirection(d.id)}
                 >
                   {d.label}
@@ -208,11 +202,11 @@ export function Friends() {
             {friendsError ? (
               <EmptyState
                 icon={AlertCircle}
-                title="Не удалось загрузить друзей"
-                description="Ошибка соединения с сервером."
+                title={t("friends.loadError")}
+                description={t("friends.connectionError")}
                 action={
                   <Button variant="outline" onClick={() => refetchFriends()}>
-                    Повторить
+                    {t("common.retry")}
                   </Button>
                 }
               />
@@ -282,27 +276,19 @@ export function Friends() {
           {/* Search tab */}
           <TabsContent value="search" className="space-y-4 mt-4">
             <div className="flex flex-wrap gap-1.5 ait-glass rounded-full p-1 w-fit">
-              <span className="text-sm text-muted-foreground w-full px-2 pt-1">Направление:</span>
+              <span className="text-sm text-muted-foreground w-full px-2 pt-1">{t("friends.directionLabel")}</span>
               <Button
                 size="sm"
-                variant="filter"
-                className={cn(
-                  discoverDirection === "" &&
-                    "ait-btn-glow border-0 text-white shadow-none hover:text-white",
-                )}
+                variant={discoverDirection === "" ? "premium" : "filter"}
                 onClick={() => setDiscoverDirection("")}
               >
-                Любое
+                {t("friends.anyDirection")}
               </Button>
               {TRAVEL_DIRECTIONS.map((d) => (
                 <Button
                   key={d.id}
                   size="sm"
-                  variant="filter"
-                  className={cn(
-                    discoverDirection === d.id &&
-                      "ait-btn-glow border-0 text-white shadow-none hover:text-white",
-                  )}
+                  variant={discoverDirection === d.id ? "premium" : "filter"}
                   onClick={() => setDiscoverDirection(d.id)}
                 >
                   {d.label}
