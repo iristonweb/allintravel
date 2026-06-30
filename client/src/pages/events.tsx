@@ -23,13 +23,14 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiRequestJson, queryClient } from "@/lib/queryClient";
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import FilterChipRow from "@/components/filters/FilterChipRow";
-import { EVENT_TYPE_FILTERS, EVENT_TIME_FILTERS } from "@/lib/filter-config";
+import { useFilterLabels } from "@/hooks/useFilterLabels";
 import MediaUploadField from "@/components/media/MediaUploadField";
 import { useTranslation } from "react-i18next";
 import type { Event } from "@shared/schema";
 
 export function Events() {
   const { t } = useTranslation();
+  const filters = useFilterLabels();
   const { toast } = useToast();
   const searchString = useSearch();
   const urlParams = new URLSearchParams(searchString);
@@ -207,9 +208,9 @@ export function Events() {
                   value={newEvent.type}
                   onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
                 >
-                  {EVENT_TYPE_FILTERS.filter((t) => t.value).map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
+                  {filters.eventType.filter((opt) => opt.value).map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -269,13 +270,13 @@ export function Events() {
           <>
             <FilterChipRow
               label={t("events.filterPeriod")}
-              options={EVENT_TIME_FILTERS}
+              options={filters.eventTime}
               value={timeFilter}
               onChange={setTimeFilter}
             />
             <FilterChipRow
               label={t("events.filterType")}
-              options={EVENT_TYPE_FILTERS}
+              options={filters.eventType}
               value={activeType}
               onChange={setActiveType}
               showClear

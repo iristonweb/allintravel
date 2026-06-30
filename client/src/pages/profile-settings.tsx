@@ -145,14 +145,12 @@ export function ProfileSettings() {
         <div className="space-y-6">
           <GlassCard className="p-6 space-y-5">
             <div>
-              <h2 className="text-lg font-semibold">Конфиденциальность</h2>
-              <p className="text-sm text-muted-foreground">
-                Кто видит ваш статус и может с вами связаться
-              </p>
+              <h2 className="text-lg font-semibold">{t("profileSettings.privacyTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("profileSettings.privacyHint")}</p>
             </div>
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-4">
-                <Label htmlFor="private-account">Закрытый аккаунт</Label>
+                <Label htmlFor="private-account">{t("profileSettings.privateAccount")}</Label>
                 <Switch
                   id="private-account"
                   checked={form.isPrivateAccount ?? false}
@@ -164,7 +162,7 @@ export function ProfileSettings() {
                 />
               </div>
               <AudienceSelect
-                label="Кто видит, что я онлайн"
+                label={t("profileSettings.showOnlineStatus")}
                 value={form.showOnlineStatus ?? "friends"}
                 onChange={(v) => {
                   setForm({ ...form, showOnlineStatus: v });
@@ -172,7 +170,7 @@ export function ProfileSettings() {
                 }}
               />
               <div className="flex items-center justify-between gap-4">
-                <Label htmlFor="last-seen">Показывать время последнего визита</Label>
+                <Label htmlFor="last-seen">{t("profileSettings.showLastSeen")}</Label>
                 <Switch
                   id="last-seen"
                   checked={form.showLastSeen ?? true}
@@ -183,7 +181,7 @@ export function ProfileSettings() {
                 />
               </div>
               <AudienceSelect
-                label="Кто может писать в личные сообщения"
+                label={t("profileSettings.allowDmFrom")}
                 value={form.allowDmFrom ?? "friends"}
                 onChange={(v) => {
                   setForm({ ...form, allowDmFrom: v });
@@ -191,7 +189,7 @@ export function ProfileSettings() {
                 }}
               />
               <AudienceSelect
-                label="Кто может отправлять заявки в друзья"
+                label={t("profileSettings.allowFriendRequests")}
                 value={form.allowFriendRequestsFrom ?? "everyone"}
                 onChange={(v) => {
                   setForm({ ...form, allowFriendRequestsFrom: v });
@@ -199,7 +197,7 @@ export function ProfileSettings() {
                 }}
               />
               <AudienceSelect
-                label="Кто видит мой профиль"
+                label={t("profileSettings.showProfileTo")}
                 value={form.showProfileTo ?? "everyone"}
                 onChange={(v) => {
                   setForm({ ...form, showProfileTo: v });
@@ -213,49 +211,42 @@ export function ProfileSettings() {
             <div>
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Bell className="h-5 w-5" />
-                Push на телефон и браузер
+                {t("profileSettings.pushTitle")}
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Мгновенные уведомления о заявках, сообщениях, поездках и событиях (Web Push).
-              </p>
+              <p className="text-sm text-muted-foreground">{t("profileSettings.pushHint")}</p>
             </div>
             <div className="space-y-3">
               {!pushSupported && (
                 <p className="text-sm text-muted-foreground">
-                  Браузер не поддерживает push-уведомления.
+                  {t("profileSettings.pushUnsupported")}
                 </p>
               )}
               {pushSupported && !vapidReady && (
                 <p className="text-sm text-muted-foreground">
-                  На сервере не настроены VAPID-ключи. Добавьте VAPID_PUBLIC_KEY и VAPID_PRIVATE_KEY
-                  в .env.
+                  {t("profileSettings.pushNoVapid")}
                 </p>
               )}
               {pushSupported && vapidReady && (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    {subscribed
-                      ? "Уведомления включены на этом устройстве."
-                      : "Разрешите уведомления — вы будете получать их даже при закрытой вкладке."}
+                    {subscribed ? t("profileSettings.pushEnabled") : t("profileSettings.pushDisabled")}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" onClick={() => subscribe()}>
-                      {subscribed ? "Обновить подписку" : "Включить push"}
+                      {subscribed ? t("profileSettings.pushRefresh") : t("profileSettings.pushSubscribe")}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => testPush().catch(() => {})}
                     >
-                      Тестовое уведомление
+                      {t("profileSettings.pushTest")}
                     </Button>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-white/10">
                     <div>
-                      <p className="text-sm font-medium">Звук уведомлений</p>
-                      <p className="text-xs text-muted-foreground">
-                        Короткий сигнал при push, сообщениях и начислении AIT
-                      </p>
+                      <p className="text-sm font-medium">{t("profileSettings.soundTitle")}</p>
+                      <p className="text-xs text-muted-foreground">{t("profileSettings.soundHint")}</p>
                     </div>
                     <Switch
                       checked={soundOn}
@@ -275,31 +266,29 @@ export function ProfileSettings() {
             <div>
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Smartphone className="h-5 w-5" />
-                PIN для входа в приложение
+                {t("profileSettings.pinTitle")}
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Короткий PIN появится в мобильной версии All-in-travel для быстрого входа.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("profileSettings.pinHint")}</p>
             </div>
             <Button variant="secondary" disabled>
-              Скоро в мобильной версии
+              {t("profileSettings.pinSoon")}
             </Button>
           </GlassCard>
 
           <GlassCard className="p-6 space-y-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Аккаунт и данные
+              {t("profileSettings.accountTitle")}
             </h2>
             <div className="flex flex-wrap gap-3">
               <Button variant="outline" asChild>
-                <Link href="/privacy">Политика конфиденциальности</Link>
+                <Link href="/privacy">{t("profileSettings.privacyPolicy")}</Link>
               </Button>
               <Button variant="outline" type="button" onClick={handleExport}>
-                Скачать мои данные
+                {t("profileSettings.exportData")}
               </Button>
               <Button variant="destructive" type="button" onClick={handleDelete}>
-                Удалить аккаунт
+                {t("profileSettings.deleteAccount")}
               </Button>
             </div>
           </GlassCard>

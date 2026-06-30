@@ -21,14 +21,9 @@ import SocialFeedList from "@/components/social/SocialFeedList";
 import { useSocialFeedParams, type SocialContentFormat } from "@/hooks/useSocialFeedParams";
 import { useTranslation } from "react-i18next";
 import { isVideoUrl as isVideoUrlShared } from "@shared/post-formats";
-import { FEED_MODE_TAB_FILTERS } from "@/lib/filter-config";
+import { useFilterLabels } from "@/hooks/useFilterLabels";
 import CreatorSpotlight from "@/components/ait/CreatorSpotlight";
 import AitLeaderboard from "@/components/ait/AitLeaderboard";
-
-const FEED_MODE_TABS = FEED_MODE_TAB_FILTERS.map(({ value, label }) => ({
-  id: value as FeedMode,
-  label,
-}));
 
 const EMPTY_DRAFT: SocialNewPostDraft = {
   title: "",
@@ -52,6 +47,7 @@ export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const filters = useFilterLabels();
   const queryClient = useQueryClient();
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [newPost, setNewPost] = useState<SocialNewPostDraft>(EMPTY_DRAFT);
@@ -291,6 +287,11 @@ export function SocialFeed() {
           ? t("social.composer.journal")
           : t("social.composer.feed");
 
+  const feedModeTabs = useMemo(
+    () => filters.feedModeTabs.map(({ value, label }) => ({ id: value as FeedMode, label })),
+    [filters.feedModeTabs],
+  );
+
   const showFeedModeTabs =
     contentFormat === "feed" || contentFormat === "journals" || contentFormat === "public";
 
@@ -329,7 +330,7 @@ export function SocialFeed() {
           {showFeedModeTabs && (
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <ChatFilterTabs
-                tabs={FEED_MODE_TABS}
+                tabs={feedModeTabs}
                 value={feedMode}
                 onChange={(id) => {
                   setFeedMode(id);

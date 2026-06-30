@@ -19,12 +19,14 @@ import MapSearchPanel from "@/components/map/MapSearchPanel";
 
 import { resolveMapHref } from "@/lib/map-navigate";
 
+import { useTranslation } from "react-i18next";
 import type { Place } from "@shared/schema";
 import { MAP_SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
 
 const showcaseDestinations = [...MAP_SHOWCASE_DESTINATIONS];
 
 export function MapPage() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
 
   const searchString = useSearch();
@@ -193,11 +195,11 @@ export function MapPage() {
               <div className="mt-2 pointer-events-auto">
                 <EmptyState
                   icon={AlertCircle}
-                  title="Не удалось загрузить места"
-                  description="Проверьте соединение и попробуйте снова."
+                  title={t("mapPage.loadError")}
+                  description={t("mapPage.loadErrorHint")}
                   action={
                     <Button variant="outline" size="sm" onClick={() => refetchPois()}>
-                      Повторить
+                      {t("common.retry")}
                     </Button>
                   }
                   className="py-4"
@@ -207,7 +209,7 @@ export function MapPage() {
 
             {geocoding && (
               <p className="text-xs text-slate-400 mt-1 px-1 pointer-events-none">
-                Определяем координаты…
+                {t("mapPage.geocoding")}
               </p>
             )}
           </motion.div>

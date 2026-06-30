@@ -1,11 +1,11 @@
-import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import { Calendar, Compass, Hash, MapPin, Search, Users } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import DestinationSearch from "@/components/search/DestinationSearch";
 import { useChatGroupSearchDialog } from "@/components/chat/ChatGroupSearchContext";
 import { buildDestinationHref } from "@/lib/destination-search";
-import { HERO_SEARCH_TARGETS, HERO_TRAVELER_OPTIONS } from "@/lib/filter-config";
+import { useFilterLabels } from "@/hooks/useFilterLabels";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 export default function GlobalSearchPanel() {
   const [, navigate] = useLocation();
   const { t } = useTranslation();
+  const filters = useFilterLabels();
   const { isAuthenticated } = useAuth();
   const { open: openGroupSearch } = useChatGroupSearchDialog();
   const [where, setWhere] = useState("");
@@ -156,13 +157,13 @@ export default function GlobalSearchPanel() {
             <label className={fieldClass}>
               <Users className="h-5 w-5 text-ait-cyan shrink-0 mt-1.5" />
               <div className="flex-1 min-w-0">
-                <span className="text-xs font-medium text-slate-400 block mb-1">Участники</span>
+                <span className="text-xs font-medium text-slate-400 block mb-1">{t("searchPanel.travelers")}</span>
                 <select
                   value={travelers}
                   onChange={(e) => setTravelers(e.target.value)}
                   className="w-full bg-transparent border-0 outline-none text-sm text-foreground cursor-pointer pr-1"
                 >
-                  {HERO_TRAVELER_OPTIONS.map((o) => (
+                  {filters.heroTravelers.map((o) => (
                     <option key={o.value || "any"} value={o.value} className="bg-[#0f1428]">
                       {o.label}
                     </option>
@@ -176,13 +177,13 @@ export default function GlobalSearchPanel() {
         <label className={fieldClass}>
           <Compass className="h-5 w-5 text-ait-gold shrink-0 mt-1.5" />
           <div className="flex-1 min-w-0">
-            <span className="text-xs font-medium text-slate-400 block mb-1">Искать в</span>
+            <span className="text-xs font-medium text-slate-400 block mb-1">{t("searchPanel.searchIn")}</span>
             <select
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               className="w-full bg-transparent border-0 outline-none text-sm text-foreground cursor-pointer pr-1"
             >
-              {HERO_SEARCH_TARGETS.map((o) => (
+              {filters.heroSearchTargets.map((o) => (
                 <option key={o.value} value={o.value} className="bg-[#0f1428]">
                   {o.label}
                 </option>
@@ -192,16 +193,16 @@ export default function GlobalSearchPanel() {
         </label>
 
         <div className="flex items-stretch p-2 lg:p-3 lg:pl-2 lg:pr-3">
-          <motion.button
+          <Button
             type="button"
+            variant="premium"
+            size="cta"
+            className="w-full"
             onClick={search}
-            className="w-full min-h-[52px] lg:min-h-[56px] ait-btn-glow rounded-2xl px-8 lg:px-10 flex items-center justify-center gap-2.5 font-semibold text-white whitespace-nowrap text-[15px] lg:text-base tracking-wide"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
           >
             <Search className="h-5 w-5 shrink-0" />
-            <span>Найти</span>
-          </motion.button>
+            {t("searchPanel.find")}
+          </Button>
         </div>
       </div>
     </div>

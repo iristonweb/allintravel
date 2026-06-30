@@ -45,8 +45,9 @@ import {
 import MediaUploadField from "@/components/media/MediaUploadField";
 import StatPill from "@/components/brand/stat-pill";
 import FilterChipRow from "@/components/filters/FilterChipRow";
-import { TRIP_AVAILABILITY_FILTERS } from "@/lib/filter-config";
+import { useFilterLabels } from "@/hooks/useFilterLabels";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTripSchema, type Trip, type User } from "@shared/schema";
@@ -101,6 +102,8 @@ function parseApiError(err: unknown): string {
 }
 
 export function Trips() {
+  const { t } = useTranslation();
+  const filters = useFilterLabels();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, isAuthenticated } = useAuth();
@@ -559,12 +562,12 @@ export function Trips() {
 
       <AppLayout>
         <PageShell
-          title="Поездки"
-          description="Поездка = маршрут + чат группы. Приглашайте друзей через @ при создании."
+          title={t("tripsPage.title")}
+          description={t("tripsPage.description")}
           rightSlot={
             <Button variant="premium" type="button" onClick={openCreateDialog}>
               <Plus className="mr-2 h-4 w-4" />
-              Создать поездку
+              {t("tripsPage.createTrip")}
             </Button>
           }
         >
@@ -573,13 +576,13 @@ export function Trips() {
             <CatalogSearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Поиск по направлению или названию..."
+              placeholder={t("tripsPage.searchPlaceholder")}
             />
           }
           filters={
             <FilterChipRow
-              label="Группа"
-              options={TRIP_AVAILABILITY_FILTERS}
+              label={t("tripsPage.filterGroup")}
+              options={filters.tripAvailability}
               value={availability}
               onChange={setAvailability}
               showClear
@@ -619,27 +622,27 @@ export function Trips() {
         ) : isError ? (
           <EmptyState
             icon={AlertCircle}
-            title="Не удалось загрузить поездки"
-            description={error instanceof Error ? error.message : "Ошибка соединения с сервером."}
+            title={t("tripsPage.loadError")}
+            description={error instanceof Error ? error.message : t("social.errors.connection")}
             action={
               <Button variant="outline" onClick={() => refetch()}>
-                Повторить
+                {t("common.retry")}
               </Button>
             }
           />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={MapPin}
-            title={q ? "Поездки не найдены" : "Пока нет поездок"}
+            title={q ? t("tripsPage.notFound") : t("tripsPage.empty")}
             description={
               q
-                ? `По запросу «${q}» ничего не найдено среди ${trips.length} поездок. Попробуйте другой город или создайте свою поездку.`
-                : "Будьте первым — создайте поездку и найдите попутчиков!"
+                ? t("tripsPage.notFoundHint", { q, total: trips.length })
+                : t("tripsPage.emptyHint")
             }
             action={
               q ? (
                 <Button variant="outline" type="button" onClick={() => setSearch("")}>
-                  Сбросить поиск
+                  {t("tripsPage.resetSearch")}
                 </Button>
               ) : undefined
             }

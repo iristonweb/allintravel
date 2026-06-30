@@ -20,7 +20,7 @@ import { MapPin, AlertCircle, Plus } from "lucide-react";
 import { useLocation } from "wouter";
 import DestinationSearch from "@/components/search/DestinationSearch";
 import FilterChipRow from "@/components/filters/FilterChipRow";
-import { PLACE_TYPE_FILTERS, PLACE_RATING_FILTERS, PLACE_PRICE_FILTERS } from "@/lib/filter-config";
+import { useFilterLabels } from "@/hooks/useFilterLabels";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePlaceFavorites } from "@/hooks/usePlaceFavorites";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -32,6 +32,7 @@ import { useTranslation } from "react-i18next";
 
 export function Places() {
   const { t } = useTranslation();
+  const filters = useFilterLabels();
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const searchString = useSearch();
@@ -171,9 +172,9 @@ export function Places() {
                   value={newPlace.type}
                   onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}
                 >
-                  {PLACE_TYPE_FILTERS.filter((t) => t.value).map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
+                  {filters.placeType.filter((opt) => opt.value).map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -247,19 +248,19 @@ export function Places() {
           <>
             <FilterChipRow
               label={t("places.filterType")}
-              options={PLACE_TYPE_FILTERS}
+              options={filters.placeType}
               value={typeFilter}
               onChange={setTypeFilter}
             />
             <FilterChipRow
               label={t("places.filterRating")}
-              options={PLACE_RATING_FILTERS}
+              options={filters.placeRating}
               value={minRating}
               onChange={setMinRating}
             />
             <FilterChipRow
               label={t("places.filterPrice")}
-              options={PLACE_PRICE_FILTERS}
+              options={filters.placePrice}
               value={priceRange}
               onChange={setPriceRange}
             />

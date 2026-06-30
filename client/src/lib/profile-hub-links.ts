@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import { Bell, BookOpen, Calendar, Hash, MapPin, MessageCircle, Music, Rss, Users } from "lucide-react";
 
@@ -9,22 +11,70 @@ export type ProfileHubLink = {
   badge?: string;
 };
 
-export const profileHubLinks: ProfileHubLink[] = [
-  { href: "/social-feed", label: "Моя лента", icon: Rss, desc: "Посты и сообщество" },
-  { href: "/social-feed?format=public", label: "Публичное", icon: BookOpen, desc: "Статьи для всех" },
-  { href: "/events", label: "События", icon: Calendar, desc: "Мои и ближайшие события" },
-  { href: "/profile/friends", label: "Друзья", icon: Users, desc: "По направлениям и поиск" },
-  { href: "/profile/music", label: "Моя музыка", icon: Music, desc: "Загрузки и фоновый плеер" },
-  { href: "/chat?tab=unread", label: "Непрочитанные", icon: Bell, desc: "Личные и групповые чаты" },
-  { href: "/chat?tab=personal", label: "Личные", icon: MessageCircle, desc: "Личные чаты" },
-  { href: "/chat", label: "Мои группы", icon: Hash, desc: "Группы и обсуждения" },
-];
-
-export const profileMapLink: ProfileHubLink = {
-  href: "/map",
-  label: "Карта",
-  icon: MapPin,
-  desc: "Маршруты и места",
+type ProfileHubLinkDef = {
+  href: string;
+  labelKey: string;
+  descKey: string;
+  icon: LucideIcon;
+  badge?: string;
 };
 
-export const profileHubLinksWithMap: ProfileHubLink[] = [...profileHubLinks, profileMapLink];
+const PROFILE_HUB_LINK_DEFS: ProfileHubLinkDef[] = [
+  { href: "/social-feed", labelKey: "profileHub.myFeed", descKey: "profileHub.myFeedDesc", icon: Rss },
+  {
+    href: "/social-feed?format=public",
+    labelKey: "profileHub.public",
+    descKey: "profileHub.publicDesc",
+    icon: BookOpen,
+  },
+  { href: "/events", labelKey: "profileHub.events", descKey: "profileHub.eventsDesc", icon: Calendar },
+  {
+    href: "/profile/friends",
+    labelKey: "profileHub.friends",
+    descKey: "profileHub.friendsDesc",
+    icon: Users,
+  },
+  { href: "/profile/music", labelKey: "profileHub.music", descKey: "profileHub.musicDesc", icon: Music },
+  {
+    href: "/chat?tab=unread",
+    labelKey: "profileHub.unread",
+    descKey: "profileHub.unreadDesc",
+    icon: Bell,
+  },
+  {
+    href: "/chat?tab=personal",
+    labelKey: "profileHub.personal",
+    descKey: "profileHub.personalDesc",
+    icon: MessageCircle,
+  },
+  { href: "/chat", labelKey: "profileHub.groups", descKey: "profileHub.groupsDesc", icon: Hash },
+];
+
+const PROFILE_MAP_LINK_DEF: ProfileHubLinkDef = {
+  href: "/map",
+  labelKey: "profileHub.map",
+  descKey: "profileHub.mapDesc",
+  icon: MapPin,
+};
+
+function translateHubLinks(defs: ProfileHubLinkDef[], t: (key: string) => string): ProfileHubLink[] {
+  return defs.map(({ href, labelKey, descKey, icon, badge }) => ({
+    href,
+    label: t(labelKey),
+    desc: t(descKey),
+    icon,
+    badge,
+  }));
+}
+
+export function useProfileHubLinks() {
+  const { t } = useTranslation();
+  return useMemo(
+    () => ({
+      links: translateHubLinks(PROFILE_HUB_LINK_DEFS, t),
+      linksWithMap: translateHubLinks([...PROFILE_HUB_LINK_DEFS, PROFILE_MAP_LINK_DEF], t),
+      mapLink: translateHubLinks([PROFILE_MAP_LINK_DEF], t)[0],
+    }),
+    [t],
+  );
+}

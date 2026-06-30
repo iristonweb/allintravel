@@ -2,6 +2,7 @@ import { useState } from "react";
 import PassportCard from "@/components/passport/PassportCard";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
+import PageShell from "@/components/layout/page-shell";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +15,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import type { User } from "@shared/schema";
 import UserPreviewCell from "@/components/social/UserPreviewCell";
 import { apiRequest } from "@/lib/queryClient";
 import { unsubscribePush } from "@/lib/push-subscription";
 
 export function Profile() {
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [nickSearch, setNickSearch] = useState("");
@@ -42,7 +45,7 @@ export function Profile() {
   if (!isAuthenticated || !user) {
     return (
       <AppLayout contentClassName="py-16">
-        <p className="text-center text-muted-foreground">Войдите в систему</p>
+        <p className="text-center text-muted-foreground">{t("profile.signInRequired")}</p>
       </AppLayout>
     );
   }
@@ -62,6 +65,7 @@ export function Profile() {
   return (
     <AppLayout contentClassName="py-6">
       <div className="max-w-4xl mx-auto">
+        <PageShell title={t("nav.profile")} description={t("profile.hubHint")}>
         {friendsLoading ? (
           <GlassCard className="mb-6 p-6 space-y-4">
             <Skeleton className="h-24 w-24 rounded-full" />
@@ -71,10 +75,10 @@ export function Profile() {
         ) : friendsError ? (
           <EmptyState
             icon={AlertCircle}
-            title="Не удалось загрузить профиль"
+            title={t("profile.loadError")}
             action={
               <Button variant="outline" onClick={() => refetchFriends()}>
-                Повторить
+                {t("common.retry")}
               </Button>
             }
           />
@@ -93,33 +97,29 @@ export function Profile() {
                       <span className="text-muted-foreground">{getUserHandle(user)}</span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Редактирование, настройки, кошелёк AIT и выход — здесь. Остальные разделы — в
-                    меню слева.
-                  </p>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" asChild>
                       <Link href="/profile/edit">
                         <Edit className="h-4 w-4 mr-1" />
-                        Редактировать
+                        {t("profile.edit")}
                       </Link>
                     </Button>
                     <Button size="sm" variant="outline" asChild>
                       <Link href="/profile/settings">
                         <Settings className="h-4 w-4 mr-1" />
-                        Настройки
+                        {t("profile.settings")}
                       </Link>
                     </Button>
                     <Button size="sm" variant="outline" asChild>
                       <Link href="/profile/music">
                         <Music className="h-4 w-4 mr-1" />
-                        Моя музыка
+                        {t("profile.myMusic")}
                       </Link>
                     </Button>
                     <Button size="sm" variant="outline" asChild>
                       <Link href="/wallet">
                         <Wallet className="h-4 w-4 mr-1" />
-                        AIT Hub
+                        {t("nav.wallet")}
                       </Link>
                     </Button>
                     <Button
@@ -129,12 +129,14 @@ export function Profile() {
                       onClick={() => void logout()}
                     >
                       <LogOut className="h-4 w-4 mr-1" />
-                      Выйти
+                      {t("profile.logout")}
                     </Button>
                   </div>
                   <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
                     <Link href="/friends" className="hover:text-ait-purple transition-colors">
-                      <strong className="text-foreground">{friends.length}</strong> друзей
+                      <strong className="text-foreground">
+                        {t("profile.friendsCount", { count: friends.length })}
+                      </strong>
                     </Link>
                   </div>
                 </div>
@@ -142,9 +144,9 @@ export function Profile() {
               {friends.length > 0 && (
                 <div className="mt-6 pt-6 border-t border-border/40">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium">Друзья</p>
+                    <p className="text-sm font-medium">{t("profile.friendsSection")}</p>
                     <Link href="/friends" className="text-xs text-ait-purple hover:underline">
-                      Все ({friends.length})
+                      {t("profile.friendsAll", { count: friends.length })}
                     </Link>
                   </div>
                   <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
@@ -165,17 +167,17 @@ export function Profile() {
             <GlassCard className="mb-6 p-4">
               <p className="text-sm font-medium mb-2 flex items-center gap-2">
                 <Search className="h-4 w-4" />
-                Найти человека по @нику
+                {t("profile.findByUsername")}
               </p>
               <div className="flex gap-2">
                 <Input
-                  placeholder="@username"
+                  placeholder={t("profile.usernamePlaceholder")}
                   value={nickSearch}
                   onChange={(e) => setNickSearch(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleNickSearch()}
                 />
                 <Button type="button" onClick={handleNickSearch}>
-                  Найти
+                  {t("profile.find")}
                 </Button>
               </div>
               {searchResults.length > 0 && nickSearch.length >= 3 && (
@@ -201,6 +203,7 @@ export function Profile() {
             </GlassCard>
           </>
         )}
+        </PageShell>
       </div>
     </AppLayout>
   );
