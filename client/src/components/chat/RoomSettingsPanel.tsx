@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -365,33 +366,37 @@ export default function RoomSettingsPanel({
         </p>
         {isAdmin && (
           <div className="space-y-2">
-            <Input
+            <SmartSearchField
               placeholder={t("chat.roomSettings.addByUsername")}
               value={memberSearch}
-              onChange={(e) => setMemberSearch(e.target.value)}
-              className="h-8"
+              onChange={setMemberSearch}
+              size="sm"
+              inputClassName="!min-h-8"
+              dropdownOpen={addCandidates.length > 0}
+              dropdown={
+                <>
+                  {addCandidates.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/8 text-left"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => addMemberMutation.mutate(u.id!)}
+                    >
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={resolveMediaUrl(u.profileImageUrl)} />
+                        <AvatarFallback className="text-xs">{getUserInitial(u)}</AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{getUserDisplayLabel(u)}</span>
+                      {u.username && (
+                        <span className="text-muted-foreground text-xs">{getUserHandle(u)}</span>
+                      )}
+                    </button>
+                  ))}
+                </>
+              }
+              dropdownClassName="overflow-hidden"
             />
-            {addCandidates.length > 0 && (
-              <div className="rounded-lg border border-border/40 overflow-hidden">
-                {addCandidates.map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 text-left"
-                    onClick={() => addMemberMutation.mutate(u.id!)}
-                  >
-                    <Avatar className="h-7 w-7">
-                      <AvatarImage src={resolveMediaUrl(u.profileImageUrl)} />
-                      <AvatarFallback className="text-xs">{getUserInitial(u)}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">{getUserDisplayLabel(u)}</span>
-                    {u.username && (
-                      <span className="text-muted-foreground text-xs">{getUserHandle(u)}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         )}
         {membersLoading ? (

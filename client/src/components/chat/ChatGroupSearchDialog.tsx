@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Hash, MapPin, Search } from "lucide-react";
+import { Hash, MapPin } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
@@ -90,20 +90,13 @@ export default function ChatGroupSearchDialog({
           </TabsList>
 
           <TabsContent value="groups" className="space-y-3 mt-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t("chat.searchDialog.placeholder")}
-                className="pl-9"
-                autoFocus
-              />
-            </div>
-            {search.length < 2 ? (
-              <p className="text-sm text-muted-foreground px-1">{t("chat.searchDialog.hint")}</p>
-            ) : (
-              <div className="ait-glass-strong rounded-2xl border border-white/10 max-h-[min(50vh,320px)] overflow-y-auto">
+            <SmartSearchField
+              value={query}
+              onChange={setQuery}
+              placeholder={t("chat.searchDialog.placeholder")}
+              autoFocus
+              dropdownOpen={search.length >= 2}
+              dropdown={
                 <GroupSearchPreview
                   rooms={groups}
                   loading={isFetching}
@@ -114,8 +107,12 @@ export default function ChatGroupSearchDialog({
                   joinLabelKey="chat.searchDialog.join"
                   emptyKey="chat.searchDialog.empty"
                 />
-              </div>
-            )}
+              }
+              dropdownClassName="max-h-[min(50vh,320px)] overflow-y-auto ait-scrollbar"
+            />
+            {search.length < 2 ? (
+              <p className="text-sm text-muted-foreground px-1">{t("chat.searchDialog.hint")}</p>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="places" className="space-y-3 mt-3">

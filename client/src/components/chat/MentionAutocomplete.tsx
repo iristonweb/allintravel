@@ -1,4 +1,14 @@
-import { useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useImperativeHandle,
+  forwardRef,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -14,24 +24,50 @@ export function getMentionQuery(text: string, cursorPos: number): string | null 
   return match ? match[1] : null;
 }
 
+/** Strip leading @ for smart search — works with or without mention prefix. */
+export function getSmartUserQuery(text: string): string {
+  return text.replace(/^@+/, "").trim();
+}
+
 type MentionAutocompleteProps = {
   query: string;
   suggestUsers?: User[];
   activeIndex: number;
   onActiveIndexChange: (index: number) => void;
-  onSelect: (username: string) => void;
+  onSelect?: (username: string) => void;
+  onSelectUser?: (user: User) => void;
   className?: string;
+  dropdownPortal?: boolean;
+  anchorRef?: RefObject<HTMLElement | null>;
+  position?: "above" | "below";
+  searchingLabel?: string;
 };
 
 export type MentionAutocompleteHandle = {
   pickActive: () => string | null;
+  pickActiveUser: () => User | null;
 };
 
 const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocompleteProps>(
   function MentionAutocomplete(
-    { query, suggestUsers = [], activeIndex, onActiveIndexChange, onSelect, className },
+    {
+      query,
+      suggestUsers = [],
+      activeIndex,
+      onActiveIndexChange,
+      onSelect,
+      onSelectUser,
+      className,
+      dropdownPortal = false,
+      anchorRef,
+      position = "below",
+      searchingLabel = "Поиск…",
+    },
     ref,
   ) {
+    const localAnchorRef = useRef<HTMLDivElement>(null);
+    const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
+
     const { data: searchResults = [], isFetching } = useQuery<User[]>({
       queryKey: ["/api/search/users", { q: query, limit: 8 }],
       enabled: query.length >= 1,
@@ -66,21 +102,49 @@ const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocom
 
     useImperativeHandle(ref, () => ({
       pickActive: () => results[activeIndex]?.username ?? results[0]?.username ?? null,
+      pickActiveUser: () => results[activeIndex] ?? results[0] ?? null,
     }));
+
+    useLayoutEffect(() => {
+      if (!dropdownPortal || !anchorRef?.current) {
+        setDropdownStyle(null);
+        return;
+      }
+      const update = () => {
+        const el = anchorRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        setDropdownStyle({
+          top: position === "below" ? rect.bottom + 6 : rect.top - 6,
+          left: rect.left,
+          width: rect.width,
+        });
+      };
+      update();
+      window.addEventListener("resize", update);
+      window.addEventListener("scroll", update, true);
+      return () => {
+        window.removeEventListener("resize", update);
+        window.removeEventListener("scroll", update, true);
+      };
+    }, [dropdownPortal, anchorRef, position, query, results.length, isFetching]);
+
+    const handlePick = (u: User) => {
+      if (onSelectUser) {
+        onSelectUser(u);
+      } else if (u.username && onSelect) {
+        onSelect(u.username);
+      }
+    };
 
     if (results.length === 0 && !isFetching) return null;
 
-    return (
-      <div
-        className={cn(
-          "absolute bottom-full left-0 right-0 mb-1 z-50 rounded-xl ait-glass-ios border border-white/15 shadow-lg overflow-hidden",
-          className,
-        )}
-      >
+    const listContent = (
+      <>
         {isFetching && results.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-muted-foreground">Поиск…</p>
+          <p className="px-3 py-2 text-xs text-muted-foreground">{searchingLabel}</p>
         ) : (
-          <ul className="max-h-48 overflow-y-auto py-1">
+          <ul className="max-h-48 overflow-y-auto ait-scrollbar py-1">
             {results.map((u, i) => (
               <li key={u.id}>
                 <button
@@ -88,13 +152,13 @@ const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocom
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
                     i === activeIndex
-                      ? "bg-white/10 text-white"
+                      ? "bg-white/10 text-foreground"
                       : "text-slate-300 hover:bg-white/8",
                   )}
                   onMouseEnter={() => onActiveIndexChange(i)}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    if (u.username) onSelect(u.username);
+                    handlePick(u);
                   }}
                 >
                   <Avatar className="h-7 w-7">
@@ -112,8 +176,47 @@ const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocom
             ))}
           </ul>
         )}
+      </>
+    );
+
+    const dropdown = (
+      <div
+        ref={localAnchorRef}
+        className={cn(
+          "z-[120] ait-smart-search-dropdown",
+          dropdownPortal ? "fixed" : "absolute left-0 right-0 z-50",
+          !dropdownPortal && position === "below" && "top-[calc(100%+6px)]",
+          !dropdownPortal && position === "above" && "bottom-[calc(100%+6px)]",
+          className,
+        )}
+        style={
+          dropdownPortal && dropdownStyle
+            ? {
+                top: position === "below" ? dropdownStyle.top : undefined,
+                bottom:
+                  position === "above"
+                    ? `calc(100vh - ${dropdownStyle.top}px + 6px)`
+                    : undefined,
+                left: dropdownStyle.left,
+                width: dropdownStyle.width,
+                transform: position === "above" ? "translateY(-100%)" : undefined,
+              }
+            : undefined
+        }
+      >
+        {listContent}
       </div>
     );
+
+    if (dropdownPortal && dropdownStyle) {
+      return createPortal(dropdown, document.body);
+    }
+
+    if (!dropdownPortal) {
+      return dropdown;
+    }
+
+    return null;
   },
 );
 

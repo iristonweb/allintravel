@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Input } from "@/components/ui/input";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Command, CommandEmpty, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { toApiUrl } from "@/lib/queryClient";
@@ -20,7 +20,7 @@ export type GeoAutocompleteItem = {
   osmType?: string | null;
 };
 
-type Props = Omit<React.ComponentProps<typeof Input>, "value" | "onChange"> & {
+type Props = Omit<React.ComponentProps<"input">, "value" | "onChange"> & {
   value: string;
   onChange: (value: string) => void;
   onSelectItem?: (item: GeoAutocompleteItem) => void;
@@ -158,7 +158,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
         <div
           data-geo-autocomplete
           className={cn(
-            "rounded-md border bg-popover text-popover-foreground shadow-md overflow-hidden",
+            "ait-smart-search-dropdown overflow-hidden",
             dropdownPortal ? "fixed z-[200]" : "absolute left-0 right-0 top-[calc(100%+4px)] z-50",
           )}
           style={
@@ -169,7 +169,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
           onMouseDown={(e) => e.preventDefault()}
         >
           <Command shouldFilter={false}>
-            <CommandList className="max-h-64">
+            <CommandList className="max-h-64 overflow-y-auto ait-scrollbar">
               {loading && <div className="px-3 py-2 text-sm text-muted-foreground">Загрузка…</div>}
               {!loading && error && (
                 <div className="px-3 py-2 text-sm text-destructive">{error}</div>
@@ -217,14 +217,12 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
 
     return (
       <div ref={anchorRef} className={cn("relative w-full")}>
-        <Input
-          {...rest}
+        <SmartSearchField
           ref={ref}
           disabled={disabled}
           value={value}
-          autoComplete="off"
-          onChange={(e) => {
-            onChange(e.target.value);
+          onChange={(v) => {
+            onChange(v);
             setOpen(true);
           }}
           onFocus={(e) => {
@@ -239,7 +237,10 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
             rest.onKeyDown?.(e);
             if (e.key === "Escape") setOpen(false);
           }}
-          className={cn(className)}
+          placeholder={rest.placeholder}
+          name={rest.name}
+          id={rest.id}
+          inputClassName={className}
         />
         {!dropdownPortal && dropdownContent}
         {dropdownPortal &&

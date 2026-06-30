@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Building2, Globe, Loader2, MapPin, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Building2, Globe, Loader2, MapPin } from "lucide-react";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -52,6 +52,7 @@ type DestinationSearchProps = {
   showSubmit?: boolean;
   showPopular?: boolean;
   showLeadingIcon?: boolean;
+  embedded?: boolean;
   debounceMs?: number;
   minChars?: number;
 };
@@ -69,6 +70,7 @@ export default function DestinationSearch({
   showSubmit = true,
   showPopular = true,
   showLeadingIcon = true,
+  embedded = false,
   debounceMs = 280,
   minChars = 2,
 }: DestinationSearchProps) {
@@ -184,7 +186,7 @@ export default function DestinationSearch({
       }
     >
       <Command shouldFilter={false}>
-        <CommandList className="max-h-[min(360px,calc(100vh-8rem))] overflow-y-auto">
+        <CommandList className="max-h-[min(360px,calc(100vh-8rem))] overflow-y-auto ait-scrollbar">
           {showPopular && !q && (
             <CommandGroup heading="Популярные направления">
               {POPULAR.map((d) => (
@@ -279,16 +281,12 @@ export default function DestinationSearch({
     <div className={cn("relative", className)} ref={anchorRef}>
       <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
-          {showLeadingIcon && (
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          )}
-          <Input
+          <SmartSearchField
             value={value}
             placeholder={placeholder}
-            autoComplete="off"
-            className={cn(showLeadingIcon ? "pl-9 pr-3" : "pl-3 pr-3", inputClassName)}
-            onChange={(e) => {
-              onChange(e.target.value);
+            embedded={embedded}
+            onChange={(v) => {
+              onChange(v);
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
@@ -297,6 +295,14 @@ export default function DestinationSearch({
               if (e.key === "Enter") submitText();
               if (e.key === "Escape") setOpen(false);
             }}
+            showLeadingIcon={showLeadingIcon}
+            inputClassName={cn(
+              showLeadingIcon ? "" : "!pl-3",
+              embedded && "border-0 shadow-none",
+              !embedded && "border-0 shadow-none bg-transparent backdrop-blur-none",
+              inputClassName,
+            )}
+            className="flex-1 min-w-0"
           />
         </div>
         {showSubmit && (

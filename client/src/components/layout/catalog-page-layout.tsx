@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Search } from "lucide-react";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { cn } from "@/lib/utils";
 
 type CatalogPageLayoutProps = {
@@ -43,15 +43,13 @@ export function CatalogSearchInput({
   placeholder: string;
 }) {
   return (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <input
-        type="search"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-transparent pl-10 pr-4 py-2 text-sm outline-none placeholder:text-muted-foreground"
-      />
-    </div>
+    <SmartSearchField
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      type="search"
+      size="sm"
+      className="w-full"
+    />
   );
 }

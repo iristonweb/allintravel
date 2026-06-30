@@ -4,6 +4,7 @@ import AppLayout from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Download, ExternalLink, Music2, Play, Plus, Search, Trash2, Upload } from "lucide-react";
@@ -191,16 +192,12 @@ function ProfileMusicContent() {
       <Card className="border-border/60">
         <CardContent className="p-4 space-y-3">
           <Label htmlFor="music-search">Поиск по названию</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="music-search"
-              placeholder="Исполнитель или название…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SmartSearchField
+            id="music-search"
+            placeholder="Исполнитель или название…"
+            value={searchInput}
+            onChange={setSearchInput}
+          />
           {searchQuery.length >= 2 && (
             <div className="space-y-4 pt-1">
               {searchLoading && <p className="text-xs text-muted-foreground">Поиск…</p>}

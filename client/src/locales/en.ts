@@ -491,6 +491,16 @@ export const en = {
       removeRouteStop: "Remove route stop",
       creating: "Creating...",
       submit: "Create trip",
+      inviteLabel: "Group participants",
+      inviteHint:
+        "Search by @username or name — friends join the trip and private group chat right after creation.",
+      invitePlaceholder: "@username or friend name",
+      inviteRemove: "Remove",
+      inviteSearching: "Searching…",
+      inviteMaxTitle: "Participant limit reached",
+      inviteMaxHint: "You can invite up to {{max}} people (excluding yourself).",
+      inviteUnresolvedTitle: "Select a participant",
+      inviteUnresolvedHint: "Pick someone from the list or clear the search field.",
     },
     validation: {
       titleMin: "At least 3 characters",
@@ -720,6 +730,54 @@ export const en = {
       allComplete: "All rings complete — visit AIT Hub for a bonus!",
       openHub: "Open AIT Hub →",
     },
+  },
+  engagement: {
+    toastOpen: "Open",
+    reminders: {
+      ring: {
+        title: "The «{{ring}}» ring is waiting ✈️",
+        body: "Close it today and claim your bonus in AIT Hub",
+      },
+      exploreMap: {
+        title: "The map is calling explorers 🗺️",
+        body: "Pin a new place or discover a fellow traveler's route",
+      },
+      checkChats: {
+        title: "Fellow travelers are online 💬",
+        body: "Check your chats — someone might be messaging you",
+      },
+      planTrip: {
+        title: "Time to plan an adventure 🧳",
+        body: "Build your dream trip — AI can help with the route",
+      },
+      socialFeed: {
+        title: "The feed wants your story 📸",
+        body: "Share a travel moment with the community",
+      },
+      wallet: {
+        title: "Your AIT wallet is growing 🪙",
+        body: "Check activity rings and claim weekly quests",
+      },
+      passport: {
+        title: "Your Travel Passport is filling up 🛂",
+        body: "Open your profile — your travel stamps are waiting",
+      },
+      events: {
+        title: "Something fun is nearby 🎉",
+        body: "Browse events — you might find company for the trip",
+      },
+      community: {
+        title: "The All In Travel community 🤝",
+        body: "Find fellow travelers and plan together",
+      },
+    },
+  },
+  notifications: {
+    someone: "Someone",
+    newPrivateMessage: "New private message",
+    newChatMessageFrom: "Message from {{name}}",
+    broadcastPublished: "New broadcast from the team",
+    aitGrant: "AIT credited!",
   },
   seo: {
     homeTitle: "allintravel — map, planner & global life platform",

@@ -493,6 +493,16 @@ export const ru = {
       removeRouteStop: "Удалить точку маршрута",
       creating: "Создание...",
       submit: "Создать поездку",
+      inviteLabel: "Участники группы",
+      inviteHint:
+        "Ищите по @нику или имени — друзья попадут в поездку и приватный чат группы сразу после создания.",
+      invitePlaceholder: "@ник или имя друга",
+      inviteRemove: "Убрать",
+      inviteSearching: "Поиск…",
+      inviteMaxTitle: "Лимит участников",
+      inviteMaxHint: "Можно пригласить до {{max}} человек (без вас).",
+      inviteUnresolvedTitle: "Выберите участника",
+      inviteUnresolvedHint: "Выберите человека из списка или очистите поле поиска.",
     },
     validation: {
       titleMin: "Минимум 3 символа",
@@ -723,6 +733,54 @@ export const ru = {
       allComplete: "Все кольца закрыты — зайдите в AIT Hub за бонусом!",
       openHub: "Открыть AIT Hub →",
     },
+  },
+  engagement: {
+    toastOpen: "Открыть",
+    reminders: {
+      ring: {
+        title: "Кольцо «{{ring}}» ждёт вас ✈️",
+        body: "Закройте его сегодня — и заберите бонус в AIT Hub",
+      },
+      exploreMap: {
+        title: "Карта зовёт исследователей 🗺️",
+        body: "Отметьте новое место или откройте маршрут попутчиков",
+      },
+      checkChats: {
+        title: "Попутчики на связи 💬",
+        body: "Загляните в чаты — возможно, кто-то уже пишет вам",
+      },
+      planTrip: {
+        title: "Пора спланировать приключение 🧳",
+        body: "Соберите поездку мечты — AI поможет с маршрутом",
+      },
+      socialFeed: {
+        title: "Лента ждёт вашу историю 📸",
+        body: "Поделитесь моментом путешествия с сообществом",
+      },
+      wallet: {
+        title: "Ваш AIT-кошелёк растёт 🪙",
+        body: "Проверьте кольца активности и заберите квесты",
+      },
+      passport: {
+        title: "Travel Passport пополняется 🛂",
+        body: "Откройте профиль — ваши штампы путешествий ждут",
+      },
+      events: {
+        title: "Рядом что-то интересное 🎉",
+        body: "Посмотрите события — может, найдёте компанию",
+      },
+      community: {
+        title: "Сообщество All In Travel 🤝",
+        body: "Найдите друзей-путешественников и планируйте вместе",
+      },
+    },
+  },
+  notifications: {
+    someone: "Кто-то",
+    newPrivateMessage: "Новое личное сообщение",
+    newChatMessageFrom: "Сообщение от {{name}}",
+    broadcastPublished: "Новая рассылка от команды",
+    aitGrant: "Начислены AIT!",
   },
   seo: {
     homeTitle: "allintravel — карта, планировщик и платформа глобальной жизни",

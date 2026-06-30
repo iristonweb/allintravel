@@ -7,7 +7,7 @@ import PageShell from "@/components/layout/page-shell";
 import EmptyState from "@/components/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -309,10 +309,11 @@ export function Friends() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
-                    <Input
+                    <SmartSearchField
+                      className="flex-1"
                       placeholder={t("friends.searchPlaceholder")}
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={setSearchQuery}
                       onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     />
                     <Button onClick={handleSearch} disabled={isSearching}>

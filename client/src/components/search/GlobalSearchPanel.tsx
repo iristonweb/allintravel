@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Compass, Hash, MapPin, Search, Users } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import DestinationSearch from "@/components/search/DestinationSearch";
 import { useChatGroupSearchDialog } from "@/components/chat/ChatGroupSearchContext";
 import { buildDestinationHref } from "@/lib/destination-search";
@@ -95,24 +96,26 @@ export default function GlobalSearchPanel() {
               {isGroupsTarget ? t("chat.hero.groupLabel") : t("searchPanel.where")}
             </span>
             {isGroupsTarget ? (
-              <input
-                type="text"
+              <SmartSearchField
+                embedded
+                showLeadingIcon={false}
                 value={where}
-                onChange={(e) => setWhere(e.target.value)}
+                onChange={setWhere}
                 onKeyDown={(e) => e.key === "Enter" && search()}
                 placeholder={t("chat.hero.groupPlaceholder")}
-                className="w-full bg-transparent border-0 outline-none text-sm text-foreground h-8"
+                inputClassName="text-sm w-full"
               />
             ) : (
               <DestinationSearch
                 value={where}
                 onChange={setWhere}
                 onNavigate={navigate}
+                embedded
+                showLeadingIcon={false}
                 showSubmit={false}
                 showPopular={false}
-                showLeadingIcon={false}
                 placeholder={t("searchPanel.wherePlaceholder")}
-                inputClassName="border-0 bg-transparent h-8 px-0 focus-visible:ring-0 text-sm w-full"
+                inputClassName="border-0 h-8 px-0 text-sm w-full"
                 hrefMode="map"
               />
             )}

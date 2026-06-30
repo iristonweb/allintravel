@@ -37,7 +37,7 @@ export default function MapSearchPanel({
             onNavigate={onNavigate}
             placeholder={t("mapPage.searchPlaceholder")}
             showLeadingIcon={false}
-            inputClassName="ait-glass border-0 bg-white/5 text-white placeholder:text-slate-500 h-11 text-sm truncate"
+            inputClassName="h-11 text-sm truncate text-white placeholder:text-slate-500"
             placeType={filterType}
             hrefMode="map"
             dropdownPortal

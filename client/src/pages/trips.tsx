@@ -51,7 +51,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTripSchema, type Trip, type User } from "@shared/schema";
-import TripInvitePicker from "@/components/trips/TripInvitePicker";
+import TripInvitePicker, { flushTripInvitePending } from "@/components/trips/TripInvitePicker";
 
 function destinationKeywords(destination: string): string[] {
   const full = destination.trim().toLowerCase();
@@ -119,6 +119,13 @@ export function Trips() {
   const [routeQuery, setRouteQuery] = useState("");
   const [selectedRouteGeo, setSelectedRouteGeo] = useState<GeoAutocompleteItem | null>(null);
   const [inviteUsers, setInviteUsers] = useState<User[]>([]);
+  const [inviteDraft, setInviteDraft] = useState("");
+
+  const { data: friends = [] } = useQuery<User[]>({
+    queryKey: ["/api/friends"],
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     setSearch(new URLSearchParams(searchString).get("search") ?? "");
@@ -162,11 +169,18 @@ export function Trips() {
     setRouteQuery("");
     setSelectedRouteGeo(null);
     setInviteUsers([]);
+    setInviteDraft("");
     form.reset();
   };
 
   const createMutation = useMutation({
-    mutationFn: async (data: CreateTripForm) => {
+    mutationFn: async ({
+      data,
+      inviteUserIds,
+    }: {
+      data: CreateTripForm;
+      inviteUserIds: string[];
+    }) => {
       const payload: Record<string, unknown> = {
         title: data.title,
         destination: data.destination,
@@ -178,8 +192,8 @@ export function Trips() {
       };
       if (data.budgetMin != null) payload.budgetMin = data.budgetMin;
       if (data.budgetMax != null) payload.budgetMax = data.budgetMax;
-      if (inviteUsers.length > 0) {
-        payload.inviteUserIds = inviteUsers.map((u) => u.id);
+      if (inviteUserIds.length > 0) {
+        payload.inviteUserIds = inviteUserIds;
       }
       const trip = (await apiRequestJson("POST", "/api/trips", payload)) as Trip & {
         invites?: { invited: string[]; skipped: string[] };
@@ -285,8 +299,25 @@ export function Trips() {
     },
   });
 
-  const onSubmit = (data: CreateTripForm) => {
-    createMutation.mutate(data);
+  const onSubmit = async (data: CreateTripForm) => {
+    const maxInvites = Math.max(1, (data.maxParticipants ?? 5) - 1);
+    const { users, unresolved } = await flushTripInvitePending(
+      inviteDraft,
+      inviteUsers,
+      friends,
+      user?.id,
+      maxInvites,
+    );
+    if (unresolved && inviteDraft.trim()) {
+      toast({
+        title: t("tripsPage.create.inviteUnresolvedTitle"),
+        description: t("tripsPage.create.inviteUnresolvedHint"),
+        variant: "destructive",
+      });
+      return;
+    }
+    setInviteUsers(users);
+    createMutation.mutate({ data, inviteUserIds: users.map((u) => u.id) });
   };
 
   const q = search.trim();
@@ -321,19 +352,23 @@ export function Trips() {
         }}
       >
         <DialogContent
-          className="ait-glass-strong ait-gradient-border border-white/10 text-foreground sm:max-w-xl"
+          className="ait-glass-strong ait-gradient-border border-white/10 text-foreground sm:max-w-xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
           onInteractOutside={(e) => {
             if ((e.target as HTMLElement).closest("[data-geo-autocomplete]")) {
               e.preventDefault();
             }
           }}
         >
-          <DialogHeader>
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>{t("tripsPage.create.title")}</DialogTitle>
             <DialogDescription>{t("tripsPage.create.description")}</DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-col flex-1 min-h-0 overflow-hidden"
+            >
+              <div className="px-6 overflow-y-auto flex-1 min-h-0 ait-scrollbar space-y-5 pb-4">
               <MediaUploadField
                 label={t("tripsPage.create.coverLabel")}
                 multiple={false}
@@ -473,6 +508,7 @@ export function Trips() {
               <TripInvitePicker
                 value={inviteUsers}
                 onChange={setInviteUsers}
+                onDraftChange={setInviteDraft}
                 max={Math.max(1, (form.watch("maxParticipants") ?? 5) - 1)}
                 currentUserId={user?.id}
               />
@@ -538,8 +574,9 @@ export function Trips() {
                   </ol>
                 )}
               </div>
+              </div>
 
-              <div className="flex gap-3 pt-2 border-t border-white/10">
+              <div className="px-6 pb-6 pt-3 shrink-0 border-t border-white/10 flex gap-3">
                 <Button
                   type="button"
                   variant="outline"

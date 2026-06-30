@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -197,15 +198,12 @@ export default function AdminPage() {
             <GlassCard className="p-4">
               <Label className="text-xs text-muted-foreground">Поиск пользователя</Label>
               <div className="flex gap-2 mt-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    className="pl-9 ait-glass rounded-xl"
-                    placeholder="Email, username, имя…"
-                    value={searchQ}
-                    onChange={(e) => setSearchQ(e.target.value)}
-                  />
-                </div>
+                <SmartSearchField
+                  className="flex-1"
+                  placeholder="Email, username, имя…"
+                  value={searchQ}
+                  onChange={setSearchQ}
+                />
               </div>
               {searchFetching && searchQ.trim().length >= 2 ? (
                 <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">

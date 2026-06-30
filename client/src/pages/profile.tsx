@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PassportCard from "@/components/passport/PassportCard";
+import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import PlatformWalletCard from "@/components/wallet/PlatformWalletCard";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
@@ -7,7 +8,7 @@ import PageShell from "@/components/layout/page-shell";
 import GlassCard from "@/components/brand/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import SmartSearchField from "@/components/search/SmartSearchField";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfileHubLinks } from "@/lib/profile-hub-links";
 import {
@@ -179,6 +180,8 @@ export function Profile() {
 
               <PassportCard compact />
 
+              <AitDailyPulse className="mb-6" />
+
               <PlatformWalletCard compact className="mb-6" />
 
               <GlassCard className="mb-6 p-4">
@@ -216,10 +219,11 @@ export function Profile() {
                   {t("profile.findByUsername")}
                 </p>
                 <div className="flex gap-2">
-                  <Input
+                  <SmartSearchField
+                    className="flex-1"
                     placeholder={t("profile.usernamePlaceholder")}
                     value={nickSearch}
-                    onChange={(e) => setNickSearch(e.target.value)}
+                    onChange={setNickSearch}
                     onKeyDown={(e) => e.key === "Enter" && handleNickSearch()}
                   />
                   <Button type="button" onClick={handleNickSearch}>
