@@ -92,12 +92,12 @@ export function DestinationPage() {
 
       {data.posts.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-4">Истории</h2>
+          <h2 className="text-lg font-semibold mb-4">{t("destinations.stories")}</h2>
           <div className="grid gap-3">
             {data.posts.map((post) => (
               <GlassCard key={post.id} className="p-4">
                 <Link href={`/post/${post.id}`} className="font-medium hover:text-primary">
-                  {post.title || "Без названия"}
+                  {post.title || t("destinations.untitled")}
                 </Link>
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.content}</p>
               </GlassCard>

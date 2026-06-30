@@ -1,5 +1,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 import NextAdventureCard from "@/components/home/next-adventure-card";
 import GlobalSearchPanel from "@/components/search/GlobalSearchPanel";
 import HeroStats from "@/components/home/hero-stats";
@@ -86,14 +87,9 @@ export default function CinematicHero({
               )}
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link href="/trips">
-                  <motion.button
-                    type="button"
-                    className="ait-btn-glow rounded-2xl px-8 py-4 text-base font-semibold text-white"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
+                  <Button variant="premium" size="lg" className="rounded-2xl px-8 py-4 text-base font-semibold">
                     Планировать путешествие
-                  </motion.button>
+                  </Button>
                 </Link>
                 <Link href="/map">
                   <motion.button

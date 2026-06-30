@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearch, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -71,33 +71,35 @@ const optionalBudgetField = z.preprocess(
   z.number().int().min(0).optional(),
 );
 
-const createTripSchema = insertTripSchema
-  .omit({ userId: true })
-  .extend({
-    title: z.string().min(3, "Минимум 3 символа"),
-    destination: z.string().min(2, "Укажите направление"),
-    startDate: z.string().min(1, "Укажите дату начала"),
-    endDate: z.string().min(1, "Укажите дату окончания"),
-    description: z.string().optional(),
-    maxParticipants: z.coerce.number().min(2).max(50).default(5),
-    budgetMin: optionalBudgetField,
-    budgetMax: optionalBudgetField,
-  })
-  .refine((data) => !data.startDate || !data.endDate || data.endDate >= data.startDate, {
-    message: "Дата окончания должна быть не раньше даты начала",
-    path: ["endDate"],
-  });
+function buildCreateTripSchema(t: (key: string) => string) {
+  return insertTripSchema
+    .omit({ userId: true })
+    .extend({
+      title: z.string().min(3, t("tripsPage.validation.titleMin")),
+      destination: z.string().min(2, t("tripsPage.validation.destinationMin")),
+      startDate: z.string().min(1, t("tripsPage.validation.startDateRequired")),
+      endDate: z.string().min(1, t("tripsPage.validation.endDateRequired")),
+      description: z.string().optional(),
+      maxParticipants: z.coerce.number().min(2).max(50).default(5),
+      budgetMin: optionalBudgetField,
+      budgetMax: optionalBudgetField,
+    })
+    .refine((data) => !data.startDate || !data.endDate || data.endDate >= data.startDate, {
+      message: t("tripsPage.validation.endBeforeStart"),
+      path: ["endDate"],
+    });
+}
 
-type CreateTripForm = z.infer<typeof createTripSchema>;
+type CreateTripForm = z.infer<ReturnType<typeof buildCreateTripSchema>>;
 
-function parseApiError(err: unknown): string {
-  if (!(err instanceof Error)) return "Не удалось создать поездку.";
+function parseApiError(err: unknown, t: (key: string) => string): string {
+  if (!(err instanceof Error)) return t("tripsPage.toast.createFailed");
   const raw = err.message.replace(/^\d+:\s*/, "");
   try {
     const json = JSON.parse(raw) as { message?: string };
     return json.message ?? raw;
   } catch {
-    return raw || "Не удалось создать поездку.";
+    return raw || t("tripsPage.toast.createFailed");
   }
 }
 
@@ -139,6 +141,8 @@ export function Trips() {
 
   const primaryTripId =
     trips.find((t) => t.userId === user?.id)?.id ?? participations.tripIds[0] ?? trips[0]?.id;
+
+  const createTripSchema = useMemo(() => buildCreateTripSchema(t), [t]);
 
   const form = useForm<CreateTripForm>({
     resolver: zodResolver(createTripSchema),
@@ -186,9 +190,8 @@ export function Trips() {
           await addTripStopsFromDrafts(trip.id, routeDrafts);
         } catch {
           toast({
-            title: "Поездка создана",
-            description:
-              "Не все остановки маршрута удалось сохранить. Добавьте их на странице поездки.",
+            title: t("tripsPage.toast.createdPartialTitle"),
+            description: t("tripsPage.toast.createdPartialRoute"),
             variant: "destructive",
           });
         }
@@ -204,18 +207,21 @@ export function Trips() {
       setOpen(false);
       resetCreateDialog();
       toast({
-        title: "Поездка и чат группы созданы",
+        title: t("tripsPage.toast.createdTitle"),
         description:
           invitedCount > 0
-            ? `Маршрут${stopCount > 0 ? " сохранён" : ""}. В чат приглашено: ${invitedCount}.`
+            ? t("tripsPage.toast.createdWithInvites", {
+                routeSaved: stopCount > 0 ? t("tripsPage.toast.routeSavedSuffix") : "",
+                count: invitedCount,
+              })
             : stopCount > 0
-              ? "Маршрут сохранён. Откройте вкладку «Группа» для чата."
-              : "Приватный чат группы уже ждёт вас на странице поездки.",
+              ? t("tripsPage.toast.createdWithRoute")
+              : t("tripsPage.toast.createdDefault"),
       });
       if (trip?.id) setLocation(`/trips/${trip.id}`);
     },
     onError: (err) => {
-      toast({ title: "Ошибка", description: parseApiError(err), variant: "destructive" });
+      toast({ title: t("common.error"), description: parseApiError(err, t), variant: "destructive" });
     },
   });
 
@@ -223,8 +229,8 @@ export function Trips() {
     const q = routeQuery.trim();
     if (q.length < 2) {
       toast({
-        title: "Введите название места",
-        description: "Минимум 2 символа.",
+        title: t("tripsPage.toast.routeStopTooShort"),
+        description: t("tripsPage.toast.routeStopTooShortHint"),
         variant: "destructive",
       });
       return;
@@ -237,9 +243,8 @@ export function Trips() {
     const draft = item ? geoItemToDraft(item) : null;
     if (!draft) {
       toast({
-        title: "Не удалось определить место",
-        description:
-          "Выберите город или адрес из подсказок — координаты подставятся автоматически.",
+        title: t("tripsPage.toast.routeGeoFailed"),
+        description: t("tripsPage.toast.routeGeoFailedHint"),
         variant: "destructive",
       });
       return;
@@ -247,7 +252,7 @@ export function Trips() {
     setRouteDrafts((prev) => [...prev, draft]);
     setRouteQuery("");
     setSelectedRouteGeo(null);
-    toast({ title: "Точка добавлена в маршрут", description: draft.label });
+    toast({ title: t("tripsPage.toast.routeStopAdded"), description: draft.label });
   };
 
   const joinMutation = useMutation({
@@ -255,7 +260,7 @@ export function Trips() {
       const res = await apiRequest("POST", `/api/trips/${tripId}/join`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? "Не удалось присоединиться");
+        throw new Error((body as { message?: string }).message ?? t("tripsPage.toast.joinFailed"));
       }
       return res.json();
     },
@@ -263,14 +268,14 @@ export function Trips() {
       queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       queryClient.invalidateQueries({ queryKey: ["/api/trips/my-participations"] });
       toast({
-        title: "Вы присоединились!",
-        description: "Вы добавлены в список участников поездки.",
+        title: t("tripsPage.toast.joinSuccess"),
+        description: t("tripsPage.toast.joinSuccessHint"),
       });
     },
     onError: (err: Error) => {
       toast({
-        title: "Ошибка",
-        description: err.message || "Не удалось присоединиться к поездке.",
+        title: t("common.error"),
+        description: err.message || t("tripsPage.toast.joinFailed"),
         variant: "destructive",
       });
     },
@@ -293,8 +298,8 @@ export function Trips() {
   const openCreateDialog = () => {
     if (!isAuthenticated) {
       toast({
-        title: "Войдите в аккаунт",
-        description: "Чтобы создать поездку, нужна авторизация.",
+        title: t("tripsPage.toast.signInRequired"),
+        description: t("tripsPage.toast.signInRequiredHint"),
       });
       setLocation("/login");
       return;
@@ -320,16 +325,13 @@ export function Trips() {
           }}
         >
           <DialogHeader>
-            <DialogTitle>Новая поездка</DialogTitle>
-            <DialogDescription>
-              Создаётся поездка, приватный чат группы и приглашения по @нику. Остальные попутчики
-              смогут присоединиться из каталога.
-            </DialogDescription>
+            <DialogTitle>{t("tripsPage.create.title")}</DialogTitle>
+            <DialogDescription>{t("tripsPage.create.description")}</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <MediaUploadField
-                label="Обложка поездки"
+                label={t("tripsPage.create.coverLabel")}
                 multiple={false}
                 maxFiles={1}
                 accept="image/jpeg,image/png,image/webp,image/gif"
@@ -342,9 +344,9 @@ export function Trips() {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Название поездки</FormLabel>
+                    <FormLabel>{t("tripsPage.create.tripTitle")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Например: Путешествие по Японии" {...field} />
+                      <Input placeholder={t("tripsPage.create.tripTitlePlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -356,10 +358,10 @@ export function Trips() {
                 name="destination"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Направление</FormLabel>
+                    <FormLabel>{t("tripsPage.create.destination")}</FormLabel>
                     <FormControl>
                       <LocationAutocompleteInput
-                        placeholder="Страна или город"
+                        placeholder={t("tripsPage.create.destinationPlaceholder")}
                         value={field.value ?? ""}
                         onChange={(v) => field.onChange(v)}
                         onBlur={field.onBlur}
@@ -368,7 +370,7 @@ export function Trips() {
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      Можно ввести вручную, минимум 2 символа
+                      {t("tripsPage.create.destinationHint")}
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -380,10 +382,10 @@ export function Trips() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Описание (необязательно)</FormLabel>
+                    <FormLabel>{t("tripsPage.create.descriptionLabel")}</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Расскажите о маршруте, планах, что ищете в попутчиках..."
+                        placeholder={t("tripsPage.create.descriptionPlaceholder")}
                         rows={3}
                         {...field}
                       />
@@ -399,7 +401,7 @@ export function Trips() {
                   name="startDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Дата начала</FormLabel>
+                      <FormLabel>{t("tripsPage.create.startDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -412,7 +414,7 @@ export function Trips() {
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Дата окончания</FormLabel>
+                      <FormLabel>{t("tripsPage.create.endDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -428,7 +430,7 @@ export function Trips() {
                   name="maxParticipants"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Макс. участников</FormLabel>
+                      <FormLabel>{t("tripsPage.create.maxParticipants")}</FormLabel>
                       <FormControl>
                         <Input type="number" min={2} max={50} {...field} />
                       </FormControl>
@@ -441,7 +443,7 @@ export function Trips() {
                   name="budgetMin"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Бюджет от (₽)</FormLabel>
+                      <FormLabel>{t("tripsPage.create.budgetMin")}</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="0" {...field} />
                       </FormControl>
@@ -454,7 +456,7 @@ export function Trips() {
                   name="budgetMax"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Бюджет до (₽)</FormLabel>
+                      <FormLabel>{t("tripsPage.create.budgetMax")}</FormLabel>
                       <FormControl>
                         <Input type="number" placeholder="∞" {...field} />
                       </FormControl>
@@ -473,14 +475,13 @@ export function Trips() {
 
               <div className="space-y-3 pt-2 border-t border-white/10">
                 <div>
-                  <FormLabel>Маршрут (места)</FormLabel>
+                  <FormLabel>{t("tripsPage.create.routeLabel")}</FormLabel>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Укажите адреса, улицы и точки по порядку — не только город. Маршрут можно
-                    изменить позже на странице поездки.
+                    {t("tripsPage.create.routeHint")}
                   </p>
                 </div>
                 <LocationAutocompleteInput
-                  placeholder="Улица, дом, заведение или город…"
+                  placeholder={t("tripsPage.create.routePlaceholder")}
                   value={routeQuery}
                   onChange={(v) => {
                     setRouteQuery(v);
@@ -503,7 +504,7 @@ export function Trips() {
                   onClick={() => void addRouteDraft()}
                 >
                   <MapPin className="h-4 w-4 mr-2" />
-                  Добавить в маршрут
+                  {t("tripsPage.create.addRouteStop")}
                 </Button>
                 {routeDrafts.length > 0 && (
                   <ol className="space-y-2 list-none">
@@ -521,7 +522,7 @@ export function Trips() {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 shrink-0"
-                          aria-label="Удалить точку маршрута"
+                          aria-label={t("tripsPage.create.removeRouteStop")}
                           onClick={() =>
                             setRouteDrafts((prev) => prev.filter((_, i) => i !== index))
                           }
@@ -544,7 +545,7 @@ export function Trips() {
                     resetCreateDialog();
                   }}
                 >
-                  Отмена
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -552,7 +553,7 @@ export function Trips() {
                   className="flex-1"
                   disabled={createMutation.isPending}
                 >
-                  {createMutation.isPending ? "Создание..." : "Создать поездку"}
+                  {createMutation.isPending ? t("tripsPage.create.creating") : t("tripsPage.create.submit")}
                 </Button>
               </div>
             </form>
@@ -595,8 +596,12 @@ export function Trips() {
           stats={
             <>
               <StatPill
-                value={q ? `${filtered.length} из ${trips.length}` : String(trips.length)}
-                label={q ? "найдено по запросу" : "поездок доступно"}
+                value={
+                  q
+                    ? t("tripsPage.statsOf", { found: filtered.length, total: trips.length })
+                    : String(trips.length)
+                }
+                label={q ? t("tripsPage.statsFound") : t("tripsPage.statsAvailable")}
               />
               {q && (
                 <button
@@ -607,7 +612,7 @@ export function Trips() {
                     "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors",
                   )}
                 >
-                  Сбросить «{q}»
+                  {t("tripsPage.resetQuery", { q })}
                 </button>
               )}
             </>
@@ -652,7 +657,9 @@ export function Trips() {
             {primaryTripId && <TripRouteMatches tripId={primaryTripId} />}
             {q && (
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm text-muted-foreground">Найдено: {filtered.length}</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("tripsPage.found", { count: filtered.length })}
+                </span>
                 <Badge variant="secondary" className="cursor-pointer" onClick={() => setSearch("")}>
                   {q} ✕
                 </Badge>

@@ -137,7 +137,8 @@ export default function ReferralCard() {
                 className="ait-glass rounded-xl max-w-[200px]"
               />
               <Button
-                className="ait-btn-glow text-white rounded-xl"
+                variant="premium"
+                className="rounded-xl"
                 disabled={codeInput.length < 4 || applyMutation.isPending}
                 onClick={() => applyMutation.mutate(codeInput)}
               >

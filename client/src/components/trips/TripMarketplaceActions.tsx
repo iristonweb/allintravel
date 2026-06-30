@@ -76,9 +76,10 @@ export default function TripMarketplaceActions({
           </Button>
           {isForSale && (
             <Button
+              variant="premium"
               type="button"
               size="sm"
-              className="rounded-xl gap-2 ait-btn-glow"
+              className="rounded-xl gap-2"
               disabled={buyMutation.isPending}
               onClick={() => buyMutation.mutate()}
             >

@@ -7,7 +7,8 @@ import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Settings, Search, Edit, AlertCircle, LogOut, Music, Wallet } from "lucide-react";
+import { useProfileHubLinks } from "@/lib/profile-hub-links";
+import { Settings, Search, Edit, AlertCircle, LogOut, Music, Wallet, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import EmptyState from "@/components/empty-state";
@@ -26,6 +27,7 @@ export function Profile() {
   const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [nickSearch, setNickSearch] = useState("");
+  const { linksWithMap } = useProfileHubLinks();
 
   const {
     data: friends = [],
@@ -163,6 +165,24 @@ export function Profile() {
             </GlassCard>
 
             <PassportCard compact />
+
+            <GlassCard className="mb-6 p-4">
+              <h2 className="text-sm font-medium mb-3">{t("profile.hubSection")}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {linksWithMap.map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:bg-white/5 transition-colors">
+                      <item.icon className="h-5 w-5 text-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{item.label}</p>
+                        <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </GlassCard>
 
             <GlassCard className="mb-6 p-4">
               <p className="text-sm font-medium mb-2 flex items-center gap-2">

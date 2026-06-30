@@ -194,12 +194,12 @@ export function Events() {
               </DialogHeader>
               <div className="space-y-3">
                 <Input
-                  placeholder="Название"
+                  placeholder={t("events.form.title")}
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                 />
                 <Textarea
-                  placeholder="Описание"
+                  placeholder={t("events.form.description")}
                   value={newEvent.description}
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                 />
@@ -215,7 +215,7 @@ export function Events() {
                   ))}
                 </select>
                 <LocationAutocompleteInput
-                  placeholder="Место проведения"
+                  placeholder={t("events.form.location")}
                   value={newEvent.location}
                   onChange={(v) => setNewEvent({ ...newEvent, location: v })}
                   dropdownPortal
@@ -227,18 +227,18 @@ export function Events() {
                 />
                 <Input
                   type="datetime-local"
-                  placeholder="Окончание"
+                  placeholder={t("events.form.endDate")}
                   value={newEvent.endDate}
                   onChange={(e) => setNewEvent({ ...newEvent, endDate: e.target.value })}
                 />
                 <Input
                   type="number"
-                  placeholder="Цена (₽), необязательно"
+                  placeholder={t("events.form.priceOptional")}
                   value={newEvent.price}
                   onChange={(e) => setNewEvent({ ...newEvent, price: e.target.value })}
                 />
                 <MediaUploadField
-                  label="Обложка события"
+                  label={t("events.form.coverLabel")}
                   accept="image/jpeg,image/png,image/webp,image/gif,.gif"
                   multiple={false}
                   maxFiles={1}

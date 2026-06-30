@@ -97,7 +97,8 @@ export default function CreatorsPage() {
           />
           <Button
             type="button"
-            className="rounded-xl ait-btn-glow"
+            variant="premium"
+            className="rounded-xl"
             disabled={applyMutation.isPending || !email}
             onClick={() => applyMutation.mutate()}
           >

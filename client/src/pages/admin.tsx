@@ -322,7 +322,8 @@ export default function AdminPage() {
                   </Label>
                 </div>
                 <Button
-                  className="ait-btn-glow text-white rounded-xl w-full"
+                  variant="premium"
+                  className="rounded-xl w-full"
                   disabled={!delta || adjustMutation.isPending}
                   onClick={() => adjustMutation.mutate()}
                 >

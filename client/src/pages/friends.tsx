@@ -144,8 +144,8 @@ export function Friends() {
     return (
       <AppLayout contentClassName="py-16">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
-          <p className="text-muted-foreground">Чтобы управлять друзьями, необходимо войти</p>
+          <h1 className="text-2xl font-bold mb-4">{t("friends.signInRequired")}</h1>
+          <p className="text-muted-foreground">{t("friends.signInHint")}</p>
         </div>
       </AppLayout>
     );
@@ -165,17 +165,19 @@ export function Friends() {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="friends">
               <Users className="mr-2 h-4 w-4" />
-              Друзья ({friends.length})
+              {t("friends.tabFriends")} ({friends.length})
             </TabsTrigger>
             <TabsTrigger value="search">
               <Search className="mr-2 h-4 w-4" />
-              Поиск
+              {t("friends.tabSearch")}
             </TabsTrigger>
             <TabsTrigger value="received">
               <UserPlus className="mr-2 h-4 w-4" />
-              Входящие ({receivedRequests.length})
+              {t("friends.tabReceived")} ({receivedRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="sent">Отправленные ({sentRequests.length})</TabsTrigger>
+            <TabsTrigger value="sent">
+              {t("friends.tabSent")} ({sentRequests.length})
+            </TabsTrigger>
           </TabsList>
 
           {/* Friends tab */}
@@ -220,8 +222,8 @@ export function Friends() {
               <Card>
                 <CardContent className="py-10 text-center">
                   <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">У вас пока нет друзей</h3>
-                  <p className="text-muted-foreground">Найдите новых друзей через поиск</p>
+                  <h3 className="text-lg font-semibold mb-2">{t("friends.emptyFriendsTitle")}</h3>
+                  <p className="text-muted-foreground">{t("friends.emptyFriendsHint")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -235,8 +237,8 @@ export function Friends() {
                           size="sm"
                           variant="outline"
                           className="h-8 px-2"
-                          title="Сообщение"
-                          aria-label="Сообщение"
+                          title={t("friends.message")}
+                          aria-label={t("friends.message")}
                         >
                           <MessageCircle className="h-4 w-4" />
                         </Button>
@@ -247,8 +249,8 @@ export function Friends() {
                           variant="outline"
                           className="h-8 px-2"
                           asChild
-                          title="Профиль"
-                          aria-label="Профиль"
+                          title={t("friends.profile")}
+                          aria-label={t("friends.profile")}
                         >
                           <Link href={friendProfileHref(friend)!}>
                             <UserCheck className="h-4 w-4" />
@@ -259,8 +261,8 @@ export function Friends() {
                         size="sm"
                         variant="outline"
                         className="h-8 px-2"
-                        title="Удалить"
-                        aria-label="Удалить из друзей"
+                        title={t("friends.remove")}
+                        aria-label={t("friends.removeFromFriends")}
                         onClick={() => removeFriendMutation.mutate(friend.id)}
                         disabled={removeFriendMutation.isPending}
                       >
@@ -297,12 +299,12 @@ export function Friends() {
             </div>
             <Card>
               <CardHeader>
-                <CardTitle>Поиск пользователей</CardTitle>
+                <CardTitle>{t("friends.searchUsersTitle")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="@ник или имя..."
+                    placeholder={t("friends.searchPlaceholder")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -317,7 +319,7 @@ export function Friends() {
             {activeSearch && searchResults.length === 0 && !isSearching && (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <p className="text-muted-foreground">Пользователи не найдены</p>
+                  <p className="text-muted-foreground">{t("friends.noUsersFound")}</p>
                 </CardContent>
               </Card>
             )}
@@ -359,13 +361,13 @@ export function Friends() {
                               <div className="flex gap-2 items-center">
                                 <Badge variant="secondary">
                                   <UserCheck className="mr-1 h-3.5 w-3.5" />
-                                  Друг
+                                  {t("friends.friendBadge")}
                                 </Badge>
                                 <FollowButton userId={result.id} />
                               </div>
                             ) : requestSent ? (
                               <div className="flex gap-2 items-center">
-                                <Badge variant="outline">Запрос отправлен</Badge>
+                                <Badge variant="outline">{t("friends.requestSentBadge")}</Badge>
                                 <FollowButton userId={result.id} />
                               </div>
                             ) : (
@@ -378,7 +380,7 @@ export function Friends() {
                                   disabled={sendRequestMutation.isPending}
                                 >
                                   <UserPlus className="mr-2 h-4 w-4" />
-                                  Добавить
+                                  {t("friends.addFriend")}
                                 </Button>
                               </div>
                             )}
@@ -396,10 +398,10 @@ export function Friends() {
             {receivedError ? (
               <EmptyState
                 icon={AlertCircle}
-                title="Не удалось загрузить запросы"
+                title={t("friends.loadRequestsError")}
                 action={
                   <Button variant="outline" onClick={() => refetchReceived()}>
-                    Повторить
+                    {t("common.retry")}
                   </Button>
                 }
               />
@@ -413,8 +415,8 @@ export function Friends() {
               <Card>
                 <CardContent className="py-10 text-center">
                   <UserPlus className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Нет входящих запросов</h3>
-                  <p className="text-muted-foreground">Входящие запросы появятся здесь</p>
+                  <h3 className="text-lg font-semibold mb-2">{t("friends.noReceivedTitle")}</h3>
+                  <p className="text-muted-foreground">{t("friends.noReceivedHint")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -432,7 +434,7 @@ export function Friends() {
                           </Avatar>
                           <div>
                             <h3 className="font-semibold">
-                              {request.user ? getUserDisplayLabel(request.user) : "Пользователь"}
+                              {request.user ? getUserDisplayLabel(request.user) : t("friends.userFallback")}
                             </h3>
                             {request.user && getUserHandle(request.user) && (
                               <p className="text-sm text-ait-purple">
@@ -440,7 +442,7 @@ export function Friends() {
                               </p>
                             )}
                             <Badge variant="secondary" className="mt-1">
-                              Входящий запрос
+                              {t("friends.incomingRequest")}
                             </Badge>
                           </div>
                         </div>
@@ -457,7 +459,7 @@ export function Friends() {
                             className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
                           >
                             <UserCheck className="mr-2 h-4 w-4" />
-                            Принять
+                            {t("friends.accept")}
                           </Button>
                           <Button
                             size="sm"
@@ -471,7 +473,7 @@ export function Friends() {
                             disabled={respondToRequestMutation.isPending}
                           >
                             <UserX className="mr-2 h-4 w-4" />
-                            Отклонить
+                            {t("friends.decline")}
                           </Button>
                         </div>
                       </div>
@@ -487,10 +489,10 @@ export function Friends() {
             {sentError ? (
               <EmptyState
                 icon={AlertCircle}
-                title="Не удалось загрузить запросы"
+                title={t("friends.loadRequestsError")}
                 action={
                   <Button variant="outline" onClick={() => refetchSent()}>
-                    Повторить
+                    {t("common.retry")}
                   </Button>
                 }
               />
@@ -503,8 +505,8 @@ export function Friends() {
             ) : sentRequests.length === 0 ? (
               <Card>
                 <CardContent className="py-10 text-center">
-                  <h3 className="text-lg font-semibold mb-2">Нет отправленных запросов</h3>
-                  <p className="text-muted-foreground">Отправленные запросы появятся здесь</p>
+                  <h3 className="text-lg font-semibold mb-2">{t("friends.noSentTitle")}</h3>
+                  <p className="text-muted-foreground">{t("friends.noSentHint")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -522,7 +524,7 @@ export function Friends() {
                           </Avatar>
                           <div>
                             <h3 className="font-semibold">
-                              {request.user ? getUserDisplayLabel(request.user) : "Пользователь"}
+                              {request.user ? getUserDisplayLabel(request.user) : t("friends.userFallback")}
                             </h3>
                             {request.user && getUserHandle(request.user) && (
                               <p className="text-sm text-ait-purple">
@@ -531,7 +533,7 @@ export function Friends() {
                             )}
                           </div>
                         </div>
-                        <Badge variant="outline">Ожидает ответа</Badge>
+                        <Badge variant="outline">{t("friends.awaitingResponse")}</Badge>
                       </div>
                     </CardContent>
                   </Card>

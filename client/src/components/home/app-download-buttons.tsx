@@ -59,7 +59,8 @@ export default function AppDownloadButtons({ className }: { className?: string }
     <div className={cn("flex flex-col items-center gap-4 w-full max-w-md", className)}>
       <Button
         size="lg"
-        className="w-full ait-btn-glow rounded-2xl text-white font-semibold h-12"
+        variant="premium"
+        className="w-full rounded-2xl font-semibold h-12"
         onClick={() => openStore(main.url, main.label)}
       >
         <main.icon className="h-5 w-5 mr-2" />

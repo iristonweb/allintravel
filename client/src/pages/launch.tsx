@@ -67,7 +67,8 @@ export default function LaunchPage() {
           />
           <Button
             type="button"
-            className="rounded-xl ait-btn-glow shrink-0"
+            variant="premium"
+            className="rounded-xl shrink-0"
             disabled={waitlistMutation.isPending || !email}
             onClick={() => waitlistMutation.mutate()}
           >

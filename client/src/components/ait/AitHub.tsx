@@ -113,7 +113,8 @@ export default function AitHub() {
               </div>
               <Button
                 size="sm"
-                className="ait-btn-glow text-white rounded-xl"
+                variant="premium"
+                className="rounded-xl"
                 disabled={q.claimed || q.progress < q.target || claimMutation.isPending}
                 onClick={() => claim(q.id)}
               >

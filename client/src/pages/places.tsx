@@ -158,12 +158,12 @@ export function Places() {
               </DialogHeader>
               <div className="space-y-3">
                 <Input
-                  placeholder="Название"
+                  placeholder={t("places.form.name")}
                   value={newPlace.name}
                   onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
                 />
                 <Textarea
-                  placeholder="Описание"
+                  placeholder={t("places.form.description")}
                   value={newPlace.description}
                   onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })}
                 />
@@ -179,24 +179,24 @@ export function Places() {
                   ))}
                 </select>
                 <Input
-                  placeholder="Адрес"
+                  placeholder={t("places.form.address")}
                   value={newPlace.address}
                   onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })}
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <Input
-                    placeholder="Широта"
+                    placeholder={t("places.form.latitude")}
                     value={newPlace.latitude}
                     onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })}
                   />
                   <Input
-                    placeholder="Долгота"
+                    placeholder={t("places.form.longitude")}
                     value={newPlace.longitude}
                     onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })}
                   />
                 </div>
                 <MediaUploadField
-                  label="Фото места"
+                  label={t("places.form.photoLabel")}
                   accept="image/jpeg,image/png,image/webp,image/gif,.gif"
                   multiple={false}
                   maxFiles={1}
@@ -209,7 +209,7 @@ export function Places() {
                   disabled={!newPlace.name || createPlaceMutation.isPending}
                   onClick={() => createPlaceMutation.mutate()}
                 >
-                  Сохранить
+                  {t("places.form.save")}
                 </Button>
               </div>
             </DialogContent>
