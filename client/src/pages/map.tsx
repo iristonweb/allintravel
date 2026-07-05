@@ -12,7 +12,9 @@ import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import MapLayersPanel, { type MapLayerState } from "@/components/map/MapLayersPanel";
+import MapPlaceSheet, { type MapSheetPlace } from "@/components/map/MapPlaceSheet";
 import TravelJourneyStrip from "@/components/journey/TravelJourneyStrip";
+import AiContextChips from "@/components/ai/AiContextChips";
 
 import InteractiveMap from "@/components/interactive-map";
 
@@ -56,6 +58,8 @@ export function MapPage() {
     myTrips: true,
     passportExplored: false,
   });
+
+  const [selectedPlace, setSelectedPlace] = useState<MapSheetPlace | null>(null);
 
   useEffect(() => {
     setSearch(urlQuery);
@@ -243,8 +247,15 @@ export function MapPage() {
       <div className="relative h-[calc(100vh-var(--ait-header-h))] min-h-[600px]">
         <div className="absolute top-[calc(var(--ait-header-h)+5rem)] left-3 right-3 md:left-[calc(72px+1rem)] md:right-8 z-50 pointer-events-none flex flex-col items-center gap-2">
           {isAuthenticated && (
-            <div className="w-full max-w-3xl pointer-events-auto hidden md:block">
+            <div className="w-full max-w-3xl pointer-events-auto hidden md:block space-y-2">
               <TravelJourneyStrip activeStep="explore" compact />
+              <AiContextChips
+                surface="map"
+                query={activeSearch}
+                lat={mapFocus?.lat}
+                lon={mapFocus?.lon}
+                compact
+              />
             </div>
           )}
           <motion.div
@@ -304,21 +315,47 @@ export function MapPage() {
           showDestinationPin={mapFocus != null}
           onPlaceClick={(place) => {
             if (String(place.id).startsWith("osm-")) {
-              const lat = place.latitude;
-              const lon = place.longitude;
-              if (lat != null && lon != null) {
-                navigate(
-                  `/map?q=${encodeURIComponent(place.name)}&lat=${lat}&lon=${lon}`,
-                );
-              }
+              setSelectedPlace({
+                id: place.id,
+                name: place.name,
+                type: place.type,
+                latitude: place.latitude,
+                longitude: place.longitude,
+                averageRating:
+                  place.averageRating != null ? String(place.averageRating) : null,
+                priceRange: place.priceRange,
+                address: place.address,
+              });
               return;
             }
             if (String(place.id).startsWith("trip-")) {
-              navigate("/trips");
+              setSelectedPlace({
+                id: place.id,
+                name: place.name,
+                type: place.type ?? "trip",
+                latitude: place.latitude,
+                longitude: place.longitude,
+              });
               return;
             }
-            navigate(`/place/${place.id}`);
+            setSelectedPlace({
+              id: place.id,
+              name: place.name,
+              type: place.type,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              averageRating:
+                place.averageRating != null ? String(place.averageRating) : null,
+              priceRange: place.priceRange,
+              address: place.address,
+            });
           }}
+        />
+
+        <MapPlaceSheet
+          place={selectedPlace}
+          open={selectedPlace != null}
+          onClose={() => setSelectedPlace(null)}
         />
 
         <div className="absolute bottom-24 md:bottom-8 left-0 right-0 z-40 px-4 pointer-events-none">

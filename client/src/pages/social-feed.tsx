@@ -39,6 +39,7 @@ import {
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitFilterPills from "@/components/ait-ui/AitFilterPills";
+import AiContextChips from "@/components/ai/AiContextChips";
 import { Plus, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import {
@@ -439,7 +440,10 @@ export function SocialFeed() {
         }
         stats={
           isHubView ? (
-            <CommunityStatsRow reelsCount={reelsCount} useMarketingStats={reelsCount === 0} />
+            <div className="space-y-3">
+              <CommunityStatsRow reelsCount={reelsCount} useMarketingStats={reelsCount === 0} />
+              <AiContextChips surface="social" />
+            </div>
           ) : undefined
         }
         stories={

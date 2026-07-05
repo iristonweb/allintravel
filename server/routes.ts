@@ -142,50 +142,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (req.headers["accept-language"] as string | undefined) ??
         (typeof req.query.lang === "string" ? req.query.lang : undefined);
 
-      const segments = q
-        .split(/[,;]|(?:\s+—\s+)|(?:\s+–\s+)|(?:\s+-\s+)/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const keywords = segments.length >= 2 ? segments[segments.length - 1]! : q;
-      const locationHint = segments.length >= 2 ? segments.slice(0, -1).join(", ") : q;
-
-      const catalogTerms = [keywords, locationHint, q].filter(
-        (t, i, arr) => t.length >= 2 && arr.indexOf(t) === i,
-      );
-
-      const catalogBatches = await Promise.all(
-        catalogTerms.map((term) =>
-          storage.getPlaces({
-            search: term,
-            type: type && type !== "all" ? type : undefined,
-            limit: 20,
-          }),
-        ),
-      );
-
-      const catalogMap = new Map<string, (typeof catalogBatches)[0][0]>();
-      for (const batch of catalogBatches) {
-        for (const p of batch) {
-          catalogMap.set(p.id, p);
-        }
-      }
-
-      const { nominatimPoiSearch } = await import("./geo/nominatim-poi");
-      const osmPlaces = await nominatimPoiSearch({
-        q: keywords.length >= 2 ? keywords : q,
-        limit: 20,
-        lat,
-        lon,
-        filterType: type,
-        acceptLanguage,
-      });
-
-      const merged = [
-        ...Array.from(catalogMap.values()),
-        ...osmPlaces.filter((o) => !catalogMap.has(o.id)),
-      ].slice(0, 40);
-
-      res.json({ places: merged });
+      const { searchMapPois } = await import("./geo/map-pois");
+      const places = await searchMapPois(storage, { q, type, lat, lon, acceptLanguage });
+      res.json({ places });
     } catch (error) {
       console.error("Error searching map POIs:", error);
       res.status(500).json({ message: "Failed to search places on map" });
@@ -1117,6 +1076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/trips/:id/copilot", isAuthenticated, async (req: any, res) => {
     try {
+      res.setHeader("Deprecation", "true");
       const userId = req.user.claims.sub;
       if (!(await userCanManageTrip(storage, userId, req.params.id))) {
         return res.status(403).json({ message: "Forbidden" });
@@ -1125,9 +1085,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!trip) return res.status(404).json({ message: "Trip not found" });
       const prompt = String(req.body?.prompt ?? "").trim();
       if (!prompt) return res.status(400).json({ message: "Укажите запрос" });
+
+      const { getDb } = await import("./db");
+      const { sql } = await import("drizzle-orm");
+      const { ensurePlatformSchema } = await import("./platform-schema");
+      await ensurePlatformSchema();
+      const db = getDb();
+
+      let sessionId: string;
+      if (db) {
+        const existing = await db.execute(sql`
+          SELECT id FROM ai_copilot_sessions WHERE user_id = ${userId} AND trip_id = ${trip.id}
+          ORDER BY updated_at DESC LIMIT 1
+        `);
+        const found = (existing as unknown as { rows?: { id: string }[] }).rows?.[0]?.id;
+        if (found) {
+          sessionId = found;
+        } else {
+          const created = await db.execute(sql`
+            INSERT INTO ai_copilot_sessions (user_id, trip_id, messages)
+            VALUES (${userId}, ${trip.id}, '[]'::jsonb)
+            RETURNING id
+          `);
+          sessionId = String(
+            (created as unknown as { rows?: { id: string }[] }).rows?.[0]?.id ??
+              crypto.randomUUID(),
+          );
+        }
+      } else {
+        sessionId = `${userId}:${trip.id}`;
+      }
+
       const { generateTripCopilotPlan } = await import("./ai/trip-copilot");
       const plan = await generateTripCopilotPlan(storage, trip.destination, prompt);
-      res.json(plan);
+      const messages = [
+        { role: "user" as const, content: prompt },
+        { role: "assistant" as const, content: plan.summary },
+      ];
+      if (db) {
+        await db.execute(sql`
+          UPDATE ai_copilot_sessions
+          SET messages = ${JSON.stringify(messages)}::jsonb, updated_at = now()
+          WHERE id = ${sessionId}
+        `);
+      }
+      res.json({ sessionId, ...plan, messages });
     } catch (error) {
       console.error("Error running trip copilot:", error);
       res.status(500).json({ message: "Copilot failed" });
@@ -3270,6 +3272,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search routes
+  app.get("/api/users/suggested", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const following = await storage.getFollowing(userId);
+      const followingIds = new Set(following.map((u) => u.id));
+      followingIds.add(userId);
+
+      const { getWeeklyCreatorLeaderboard } = await import("./ait/leaderboard");
+      const leaderboard = await getWeeklyCreatorLeaderboard(24);
+      const out: ReturnType<typeof toPublicUser>[] = [];
+
+      for (const entry of leaderboard) {
+        if (followingIds.has(entry.userId)) continue;
+        const user = await storage.getUser(entry.userId);
+        if (!user?.username) continue;
+        out.push(toPublicUser(user));
+        followingIds.add(entry.userId);
+        if (out.length >= 8) break;
+      }
+
+      if (out.length < 6) {
+        const more = await storage.searchUsers("travel", 16, { viewerId: userId });
+        for (const user of more) {
+          if (!user.username || followingIds.has(user.id)) continue;
+          out.push(toPublicUser(user));
+          followingIds.add(user.id);
+          if (out.length >= 8) break;
+        }
+      }
+
+      res.json(out);
+    } catch (error) {
+      console.error("Error loading suggested users:", error);
+      res.status(500).json({ message: "Failed to load suggested users" });
+    }
+  });
+
   app.get("/api/search/users", searchLimiter, async (req, res) => {
     try {
       const { q, limit = 20, exact, direction, travelStyle } = req.query;

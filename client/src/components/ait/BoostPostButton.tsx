@@ -31,13 +31,14 @@ export default function BoostPostButton({
   }
 
   const cost = data?.catalog.find((c) => c.sku === "boost_post_24h")?.cost ?? 200;
+  const totalBalance = (data?.spendBalance ?? 0) + (data?.creatorBalance ?? 0);
 
   return (
     <Button
       variant="ghost"
       size="sm"
       className="text-xs gap-1 text-ait-purple"
-      disabled={spend.isPending || (data?.spendBalance ?? 0) < cost}
+      disabled={spend.isPending || totalBalance < cost}
       onClick={() =>
         spend.mutate(
           { sku: "boost_post_24h", postId },
@@ -50,6 +51,11 @@ export default function BoostPostButton({
     >
       <Rocket className="h-3 w-3" />
       Boost · {cost} AIT
+      {(data?.creatorBalance ?? 0) > 0 && (
+        <span className="text-muted-foreground ml-0.5">
+          ({data?.creatorBalance} C + {data?.spendBalance} S)
+        </span>
+      )}
     </Button>
   );
 }

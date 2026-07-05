@@ -767,7 +767,7 @@ export const ru = {
   },
   onboarding: {
     title: "Куда отправимся?",
-    description: "Три шага — и у вас будет персональная поездка на главной.",
+    description: "Четыре шага — направление, стиль, сообщество и первая поездка.",
     destinationPlaceholder: "Город или страна",
     startDate: "Начало",
     endDate: "Конец",
@@ -792,6 +792,12 @@ export const ru = {
     successDescription: "Добро пожаловать в All In Travel!",
     failTitle: "Поездка не создана",
     failDescription: "Можно создать позже в разделе Поездки.",
+    exploreMap: "Изучите направление на карте",
+    openMap: "Открыть карту",
+    followTravelers: "Подпишитесь на 3 путешественников",
+    follow: "Подписаться",
+    following: "Подписка",
+    followError: "Не удалось подписаться",
   },
   ait: {
     rings: {

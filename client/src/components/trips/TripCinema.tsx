@@ -117,7 +117,7 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
       return;
     }
     setStepIndex((i) => i + 1);
-  }, [phase, stepIndex, flatStops.length, watched, tripId]);
+  }, [phase, stepIndex, flatStops.length, watched, tripId, queryClient]);
 
   useEffect(() => {
     if (!playing || phase === "finale") return;

@@ -26,6 +26,10 @@ export async function forkTripWithAttribution(
     `);
   }
   const refreshed = (await storage.getTrip(copy.id)) ?? copy;
+  if (source.userId && source.userId !== userId) {
+    const { grantForTripForked } = await import("../../ait/hooks");
+    void grantForTripForked(source.userId, userId, sourceTripId);
+  }
   return { ...refreshed, forkedFromTripId: sourceTripId } as Trip;
 }
 

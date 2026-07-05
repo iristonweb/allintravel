@@ -63,15 +63,6 @@ export default function TripCopilotPanel({ tripId, onApplied }: TripCopilotPanel
     onError: () => toast({ title: t("common.retry"), variant: "destructive" }),
   });
 
-  const legacyPlanMutation = useMutation({
-    mutationFn: () =>
-      apiRequestJson<CopilotResult>("POST", `/api/trips/${tripId}/copilot`, { prompt }),
-    onSuccess: (data) => {
-      setResult(data);
-      toast({ title: data.summary });
-    },
-  });
-
   const applyMutation = useMutation({
     mutationFn: (placeIds: string[]) =>
       apiRequestJson<{ added: number }>("POST", `/api/trips/${tripId}/copilot/apply`, {
@@ -122,13 +113,6 @@ export default function TripCopilotPanel({ tripId, onApplied }: TripCopilotPanel
             onClick={() => planMutation.mutate()}
           >
             {planMutation.isPending ? "…" : t("ai.agentTitle")}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={!prompt.trim() || legacyPlanMutation.isPending}
-            onClick={() => legacyPlanMutation.mutate()}
-          >
-            Quick plan
           </Button>
         </div>
 

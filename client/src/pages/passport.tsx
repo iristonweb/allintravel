@@ -3,6 +3,7 @@ import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
 import EconomyContextBar from "@/components/ait/EconomyContextBar";
+import AiContextChips from "@/components/ai/AiContextChips";
 import FogOfWarMap from "@/components/passport/FogOfWarMap";
 import PageMeta from "@/components/seo/PageMeta";
 import { useTranslation } from "react-i18next";
@@ -17,6 +18,7 @@ export function PassportPage() {
         <div className="space-y-section">
           <TravelIdentityCard />
           <EconomyContextBar surface="passport" />
+          <AiContextChips surface="passport" />
           <FogOfWarMap />
         </div>
       </PageShell>

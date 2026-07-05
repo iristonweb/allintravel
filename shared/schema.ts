@@ -1176,6 +1176,128 @@ export const aitFogShares = pgTable(
   (t) => [index("ait_fog_shares_pk").on(t.userId, t.weekKey)],
 );
 
+export const aitDailyCaps = pgTable(
+  "ait_daily_caps",
+  {
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reasonCode: varchar("reason_code", { length: 40 }).notNull(),
+    capDate: varchar("cap_date", { length: 10 }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [index("ait_daily_caps_pk").on(t.userId, t.reasonCode, t.capDate)],
+);
+
+export const aitEntitlements = pgTable("ait_entitlements", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  sku: varchar("sku", { length: 64 }).notNull(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitRingDaily = pgTable(
+  "ait_ring_daily",
+  {
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ringDate: varchar("ring_date", { length: 10 }).notNull(),
+    voiceCount: integer("voice_count").notNull().default(0),
+    storyCount: integer("story_count").notNull().default(0),
+    echoCount: integer("echo_count").notNull().default(0),
+    pulseCount: integer("pulse_count").notNull().default(0),
+    ringsBonusClaimed: boolean("rings_bonus_claimed").notNull().default(false),
+  },
+  (t) => [index("ait_ring_daily_pk").on(t.userId, t.ringDate)],
+);
+
+export const aitFundCycles = pgTable("ait_fund_cycles", {
+  monthKey: varchar("month_key", { length: 7 }).primaryKey(),
+  poolTotal: integer("pool_total").notNull(),
+  distributedAt: timestamp("distributed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitFundPayouts = pgTable("ait_fund_payouts", {
+  id: varchar("id").primaryKey(),
+  monthKey: varchar("month_key", { length: 7 }).notNull(),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  score: integer("score").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitPostBoosts = pgTable("ait_post_boosts", {
+  postId: varchar("post_id").primaryKey(),
+  userId: varchar("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const aitFundPayoutSeen = pgTable(
+  "ait_fund_payout_seen",
+  {
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    monthKey: varchar("month_key", { length: 7 }).notNull(),
+    seenAt: timestamp("seen_at").defaultNow(),
+  },
+  (t) => [index("ait_fund_payout_seen_pk").on(t.userId, t.monthKey)],
+);
+
+export const aitQuestClaims = pgTable(
+  "ait_quest_claims",
+  {
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    questId: varchar("quest_id", { length: 40 }).notNull(),
+    weekKey: varchar("week_key", { length: 12 }).notNull(),
+    claimedAt: timestamp("claimed_at").defaultNow(),
+  },
+  (t) => [index("ait_quest_claims_pk").on(t.userId, t.questId, t.weekKey)],
+);
+
+export const aitFraudRate = pgTable(
+  "ait_fraud_rate",
+  {
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reasonCode: varchar("reason_code", { length: 40 }).notNull(),
+    bucketMinute: timestamp("bucket_minute").notNull(),
+    actionCount: integer("action_count").notNull().default(1),
+  },
+  (t) => [index("ait_fraud_rate_pk").on(t.userId, t.reasonCode, t.bucketMinute)],
+);
+
+export const aitReferralCodes = pgTable("ait_referral_codes", {
+  userId: varchar("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 12 }).notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const aitReferrals = pgTable("ait_referrals", {
+  referredId: varchar("referred_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  referrerId: varchar("referrer_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  rewarded: boolean("rewarded").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;

@@ -5,7 +5,7 @@ import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiRequestJson } from "@/lib/queryClient";
-import { AIT_REFERRAL_REWARD } from "@shared/ait";
+import { AIT_REFERRAL_REWARD, type ReferralMilestoneId } from "@shared/ait";
 import { useToast } from "@/hooks/use-toast";
 import { referralShareUrl } from "@/lib/referral-pending";
 import { Link } from "wouter";
@@ -19,6 +19,13 @@ type ReferralInvitee = {
   createdAt: string;
 };
 
+type ReferralMilestoneProgress = {
+  id: ReferralMilestoneId;
+  amount: number;
+  completedCount: number;
+  totalPossible: number;
+};
+
 type ReferralInfo = {
   code: string;
   invited: number;
@@ -27,6 +34,16 @@ type ReferralInfo = {
   hasUsedCode: boolean;
   myReferrerCode: string | null;
   invitees: ReferralInvitee[];
+  milestones: ReferralMilestoneProgress[];
+};
+
+const MILESTONE_LABELS: Record<ReferralMilestoneId, string> = {
+  signup: "Регистрация",
+  email_verified: "Email подтверждён",
+  profile_complete: "Профиль заполнен",
+  first_post: "Первый пост",
+  active_7d: "7 дней активности",
+  active_30d: "30 дней активности",
 };
 
 export default function ReferralCard() {
@@ -118,6 +135,27 @@ export default function ReferralCard() {
             <span>Начислено бонусов: {data.rewardedCount}</span>
             <span className="text-ait-orange font-medium">+{data.totalEarned} AIT с рефералов</span>
           </div>
+
+          {data.milestones?.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Milestone-бонусы
+              </p>
+              <ul className="grid gap-1.5 sm:grid-cols-2">
+                {data.milestones.map((m) => (
+                  <li
+                    key={m.id}
+                    className="text-xs ait-glass rounded-lg px-2 py-1.5 flex items-center justify-between gap-2"
+                  >
+                    <span>{MILESTONE_LABELS[m.id] ?? m.id}</span>
+                    <span className="text-ait-orange shrink-0">
+                      {m.completedCount}/{m.totalPossible || "—"} · +{m.amount}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {data.hasUsedCode ? (
             <p className="text-sm text-ait-purple bg-ait-purple/10 rounded-xl px-3 py-2">

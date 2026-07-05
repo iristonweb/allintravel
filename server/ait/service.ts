@@ -58,6 +58,7 @@ const REASON_TITLES: Partial<Record<AitReasonCode, string>> = {
   trip_cinema_watch: "Trip Cinema",
   trip_checkin: "Check-in в поездке",
   referral_inviter: "Пригласил друга",
+  trip_fork_bonus: "Форк маршрута",
   referral_joined: "Реферальный бонус",
   referral_milestone: "Реферальный этап",
   streak_bonus: "Бонус стрика",

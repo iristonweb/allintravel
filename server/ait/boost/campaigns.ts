@@ -63,17 +63,40 @@ export async function launchBoostCampaign(
   const proof = await checkProofOfExperience(userId, post.location?.split(",").pop()?.trim());
   const cost = computeBoostCost(AIT_BOOST_BASE_COST, qsBreakdown.score, proof.discountMultiplier);
 
-  const spent = await store.applyBalanceDelta(
-    userId,
-    "spend",
-    -cost,
-    "spend_shop",
-    "Boost поста 24ч",
-    "post",
-    postId,
-    { skipEmissionCap: true },
-  );
-  if (!spent) return { ok: false, message: "Недостаточно AIT" };
+  const balance = await store.getOrCreateBalance(userId);
+  if (balance.creatorBalance + balance.spendBalance < cost) {
+    return { ok: false, message: "Недостаточно AIT" };
+  }
+
+  let remaining = cost;
+  if (balance.creatorBalance > 0) {
+    const fromCreator = Math.min(balance.creatorBalance, remaining);
+    const creatorSpent = await store.applyBalanceDelta(
+      userId,
+      "creator",
+      -fromCreator,
+      "spend_shop",
+      "Boost поста (Creator)",
+      "post",
+      postId,
+      { skipEmissionCap: true },
+    );
+    if (!creatorSpent) return { ok: false, message: "Недостаточно AIT" };
+    remaining -= fromCreator;
+  }
+  if (remaining > 0) {
+    const spent = await store.applyBalanceDelta(
+      userId,
+      "spend",
+      -remaining,
+      "spend_shop",
+      "Boost поста 24ч",
+      "post",
+      postId,
+      { skipEmissionCap: true },
+    );
+    if (!spent) return { ok: false, message: "Недостаточно AIT" };
+  }
 
   const burnAmt = calculateBurnAmount(cost, AIT_BURN_RATES.boost);
   if (burnAmt > 0) {
