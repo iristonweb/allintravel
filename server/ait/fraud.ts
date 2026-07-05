@@ -119,3 +119,63 @@ export async function ensureFraudSchema(): Promise<void> {
     )
   `);
 }
+
+export type FraudFlagRow = {
+  userId: string;
+  level: number;
+  reason: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+export async function listActiveFraudFlags(limit = 50): Promise<FraudFlagRow[]> {
+  await ensureFraudSchema();
+  const db = getDb();
+  if (!db) {
+    return Array.from(memFraudFlags.entries()).map(([userId, f]) => ({
+      userId,
+      level: f.level,
+      reason: "mem_flag",
+      expiresAt: f.expiresAt?.toISOString() ?? null,
+      createdAt: new Date().toISOString(),
+    }));
+  }
+  const res = await db.execute(sql`
+    SELECT user_id, level, reason, expires_at, created_at
+    FROM ait_fraud_flags
+    WHERE expires_at IS NULL OR expires_at > now()
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `);
+  return ((res as unknown as { rows?: Record<string, unknown>[] }).rows ?? []).map((r) => ({
+    userId: String(r.user_id),
+    level: Number(r.level),
+    reason: r.reason ? String(r.reason) : null,
+    expiresAt: r.expires_at ? String(r.expires_at) : null,
+    createdAt: String(r.created_at),
+  }));
+}
+
+export async function setFraudFlag(
+  userId: string,
+  level: number,
+  reason: string,
+  expiresInDays: number | null,
+): Promise<void> {
+  const db = getDb();
+  const expiresAt =
+    expiresInDays != null ? new Date(Date.now() + expiresInDays * 86400000) : null;
+  if (!db) {
+    memFraudFlags.set(userId, { level, expiresAt });
+    return;
+  }
+  await db.execute(sql`
+    INSERT INTO ait_fraud_flags (user_id, level, reason, expires_at)
+    VALUES (${userId}, ${level}, ${reason}, ${expiresAt})
+    ON CONFLICT (user_id) DO UPDATE SET
+      level = ${level},
+      reason = ${reason},
+      expires_at = ${expiresAt},
+      created_at = now()
+  `);
+}

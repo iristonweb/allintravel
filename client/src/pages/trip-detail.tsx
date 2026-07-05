@@ -5,6 +5,7 @@ import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import TripPlannerLayout from "@/components/planner/trip-planner-layout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, AlertCircle } from "lucide-react";
+import TravelJourneyStrip from "@/components/journey/TravelJourneyStrip";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import EmptyState from "@/components/empty-state";
 import type { Trip } from "@shared/schema";
@@ -88,6 +89,7 @@ export function TripDetail() {
   return (
     <AppLayout contentClassName="pb-28" rightRail={<DiscoveryRightRail />}>
       <AppBreadcrumbs items={[{ label: "Поездки", href: "/trips" }, { label: trip.title }]} />
+      <TravelJourneyStrip activeStep="plan" className="mb-4" />
       <TripPlannerLayout
         trip={trip}
         tripId={id}

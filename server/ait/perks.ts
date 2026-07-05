@@ -84,3 +84,26 @@ export function sortRoomsWithSpotlight<T extends { id: string; createdBy?: strin
     return 0;
   });
 }
+
+const DEFAULT_MAX_OWNED_CHAT_ROOMS = 2;
+const EXTRA_CHAT_ROOM_SKU = "extra_chat_room";
+
+export async function countOwnedChatRooms(userId: string): Promise<number> {
+  const db = getDb();
+  if (!db) return 0;
+  const res = await db.execute(sql`
+    SELECT count(*)::int AS c FROM chat_rooms WHERE created_by = ${userId}
+  `);
+  return Number((res as unknown as { rows?: { c: number }[] }).rows?.[0]?.c ?? 0);
+}
+
+export async function getMaxOwnedChatRooms(userId: string): Promise<number> {
+  const ents = await store.getEntitlements(userId);
+  const extras = ents.filter((e) => e.sku === EXTRA_CHAT_ROOM_SKU).length;
+  return DEFAULT_MAX_OWNED_CHAT_ROOMS + extras;
+}
+
+export async function canCreateChatRoom(userId: string): Promise<boolean> {
+  const [owned, max] = await Promise.all([countOwnedChatRooms(userId), getMaxOwnedChatRooms(userId)]);
+  return owned < max;
+}

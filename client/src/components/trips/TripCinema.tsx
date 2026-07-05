@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, Pause, X, Film, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TravelMap from "@/components/maps/TravelMap";
@@ -28,6 +28,7 @@ type CinemaStop = {
 const STEP_MS = 2800;
 
 export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCinemaProps) {
+  const queryClient = useQueryClient();
   const totalDays = tripCalendarDayCount(trip);
   const byDay = useMemo(() => groupWaypointsByDay(waypoints, totalDays), [waypoints, totalDays]);
 
@@ -107,7 +108,11 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
       setPlaying(false);
       if (!watched) {
         setWatched(true);
-        void apiRequestJson("POST", `/api/trips/${tripId}/cinema/watch`).catch(() => {});
+        void apiRequestJson("POST", `/api/trips/${tripId}/cinema/watch`)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
+          })
+          .catch(() => {});
       }
       return;
     }

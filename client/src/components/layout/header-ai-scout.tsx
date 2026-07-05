@@ -8,7 +8,7 @@ export default function HeaderAiScout() {
 
   return (
     <AitButton variant="glass" size="sm" className="hidden lg:inline-flex gap-2 h-10" asChild>
-      <Link href="/trips">
+      <Link href="/trips?ai=1">
         <Sparkles className="h-4 w-4 text-ait-purple" />
         {t("nav.aiScout", { defaultValue: "AI Scout" })}
       </Link>

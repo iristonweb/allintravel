@@ -11,14 +11,19 @@ export type QualityScoreBreakdown = {
   relevance: number;
 };
 
+/** Parse trust score from DB row (column name: score). */
+export function parseTrustScoreValue(raw: unknown): number {
+  return Math.min(100, Math.max(0, Number(raw ?? 50)));
+}
+
 export async function getAuthorTrustScore(userId: string): Promise<number> {
   const db = getDb();
   if (!db) return 50;
   const res = await db.execute(sql`
-    SELECT trust_score FROM user_trust_scores WHERE user_id = ${userId} LIMIT 1
+    SELECT score FROM user_trust_scores WHERE user_id = ${userId} LIMIT 1
   `);
-  const raw = (res as unknown as { rows?: { trust_score: number }[] }).rows?.[0]?.trust_score;
-  return Math.min(100, Math.max(0, Number(raw ?? 50)));
+  const raw = (res as unknown as { rows?: { score: number }[] }).rows?.[0]?.score;
+  return parseTrustScoreValue(raw);
 }
 
 async function getPostEngagementScore(postId: string): Promise<number> {

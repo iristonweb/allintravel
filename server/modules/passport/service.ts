@@ -47,11 +47,20 @@ export async function syncPassportFromTrips(storage: IStorage, userId: string): 
     const countryName = parts.length > 1 ? parts[parts.length - 1] : parts[0];
 
     if (db) {
-      await db.execute(sql`
+      const inserted = await db.execute(sql`
         INSERT INTO user_passport_stamps (user_id, country_name, city_name, trip_id, source)
         VALUES (${userId}, ${countryName}, ${cityName}, ${trip.id}, 'trip')
         ON CONFLICT DO NOTHING
+        RETURNING id
       `);
+      const rows = (inserted as unknown as { rows?: unknown[] }).rows ?? [];
+      if (rows.length > 0) {
+        const { tryGrantSpend } = await import("../../ait/service");
+        await tryGrantSpend(userId, "passport_stamp", {
+          entityType: "passport_stamp",
+          entityId: String((rows[0] as { id?: string }).id ?? trip.id),
+        });
+      }
     } else {
       const list = memStamps.get(userId) ?? [];
       const exists = list.some(

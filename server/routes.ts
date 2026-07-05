@@ -300,6 +300,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/onboarding/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub as string;
+      const profile = await storage.getUserProfile(userId);
+      res.json({ completed: Boolean(profile?.onboardingCompletedAt) });
+    } catch (error) {
+      console.error("GET onboarding status:", error);
+      res.status(500).json({ message: "Failed to load onboarding status" });
+    }
+  });
+
+  app.post("/api/onboarding/complete", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub as string;
+      await storage.updateUserProfile(userId, { onboardingCompletedAt: new Date() });
+      res.json({ ok: true, completed: true });
+    } catch (error) {
+      console.error("POST onboarding complete:", error);
+      res.status(500).json({ message: "Failed to save onboarding status" });
+    }
+  });
+
   app.get("/api/users/by-username/:username", async (req, res) => {
     try {
       const parsed = validateUsername(req.params.username);
@@ -1770,6 +1792,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/admin/ait/fraud", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const { listActiveFraudFlags } = await import("./ait/fraud");
+      const flags = await listActiveFraudFlags(100);
+      res.json({ flags });
+    } catch (error) {
+      console.error("GET /api/admin/ait/fraud", error);
+      res.status(500).json({ message: "Failed to load fraud flags" });
+    }
+  });
+
+  app.post("/api/admin/ait/fraud", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const body = z
+        .object({
+          userId: z.string().min(1),
+          level: z.number().int().min(0).max(3),
+          reason: z.string().min(1).max(200),
+          expiresInDays: z.number().int().min(1).max(365).nullable().optional(),
+        })
+        .parse(req.body);
+      const { setFraudFlag } = await import("./ait/fraud");
+      if (body.level === 0) {
+        res.json({ ok: true, cleared: true });
+        return;
+      }
+      await setFraudFlag(
+        body.userId,
+        body.level,
+        body.reason,
+        body.expiresInDays ?? 30,
+      );
+      res.json({ ok: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid body" });
+      }
+      console.error("POST /api/admin/ait/fraud", error);
+      res.status(500).json({ message: "Failed to set fraud flag" });
+    }
+  });
+
   app.post("/api/admin/push/user", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const body = z
@@ -1926,6 +1990,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (e) {
             avatarWarning = e instanceof Error ? e.message : "Не удалось загрузить аватар";
           }
+        }
+        const { canCreateChatRoom } = await import("./ait/perks");
+        if (!(await canCreateChatRoom(userId))) {
+          return res.status(403).json({
+            message: "Достигнут лимит своих групп. Купите +1 группу в AIT Hub.",
+          });
         }
         const room = await storage.createChatRoom({
           title: body.title,
@@ -2334,7 +2404,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId,
           mine?.emoji === "❤️" ? null : "❤️",
         );
+        let aitGrant = null;
         if (adding && msg.userId && msg.userId !== userId) {
+          const { grantForChatMessageLiked } = await import("./ait/hooks");
+          aitGrant = await grantForChatMessageLiked(msg.userId, req.params.messageId);
           const reactor = await storage.getUser(userId);
           const room = await storage.getChatRoom(req.params.roomId);
           if (reactor) {
@@ -2349,7 +2422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ).catch((err) => console.error("[notify] chat reaction:", err));
           }
         }
-        res.json(meta);
+        res.json({ ...meta, aitGrant: aitGrant ?? null });
       } catch (error) {
         console.error("Error toggling like:", error);
         res.status(500).json({ message: "Failed to toggle like" });

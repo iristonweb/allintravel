@@ -15,7 +15,7 @@ import LocationAutocompleteInput, {
   type GeoAutocompleteItem,
 } from "@/components/location-autocomplete-input";
 import { apiRequestJson } from "@/lib/queryClient";
-import { markOnboardingDone, saveOnboardingPrefs } from "@/lib/onboarding";
+import { markOnboardingCompleteServer, saveOnboardingPrefs } from "@/lib/onboarding";
 import { saveSearchIntent } from "@/lib/searchIntent";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -74,8 +74,8 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
         maxParticipants: 5,
       });
     },
-    onSuccess: (trip: { id: string }) => {
-      markOnboardingDone();
+    onSuccess: async (trip: { id: string }) => {
+      await markOnboardingCompleteServer();
       saveOnboardingPrefs({
         destination: geo?.label || destination,
         startDate,
@@ -91,7 +91,6 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
       navigate(`/trips/${trip.id}`);
     },
     onError: () => {
-      markOnboardingDone();
       onClose();
       toast({
         title: t("onboarding.failTitle"),

@@ -1,3 +1,5 @@
+import { apiRequestJson } from "@/lib/queryClient";
+
 const ONBOARDING_KEY = "ait:onboarding-done";
 
 export function isOnboardingDone(): boolean {
@@ -6,6 +8,28 @@ export function isOnboardingDone(): boolean {
 
 export function markOnboardingDone(): void {
   localStorage.setItem(ONBOARDING_KEY, "1");
+}
+
+/** Sync onboarding status from server; caches locally when complete. */
+export async function fetchOnboardingDone(): Promise<boolean> {
+  if (isOnboardingDone()) return true;
+  try {
+    const data = await apiRequestJson<{ completed: boolean }>("GET", "/api/onboarding/status");
+    if (data.completed) markOnboardingDone();
+    return data.completed;
+  } catch {
+    return isOnboardingDone();
+  }
+}
+
+/** Mark onboarding complete locally and persist to server. */
+export async function markOnboardingCompleteServer(): Promise<void> {
+  markOnboardingDone();
+  try {
+    await apiRequestJson("POST", "/api/onboarding/complete");
+  } catch {
+    /* offline — local flag still set */
+  }
 }
 
 export type OnboardingPrefs = {

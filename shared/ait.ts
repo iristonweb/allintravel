@@ -49,6 +49,7 @@ export type AitReasonCode =
   | "streak_bonus"
   | "streak_freeze"
   | "fog_share"
+  | "passport_stamp"
   | "creator_fund_payout"
   | "admin_adjust";
 
@@ -153,6 +154,7 @@ export const AIT_REWARDS: Partial<Record<AitReasonCode, number>> = {
   streak_bonus: 0,
   streak_freeze: 0,
   fog_share: AIT_FOG_SHARE_REWARD,
+  passport_stamp: 15,
   quest_weekly: 100,
   rings_weekly: 120,
 };
@@ -188,6 +190,7 @@ export const AIT_DAILY_CAPS: Partial<Record<AitReasonCode, number>> = {
   referral_joined: 1,
   referral_milestone: 30,
   fog_share: 1,
+  passport_stamp: 10,
   streak_bonus: 1,
 };
 

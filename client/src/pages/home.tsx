@@ -21,7 +21,8 @@ import type { Place, Trip, Event, TripWaypointWithPlace } from "@shared/schema";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
-import { isOnboardingDone } from "@/lib/onboarding";
+import TravelJourneyStrip from "@/components/journey/TravelJourneyStrip";
+import { fetchOnboardingDone } from "@/lib/onboarding";
 import { useTranslation } from "react-i18next";
 
 export function Home() {
@@ -30,9 +31,10 @@ export function Home() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && !isOnboardingDone()) {
-      setOnboardingOpen(true);
-    }
+    if (!isAuthenticated) return;
+    void fetchOnboardingDone().then((done) => {
+      if (!done) setOnboardingOpen(true);
+    });
   }, [isAuthenticated]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -110,6 +112,7 @@ export function Home() {
       <CinematicHero trips={trips} showAnchorPills />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-section">
+        <TravelJourneyStrip activeStep="inspire" className="hidden md:block" />
         <motion.section
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}

@@ -174,4 +174,66 @@ export function registerAiRoutes(app: Express): void {
       }
     },
   );
+
+  /** Unified AI context for map, social, passport surfaces */
+  app.post("/api/ai/context", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
+      const surface = String(req.body?.surface ?? "home");
+      const query = String(req.body?.query ?? "").trim();
+      const tripId = req.body?.tripId ? String(req.body.tripId) : undefined;
+      const lat = req.body?.lat != null ? Number(req.body.lat) : undefined;
+      const lon = req.body?.lon != null ? Number(req.body.lon) : undefined;
+
+      let suggestion = "Explore destinations on the map and save places to your next trip.";
+      let actions: { label: string; href: string }[] = [
+        { label: "Open map", href: "/map" },
+        { label: "Plan trip", href: "/trips?ai=1" },
+      ];
+
+      if (surface === "map" && query) {
+        suggestion = `Search "${query}" on the map and add stops to a trip.`;
+        actions = [
+          { label: "Search map", href: `/map?q=${encodeURIComponent(query)}` },
+          { label: "Create trip", href: "/trips?ai=1" },
+        ];
+      } else if (surface === "passport") {
+        const passport = await (
+          await import("../passport/service")
+        ).getPassportForUser(storage, userId);
+        suggestion =
+          passport.countriesCount > 0
+            ? `You've explored ${passport.countriesCount} countries. Plan your next stamp.`
+            : "Create your first trip to earn passport stamps.";
+        actions = [
+          { label: "My passport", href: "/passport" },
+          { label: "Plan trip", href: "/trips" },
+        ];
+      } else if (surface === "social") {
+        suggestion = "Share a photo story from your last trip to grow your creator rank.";
+        actions = [
+          { label: "Create post", href: "/social-feed" },
+          { label: "AIT Hub", href: "/wallet" },
+        ];
+      } else if (tripId) {
+        const trip = await storage.getTrip(tripId);
+        if (trip) {
+          suggestion = `Copilot can refine your route in ${trip.destination}.`;
+          actions = [{ label: "Open planner", href: `/trips/${tripId}` }];
+        }
+      }
+
+      if (lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon)) {
+        actions.unshift({
+          label: "Nearby on map",
+          href: `/map?lat=${lat}&lon=${lon}&q=${encodeURIComponent(query || "here")}`,
+        });
+      }
+
+      res.json({ surface, suggestion, actions, query: query || null });
+    } catch (error) {
+      console.error("POST /api/ai/context", error);
+      res.status(500).json({ message: "AI context failed" });
+    }
+  });
 }

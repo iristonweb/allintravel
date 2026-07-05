@@ -63,6 +63,7 @@ const REASON_TITLES: Partial<Record<AitReasonCode, string>> = {
   streak_bonus: "Бонус стрика",
   streak_freeze: "Заморозка стрика",
   fog_share: "Шеринг карты тумана",
+  passport_stamp: "Новый штамп в паспорте",
   creator_fund_payout: "Creator Fund",
 };
 
@@ -183,6 +184,23 @@ export async function onDailyPulse(userId: string): Promise<AitGrantResult[]> {
   const { checkReferralActivityMilestones } = await import("./referral-milestones");
   if (streakDays >= 7) await checkReferralActivityMilestones(userId, 7);
   if (streakDays >= 30) await checkReferralActivityMilestones(userId, 30);
+
+  const day = new Date().getUTCDay();
+  if (day === 1) {
+    try {
+      const balance = await store.getOrCreateBalance(userId);
+      const { notifyUser } = await import("../notification-service");
+      await notifyUser({
+        userId,
+        type: "message",
+        title: "Weekly Travel Digest",
+        body: `Streak: ${balance.streakDays} days · Spend: ${balance.spendBalance} AIT · Creator: ${balance.creatorBalance} AIT`,
+        link: "/wallet",
+      });
+    } catch {
+      /* digest is best-effort */
+    }
+  }
 
   return grants;
 }

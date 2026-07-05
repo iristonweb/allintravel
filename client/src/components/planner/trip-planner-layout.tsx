@@ -31,6 +31,7 @@ import {
   Footprints,
   Bus,
 } from "lucide-react";
+import EconomyContextBar from "@/components/ait/EconomyContextBar";
 import TripCinema from "@/components/trips/TripCinema";
 import TripSharePanel from "@/components/trips/TripSharePanel";
 import TripCopilotPanel from "@/components/trips/TripCopilotPanel";
@@ -384,10 +385,8 @@ export default function TripPlannerLayout({
             className="gap-2 rounded-2xl"
             onClick={() => {
               void apiRequestJson("POST", `/api/trips/${tripId}/checkin`)
-                .then((r) => {
-                  if ((r as { alreadyCheckedIn?: boolean }).alreadyCheckedIn) {
-                    toast({ title: "Check-in уже был сегодня" });
-                  }
+                .then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
                 })
                 .catch((e: Error) => toast({ title: e.message, variant: "destructive" }));
             }}
@@ -407,6 +406,8 @@ export default function TripPlannerLayout({
           </Button>
         </div>
       </div>
+
+      <EconomyContextBar surface="trip" />
 
       <TripSharePanel
         trip={trip}

@@ -1,5 +1,6 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { apiRequestJson } from "@/lib/queryClient";
 import AitSurface from "@/components/ait-ui/AitSurface";
 import AitBadge from "@/components/ait-ui/AitBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -59,6 +60,12 @@ export default function FeedPostCard({
   const authorName = post.author
     ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || t("social.traveler")
     : t("social.traveler");
+
+  const isBoosted = Boolean((post as { isBoosted?: boolean }).isBoosted);
+  useEffect(() => {
+    if (!isBoosted) return;
+    void apiRequestJson("POST", `/api/posts/${post.id}/boost-click`).catch(() => {});
+  }, [isBoosted, post.id]);
 
   return (
     <AitSurface padding="none" radius="lg" glow hover className="overflow-hidden">

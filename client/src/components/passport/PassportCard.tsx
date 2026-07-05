@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import GlassCard from "@/components/brand/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ export type PassportData = {
     countryName: string;
     cityName: string | null;
     visitedAt: string | null;
+    tripId?: string | null;
   }[];
   achievements: string[];
 };
@@ -48,8 +50,9 @@ export default function PassportCard({ username, compact }: PassportCardProps) {
   });
 
   const handleShare = async () => {
-    const handle = username ?? user?.username ?? "me";
-    const url = `${window.location.origin}/passport/${handle}`;
+    const handle = username ?? user?.username;
+    if (!handle) return;
+    const url = `${window.location.origin}/u/${handle}`;
     const ok = await shareUrl(url, t("passport.title"));
     toast({
       title: ok ? t("common.copied") : t("passport.shareCard"),
@@ -129,17 +132,37 @@ export default function PassportCard({ username, compact }: PassportCardProps) {
       {!compact && (
         <div className="relative space-y-2 max-h-48 overflow-y-auto">
           {data.stamps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("passport.empty")}</p>
+            <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+              <p className="text-sm text-muted-foreground">{t("passport.empty")}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="premium" size="sm" className="rounded-xl" asChild>
+                  <Link href="/trips">{t("passport.planTrip", { defaultValue: "Plan a trip" })}</Link>
+                </Button>
+                <Button variant="outline" size="sm" className="rounded-xl" asChild>
+                  <Link href="/map">{t("passport.exploreMap", { defaultValue: "Explore map" })}</Link>
+                </Button>
+              </div>
+            </div>
           ) : (
             data.stamps.slice(0, 12).map((stamp) => (
               <div
                 key={stamp.id}
                 className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm"
               >
-                <span className="text-white font-medium">
-                  {stamp.cityName ? `${stamp.cityName}, ` : ""}
-                  {stamp.countryName}
-                </span>
+                {stamp.tripId ? (
+                  <Link
+                    href={`/trips/${stamp.tripId}`}
+                    className="text-white font-medium hover:text-ait-orange transition-colors"
+                  >
+                    {stamp.cityName ? `${stamp.cityName}, ` : ""}
+                    {stamp.countryName}
+                  </Link>
+                ) : (
+                  <span className="text-white font-medium">
+                    {stamp.cityName ? `${stamp.cityName}, ` : ""}
+                    {stamp.countryName}
+                  </span>
+                )}
                 {stamp.visitedAt && (
                   <span className="text-xs text-muted-foreground">
                     {new Date(stamp.visitedAt).toLocaleDateString()}
