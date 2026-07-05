@@ -1,5 +1,6 @@
 import { Link, useParams } from "wouter";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,7 +68,7 @@ export function UserPublicProfile() {
 
   if (isLoading) {
     return (
-      <AppLayout contentClassName="py-6 max-w-lg mx-auto">
+      <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
         <Skeleton className="h-32 w-full mb-4" />
         <Skeleton className="h-20 w-full" />
       </AppLayout>
@@ -111,7 +112,7 @@ export function UserPublicProfile() {
   const displayLabel = getUserDisplayLabel(publicUser);
 
   return (
-    <AppLayout contentClassName="py-6 max-w-lg mx-auto">
+    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
       <AppBreadcrumbs items={[{ label: "Профиль", href: "/profile" }, { label: displayLabel }]} />
       <GlassCard className="p-6">
         <div className="flex gap-4 items-start">

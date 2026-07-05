@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import NextAdventureCard from "@/components/home/next-adventure-card";
 import GlobalSearchPanel from "@/components/search/GlobalSearchPanel";
-import HeroStats from "@/components/home/hero-stats";
+import CommunityStatsRow from "@/components/community/CommunityStatsRow";
 import type { Trip } from "@shared/schema";
 import { HERO_MAIN_SRC } from "@/lib/marketing-images";
 import { useMemo, useRef } from "react";
@@ -54,8 +54,8 @@ export default function CinematicHero({
       </motion.div>
 
       <div className="relative z-10 flex-1 flex items-center min-h-0">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-8 lg:pt-36 lg:pb-12">
-          <div className="grid lg:grid-cols-[1fr_380px] gap-12 lg:gap-16 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-8 lg:pt-36 lg:pb-16">
+          <div className="grid lg:grid-cols-[1fr_380px] gap-12 lg:gap-20 items-center">
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -121,8 +121,8 @@ export default function CinematicHero({
 
       <div className="relative z-20 mt-auto w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 lg:pb-14 flex flex-col gap-6">
-          <div className="hidden md:block">
-            <HeroStats />
+          <div className="hidden md:block px-2">
+            <CommunityStatsRow />
           </div>
           {showSearch && (
             <motion.div

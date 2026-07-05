@@ -1,6 +1,8 @@
 import { useParams, Link } from "wouter";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PublicLayout from "@/components/public-layout";
 import PageShell from "@/components/layout/page-shell";
 import PlaceCard from "@/components/place-card";
@@ -34,27 +36,36 @@ export function DestinationPage() {
       : null,
   );
 
-  const Layout = isAuthenticated ? AppLayout : PublicLayout;
+  const layoutProps = isAuthenticated
+    ? { rightRail: <DiscoveryRightRail /> as ReactNode, contentClassName: "py-8" as const }
+    : { contentClassName: "py-8" as const };
 
   if (isLoading) {
-    return (
-      <Layout>
-        <div className="h-48 animate-pulse bg-muted rounded-2xl" />
-      </Layout>
+    return isAuthenticated ? (
+      <AppLayout {...layoutProps}>
+        <div className="h-48 animate-pulse bg-muted rounded-card-lg" />
+      </AppLayout>
+    ) : (
+      <PublicLayout contentClassName="py-8">
+        <div className="h-48 animate-pulse bg-muted rounded-card-lg" />
+      </PublicLayout>
     );
   }
 
   if (!data) {
-    return (
-      <Layout>
+    return isAuthenticated ? (
+      <AppLayout {...layoutProps}>
         <p className="text-muted-foreground">{t("destinations.notFound")}</p>
-      </Layout>
+      </AppLayout>
+    ) : (
+      <PublicLayout contentClassName="py-8">
+        <p className="text-muted-foreground">{t("destinations.notFound")}</p>
+      </PublicLayout>
     );
   }
 
-  return (
-    <Layout contentClassName="py-8">
-      <PageShell title={data.name} description={t("destinations.pageDescription")}>
+  const mainContent = (
+    <PageShell title={data.name} description={t("destinations.pageDescription")}>
         {data.places.length > 0 && (
           <section className="mb-10">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -105,7 +116,16 @@ export function DestinationPage() {
           </section>
         )}
       </PageShell>
-    </Layout>
+  );
+
+  return isAuthenticated ? (
+    <AppLayout {...layoutProps}>
+      {mainContent}
+    </AppLayout>
+  ) : (
+    <PublicLayout contentClassName="py-8">
+      {mainContent}
+    </PublicLayout>
   );
 }
 

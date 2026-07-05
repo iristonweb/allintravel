@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import RoomAvatar from "@/components/chat/RoomAvatar";
+import ChatRoomMetaRow from "@/components/chat/ChatRoomMetaRow";
 import { cn } from "@/lib/utils";
 import type { ChatRoom } from "@shared/schema";
 
@@ -59,7 +60,7 @@ export default function GroupSearchPreview({
   return (
     <ul className={cn("space-y-0.5 p-1.5", className)} onMouseDown={(e) => e.preventDefault()}>
       {rooms.map((room) => (
-        <li key={room.id} className="ait-chat-room-item text-slate-300">
+        <li key={room.id} className="ait-chat-room-item ait-chat-room-item--stacked text-slate-300">
           <RoomAvatar
             title={room.title}
             avatarUrl={room.avatarUrl}
@@ -67,10 +68,11 @@ export default function GroupSearchPreview({
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium truncate">{room.title}</p>
-            <p className="text-[11px] text-muted-foreground truncate">
+            <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
               {t(memberCountKey, { count: room.memberCount })}
               {room.description ? ` · ${room.description}` : ""}
             </p>
+            <ChatRoomMetaRow isLegacy={room.isLegacy} visibility={room.visibility} />
           </div>
           <Button
             type="button"

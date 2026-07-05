@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import CatalogPageLayout, { CatalogSearchInput } from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
@@ -177,7 +178,7 @@ export function Events() {
     Boolean(search.trim()) || Boolean(activeType) || timeFilter !== "upcoming";
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <PageShell
         title={t("events.title")}
         description={t("events.description")}

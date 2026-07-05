@@ -3,6 +3,7 @@ import { Link, useSearch } from "wouter";
 import { TRAVEL_DIRECTIONS } from "@shared/travel-directions";
 import type { TravelDirectionId } from "@shared/travel-directions";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import EmptyState from "@/components/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,7 +154,7 @@ export function Friends() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
         <PageShell
           title={t("friends.title")}

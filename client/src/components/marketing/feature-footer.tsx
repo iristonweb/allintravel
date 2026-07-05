@@ -34,7 +34,7 @@ export default function FeatureFooter({ className, showAnchors = false }: Featur
         className,
       )}
     >
-      <div className="max-w-7xl mx-auto px-4 py-12 space-y-10">
+      <div className="max-w-7xl mx-auto px-4 py-16 space-y-12">
         {showAnchors && (
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             {footerAnchors.map((link) => (

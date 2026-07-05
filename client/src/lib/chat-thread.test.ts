@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   chatDateSeparatorKey,
   formatChatDateSeparator,
+  isPersistedMessageId,
   shouldGroupChatMessages,
 } from "./chat-thread";
 
@@ -26,5 +27,10 @@ describe("chat-thread helpers", () => {
     const morning = chatDateSeparatorKey("2026-06-30T10:00:00");
     const evening = chatDateSeparatorKey("2026-06-30T18:00:00");
     expect(morning).toBe(evening);
+  });
+
+  it("detects persisted UUID message ids", () => {
+    expect(isPersistedMessageId("temp-123")).toBe(false);
+    expect(isPersistedMessageId("550e8400-e29b-41d4-a716-446655440000")).toBe(true);
   });
 });

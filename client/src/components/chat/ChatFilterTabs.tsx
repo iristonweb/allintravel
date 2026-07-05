@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type TabItem<T extends string> = { id: T; label: string };
+type TabItem<T extends string> = { id: T; label: React.ReactNode };
 
 type ChatFilterTabsProps<T extends string> = {
   tabs: readonly TabItem<T>[];

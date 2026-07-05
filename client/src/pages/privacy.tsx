@@ -1,9 +1,10 @@
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Privacy() {
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="mx-auto max-w-2xl space-y-6 p-4 pb-12">
         <h1 className="text-2xl font-semibold">Конфиденциальность</h1>
 

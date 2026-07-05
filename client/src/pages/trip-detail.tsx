@@ -1,6 +1,7 @@
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import TripPlannerLayout from "@/components/planner/trip-planner-layout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, AlertCircle } from "lucide-react";
@@ -85,7 +86,7 @@ export function TripDetail() {
   }
 
   return (
-    <AppLayout contentClassName="pb-28">
+    <AppLayout contentClassName="pb-28" rightRail={<DiscoveryRightRail />}>
       <AppBreadcrumbs items={[{ label: "Поездки", href: "/trips" }, { label: trip.title }]} />
       <TripPlannerLayout
         trip={trip}

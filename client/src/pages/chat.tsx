@@ -432,7 +432,8 @@ export function Chat() {
       }),
   });
 
-  const roomId = activeRoomMeta?.id;
+  const roomId =
+    activeRoomMeta?.id ?? historyRoom?.id ?? listRoom?.id ?? joinPreview?.id ?? undefined;
 
   const { data: roomMembers = [] } = useQuery<{ userId: string; user?: User | null }[]>({
     queryKey: [`/api/chat/rooms/${roomId}/members`],
@@ -506,15 +507,62 @@ export function Chat() {
     },
   });
 
+  const patchHistoryMessage = useCallback(
+    (messageId: string, patch: Partial<ChatMessageWithSender>) => {
+      queryClient.setQueryData<ChatHistoryPayload | ChatMessageWithSender[]>(historyKey, (old) => {
+        const apply = (m: ChatMessageWithSender) =>
+          m.id === messageId ? { ...m, ...patch } : m;
+        if (Array.isArray(old)) return old.map(apply);
+        if (!old?.messages) return old;
+        return { ...old, messages: old.messages.map(apply) };
+      });
+      setWsMessages((prev) => {
+        const roomMsgs = prev[activeRoom];
+        if (!roomMsgs?.length) return prev;
+        return {
+          ...prev,
+          [activeRoom]: roomMsgs.map((m) => (m.id === messageId ? { ...m, ...patch } : m)),
+        };
+      });
+    },
+    [queryClient, historyKey, activeRoom],
+  );
+
+  const removeHistoryMessage = useCallback(
+    (messageId: string) => {
+      queryClient.setQueryData<ChatHistoryPayload | ChatMessageWithSender[]>(historyKey, (old) => {
+        if (Array.isArray(old)) return old.filter((m) => m.id !== messageId);
+        if (!old?.messages) return old;
+        return { ...old, messages: old.messages.filter((m) => m.id !== messageId) };
+      });
+      setWsMessages((prev) => {
+        const roomMsgs = prev[activeRoom];
+        if (!roomMsgs?.length) return prev;
+        return { ...prev, [activeRoom]: roomMsgs.filter((m) => m.id !== messageId) };
+      });
+    },
+    [queryClient, historyKey, activeRoom],
+  );
+
   const editMutation = useMutation({
     mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
       if (!roomId) throw new Error("no room");
       const res = await apiRequest("PATCH", `/api/chat/rooms/${roomId}/messages/${messageId}`, {
         content,
       });
-      return res.json();
+      return res.json() as Promise<ChatMessageWithSender>;
     },
-    onSuccess: invalidateThread,
+    onSuccess: (updated) => {
+      if (updated?.id) {
+        patchHistoryMessage(updated.id, {
+          content: updated.content,
+          updatedAt: updated.updatedAt ?? new Date(),
+          reactions: updated.reactions ?? [],
+        });
+      } else {
+        invalidateThread();
+      }
+    },
     onError: () => {
       toast({ title: t("chat.page.errors.edit"), variant: "destructive" });
     },
@@ -525,7 +573,10 @@ export function Chat() {
       if (!roomId) throw new Error("no room");
       await apiRequest("DELETE", `/api/chat/rooms/${roomId}/messages/${messageId}`);
     },
-    onSuccess: invalidateThread,
+    onSuccess: (_data, messageId) => {
+      removeHistoryMessage(messageId);
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
+    },
     onError: () => {
       toast({ title: t("chat.page.errors.delete"), variant: "destructive" });
     },
@@ -578,10 +629,16 @@ export function Chat() {
             return { ...prev, [room]: [...withoutTemp, messageWithSender] };
           });
           queryClient.invalidateQueries({ queryKey: ["/api/chat/rooms"] });
-        } else if (
-          (data.type === "reaction_updated" || data.type === "read_cursor_updated") &&
-          data.roomId
-        ) {
+        } else if (data.type === "reaction_updated" && data.messageId && data.reactions) {
+          patchHistoryMessage(String(data.messageId), {
+            reactions: data.reactions as ChatMessageWithSender["reactions"],
+          });
+        } else if (data.type === "message_edited" && data.message) {
+          const edited = data.message as ChatMessageWithSender;
+          if (edited.id) patchHistoryMessage(edited.id, edited);
+        } else if (data.type === "message_deleted" && data.messageId) {
+          removeHistoryMessage(String(data.messageId));
+        } else if (data.type === "read_cursor_updated" && data.roomId) {
           queryClient.invalidateQueries({ queryKey: [`/api/chat/${activeRoom}`] });
         } else if (
           (data.type === "message_pinned" || data.type === "message_unpinned") &&
@@ -616,7 +673,18 @@ export function Chat() {
         /* ignore */
       }
     };
-  }, [isAuthenticated, user, useHttpMode, queryClient, activeRoom, toast, scrollToMessage, t]);
+  }, [
+    isAuthenticated,
+    user,
+    useHttpMode,
+    queryClient,
+    activeRoom,
+    toast,
+    scrollToMessage,
+    t,
+    patchHistoryMessage,
+    removeHistoryMessage,
+  ]);
 
   useEffect(() => {
     if (useHttpMode) return;
@@ -824,7 +892,7 @@ export function Chat() {
             className="mb-4"
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3 ait-chat-grid min-h-[560px]">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-4 ait-chat-grid min-h-[560px]">
             <div
               className={cn("h-full min-h-0 flex flex-col", mobileThreadOpen && "hidden lg:flex")}
             >

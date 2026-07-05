@@ -1,12 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
-import { filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
+import { type FeedMode } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
-import PageShell from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -17,12 +14,34 @@ import StoryViewer from "@/components/feed/StoryViewer";
 import SocialFormatTabs from "@/components/social/SocialFormatTabs";
 import SocialComposer, { type SocialNewPostDraft } from "@/components/social/SocialComposer";
 import SocialFeedList from "@/components/social/SocialFeedList";
-import { useSocialFeedParams, type SocialContentFormat } from "@/hooks/useSocialFeedParams";
+import { type SocialContentFormat } from "@/hooks/useSocialFeedParams";
 import { useTranslation } from "react-i18next";
 import { isVideoUrl as isVideoUrlShared } from "@shared/post-formats";
-import { useFilterLabels } from "@/hooks/useFilterLabels";
-import CreatorSpotlight from "@/components/ait/CreatorSpotlight";
-import AitLeaderboard from "@/components/ait/AitLeaderboard";
+import CommunityRightRail from "@/components/community/CommunityRightRail";
+import ReelsRightRail from "@/components/community/ReelsRightRail";
+import CommunityStatsRow from "@/components/community/CommunityStatsRow";
+import MobileRightRailSheet from "@/components/layout/mobile-right-rail-sheet";
+import StoriesStrip, { StoriesStripCreateLink } from "@/components/feed/StoriesStrip";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import {
+  groupStories,
+  mapStoryGroupsToStripItems,
+  storyGroupsByUserId,
+} from "@/lib/stories-strip-mapper";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitFilterPills from "@/components/ait-ui/AitFilterPills";
+import { Plus, Sparkles } from "lucide-react";
+import { Link } from "wouter";
+import {
+  buildPostsQueryParams,
+  useBookmarks,
+  useReelsCount,
+  useSocialFeedMutations,
+  useSocialFeedPosts,
+  useStoryPosts,
+} from "@/hooks/useSocialFeedData";
+import { useSocialFeedTabs } from "@/hooks/useSocialFeedTabs";
 
 const EMPTY_DRAFT: SocialNewPostDraft = {
   title: "",
@@ -42,12 +61,37 @@ function contentFormatToApi(format: SocialContentFormat): PostFormat | "public" 
   return "post";
 }
 
+const FORMAT_HEADER_KEYS: Record<
+  SocialContentFormat,
+  { titleKey: string; descriptionKey: string; titleDefault?: string; descriptionDefault?: string }
+> = {
+  feed: { titleKey: "nav.communityHub", descriptionKey: "social.subtitle" },
+  stories: {
+    titleKey: "social.formats.stories",
+    descriptionKey: "social.headers.stories.subtitle",
+    descriptionDefault: "24-hour stories from travelers",
+  },
+  reels: {
+    titleKey: "social.formats.reels",
+    descriptionKey: "social.headers.reels.subtitle",
+    descriptionDefault: "Vertical travel videos from the community",
+  },
+  journals: {
+    titleKey: "social.formats.journals",
+    descriptionKey: "social.headers.journals.subtitle",
+    descriptionDefault: "Long-form travel journals",
+  },
+  public: {
+    titleKey: "social.formats.public",
+    descriptionKey: "social.headers.public.subtitle",
+    descriptionDefault: "Public articles and guides",
+  },
+};
+
 export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const filters = useFilterLabels();
-  const queryClient = useQueryClient();
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [newPost, setNewPost] = useState<SocialNewPostDraft>(EMPTY_DRAFT);
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -59,8 +103,30 @@ export function SocialFeed() {
     index: number;
   } | null>(null);
 
-  const { feedMode, setFeedMode, contentFormat, setContentFormat, isCreating, setIsCreating } =
-    useSocialFeedParams(isAuthenticated);
+  const {
+    feedMode,
+    setFeedMode,
+    contentFormat,
+    setContentFormat,
+    isCreating,
+    setIsCreating,
+    reelsFilterPills,
+    feedModeTabs,
+    showFeedModeTabs,
+    showReelsFilterPills,
+    showComposer,
+    createHref,
+  } = useSocialFeedTabs({
+    isAuthenticated,
+    onFormatChange: () => {
+      setActiveTag(null);
+      setExpandedComments({});
+    },
+    onFeedModeChange: () => {
+      setActiveTag(null);
+      setExpandedComments({});
+    },
+  });
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -71,114 +137,36 @@ export function SocialFeed() {
     );
   }, []);
 
-  const { data: bookmarkData } = useQuery<{ postIds: string[] }>({
-    queryKey: ["/api/bookmarks"],
-    enabled: isAuthenticated,
-  });
-  const bookmarkedSet = new Set(bookmarkData?.postIds ?? []);
   const apiFormat = contentFormatToApi(contentFormat);
+  const postsQueryParams = useMemo(
+    () =>
+      buildPostsQueryParams({
+        contentFormat,
+        apiFormat,
+        feedMode,
+        activeTag,
+        userId: user?.id,
+      }),
+    [apiFormat, activeTag, feedMode, user?.id, contentFormat],
+  );
 
-  const postsQueryParams = useMemo(() => {
-    if (contentFormat === "public") return { public: "1", limit: "30" };
-    const base: Record<string, string> = { format: apiFormat as string };
-    if (activeTag) base.tag = activeTag;
-    if (user?.id && (feedMode === "following" || feedMode === "all")) base.following = user.id;
-    return base;
-  }, [apiFormat, activeTag, feedMode, user?.id, contentFormat]);
+  const postsEnabled =
+    isAuthenticated && (contentFormat === "public" || feedMode !== "following" || !!user?.id);
 
-  const {
-    data: posts = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery<TravelPostWithAuthor[]>({
-    queryKey: ["/api/posts", postsQueryParams],
-    enabled:
-      isAuthenticated && (contentFormat === "public" || feedMode !== "following" || !!user?.id),
-    refetchInterval: isAuthenticated ? 20_000 : false,
+  const { displayedPosts, isLoading, isError, error, refetch } = useSocialFeedPosts({
+    enabled: postsEnabled,
+    postsQueryParams,
+    contentFormat,
+    feedMode,
+    userLat: userCoords?.lat,
+    userLon: userCoords?.lon,
   });
 
-  const displayedPosts = useMemo(() => {
-    if (contentFormat === "public") return posts;
-    return filterPostsForFeedMode(posts, feedMode, {
-      userLat: userCoords?.lat,
-      userLon: userCoords?.lon,
-    });
-  }, [posts, feedMode, userCoords, contentFormat]);
-
-  const createPostMutation = useMutation({
-    mutationFn: (postData: {
-      format: PostFormat;
-      title: string;
-      content: string;
-      location: string;
-      tags: string[];
-      isPublic: boolean;
-      images?: string[];
-    }) => apiRequestJson("POST", "/api/posts", postData),
-    onSuccess: () => {
-      toast({ title: t("social.toasts.published") });
-      setIsCreating(false);
-      setNewPost(EMPTY_DRAFT);
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
-    },
-    onError: (err: Error) => {
-      const msg = err?.message ?? "";
-      const description = msg.includes("401")
-        ? t("social.toasts.signInRequired")
-        : msg.includes("5")
-          ? t("social.toasts.serverError")
-          : t("social.toasts.publishFailed");
-      toast({ title: t("social.toasts.publishErrorTitle"), description, variant: "destructive" });
-    },
-  });
-
-  const likePostMutation = useMutation({
-    mutationFn: async ({ postId, isLiked }: { postId: string; isLiked: boolean }) => {
-      if (isLiked) {
-        await apiRequest("DELETE", `/api/posts/${postId}/like`);
-        return null;
-      }
-      return apiRequestJson("POST", `/api/posts/${postId}/like`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
-    },
-  });
-
-  const commentMutation = useMutation({
-    mutationFn: ({ postId, content }: { postId: string; content: string }) =>
-      apiRequestJson("POST", `/api/posts/${postId}/comments`, { content }),
-    onSuccess: (_, variables) => {
-      setCommentInputs((prev) => ({ ...prev, [variables.postId]: "" }));
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/posts/${variables.postId}/comments`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
-      toast({ title: t("social.toasts.commentAdded") });
-    },
-    onError: (err: Error) => {
-      const message = err?.message?.includes("404")
-        ? t("social.toasts.postNotFound")
-        : t("social.toasts.commentFailed");
-      toast({ title: t("social.toasts.error"), description: message, variant: "destructive" });
-    },
-  });
-
-  const toggleBookmarkMutation = useMutation({
-    mutationFn: async (postId: string) => {
-      if (bookmarkedSet.has(postId)) {
-        await apiRequest("DELETE", `/api/bookmarks/${postId}`);
-        return { postId, saved: false };
-      }
-      await apiRequest("POST", `/api/bookmarks/${postId}`);
-      return { postId, saved: true };
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] }),
-    onError: () => toast({ title: t("social.toasts.bookmarkFailed"), variant: "destructive" }),
-  });
+  const { data: storyPosts = [] } = useStoryPosts(isAuthenticated);
+  const { reelsCount } = useReelsCount(isAuthenticated);
+  const { bookmarkedSet } = useBookmarks(isAuthenticated);
+  const { createPostMutation, likePostMutation, commentMutation, toggleBookmarkMutation } =
+    useSocialFeedMutations(bookmarkedSet);
 
   const handleSubmitComment = (postId: string) => {
     const content = (commentInputs[postId] ?? "").trim();
@@ -186,7 +174,21 @@ export function SocialFeed() {
       toast({ title: t("social.toasts.commentEmpty"), variant: "destructive" });
       return;
     }
-    commentMutation.mutate({ postId, content });
+    commentMutation.mutate(
+      { postId, content },
+      {
+        onSuccess: () => {
+          setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+          toast({ title: t("social.toasts.commentAdded") });
+        },
+        onError: (err: Error) => {
+          const message = err?.message?.includes("404")
+            ? t("social.toasts.postNotFound")
+            : t("social.toasts.commentFailed");
+          toast({ title: t("social.toasts.error"), description: message, variant: "destructive" });
+        },
+      },
+    );
   };
 
   const handleCreatePost = () => {
@@ -195,18 +197,30 @@ export function SocialFeed() {
     const { tagInput, images, ...postData } = newPost;
     void tagInput;
 
+    const onSuccess = () => {
+      toast({ title: t("social.toasts.published") });
+      setIsCreating(false);
+      setNewPost(EMPTY_DRAFT);
+    };
+    const onError = (err: Error) => {
+      const msg = err?.message ?? "";
+      const description = msg.includes("401")
+        ? t("social.toasts.signInRequired")
+        : msg.includes("5")
+          ? t("social.toasts.serverError")
+          : t("social.toasts.publishFailed");
+      toast({ title: t("social.toasts.publishErrorTitle"), description, variant: "destructive" });
+    };
+
     if (format === "story") {
       if (!images.length) {
         toast({ title: t("social.toasts.storyMediaRequired"), variant: "destructive" });
         return;
       }
-      createPostMutation.mutate({
-        format,
-        ...postData,
-        title: "",
-        content: postData.content.trim() || " ",
-        images,
-      });
+      createPostMutation.mutate(
+        { format, ...postData, title: "", content: postData.content.trim() || " ", images },
+        { onSuccess, onError },
+      );
       return;
     }
 
@@ -215,13 +229,10 @@ export function SocialFeed() {
         toast({ title: t("social.toasts.reelVideoRequired"), variant: "destructive" });
         return;
       }
-      createPostMutation.mutate({
-        format,
-        ...postData,
-        title: "",
-        content: postData.content.trim() || " ",
-        images,
-      });
+      createPostMutation.mutate(
+        { format, ...postData, title: "", content: postData.content.trim() || " ", images },
+        { onSuccess, onError },
+      );
       return;
     }
 
@@ -234,12 +245,10 @@ export function SocialFeed() {
         toast({ title: t("social.toasts.journalMinLength"), variant: "destructive" });
         return;
       }
-      createPostMutation.mutate({
-        format,
-        ...postData,
-        isPublic: true,
-        images: images.length > 0 ? images : undefined,
-      });
+      createPostMutation.mutate(
+        { format, ...postData, isPublic: true, images: images.length > 0 ? images : undefined },
+        { onSuccess, onError },
+      );
       return;
     }
 
@@ -247,11 +256,10 @@ export function SocialFeed() {
       toast({ title: t("social.toasts.postFieldsRequired"), variant: "destructive" });
       return;
     }
-    createPostMutation.mutate({
-      format: "post",
-      ...postData,
-      images: images.length > 0 ? images : undefined,
-    });
+    createPostMutation.mutate(
+      { format: "post", ...postData, images: images.length > 0 ? images : undefined },
+      { onSuccess, onError },
+    );
   };
 
   const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,13 +298,19 @@ export function SocialFeed() {
           ? t("social.composer.journal")
           : t("social.composer.feed");
 
-  const feedModeTabs = useMemo(
-    () => filters.feedModeTabs.map(({ value, label }) => ({ id: value as FeedMode, label })),
-    [filters.feedModeTabs],
-  );
+  const headerMeta = FORMAT_HEADER_KEYS[contentFormat];
+  const rightRail =
+    contentFormat === "reels" ? (
+      <ReelsRightRail posts={displayedPosts} />
+    ) : (
+      <CommunityRightRail posts={displayedPosts} />
+    );
 
-  const showFeedModeTabs =
-    contentFormat === "feed" || contentFormat === "journals" || contentFormat === "public";
+  const storyGroups = useMemo(() => groupStories(storyPosts), [storyPosts]);
+  const storyStripItems = useMemo(() => mapStoryGroupsToStripItems(storyGroups), [storyGroups]);
+  const storyGroupsById = useMemo(() => storyGroupsByUserId(storyGroups), [storyGroups]);
+  const userStoryFallback =
+    `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.trim() || "?";
 
   if (!isAuthenticated) {
     return (
@@ -310,33 +324,72 @@ export function SocialFeed() {
   }
 
   return (
-    <AppLayout>
-      <div className="max-w-2xl mx-auto">
-        <PageShell
-          title={t("nav.communityHub")}
-          description={t("social.subtitle")}
-          titleVariant="immersive"
-          breadcrumbs={[
-            { label: t("nav.communityHub"), href: "/social-feed" },
-            ...(contentFormat !== "feed" ? [{ label: t(`social.formats.${contentFormat}`) }] : []),
-          ]}
-        >
-          <div className="my-4 space-y-4">
-            <CreatorSpotlight />
-            <AitLeaderboard compact />
-          </div>
-
-          <SocialFormatTabs value={contentFormat} onChange={setContentFormat} />
-
-          {showFeedModeTabs && (
+    <AppLayout rightRail={rightRail} columnMaxWidth="feed">
+      <ReelsPageLayout
+        header={
+          <AitSectionHeader
+            title={t(headerMeta.titleKey, { defaultValue: headerMeta.titleDefault })}
+            description={t(headerMeta.descriptionKey, { defaultValue: headerMeta.descriptionDefault })}
+            actions={
+              <>
+                <AitButton variant="primary" className="gap-2" asChild>
+                  <Link href={createHref}>
+                    <Plus className="h-4 w-4" />
+                    {t("social.create")}
+                  </Link>
+                </AitButton>
+                <AitButton variant="glass" className="gap-2 hidden sm:inline-flex" asChild>
+                  <Link href="/trips">
+                    <Sparkles className="h-4 w-4 text-ait-purple" />
+                    {t("nav.aiScout", { defaultValue: "AI Scout" })}
+                  </Link>
+                </AitButton>
+              </>
+            }
+          />
+        }
+        stats={<CommunityStatsRow reelsCount={reelsCount} />}
+        stories={
+          <>
+            <MobileRightRailSheet title={t("social.widgets", { defaultValue: "Discover" })}>
+              {rightRail}
+            </MobileRightRailSheet>
+            <StoriesStrip
+              createLabel={t("social.stories.yourStory", { defaultValue: "Your story" })}
+              yourStoryAvatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
+              items={storyStripItems}
+              createAction={
+                <StoriesStripCreateLink
+                  href="/social-feed?format=stories&create=1"
+                  label={t("social.stories.yourStory", { defaultValue: "Your story" })}
+                  avatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
+                />
+              }
+              onItemClick={(item) => {
+                const group = storyGroupsById.get(item.id);
+                if (group) setStoryView({ posts: group.posts, index: 0 });
+              }}
+            />
+          </>
+        }
+        tabs={<SocialFormatTabs value={contentFormat} onChange={setContentFormat} className="overflow-x-auto scrollbar-hide" />}
+        filters={
+          showReelsFilterPills ? (
+            <AitFilterPills
+              items={reelsFilterPills}
+              value={feedMode}
+              onChange={(id) => setFeedMode(id as FeedMode)}
+              className="mb-4"
+            />
+          ) : undefined
+        }
+        toolbar={
+          showFeedModeTabs ? (
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <ChatFilterTabs
                 tabs={feedModeTabs}
                 value={feedMode}
-                onChange={(id) => {
-                  setFeedMode(id);
-                  setActiveTag(null);
-                }}
+                onChange={(id) => setFeedMode(id as FeedMode)}
                 layoutId="social-feed-mode-glider"
               />
               {activeTag && (
@@ -349,9 +402,10 @@ export function SocialFeed() {
                 </Badge>
               )}
             </div>
-          )}
-
-          {contentFormat !== "public" && (
+          ) : undefined
+        }
+        composer={
+          showComposer ? (
             <SocialComposer
               contentFormat={contentFormat}
               user={user}
@@ -366,51 +420,56 @@ export function SocialFeed() {
               onAddTag={handleAddTag}
               placeholder={composerPlaceholder}
             />
-          )}
-
-          {storyView && (
-            <StoryViewer
-              posts={storyView.posts}
-              index={storyView.index}
-              onClose={() => setStoryView(null)}
-              onIndexChange={(index) => setStoryView((s) => (s ? { ...s, index } : null))}
-            />
-          )}
-
-          <div className="space-y-6">
-            <SocialFeedList
-              contentFormat={contentFormat}
-              posts={displayedPosts}
-              isLoading={isLoading}
-              isError={isError}
-              error={error}
-              onRefetch={refetch}
-              onCreateClick={() => setIsCreating(true)}
-              formatDate={(date) => format(new Date(date), "d MMM yyyy, HH:mm", { locale: ru })}
-              activeTag={activeTag}
-              onTagClick={(tag) => setActiveTag(activeTag === tag ? null : tag)}
-              onOpenStoryGroup={(group, startIndex) =>
-                setStoryView({ posts: group.posts, index: startIndex })
-              }
-              user={user}
-              bookmarkedSet={bookmarkedSet}
-              expandedComments={expandedComments}
-              commentInputs={commentInputs}
-              onToggleComments={(postId) =>
-                setExpandedComments((prev) => ({ ...prev, [postId]: !prev[postId] }))
-              }
-              onCommentChange={(postId, value) =>
-                setCommentInputs((prev) => ({ ...prev, [postId]: value }))
-              }
-              onSubmitComment={handleSubmitComment}
-              commentPending={commentMutation.isPending}
-              onLike={(postId, isLiked) => likePostMutation.mutate({ postId, isLiked })}
-              likePending={likePostMutation.isPending}
-              onBookmark={(postId) => toggleBookmarkMutation.mutate(postId)}
-            />
-          </div>
-        </PageShell>
-      </div>
+          ) : undefined
+        }
+        feed={
+          <>
+            {storyView && (
+              <StoryViewer
+                posts={storyView.posts}
+                index={storyView.index}
+                onClose={() => setStoryView(null)}
+                onIndexChange={(index) => setStoryView((s) => (s ? { ...s, index } : null))}
+              />
+            )}
+            <div className={contentFormat === "reels" ? "" : "space-y-8"}>
+              <SocialFeedList
+                contentFormat={contentFormat}
+                feedMode={feedMode}
+                posts={displayedPosts}
+                isLoading={isLoading}
+                isError={isError}
+                error={error}
+                onRefetch={refetch}
+                onCreateClick={() => setIsCreating(true)}
+                formatDate={(date) => format(new Date(date), "d MMM yyyy, HH:mm", { locale: ru })}
+                activeTag={activeTag}
+                onTagClick={(tag) => setActiveTag(activeTag === tag ? null : tag)}
+                user={user}
+                bookmarkedSet={bookmarkedSet}
+                expandedComments={expandedComments}
+                commentInputs={commentInputs}
+                onToggleComments={(postId) =>
+                  setExpandedComments((prev) => ({ ...prev, [postId]: !prev[postId] }))
+                }
+                onCommentChange={(postId, value) =>
+                  setCommentInputs((prev) => ({ ...prev, [postId]: value }))
+                }
+                onSubmitComment={handleSubmitComment}
+                commentPending={commentMutation.isPending}
+                onLike={(postId, isLiked) => likePostMutation.mutate({ postId, isLiked })}
+                likePending={likePostMutation.isPending}
+                onBookmark={(postId) =>
+                  toggleBookmarkMutation.mutate(postId, {
+                    onError: () =>
+                      toast({ title: t("social.toasts.bookmarkFailed"), variant: "destructive" }),
+                  })
+                }
+              />
+            </div>
+          </>
+        }
+      />
     </AppLayout>
   );
 }

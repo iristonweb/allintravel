@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import CatalogPageLayout from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
@@ -79,7 +80,7 @@ export function Places() {
     queryKey: [
       "/api/places",
       {
-        limit: 50,
+        limit: 100,
         offset: 0,
         ...(activeSearch && { search: activeSearch }),
         ...(typeFilter && { type: typeFilter }),
@@ -139,7 +140,7 @@ export function Places() {
   const hasActiveFilters = activeSearch || typeFilter || minRating || priceRange;
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <PageShell
         title={t("places.title")}
         description={t("places.description")}

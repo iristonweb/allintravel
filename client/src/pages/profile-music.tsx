@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +68,7 @@ export function ProfileMusic() {
   }
 
   return (
-    <AppLayout contentClassName="py-6">
+    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />}>
       <ProfileMusicContent />
     </AppLayout>
   );
@@ -177,7 +178,7 @@ function ProfileMusicContent() {
   const itunesResults = searchResults?.itunes ?? [];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-section">
       <AppBreadcrumbs items={[{ label: "Профиль", href: "/profile" }, { label: "Моя музыка" }]} />
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 
 type EmptyStateProps = {
   title: string;
@@ -43,7 +43,11 @@ export default function EmptyState({
   );
 
   if (variant === "glass") {
-    return <GlassCard className={cn("py-12 text-center", className)}>{content}</GlassCard>;
+    return (
+      <AitSurface padding="lg" radius="lg" glow className={cn("py-12 text-center", className)}>
+        {content}
+      </AitSurface>
+    );
   }
 
   return (

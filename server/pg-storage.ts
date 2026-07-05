@@ -110,35 +110,42 @@ export class PgStorage implements IStorage {
     await this.ensureSchema();
     await features.ensureLegacyChatRoomsDb(this.db);
     const [{ value }] = await this.db.select({ value: count() }).from(places);
-    if (Number(value) > 0) return;
+    if (Number(value) === 0) {
+      const seed = buildSeedData();
+      await this.db.insert(users).values(seed.demoUser).onConflictDoNothing();
+      await this.db.insert(places).values(
+        seed.places.map((p) => ({
+          ...p,
+          phone: null,
+          website: null,
+          cuisine: null,
+          amenities: null,
+        })),
+      );
+      await this.db.insert(events).values(
+        seed.events.map((e) => ({
+          ...e,
+          organizerId: null,
+          isActive: true,
+        })),
+      );
+      await this.db.insert(trips).values(seed.trips.map((t) => ({ ...t, isActive: true })));
+      await this.db.insert(travelPosts).values(
+        seed.posts.map((p) => ({
+          ...p,
+          isPublic: true,
+          updatedAt: p.createdAt,
+        })),
+      );
+      console.log("[PgStorage] Demo seed data inserted.");
+    }
+    await this.ensurePlacesCatalog();
+  }
 
-    const seed = buildSeedData();
-    await this.db.insert(users).values(seed.demoUser).onConflictDoNothing();
-    await this.db.insert(places).values(
-      seed.places.map((p) => ({
-        ...p,
-        phone: null,
-        website: null,
-        cuisine: null,
-        amenities: null,
-      })),
-    );
-    await this.db.insert(events).values(
-      seed.events.map((e) => ({
-        ...e,
-        organizerId: null,
-        isActive: true,
-      })),
-    );
-    await this.db.insert(trips).values(seed.trips.map((t) => ({ ...t, isActive: true })));
-    await this.db.insert(travelPosts).values(
-      seed.posts.map((p) => ({
-        ...p,
-        isPublic: true,
-        updatedAt: p.createdAt,
-      })),
-    );
-    console.log("[PgStorage] Demo seed data inserted.");
+  async ensurePlacesCatalog(): Promise<void> {
+    const { upsertPlacesCatalog } = await import("./places-catalog-upsert");
+    const total = await upsertPlacesCatalog(this.db);
+    console.log(`[PgStorage] Places catalog upserted (${total} entries).`);
   }
 
   async getUser(id: string): Promise<User | undefined> {

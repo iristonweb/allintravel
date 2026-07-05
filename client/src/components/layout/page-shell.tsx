@@ -27,7 +27,7 @@ export default function PageShell({
   children,
 }: PageShellProps) {
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-section", className)}>
       {titleVariant === "page" ? (
         <PageHeader
           title={title ?? ""}

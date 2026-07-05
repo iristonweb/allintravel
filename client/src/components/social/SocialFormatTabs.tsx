@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { BookMarked, Compass, Film, Globe, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import AitTabs from "@/components/ait-ui/AitTabs";
 import type { SocialContentFormat } from "@/hooks/useSocialFeedParams";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 const TABS: Array<{
   id: SocialContentFormat;
@@ -18,24 +20,29 @@ const TABS: Array<{
 type SocialFormatTabsProps = {
   value: SocialContentFormat;
   onChange: (format: SocialContentFormat) => void;
+  className?: string;
 };
 
-export default function SocialFormatTabs({ value, onChange }: SocialFormatTabsProps) {
+export default function SocialFormatTabs({ value, onChange, className }: SocialFormatTabsProps) {
   const { t } = useTranslation();
 
+  const tabs = useMemo(
+    () =>
+      TABS.map(({ id, labelKey, icon }) => ({
+        id,
+        label: t(labelKey),
+        icon,
+      })),
+    [t],
+  );
+
   return (
-    <div className="flex flex-wrap gap-1.5 mt-6 mb-4 ait-glass rounded-full p-1 w-fit">
-      {TABS.map(({ id, labelKey, icon: Icon }) => (
-        <Button
-          key={id}
-          size="sm"
-          variant={value === id ? "premium" : "filter"}
-          onClick={() => onChange(id)}
-        >
-          <Icon className="h-4 w-4 mr-1" />
-          {t(labelKey)}
-        </Button>
-      ))}
-    </div>
+    <AitTabs
+      tabs={tabs}
+      value={value}
+      onChange={onChange}
+      layoutId="social-format-tabs-glider"
+      className={cn("mt-2 mb-6 w-full max-w-full", className)}
+    />
   );
 }

@@ -88,7 +88,8 @@ export default function GlobalMusicBar() {
   const positionLabel =
     queue.length > 1 ? `Трек ${trackIndex + 1} из ${queue.length}` : "Моя музыка";
 
-  const glassClass = "ait-glass bg-black/30 backdrop-blur-xl border border-white/10 shadow-2xl";
+  const glassClass =
+    "ait-glass-strong bg-black/30 backdrop-blur-xl border border-white/10 shadow-ait-elevation-2";
 
   const anchored = !pos;
 

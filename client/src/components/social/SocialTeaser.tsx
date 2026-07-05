@@ -5,6 +5,7 @@ import type { TravelPostWithAuthor } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { getUserInitial } from "@shared/user-display";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { useTranslation } from "react-i18next";
 
 export default function SocialTeaser() {
@@ -17,7 +18,7 @@ export default function SocialTeaser() {
 
   return (
     <Link href="/social-feed?format=stories">
-      <div className="ait-glass-strong rounded-card p-3 flex items-center gap-3 border border-white/10 hover:border-ait-purple/30 transition-colors">
+      <AitSurface padding="sm" radius="lg" hover className="flex items-center gap-3">
         <div className="flex -space-x-2">
           {previewAuthors.length > 0 ? (
             previewAuthors.map((post) => (
@@ -39,7 +40,7 @@ export default function SocialTeaser() {
           <p className="text-xs text-muted-foreground truncate">{t("social.storiesTeaserHint")}</p>
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-      </div>
+      </AitSurface>
     </Link>
   );
 }

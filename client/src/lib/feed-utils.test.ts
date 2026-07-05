@@ -4,6 +4,7 @@ import {
   feedModeToQuery,
   filterPostsForFeedMode,
   sortPostsByPopularity,
+  sortPostsByTrending,
 } from "./feed-utils";
 import type { TravelPostWithAuthor } from "@shared/schema";
 
@@ -29,5 +30,15 @@ describe("feed-utils", () => {
     expect(sortPostsByPopularity(posts).map((p) => p.id)).toEqual(["b", "c", "a"]);
     expect(filterPostsForFeedMode(posts, "all").length).toBe(3);
     expect(filterPostsForFeedMode(posts, "popular")[0]?.id).toBe("b");
+  });
+
+  it("sorts trending posts by engagement score", () => {
+    const posts = [
+      { ...post("a", 1), commentsCount: 0, createdAt: new Date().toISOString() },
+      { ...post("b", 2), commentsCount: 5, createdAt: new Date().toISOString() },
+    ] as TravelPostWithAuthor[];
+    expect(sortPostsByTrending(posts)[0]?.id).toBe("b");
+    expect(feedModeFromQuery("trending")).toBe("trending");
+    expect(filterPostsForFeedMode(posts, "trending")[0]?.id).toBe("b");
   });
 });

@@ -174,7 +174,7 @@ export function MapPage() {
   };
 
   return (
-    <AppLayout fullWidth immersive contentClassName="p-0">
+    <AppLayout fullWidth layout="full-bleed" immersive contentClassName="p-0">
       <div className="relative h-[calc(100vh-var(--ait-header-h))] min-h-[600px]">
         <div className="absolute top-[calc(var(--ait-header-h)+5rem)] left-3 right-3 md:left-[calc(72px+1rem)] md:right-8 z-50 pointer-events-none flex justify-center">
           <motion.div

@@ -35,7 +35,7 @@ import ErrorBoundary from "@/components/error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
 import AitGrantListener from "@/components/ait/AitGrantListener";
 import ReferralAutoApply from "@/components/ait/ReferralAutoApply";
-import PushSoundListener from "@/components/PushSoundListener";
+import InAppNotificationListener from "@/components/InAppNotificationListener";
 import { ChatGroupSearchProvider } from "@/components/chat/ChatGroupSearchContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import GlobalMusicBar from "@/components/music/GlobalMusicBar";
@@ -161,7 +161,7 @@ function App() {
           <Toaster />
           <AitGrantListener />
           <ReferralAutoApply />
-          <PushSoundListener />
+          <InAppNotificationListener />
           <GlobalMusicBar />
           <ChatGroupSearchProvider>
             <ErrorBoundary>

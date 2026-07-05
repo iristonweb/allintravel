@@ -1,6 +1,6 @@
 import type { TravelPostWithAuthor } from "@shared/schema";
 
-export type FeedMode = "all" | "following" | "popular" | "nearby";
+export type FeedMode = "all" | "following" | "popular" | "nearby" | "trending";
 
 /** Legacy labels — prefer t('feed.*') in UI */
 export const FEED_MODE_LABELS: Record<FeedMode, string> = {
@@ -8,10 +8,18 @@ export const FEED_MODE_LABELS: Record<FeedMode, string> = {
   following: "Following",
   popular: "Popular",
   nearby: "Nearby",
+  trending: "Trending",
 };
 
 export function feedModeFromQuery(value: string | null): FeedMode {
-  if (value === "following" || value === "popular" || value === "nearby") return value;
+  if (
+    value === "following" ||
+    value === "popular" ||
+    value === "nearby" ||
+    value === "trending"
+  ) {
+    return value;
+  }
   return "all";
 }
 
@@ -22,6 +30,18 @@ export function feedModeToQuery(mode: FeedMode): string {
 
 export function sortPostsByPopularity(posts: TravelPostWithAuthor[]): TravelPostWithAuthor[] {
   return [...posts].sort((a, b) => (b.likesCount ?? 0) - (a.likesCount ?? 0));
+}
+
+function engagementScore(post: TravelPostWithAuthor): number {
+  const likes = post.likesCount ?? 0;
+  const comments = post.commentsCount ?? 0;
+  const ageMs = Date.now() - new Date(post.createdAt as string | Date).getTime();
+  const recencyBoost = Math.max(0, 1 - ageMs / (7 * 24 * 60 * 60 * 1000));
+  return likes * 2 + comments * 3 + recencyBoost * 10;
+}
+
+export function sortPostsByTrending(posts: TravelPostWithAuthor[]): TravelPostWithAuthor[] {
+  return [...posts].sort((a, b) => engagementScore(b) - engagementScore(a));
 }
 
 function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
@@ -40,6 +60,7 @@ export function filterPostsForFeedMode(
   options?: { userLat?: number | null; userLon?: number | null; radiusKm?: number },
 ): TravelPostWithAuthor[] {
   if (mode === "popular") return sortPostsByPopularity(posts);
+  if (mode === "trending") return sortPostsByTrending(posts);
   if (mode === "nearby") {
     const lat = options?.userLat;
     const lon = options?.userLon;

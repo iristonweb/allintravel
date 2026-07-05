@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { MapPin, AlertCircle } from "lucide-react";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export function PostDetailPage() {
   });
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
       <div className="max-w-3xl mx-auto">
         <PageShell
           title={post?.title ?? t("social.article")}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
@@ -120,7 +121,7 @@ export function ProfileSettings() {
   }
 
   return (
-    <AppLayout contentClassName="py-6 max-w-2xl mx-auto">
+    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
       <PageShell
         title={t("profileSettings.title")}
         breadcrumbs={[

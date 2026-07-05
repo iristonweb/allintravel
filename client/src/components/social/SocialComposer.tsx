@@ -1,9 +1,9 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -62,23 +62,23 @@ export default function SocialComposer({
   const setDraft = (patch: Partial<SocialNewPostDraft>) => onDraftChange({ ...draft, ...patch });
 
   return (
-    <GlassCard className="mb-6 mt-4 p-4">
-      <div className="flex items-start gap-3">
-        <Avatar>
+    <AitSurface padding="md" radius="lg" glow className="mb-section mt-2">
+      <div className="flex items-start gap-4">
+        <Avatar className="h-11 w-11 border-2 border-white/10">
           <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
           <AvatarFallback>{user?.firstName?.[0] || user?.email?.[0] || "?"}</AvatarFallback>
         </Avatar>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {!isCreating ? (
-            <Button
-              variant="outline"
-              className="w-full justify-start text-muted-foreground"
+            <button
+              type="button"
+              className="w-full text-left rounded-button px-4 py-3 text-muted-foreground ait-input-glass hover:border-ait-purple/30 transition-all duration-300"
               onClick={() => onCreatingChange(true)}
             >
               {placeholder}
-            </Button>
+            </button>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {contentFormat !== "stories" && contentFormat !== "reels" && (
                 <Input
                   placeholder={
@@ -91,7 +91,7 @@ export default function SocialComposer({
                 />
               )}
               {contentFormat !== "stories" && (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <FormatToolbar
                     value={draft.content}
                     onChange={(content) => setDraft({ content })}
@@ -109,6 +109,7 @@ export default function SocialComposer({
                     value={draft.content}
                     onChange={(e) => setDraft({ content: e.target.value })}
                     rows={contentFormat === "journals" ? 8 : 4}
+                    className="ait-input-glass rounded-button min-h-[100px]"
                   />
                 </div>
               )}
@@ -126,17 +127,17 @@ export default function SocialComposer({
                       onChange={(e) => setDraft({ tagInput: e.target.value })}
                       onKeyDown={(e) => e.key === "Enter" && onAddTag()}
                     />
-                    <Button variant="outline" size="sm" onClick={onAddTag}>
+                    <AitButton variant="glass" size="sm" onClick={onAddTag}>
                       +
-                    </Button>
+                    </AitButton>
                   </div>
                   {draft.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-2">
                       {draft.tags.map((tag) => (
                         <Badge
                           key={tag}
                           variant="secondary"
-                          className="cursor-pointer"
+                          className="cursor-pointer rounded-full"
                           onClick={() =>
                             setDraft({ tags: draft.tags.filter((item) => item !== tag) })
                           }
@@ -160,10 +161,10 @@ export default function SocialComposer({
                 className="hidden"
                 onChange={onMediaSelect}
               />
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
+              <div className="flex flex-wrap items-center gap-3">
+                <AitButton
                   type="button"
-                  variant="outline"
+                  variant="glass"
                   size="sm"
                   disabled={uploadingMedia}
                   onClick={() => mediaInputRef.current?.click()}
@@ -176,7 +177,7 @@ export default function SocialComposer({
                   {contentFormat === "reels"
                     ? t("social.composer.video")
                     : t("social.composer.photoVideo")}
-                </Button>
+                </AitButton>
                 {contentFormat === "feed" && (
                   <div className="flex items-center gap-2 ml-auto">
                     <Switch
@@ -196,13 +197,13 @@ export default function SocialComposer({
                 )}
               </div>
               {draft.images.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   {draft.images.map((url) => (
                     <div key={url} className="relative">
                       {isVideoUrl(url) ? (
-                        <video src={url} className="h-20 w-28 rounded-lg object-cover" muted />
+                        <video src={url} className="h-24 w-32 rounded-card object-cover" muted />
                       ) : (
-                        <img src={url} alt="" className="h-20 w-28 rounded-lg object-cover" />
+                        <img src={url} alt="" className="h-24 w-32 rounded-card object-cover" />
                       )}
                       <button
                         type="button"
@@ -217,19 +218,19 @@ export default function SocialComposer({
                   ))}
                 </div>
               )}
-              <div className="flex gap-2">
-                <Button onClick={onPublish} disabled={publishing} variant="premium">
+              <div className="flex gap-3 pt-1">
+                <AitButton onClick={onPublish} disabled={publishing} variant="primary">
                   <Plus className="mr-2 h-4 w-4" />
                   {t("social.composer.publish")}
-                </Button>
-                <Button variant="outline" onClick={() => onCreatingChange(false)}>
+                </AitButton>
+                <AitButton variant="glass" onClick={() => onCreatingChange(false)}>
                   {t("common.cancel")}
-                </Button>
+                </AitButton>
               </div>
             </div>
           )}
         </div>
       </div>
-    </GlassCard>
+    </AitSurface>
   );
 }

@@ -56,6 +56,13 @@ self.addEventListener("push", (event) => {
       const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const client of clients) {
         client.postMessage({ type: "PLAY_NOTIFICATION_SOUND", soundKind });
+        client.postMessage({
+          type: "SHOW_IN_APP_TOAST",
+          title: data.title,
+          body: data.body,
+          url: data.url || "/",
+          soundKind,
+        });
         if (data.notificationId) {
           client.postMessage({
             type: "PUSH_NOTIFICATION_SHOWN",

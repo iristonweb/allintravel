@@ -3,7 +3,7 @@
  * Requires DATABASE_URL in .env (same as Vercel production Postgres URL).
  */
 import "dotenv/config";
-import { getDb } from "../db";
+import { closePool, getDb } from "../db";
 import { sql } from "drizzle-orm";
 
 async function main() {
@@ -33,7 +33,7 @@ async function main() {
     process.exit(1);
   }
 
-  for (const table of ["users", "places", "trips", "sessions", "travel_posts"]) {
+  for (const table of ["users", "places", "countries", "cities", "trips", "sessions", "travel_posts"]) {
     try {
       const r = await db.execute(sql.raw(`SELECT count(*)::int AS c FROM "${table}"`));
       const count = (r.rows as { c: number }[])[0]?.c ?? "?";
@@ -44,6 +44,7 @@ async function main() {
   }
 
   console.log("\nDatabase looks ready for All In Travel.");
+  await closePool();
 }
 
 main().catch((e) => {

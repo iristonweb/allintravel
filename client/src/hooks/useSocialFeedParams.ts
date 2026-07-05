@@ -12,38 +12,63 @@ function formatFromQuery(param: string | null): SocialContentFormat {
   return "feed";
 }
 
+function defaultFeedMode(format: SocialContentFormat): FeedMode {
+  return format === "reels" ? "all" : "following";
+}
+
+function contentFormatFromUrl(search?: string): SocialContentFormat {
+  const params = new URLSearchParams(search ?? window.location.search);
+  const format = formatFromQuery(params.get("format"));
+  if (params.get("create") === "1" && format === "feed") return "stories";
+  return format;
+}
+
 export function useSocialFeedParams(isAuthenticated: boolean) {
-  const [feedMode, setFeedModeState] = useState<FeedMode>(() =>
-    feedModeFromQuery(new URLSearchParams(window.location.search).get("mode")),
-  );
+  const [feedMode, setFeedModeState] = useState<FeedMode>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+    if (mode) return feedModeFromQuery(mode);
+    return defaultFeedMode(contentFormatFromUrl());
+  });
 
   const [contentFormat, setContentFormatState] = useState<SocialContentFormat>(() =>
-    formatFromQuery(new URLSearchParams(window.location.search).get("format")),
+    contentFormatFromUrl(),
   );
 
-  const [isCreating, setIsCreating] = useState(
+  const [isCreating, setIsCreatingState] = useState(
     () => new URLSearchParams(window.location.search).get("create") === "1",
   );
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (!params.get("mode") && isAuthenticated) {
-      setFeedModeState("following");
-    } else {
-      setFeedModeState(feedModeFromQuery(params.get("mode")));
-    }
-    setContentFormatState(formatFromQuery(params.get("format")));
-    if (params.get("create") === "1") {
-      setContentFormatState("stories");
-      setIsCreating(true);
-    }
-  }, [isAuthenticated]);
 
   const replaceParams = useCallback((mutate: (params: URLSearchParams) => void) => {
     const url = new URL(window.location.href);
     mutate(url.searchParams);
-    window.history.replaceState({}, "", url.pathname + url.search);
+    const search = url.searchParams.toString();
+    window.history.replaceState({}, "", url.pathname + (search ? `?${search}` : ""));
   }, []);
+
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const format = contentFormatFromUrl();
+      setContentFormatState(format);
+
+      if (!params.get("mode") && isAuthenticated) {
+        setFeedModeState(defaultFeedMode(format));
+      } else {
+        setFeedModeState(feedModeFromQuery(params.get("mode")));
+      }
+
+      if (params.get("create") === "1") {
+        setIsCreatingState(true);
+      } else {
+        setIsCreatingState(false);
+      }
+    };
+
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
+  }, [isAuthenticated]);
 
   const setFeedMode = useCallback(
     (mode: FeedMode) => {
@@ -62,6 +87,17 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
       replaceParams((params) => {
         if (format === "feed") params.delete("format");
         else params.set("format", format);
+      });
+    },
+    [replaceParams],
+  );
+
+  const setIsCreating = useCallback(
+    (creating: boolean) => {
+      setIsCreatingState(creating);
+      replaceParams((params) => {
+        if (creating) params.set("create", "1");
+        else params.delete("create");
       });
     },
     [replaceParams],

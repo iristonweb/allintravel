@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import CatalogPageLayout, { CatalogSearchInput } from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
@@ -604,7 +605,7 @@ export function Trips() {
         </DialogContent>
       </Dialog>
 
-      <AppLayout>
+      <AppLayout rightRail={<DiscoveryRightRail />}>
         <PageShell
           title={t("tripsPage.title")}
           description={t("tripsPage.description")}

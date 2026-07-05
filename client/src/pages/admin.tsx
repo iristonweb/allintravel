@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import GlassCard from "@/components/brand/glass-card";
 import { Button } from "@/components/ui/button";
 import SmartSearchField from "@/components/search/SmartSearchField";
@@ -151,7 +152,7 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <AppLayout>
+      <AppLayout rightRail={<DiscoveryRightRail />}>
         <div className="py-20 text-center">
           <p className="text-muted-foreground mb-4">Доступ только для администраторов</p>
           <Button asChild variant="outline">
@@ -163,7 +164,7 @@ export default function AdminPage() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>

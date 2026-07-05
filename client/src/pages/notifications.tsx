@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import NotificationList from "@/components/notifications/NotificationList";
 import type { NotificationFilter } from "@shared/notification-types";
@@ -20,7 +21,7 @@ export function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationFilter>(initialFilter);
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
         <PageShell
           title={t("notifications.page.title")}

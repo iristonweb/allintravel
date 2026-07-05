@@ -23,7 +23,7 @@ export default function DestinationCard({ destination, className, onClick }: Des
       onClick={onClick}
       whileHover={{ scale: 1.04, y: -4 }}
       className={cn(
-        "flex-shrink-0 w-[220px] rounded-[24px] overflow-hidden text-left ait-glass-strong ait-gradient-border",
+        "flex-shrink-0 w-[220px] rounded-card-xl overflow-hidden text-left ait-glass-strong ait-surface-glow shadow-ait-elevation-2",
         className,
       )}
     >

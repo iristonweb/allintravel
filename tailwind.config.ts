@@ -25,8 +25,25 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
         card: "var(--ait-radius-card)",
+        "card-lg": "var(--ait-radius-card-lg)",
+        "card-xl": "var(--ait-radius-card-xl)",
         button: "var(--ait-radius-button)",
         panel: "var(--ait-radius-hero)",
+      },
+      spacing: {
+        section: "var(--ait-space-section)",
+        card: "var(--ait-space-card)",
+        inline: "var(--ait-space-inline)",
+        gap: "var(--ait-space-gap)",
+      },
+      boxShadow: {
+        "ait-glow": "var(--ait-glow-cyan)",
+        "ait-glow-strong": "var(--ait-glow-cyan-strong)",
+        "ait-glow-purple": "var(--ait-glow-purple)",
+        "ait-glow-sunset": "var(--ait-glow-sunset)",
+        "ait-elevation-1": "var(--ait-elevation-1)",
+        "ait-elevation-2": "var(--ait-elevation-2)",
+        "ait-elevation-3": "var(--ait-elevation-3)",
       },
       colors: {
         background: "var(--background)",
@@ -102,12 +119,6 @@ export default {
         "ait-overlay": "var(--ait-overlay-gradient)",
         "ait-gradient-cta": "var(--ait-gradient-cta)",
         "ait-gradient-brand": "var(--ait-gradient-brand)",
-      },
-      boxShadow: {
-        "ait-glow": "var(--ait-glow-cyan)",
-        "ait-glow-strong": "var(--ait-glow-cyan-strong)",
-        "ait-glow-purple": "var(--ait-glow-purple)",
-        "ait-glow-sunset": "var(--ait-glow-sunset)",
       },
       keyframes: {
         "accordion-down": {

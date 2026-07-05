@@ -23,7 +23,9 @@ export default function ChatThreadShell({
     <div className={cn("flex flex-col flex-1 min-h-0 overflow-hidden", className)}>
       {topSlot}
       <div className="ait-chat-panel-header shrink-0 border-b border-white/5">{header}</div>
-      <ScrollArea className={cn("flex-1 min-h-0", scrollClassName)}>{children}</ScrollArea>
+      <ScrollArea className={cn("flex-1 min-h-0 ait-chat-thread", scrollClassName)}>
+        {children}
+      </ScrollArea>
       {footer ? (
         <div className="ait-chat-panel-header shrink-0 p-4 border-t border-white/5">{footer}</div>
       ) : null}

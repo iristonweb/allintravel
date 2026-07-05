@@ -346,6 +346,26 @@ export default function ChatMessageRow({
               Просмотры и реакции
             </ContextMenuItem>
           )}
+          {canEdit && onEdit && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onClick={() => {
+                  setEditText(content);
+                  setEditOpen(true);
+                }}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Редактировать
+              </ContextMenuItem>
+            </>
+          )}
+          {canDelete && onDelete && (
+            <ContextMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Удалить
+            </ContextMenuItem>
+          )}
           {onReact && (
             <>
               <ContextMenuSeparator />

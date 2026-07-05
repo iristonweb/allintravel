@@ -1,17 +1,18 @@
 import { useTranslation } from "react-i18next";
-import { Compass, AlertCircle } from "lucide-react";
+import { BookMarked, Compass, AlertCircle } from "lucide-react";
+import FeedSkeleton from "@/components/social/FeedSkeleton";
 import EmptyState from "@/components/empty-state";
-import { Button } from "@/components/ui/button";
-import StoryBar, { type StoryGroup } from "@/components/feed/StoryBar";
-import StoryCreateButton from "@/components/social/StoryCreateButton";
-import ReelFeed from "@/components/feed/ReelFeed";
+import AitButton from "@/components/ait-ui/AitButton";
+import ReelsVerticalFeed from "@/components/feed/ReelsVerticalFeed";
 import JournalCard from "@/components/feed/JournalCard";
 import FeedPostCard from "@/components/social/FeedPostCard";
+import type { FeedMode } from "@/lib/feed-utils";
 import type { SocialContentFormat } from "@/hooks/useSocialFeedParams";
 import type { TravelPostWithAuthor, User } from "@shared/schema";
 
 type SocialFeedListProps = {
   contentFormat: SocialContentFormat;
+  feedMode: FeedMode;
   posts: TravelPostWithAuthor[];
   isLoading: boolean;
   isError: boolean;
@@ -21,7 +22,6 @@ type SocialFeedListProps = {
   formatDate: (date: string | Date) => string;
   activeTag: string | null;
   onTagClick: (tag: string) => void;
-  onOpenStoryGroup: (group: StoryGroup, startIndex: number) => void;
   user?: User | null;
   bookmarkedSet: Set<string>;
   expandedComments: Record<string, boolean>;
@@ -37,6 +37,7 @@ type SocialFeedListProps = {
 
 export default function SocialFeedList({
   contentFormat,
+  feedMode,
   posts,
   isLoading,
   isError,
@@ -46,7 +47,6 @@ export default function SocialFeedList({
   formatDate,
   activeTag,
   onTagClick,
-  onOpenStoryGroup,
   user,
   bookmarkedSet,
   expandedComments,
@@ -61,46 +61,76 @@ export default function SocialFeedList({
 }: SocialFeedListProps) {
   const { t } = useTranslation();
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-8">
-        <div className="loading-spinner mx-auto" />
-        <p className="text-muted-foreground mt-2">{t("social.loadingPosts")}</p>
-      </div>
-    );
+  if (isLoading && contentFormat !== "reels") {
+    return <FeedSkeleton count={contentFormat === "feed" ? 2 : 1} />;
   }
 
-  if (isError) {
+  if (isError && contentFormat !== "reels") {
     return (
       <EmptyState
         icon={AlertCircle}
         title={t("social.errors.loadFeed")}
         description={error instanceof Error ? error.message : t("social.errors.connection")}
         action={
-          <Button variant="outline" onClick={onRefetch}>
+          <AitButton variant="secondary" onClick={onRefetch}>
             {t("common.retry")}
-          </Button>
+          </AitButton>
         }
       />
     );
   }
 
   if (contentFormat === "stories") {
+    if (!posts.length) {
+      return (
+        <EmptyState
+          variant="glass"
+          icon={BookMarked}
+          title={t("social.stories.empty", { defaultValue: "No stories yet" })}
+          description={t("social.stories.emptyHint", {
+            defaultValue: "Share a moment from your trip — stories disappear after 24 hours",
+          })}
+          action={
+            <AitButton variant="primary" onClick={onCreateClick}>
+              {t("social.create")}
+            </AitButton>
+          }
+        />
+      );
+    }
+
     return (
-      <div className="space-y-4">
-        <div className="flex gap-3 items-start">
-          <StoryCreateButton />
-          <div className="flex-1 min-w-0">
-            <StoryBar posts={posts} onOpenGroup={onOpenStoryGroup} inline />
-          </div>
-        </div>
-        <p className="text-xs text-center text-muted-foreground">{t("social.storiesHint")}</p>
+      <div className="py-8 px-4 text-center space-y-2">
+        <p className="text-sm text-muted-foreground">
+          {t("social.stories.tabHint", { defaultValue: "Tap a story above to watch" })}
+        </p>
+        <p className="text-xs text-muted-foreground/80">{t("social.storiesHint")}</p>
       </div>
     );
   }
 
   if (contentFormat === "reels") {
-    return <ReelFeed posts={posts} />;
+    return (
+      <ReelsVerticalFeed
+        posts={posts}
+        feedMode={feedMode}
+        isLoading={isLoading}
+        isError={isError}
+        error={error}
+        onRefetch={onRefetch}
+        onCreateClick={onCreateClick}
+        bookmarkedSet={bookmarkedSet}
+        expandedComments={expandedComments}
+        commentInputs={commentInputs}
+        onToggleComments={onToggleComments}
+        onCommentChange={onCommentChange}
+        onSubmitComment={onSubmitComment}
+        commentPending={commentPending}
+        onLike={onLike}
+        likePending={likePending}
+        onBookmark={onBookmark}
+      />
+    );
   }
 
   if (contentFormat === "public") {
@@ -114,7 +144,7 @@ export default function SocialFeedList({
       );
     }
     return (
-      <>
+      <div className="space-y-8">
         {posts.map((post) => (
           <JournalCard
             key={post.id}
@@ -123,7 +153,7 @@ export default function SocialFeedList({
             onTagClick={(tag) => onTagClick(tag)}
           />
         ))}
-      </>
+      </div>
     );
   }
 
@@ -135,9 +165,9 @@ export default function SocialFeedList({
         title={t("social.emptyTitle")}
         description={t("social.emptyHint")}
         action={
-          <Button variant="premium" onClick={onCreateClick}>
+          <AitButton variant="primary" onClick={onCreateClick}>
             {t("social.create")}
-          </Button>
+          </AitButton>
         }
       />
     );
@@ -145,7 +175,7 @@ export default function SocialFeedList({
 
   if (contentFormat === "journals") {
     return (
-      <>
+      <div className="space-y-8">
         {posts.map((post) => (
           <JournalCard
             key={post.id}
@@ -154,12 +184,12 @@ export default function SocialFeedList({
             onTagClick={(tag) => onTagClick(tag)}
           />
         ))}
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-8">
       {posts.map((post) => (
         <FeedPostCard
           key={post.id}
@@ -174,11 +204,11 @@ export default function SocialFeedList({
           onToggleComments={() => onToggleComments(post.id)}
           onCommentChange={(value) => onCommentChange(post.id, value)}
           onSubmitComment={() => onSubmitComment(post.id)}
-          onLike={() => onLike(post.id, post.isLiked)}
+          onLike={() => onLike(post.id, post.isLiked ?? false)}
           onBookmark={() => onBookmark(post.id)}
           onTagClick={(tag) => onTagClick(activeTag === tag ? "" : tag)}
         />
       ))}
-    </>
+    </div>
   );
 }

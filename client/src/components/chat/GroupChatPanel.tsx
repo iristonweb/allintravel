@@ -7,6 +7,7 @@ import ChatMessageRow from "@/components/chat/ChatMessageRow";
 import MessageComposer from "@/components/chat/MessageComposer";
 import MessageContent from "@/components/chat/MessageContent";
 import RoomAvatar from "@/components/chat/RoomAvatar";
+import ChatRoomMetaRow from "@/components/chat/ChatRoomMetaRow";
 import RoomSettingsPanel from "@/components/chat/RoomSettingsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import type { ChatRoom, MessageReactionMeta, User } from "@shared/schema";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import ChatThreadShell, { ChatComposerFooter } from "@/components/chat/ChatThreadShell";
 import {
+  isPersistedMessageId,
   shouldGroupChatMessages,
   chatDateSeparatorKey,
   formatChatDateSeparator,
@@ -171,13 +173,13 @@ export default function GroupChatPanel({
           </>
         }
         header={
-          <div className="p-4 flex items-center gap-3">
+          <div className="p-4 flex items-start gap-3">
             {mobileThreadOpen && onBack && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="shrink-0 lg:hidden"
+                className="shrink-0 lg:hidden mt-0.5"
                 aria-label={t("chat.page.backToList")}
                 onClick={onBack}
               >
@@ -187,17 +189,25 @@ export default function GroupChatPanel({
             <RoomAvatar
               title={activeRoomMeta?.title ?? activeRoom}
               avatarUrl={activeRoomMeta?.avatarUrl}
-              className="h-14 w-14"
+              className="h-14 w-14 shrink-0"
             />
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold truncate">{activeRoomMeta?.title ?? activeRoom}</h2>
-              <p className="text-xs text-muted-foreground truncate">
+              <h2 className="font-semibold truncate leading-tight">
+                {activeRoomMeta?.title ?? activeRoom}
+              </h2>
+              <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                 {activeRoomMeta?.description ?? t("chat.page.group.defaultDescription")}
               </p>
+              <ChatRoomMetaRow
+                isLegacy={activeRoomMeta?.isLegacy}
+                visibility={activeRoomMeta?.visibility}
+                size="md"
+              />
             </div>
             <Button
               size="icon"
               variant="ghost"
+              className="shrink-0"
               title={t("chat.page.group.settings")}
               aria-label={t("chat.page.group.settings")}
               onClick={() => onShowRoomInfoChange(true)}
@@ -257,6 +267,12 @@ export default function GroupChatPanel({
               {joinPreview.description && (
                 <p className="text-sm text-muted-foreground mt-1">{joinPreview.description}</p>
               )}
+              <ChatRoomMetaRow
+                isLegacy={activeRoomMeta?.isLegacy}
+                visibility={activeRoomMeta?.visibility}
+                size="md"
+                className="justify-center"
+              />
               {joinPreview.memberCount != null && (
                 <p className="text-xs text-muted-foreground mt-2">
                   {t("chat.joinGate.memberCount", { count: joinPreview.memberCount })}
@@ -353,28 +369,32 @@ export default function GroupChatPanel({
                     canDelete={isOwn || isRoomAdmin}
                     canEdit={isOwn}
                     onReact={
-                      msg.id
+                      isPersistedMessageId(msg.id)
                         ? (emoji) => reactionMutation.mutate({ messageId: msg.id!, emoji })
                         : undefined
                     }
                     insightsUrl={
-                      roomId && msg.id
+                      roomId && isPersistedMessageId(msg.id)
                         ? `/api/chat/rooms/${roomId}/messages/${msg.id}/insights`
                         : undefined
                     }
                     onPin={
-                      msg.id && roomId && !isPinned
+                      isPersistedMessageId(msg.id) && roomId && !isPinned
                         ? () => pinMutation.mutate({ messageId: msg.id!, pin: true })
                         : undefined
                     }
                     onUnpin={
-                      msg.id && isPinned
+                      isPersistedMessageId(msg.id) && isPinned
                         ? () => pinMutation.mutate({ messageId: msg.id!, pin: false })
                         : undefined
                     }
-                    onDelete={msg.id ? () => deleteMutation.mutate(msg.id!) : undefined}
+                    onDelete={
+                      isPersistedMessageId(msg.id)
+                        ? () => deleteMutation.mutate(msg.id!)
+                        : undefined
+                    }
                     onEdit={
-                      msg.id
+                      isPersistedMessageId(msg.id)
                         ? (c) => editMutation.mutate({ messageId: msg.id!, content: c })
                         : undefined
                     }

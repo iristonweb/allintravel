@@ -63,8 +63,26 @@ export function getPool(): NodePgPool | null {
   if (!url) return null;
   if (poolInstance) return poolInstance;
 
-  poolInstance = new NodePgPool(pgPoolOptions(url, process.env.VERCEL ? 4 : 10));
+  poolInstance = new NodePgPool(
+    pgPoolOptions(
+      url,
+      process.env.PG_POOL_MAX
+        ? Number.parseInt(process.env.PG_POOL_MAX, 10)
+        : process.env.VERCEL
+          ? 4
+          : 10,
+    ),
+  );
   return poolInstance;
+}
+
+/** Release pooled connections (CLI import scripts). */
+export async function closePool(): Promise<void> {
+  if (poolInstance) {
+    await poolInstance.end();
+    poolInstance = null;
+    dbInstance = null;
+  }
 }
 
 export function getDb(): AppDb | null {

@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitSearchBar from "@/components/ait-ui/AitSearchBar";
 import SmartSearchField from "@/components/search/SmartSearchField";
 import { cn } from "@/lib/utils";
 
@@ -18,22 +20,46 @@ export default function CatalogPageLayout({
   className,
 }: CatalogPageLayoutProps) {
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-section", className)}>
       {search ? (
-        <div className="ait-glass-strong rounded-card p-3 border border-white/10">{search}</div>
+        <AitSurface padding="sm" radius="lg" glow>
+          {search}
+        </AitSurface>
       ) : null}
       {filters ? (
-        <div className="ait-glass-strong rounded-card p-4 md:p-5 border border-white/10 ait-gradient-border space-y-0">
+        <AitSurface padding="md" radius="lg" glow className="space-y-4">
           {filters}
-        </div>
+        </AitSurface>
       ) : null}
-      {stats ? <div className="flex flex-wrap gap-2">{stats}</div> : null}
+      {stats ? <div className="flex flex-wrap gap-3">{stats}</div> : null}
       {children}
     </div>
   );
 }
 
 export function CatalogSearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <AitSearchBar
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      type="search"
+      size="md"
+      className="w-full"
+    />
+  );
+}
+
+/** @deprecated use CatalogSearchInput with AitSearchBar */
+export function LegacyCatalogSearchInput({
   value,
   onChange,
   placeholder,

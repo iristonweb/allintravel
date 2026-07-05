@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitBadge from "@/components/ait-ui/AitBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { shareUrl } from "@/lib/share";
 import { isVideoUrl } from "@/lib/upload-media";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
+import { cn } from "@/lib/utils";
 import { Bookmark, Heart, MapPin, MessageCircle, Send, Share2 } from "lucide-react";
 import type { TravelPostWithAuthor, User } from "@shared/schema";
 
@@ -59,31 +61,33 @@ export default function FeedPostCard({
     : t("social.traveler");
 
   return (
-    <GlassCard className="overflow-hidden">
-      <div className="p-4 pb-3">
-        <div className="flex items-start gap-3">
+    <AitSurface padding="none" radius="lg" glow hover className="overflow-hidden">
+      <div className="p-card pb-4">
+        <div className="flex items-start gap-4">
           <CreatorAvatar
             src={post.author?.profileImageUrl}
             fallback={post.author?.firstName?.[0] || "?"}
             creatorBadge={(post as { creatorBadge?: boolean }).creatorBadge}
+            className="h-12 w-12"
           />
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-semibold">{authorName}</h4>
+              <h4 className="font-semibold text-base">{authorName}</h4>
+              {(post as { creatorBadge?: boolean }).creatorBadge && (
+                <AitBadge tone="pro">PRO</AitBadge>
+              )}
               <span className="text-sm text-muted-foreground">
                 {formatDate(post.createdAt as unknown as string)}
               </span>
               {(post as { promoteLabel?: string | null }).promoteLabel ? (
-                <Badge className="bg-ait-orange/20 text-ait-orange text-xs">
-                  {(post as { promoteLabel?: string }).promoteLabel}
-                </Badge>
+                <AitBadge tone="accent">{(post as { promoteLabel?: string }).promoteLabel}</AitBadge>
               ) : (post as { isBoosted?: boolean }).isBoosted ? (
-                <Badge className="bg-ait-orange/20 text-ait-orange text-xs">Boost</Badge>
+                <AitBadge tone="accent">Boost</AitBadge>
               ) : null}
             </div>
             {post.location && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 mt-1">
+                <MapPin className="h-3.5 w-3.5 text-ait-purple" />
                 <span className="text-sm text-muted-foreground">{post.location}</span>
               </div>
             )}
@@ -91,20 +95,20 @@ export default function FeedPostCard({
         </div>
       </div>
 
-      <div className="px-4 pb-4 space-y-4">
+      <div className="px-card pb-card space-y-5">
         <div>
-          <h3 className="font-semibold text-lg mb-1">{post.title}</h3>
-          <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+          <h3 className="font-semibold text-lg mb-2">{post.title}</h3>
+          <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
             {renderRichText(post.content)}
           </p>
         </div>
 
         {post.images && post.images.length > 0 && resolveMediaUrl(post.images[0]) ? (
-          <div className="rounded-2xl overflow-hidden mx-1">
+          <div className="rounded-card-lg overflow-hidden -mx-1">
             {isVideoUrl(post.images[0]) ? (
               <video
                 src={resolveMediaUrl(post.images[0])!}
-                className="w-full h-64 md:h-[420px] object-cover"
+                className="w-full min-h-[320px] md:min-h-[420px] object-cover"
                 controls
                 playsInline
               />
@@ -112,24 +116,24 @@ export default function FeedPostCard({
               <img
                 src={resolveMediaUrl(post.images[0])!}
                 alt={post.title}
-                className="w-full h-64 md:h-[420px] object-cover"
+                className="w-full min-h-[320px] md:min-h-[420px] object-cover"
               />
             )}
           </div>
         ) : (
           <div
-            className="rounded-2xl overflow-hidden mx-1 h-64 md:h-[420px] bg-cover bg-center"
+            className="rounded-card-lg overflow-hidden -mx-1 min-h-[320px] md:min-h-[420px] bg-cover bg-center"
             style={{ backgroundImage: `url('${COMMUNITY_TRAVEL_SRC}')` }}
           />
         )}
 
         {post.tags && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {post.tags.map((tag, i) => (
               <Badge
                 key={i}
                 variant="secondary"
-                className="cursor-pointer"
+                className="cursor-pointer rounded-full px-3 hover:bg-ait-purple/20 transition-colors"
                 onClick={() => onTagClick(tag)}
               >
                 #{tag}
@@ -138,16 +142,19 @@ export default function FeedPostCard({
           </div>
         )}
 
-        <Separator />
+        <Separator className="bg-white/10" />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="ghost"
               size="sm"
               onClick={onLike}
               disabled={likePending}
-              className={post.isLiked ? "text-red-500" : "text-muted-foreground hover:text-red-500"}
+              className={cn(
+                "rounded-xl h-10 px-3 transition-all duration-300",
+                post.isLiked ? "text-red-500 bg-red-500/10" : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10",
+              )}
             >
               <Heart className={`mr-1.5 h-4 w-4 ${post.isLiked ? "fill-current" : ""}`} />
               {post.likesCount > 0 ? post.likesCount : t("social.feed.like")}
@@ -234,6 +241,6 @@ export default function FeedPostCard({
           </div>
         )}
       </div>
-    </GlassCard>
+    </AitSurface>
   );
 }

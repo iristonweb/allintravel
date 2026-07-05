@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { useTranslation } from "react-i18next";
 import {
+  isPersistedMessageId,
   mergeChronologicalMessages,
   shouldGroupChatMessages,
   chatDateSeparatorKey,
@@ -133,8 +134,10 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
       const res = await apiRequest("PATCH", `/api/messages/${messageId}`, { content });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: messagesKey });
+    onSuccess: (updated: PrivateMessageWithMeta) => {
+      queryClient.setQueryData<PrivateMessageWithMeta[]>(messagesKey, (old) =>
+        (old ?? []).map((m) => (m.id === updated.id ? { ...m, ...updated } : m)),
+      );
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
     onError: () => {
@@ -145,9 +148,12 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
   const deleteMutation = useMutation({
     mutationFn: async (messageId: string) => {
       await apiRequest("DELETE", `/api/messages/${messageId}`);
+      return messageId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: messagesKey });
+    onSuccess: (messageId) => {
+      queryClient.setQueryData<PrivateMessageWithMeta[]>(messagesKey, (old) =>
+        (old ?? []).filter((m) => m.id !== messageId),
+      );
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     },
     onError: () => {
@@ -271,13 +277,13 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
     <ChatThreadShell
       scrollClassName="ait-chat-thread"
       header={
-        <div className="p-4 flex items-center gap-3">
+        <div className="p-4 flex items-start gap-3">
           {onBack && (
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="shrink-0 lg:hidden"
+              className="shrink-0 lg:hidden mt-0.5"
               aria-label={t("chat.page.backToList")}
               onClick={onBack}
             >
@@ -288,21 +294,24 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
             src={peer.profileImageUrl}
             fallback={getUserInitial(peer)}
             isOnline={peer.isOnline}
-            className="h-14 w-14"
+            className="h-14 w-14 shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <h2 className="font-semibold truncate">{getUserDisplayLabel(peer)}</h2>
+            <h2 className="font-semibold truncate leading-tight">{getUserDisplayLabel(peer)}</h2>
+            {getUserHandle(peer) && (
+              <p className="text-sm text-ait-purple truncate mt-0.5">{getUserHandle(peer)}</p>
+            )}
             {peer.isOnline !== undefined && (
-              <p className="text-xs mt-0.5">
+              <p className="text-xs mt-1">
                 {peer.isOnline ? (
-                  <span className="text-green-500">{t("chat.personal.online")}</span>
+                  <span className="inline-flex items-center gap-1.5 text-green-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                    {t("chat.personal.online")}
+                  </span>
                 ) : (
                   <span className="text-muted-foreground">{t("chat.personal.offline")}</span>
                 )}
               </p>
-            )}
-            {getUserHandle(peer) && (
-              <p className="text-sm text-ait-purple truncate">{getUserHandle(peer)}</p>
             )}
           </div>
         </div>
@@ -390,10 +399,26 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
                   deliveryStatus={isOwn ? message.deliveryStatus : undefined}
                   canEdit={isOwn}
                   canDelete={isOwn}
-                  onReact={(emoji) => reactionMutation.mutate({ messageId: message.id, emoji })}
-                  insightsUrl={`/api/messages/${message.id}/insights`}
-                  onEdit={(c) => editMutation.mutate({ messageId: message.id, content: c })}
-                  onDelete={() => deleteMutation.mutate(message.id)}
+                  onReact={
+                    isPersistedMessageId(message.id)
+                      ? (emoji) => reactionMutation.mutate({ messageId: message.id, emoji })
+                      : undefined
+                  }
+                  insightsUrl={
+                    isPersistedMessageId(message.id)
+                      ? `/api/messages/${message.id}/insights`
+                      : undefined
+                  }
+                  onEdit={
+                    isPersistedMessageId(message.id)
+                      ? (c) => editMutation.mutate({ messageId: message.id, content: c })
+                      : undefined
+                  }
+                  onDelete={
+                    isPersistedMessageId(message.id)
+                      ? () => deleteMutation.mutate(message.id)
+                      : undefined
+                  }
                   reacting={
                     reactionMutation.isPending &&
                     reactionMutation.variables?.messageId === message.id

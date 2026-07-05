@@ -5,11 +5,16 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import unzipper from "unzipper";
 
-import { db } from "../db";
 import { cities, countries } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
+import { db } from "../db";
+import { withRetry } from "../bulk-import";
+import { closeImportConnection, configureBulkImportEnv } from "./import-runtime";
+
 const DATA_DIR = path.join(process.cwd(), ".local", "geonames");
+const COUNTRY_BATCH_SIZE = 25;
+const CITY_BATCH_SIZE = 100;
 
 const URL_COUNTRY_INFO = "https://download.geonames.org/export/dump/countryInfo.txt";
 const URL_CITIES_5000_ZIP = "https://download.geonames.org/export/dump/cities5000.zip";
@@ -24,8 +29,7 @@ async function downloadIfMissing(url: string, filePath: string) {
     headers: { "User-Agent": "All-in-travel/1.0 (GeoNames importer)" },
   });
   if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status} ${url}`);
-  // Node's fetch uses Web Streams; convert to Node stream for pipeline().
-  const nodeStream = Readable.fromWeb(res.body as any);
+  const nodeStream = Readable.fromWeb(res.body as import("node:stream/web").ReadableStream);
   await pipeline(nodeStream, fs.createWriteStream(filePath));
 }
 
@@ -44,41 +48,67 @@ function parseFloatSafe(v: string): string | null {
   return Number.isFinite(n) ? n.toString() : null;
 }
 
+type CountryRow = {
+  code: string;
+  name: string;
+  capitalName: string | null;
+  continent: string | null;
+  currency: string | null;
+  phone: string | null;
+};
+
+async function flushCountries(batch: CountryRow[]) {
+  if (batch.length === 0) return;
+  const values = batch.splice(0, batch.length);
+  await withRetry(`countries batch (${values.length})`, () =>
+    db
+      .insert(countries)
+      .values(values)
+      .onConflictDoUpdate({
+        target: countries.code,
+        set: {
+          name: sql`excluded.name`,
+          capitalName: sql`excluded.capital_name`,
+          continent: sql`excluded.continent`,
+          currency: sql`excluded.currency`,
+          phone: sql`excluded.phone`,
+        },
+      }),
+  );
+}
+
 async function importCountries(countryInfoPath: string) {
   const rl = readline.createInterface({
     input: fs.createReadStream(countryInfoPath),
     crlfDelay: Infinity,
   });
+  const batch: CountryRow[] = [];
   let count = 0;
 
   for await (const line of rl) {
     if (!line || line.startsWith("#")) continue;
     const cols = line.split("\t");
-    // GeoNames columns (subset):
-    // 0 ISO, 4 Country, 5 Capital, 8 Continent, 10 CurrencyCode, 12 Phone
     const code = (cols[0] || "").trim();
     const name = (cols[4] || "").trim();
     if (!code || !name || code.length !== 2) continue;
 
-    const capitalName = (cols[5] || "").trim() || null;
-    const continent = (cols[8] || "").trim() || null;
-    const currency = (cols[10] || "").trim() || null;
-    const phone = (cols[12] || "").trim() || null;
-
-    await db
-      .insert(countries)
-      .values({ code, name, capitalName, continent, currency, phone })
-      .onConflictDoUpdate({
-        target: countries.code,
-        set: { name, capitalName, continent, currency, phone },
-      });
-
+    batch.push({
+      code,
+      name,
+      capitalName: (cols[5] || "").trim() || null,
+      continent: (cols[8] || "").trim() || null,
+      currency: (cols[10] || "").trim() || null,
+      phone: (cols[12] || "").trim() || null,
+    });
     count += 1;
-    if (count % 50 === 0) {
+
+    if (batch.length >= COUNTRY_BATCH_SIZE) {
+      await flushCountries(batch);
       console.log(`countries: upserted ${count}`);
     }
   }
 
+  await flushCountries(batch);
   console.log(`countries: done (${count})`);
 }
 
@@ -95,18 +125,11 @@ type CityRow = {
   featureCode: string | null;
 };
 
-async function importCities(citiesPath: string) {
-  const rl = readline.createInterface({
-    input: fs.createReadStream(citiesPath),
-    crlfDelay: Infinity,
-  });
-  const batch: CityRow[] = [];
-  let total = 0;
-
-  async function flush() {
-    if (batch.length === 0) return;
-    const values = batch.splice(0, batch.length);
-    await db
+async function flushCities(batch: CityRow[]) {
+  if (batch.length === 0) return;
+  const values = batch.splice(0, batch.length);
+  await withRetry(`cities batch (${values.length})`, () =>
+    db
       .insert(cities)
       .values(values)
       .onConflictDoUpdate({
@@ -122,15 +145,21 @@ async function importCities(citiesPath: string) {
           featureClass: sql`excluded.feature_class`,
           featureCode: sql`excluded.feature_code`,
         },
-      });
-  }
+      }),
+  );
+}
+
+async function importCities(citiesPath: string) {
+  const rl = readline.createInterface({
+    input: fs.createReadStream(citiesPath),
+    crlfDelay: Infinity,
+  });
+  const batch: CityRow[] = [];
+  let total = 0;
 
   for await (const line of rl) {
     if (!line) continue;
     const cols = line.split("\t");
-    // cities5000 columns (subset):
-    // 0 geonameid, 1 name, 2 asciiname, 4 lat, 5 lon, 6 feature class, 7 feature code
-    // 8 country code, 10 admin1, 14 population
     const geonameId = parseIntSafe(cols[0] || "");
     const name = (cols[1] || "").trim();
     const asciiName = (cols[2] || "").trim() || null;
@@ -158,19 +187,17 @@ async function importCities(citiesPath: string) {
     });
     total += 1;
 
-    if (batch.length >= 1000) {
-      await flush();
-
+    if (batch.length >= CITY_BATCH_SIZE) {
+      await flushCities(batch);
       console.log(`cities: upserted ${total}`);
     }
   }
 
-  await flush();
-
+  await flushCities(batch);
   console.log(`cities: done (${total})`);
 }
 
-async function main() {
+export async function importGeoNames(): Promise<void> {
   ensureDir(DATA_DIR);
 
   const countryInfoPath = path.join(DATA_DIR, "countryInfo.txt");
@@ -191,7 +218,14 @@ async function main() {
   await importCities(citiesTxtPath);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+const isDirectRun = process.argv[1]?.replace(/\\/g, "/").endsWith("import-geonames.ts");
+
+if (isDirectRun) {
+  configureBulkImportEnv();
+  importGeoNames()
+    .catch((err) => {
+      console.error(err);
+      process.exitCode = 1;
+    })
+    .finally(() => closeImportConnection());
+}

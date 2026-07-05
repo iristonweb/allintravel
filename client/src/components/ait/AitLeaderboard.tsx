@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Trophy } from "lucide-react";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import CreatorAvatar from "@/components/ait/CreatorAvatar";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -27,12 +27,12 @@ export default function AitLeaderboard({ compact = false }: { compact?: boolean 
   if (!data?.entries?.length) return null;
 
   return (
-    <GlassCard className="p-4 border-ait-gold/20">
-      <div className="flex items-center gap-2 mb-3">
+    <AitSurface padding="md" radius="lg" glow className="border-ait-gold/20">
+      <div className="flex items-center gap-2 mb-4">
         <Trophy className="h-5 w-5 text-ait-gold" />
         <h3 className="font-semibold text-sm">Топ Creator AIT · неделя</h3>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-3">
         {data.entries.map((e) => (
           <li key={e.userId} className="flex items-center gap-3 text-sm">
             <span className="w-6 text-center font-bold text-ait-orange tabular-nums">{e.rank}</span>
@@ -45,7 +45,7 @@ export default function AitLeaderboard({ compact = false }: { compact?: boolean 
               {e.username ? (
                 <Link
                   href={`/u/${e.username}`}
-                  className="font-medium hover:text-ait-orange truncate block"
+                  className="font-medium hover:text-ait-orange truncate block transition-colors"
                 >
                   {e.displayName}
                 </Link>
@@ -58,10 +58,10 @@ export default function AitLeaderboard({ compact = false }: { compact?: boolean 
         ))}
       </ul>
       {!compact && (
-        <Link href="/wallet" className="text-xs text-ait-orange hover:underline mt-3 inline-block">
+        <Link href="/wallet" className="text-xs text-ait-orange hover:underline mt-4 inline-block">
           AIT Hub →
         </Link>
       )}
-    </GlassCard>
+    </AitSurface>
   );
 }

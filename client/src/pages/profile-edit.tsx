@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import GlassCard from "@/components/brand/glass-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -209,7 +210,7 @@ export function ProfileEdit() {
 
   if (profileLoading) {
     return (
-      <AppLayout>
+      <AppLayout rightRail={<DiscoveryRightRail />}>
         <div className="max-w-4xl mx-auto space-y-6">
           <Skeleton className="h-6 w-48" />
           <GlassCard className="mb-8 p-6">
@@ -229,7 +230,7 @@ export function ProfileEdit() {
 
   if (profileError) {
     return (
-      <AppLayout>
+      <AppLayout rightRail={<DiscoveryRightRail />}>
         <div className="max-w-4xl mx-auto">
           <EmptyState
             icon={AlertCircle}
@@ -246,7 +247,7 @@ export function ProfileEdit() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
         <AppBreadcrumbs
           items={[{ label: "Профиль", href: "/profile" }, { label: "Редактирование" }]}
@@ -295,7 +296,7 @@ export function ProfileEdit() {
                 <div>
                   <div className="flex items-center gap-3">
                     <img
-                      src="/brand/logo.svg"
+                      src="/brand/logo-mark.png"
                       alt="All-in-travel"
                       className="h-9 w-9 shrink-0"
                       loading="lazy"

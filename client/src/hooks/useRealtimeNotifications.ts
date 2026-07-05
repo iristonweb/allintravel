@@ -1,10 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
-import { useToast } from "./use-toast";
 import { usePushNotifications } from "./usePushNotifications";
 import type { AppNotification } from "@shared/notification-types";
-import { playNotificationSound } from "@/lib/notification-sound";
+import {
+  showAppNotificationToast,
+  truncateNotificationPreview,
+} from "@/lib/app-notification-toast";
+import i18n from "@/i18n";
+import type { User } from "@shared/schema";
 
 const isVercelHost =
   typeof window !== "undefined" &&
@@ -25,20 +29,81 @@ type SwNotificationMessage = {
   notificationId?: string;
 };
 
+type ChatMessagePayload = {
+  content?: string;
+  senderId?: string;
+  chatRoom?: string;
+};
+
+type WsPayload = {
+  type?: string;
+  notification?: AppNotification;
+  message?: ChatMessagePayload | Record<string, unknown>;
+  sender?: Pick<User, "id" | "firstName" | "lastName"> | null;
+  partnerId?: string;
+  messageId?: string;
+  reactions?: unknown;
+};
+
 async function fetchNotificationsSnapshot(): Promise<NotificationsPayload> {
   const res = await fetch("/api/notifications?limit=15", { credentials: "include" });
   if (!res.ok) return {};
   return res.json() as Promise<NotificationsPayload>;
 }
 
+function senderLabel(sender?: Pick<User, "firstName" | "lastName"> | null): string {
+  if (!sender) return i18n.t("notifications.someone");
+  const name = [sender.firstName, sender.lastName].filter(Boolean).join(" ").trim();
+  return name || i18n.t("notifications.someone");
+}
+
+function isViewingPrivateChat(partnerId: string): boolean {
+  if (!window.location.pathname.startsWith("/chat")) return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("tab") === "personal" && params.get("with") === partnerId;
+}
+
+function isViewingGroupChat(room: string): boolean {
+  if (!window.location.pathname.startsWith("/chat")) return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("room") === room;
+}
+
+function showPrivateMessageToast(partnerId: string, message: ChatMessagePayload) {
+  if (isViewingPrivateChat(partnerId)) return;
+  const preview = message.content ? truncateNotificationPreview(message.content) : undefined;
+  showAppNotificationToast({
+    title: i18n.t("notifications.newPrivateMessage"),
+    body: preview,
+    url: `/chat?with=${encodeURIComponent(partnerId)}&tab=personal`,
+  });
+}
+
+function showGroupMessageToast(
+  message: ChatMessagePayload,
+  sender?: Pick<User, "firstName" | "lastName"> | null,
+) {
+  const room = message.chatRoom;
+  if (room && isViewingGroupChat(room)) return;
+  const name = senderLabel(sender);
+  const preview = message.content ? truncateNotificationPreview(message.content) : undefined;
+  const url = room ? `/chat?room=${encodeURIComponent(room)}` : "/chat";
+  showAppNotificationToast({
+    title: i18n.t("notifications.newChatMessageFrom", { name }),
+    body: preview,
+    url,
+  });
+}
+
 export function useRealtimeNotifications() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { subscribed: pushSubscribed, vapidReady } = usePushNotifications();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const wsRef = useRef<WebSocket | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
   const primedRef = useRef(false);
+  const userIdRef = useRef(user?.id);
+  userIdRef.current = user?.id;
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -73,8 +138,11 @@ export function useRealtimeNotifications() {
         for (const n of unread) {
           if (seenIdsRef.current.has(n.id)) continue;
           seenIdsRef.current.add(n.id);
-          playNotificationSound("default");
-          toast({ title: n.title, description: n.body });
+          showAppNotificationToast({
+            title: n.title,
+            body: n.body,
+            url: n.link ?? undefined,
+          });
         }
       } catch {
         /* ignore poll errors */
@@ -129,10 +197,7 @@ export function useRealtimeNotifications() {
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as {
-          type?: string;
-          notification?: AppNotification;
-        };
+        const data = JSON.parse(event.data) as WsPayload;
         if (data.type === "notification" && data.notification) {
           invalidateNotifs();
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
@@ -140,24 +205,53 @@ export function useRealtimeNotifications() {
           if (data.notification.type === "message") {
             queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
           }
-          playNotificationSound("default");
-          toast({
+          showAppNotificationToast({
             title: data.notification.title,
-            description: data.notification.body,
+            body: data.notification.body,
+            url: data.notification.link ?? undefined,
           });
         }
-        if (data.type === "new_private_message" || data.type === "new_message") {
-          playNotificationSound("default");
+        if (data.type === "new_private_message" && data.message && data.partnerId) {
           invalidateNotifs();
           queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
           queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+          const currentUserId = userIdRef.current;
+          if (data.message.senderId && data.message.senderId !== currentUserId) {
+            showPrivateMessageToast(data.partnerId, data.message);
+          }
+        }
+        if (data.type === "new_message" && data.message) {
+          invalidateNotifs();
+          queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+          const currentUserId = userIdRef.current;
+          if (data.message.senderId && data.message.senderId !== currentUserId) {
+            showGroupMessageToast(data.message, data.sender);
+          }
         }
         if (data.type === "broadcast_published") {
-          playNotificationSound("default");
+          showAppNotificationToast({
+            title: i18n.t("notifications.broadcastPublished"),
+            url: "/",
+          });
           queryClient.invalidateQueries({ queryKey: ["/api/broadcasts/pending"] });
         }
         if (data.type === "ait_grant") {
-          playNotificationSound("ait");
+          showAppNotificationToast({
+            title: i18n.t("notifications.aitGrant"),
+            soundKind: "ait",
+          });
+        }
+        if (data.type === "reaction_updated" && data.messageId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+        }
+        if (data.type === "private_message_edited" && data.message) {
+          queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+        }
+        if (data.type === "private_message_deleted" && data.messageId) {
+          queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
         }
       } catch {
         /* ignore */
@@ -171,5 +265,5 @@ export function useRealtimeNotifications() {
         navigator.serviceWorker.removeEventListener("message", onSwMessage);
       }
     };
-  }, [isAuthenticated, queryClient, toast, pushSubscribed, vapidReady]);
+  }, [isAuthenticated, queryClient, pushSubscribed, vapidReady]);
 }

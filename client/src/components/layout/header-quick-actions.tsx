@@ -1,7 +1,6 @@
 import { Link } from "wouter";
-import { Bell, MessageCircle, Search } from "lucide-react";
+import { Bell, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChatGroupSearchDialog } from "@/components/chat/ChatGroupSearchContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,24 +31,11 @@ export default function HeaderQuickActions({
   className,
 }: HeaderQuickActionsProps) {
   const { t } = useTranslation();
-  const { open: openGroupSearch } = useChatGroupSearchDialog();
   const previewItems = unreadItems.slice(0, 7);
 
   return (
     <>
       <div className={cn("flex items-center gap-0.5 sm:gap-1", className)}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-xl text-slate-300 hover:text-white hover:bg-white/10"
-          title="Поиск групп и мест"
-          aria-label="Поиск"
-          onClick={() => openGroupSearch()}
-        >
-          <Search className="h-5 w-5" />
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

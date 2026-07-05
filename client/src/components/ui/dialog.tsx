@@ -41,7 +41,7 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Content
           ref={ref}
           className={cn(
-            "pointer-events-auto relative grid w-full max-w-lg max-h-[min(90dvh,calc(100vh-4rem))] gap-4 overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg",
+            "pointer-events-auto relative grid w-full max-w-lg max-h-[min(90dvh,calc(100vh-4rem))] gap-4 overflow-y-auto overscroll-contain border border-white/10 bg-[rgba(8,18,36,0.92)] backdrop-blur-xl p-6 shadow-ait-elevation-2 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-card-xl",
             className,
           )}
           {...props}

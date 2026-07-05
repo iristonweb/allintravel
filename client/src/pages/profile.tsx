@@ -4,6 +4,7 @@ import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import PlatformWalletCard from "@/components/wallet/PlatformWalletCard";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import GlassCard from "@/components/brand/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -79,7 +80,7 @@ export function Profile() {
   };
 
   return (
-    <AppLayout contentClassName="py-6">
+    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
         <PageShell title={t("nav.profile")} description={t("profile.hubHint")}>
           {friendsLoading ? (

@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Sparkles, MessageCircle, Image, Heart, LogIn } from "lucide-react";
 import GlassCard from "@/components/brand/glass-card";
+import { cn } from "@/lib/utils";
 import { useAitDashboard } from "@/hooks/useAit";
 import { type ActivityRingId } from "@shared/ait";
 import { useAitRingLabels } from "@/hooks/useAitRingLabels";
@@ -22,7 +23,7 @@ const RING_LINKS: Record<ActivityRingId, string> = {
 
 const RING_ORDER: ActivityRingId[] = ["voice", "story", "echo", "pulse"];
 
-export default function AitDailyPulse() {
+export default function AitDailyPulse({ className }: { className?: string }) {
   const { t } = useTranslation();
   const ringLabels = useAitRingLabels();
   const { data } = useAitDashboard();
@@ -32,7 +33,12 @@ export default function AitDailyPulse() {
   const incomplete = RING_ORDER.filter((id) => (rings[id]?.percent ?? 0) < 100);
   if (incomplete.length === 0 && data.allRingsFull) {
     return (
-      <GlassCard className="p-4 border-ait-orange/30 bg-gradient-to-r from-ait-orange/10 to-transparent">
+      <GlassCard
+        className={cn(
+          "p-4 border-ait-orange/30 bg-gradient-to-r from-ait-orange/10 to-transparent",
+          className,
+        )}
+      >
         <p className="text-sm font-medium flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-ait-orange" />
           {t("ait.dailyPulse.allComplete")}
@@ -49,7 +55,7 @@ export default function AitDailyPulse() {
   const Icon = RING_ICONS[focus];
 
   return (
-    <GlassCard className="p-4 border-ait-purple/20">
+    <GlassCard className={cn("p-4 border-ait-purple/20", className)}>
       <p className="text-xs font-bold uppercase tracking-widest text-ait-purple mb-2">
         {t("ait.dailyPulse.title")}
       </p>

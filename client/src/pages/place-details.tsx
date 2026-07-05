@@ -7,6 +7,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { pushRecentlyViewedPlace } from "@/lib/recentlyViewed";
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import GlassCard from "@/components/brand/glass-card";
 import { ReviewCard } from "@/components/review-card";
 import { Button } from "@/components/ui/button";
@@ -180,7 +181,7 @@ export default function PlaceDetails() {
 
   if (placeLoading) {
     return (
-      <AppLayout contentClassName="py-8">
+      <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
         <div className="animate-pulse">
           <div className="h-64 bg-muted rounded-xl mb-8" />
           <div className="h-8 bg-muted rounded w-1/3 mb-4" />
@@ -197,7 +198,7 @@ export default function PlaceDetails() {
 
   if (placeIsError && placeError && !isUnauthorizedError(placeError as Error)) {
     return (
-      <AppLayout contentClassName="py-8">
+      <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
         <EmptyState
           icon={AlertCircle}
           title="Не удалось загрузить место"
@@ -214,7 +215,7 @@ export default function PlaceDetails() {
 
   if (!place) {
     return (
-      <AppLayout contentClassName="py-8">
+      <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Место не найдено</h1>
           <p className="text-muted-foreground">
@@ -228,7 +229,7 @@ export default function PlaceDetails() {
   const averageRating = parseFloat(place?.averageRating || "0");
 
   return (
-    <AppLayout contentClassName="py-8">
+    <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
       <AppBreadcrumbs
         items={[{ label: "Места", href: "/places" }, { label: place?.name ?? "Место" }]}
       />

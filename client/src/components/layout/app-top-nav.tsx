@@ -19,6 +19,8 @@ import { useTranslation } from "react-i18next";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
 import WalletHeaderButton from "@/components/layout/wallet-header-button";
 import HeaderQuickActions from "@/components/layout/header-quick-actions";
+import HeaderOmnibar from "@/components/layout/header-omnibar";
+import HeaderAiScout from "@/components/layout/header-ai-scout";
 import AitBalancePill from "@/components/ait/AitBalancePill";
 import { toApiUrl } from "@/lib/queryClient";
 
@@ -97,7 +99,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
         )}
       >
         <div className="max-w-7xl mx-auto flex h-20 items-center justify-between gap-4 px-4 lg:px-8">
-          <BrandLogo variant="nav" showText />
+          <BrandLogo variant="nav" showText className="shrink-0 min-w-0" />
           <nav className="hidden sm:flex items-center gap-1">
             {guestAnchors.map((item) => (
               <GuestAnchorLink
@@ -128,33 +130,14 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 z-50 w-full h-20 overflow-visible",
-        minimalChrome ? "ait-chrome-minimal-nav" : "ait-glass-nav",
+        "fixed top-0 z-50 w-full h-[var(--ait-header-h,4.5rem)] overflow-visible",
+        minimalChrome ? "ait-chrome-minimal-nav" : "ait-glass-nav border-b border-white/[0.06]",
       )}
     >
-      <div className="max-w-[1600px] mx-auto flex h-20 items-center gap-3 px-4 lg:px-8 md:pl-[calc(72px+1rem)]">
-        <BrandLogo variant="nav" showText className="shrink-0" />
+      <div className="max-w-[1600px] mx-auto flex h-[var(--ait-header-h,4.5rem)] items-center gap-3 px-4 lg:px-8 md:pl-[calc(72px+1rem)]">
+        <BrandLogo variant="nav" showText className="shrink-0 min-w-0 hidden sm:flex" />
 
-        {location === "/" && (
-          <nav className="hidden lg:flex xl:hidden items-center gap-1 shrink-0 min-w-0">
-            {guestAnchors.map((item) => (
-              <button
-                key={item.href}
-                type="button"
-                onClick={() => scrollToAnchor(item.href)}
-                className="px-3 py-1.5 rounded-full text-xs text-slate-400 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap"
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        )}
-
-        {pageTitle && !minimalChrome && (
-          <p className="hidden md:block flex-1 min-w-0 text-sm font-medium text-slate-300 truncate pl-1">
-            {pageTitle}
-          </p>
-        )}
+        <HeaderOmnibar />
 
         <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
           {user?.isAdmin && (
@@ -171,6 +154,8 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
             </Button>
           )}
 
+          <HeaderAiScout />
+
           <AitBalancePill className="hidden sm:inline-flex" />
 
           <LanguageSwitcher />
@@ -186,6 +171,8 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
           <WalletHeaderButton />
 
           <AvatarHubMenu user={user ?? null} hasUnreadBadge={hasUnreadBadge} />
+
+          <HeaderOmnibar compact />
 
           <Button
             variant="ghost"

@@ -28,7 +28,7 @@ export default function MobileBottomNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-3 pb-4 pt-2">
-      <div className="ait-glass-strong rounded-panel px-1.5 py-2 flex items-center justify-between border border-white/10 shadow-2xl max-w-lg mx-auto">
+      <div className="ait-glass-strong rounded-panel px-2 py-2.5 flex items-center justify-between border border-white/10 shadow-ait-elevation-2 max-w-lg mx-auto backdrop-blur-xl">
         {mobileMainNav.map((item) => {
           const navMeta = navItemByHref(item.href);
           const Icon =
@@ -53,11 +53,13 @@ export default function MobileBottomNav() {
             <Link key={item.href} href={item.href} className="flex-1 min-w-0">
               <span
                 className={cn(
-                  "flex flex-col items-center gap-0.5 py-1.5 rounded-2xl transition-colors",
-                  active ? "text-white" : "text-slate-500",
+                  "flex flex-col items-center gap-1 py-2 rounded-2xl transition-all duration-300",
+                  active
+                    ? "text-white bg-gradient-to-t from-ait-purple/25 to-transparent shadow-ait-glow-purple/30"
+                    : "text-slate-500 hover:text-slate-300",
                 )}
               >
-                <Icon className={cn("h-5 w-5", active && "text-[#8b5cf6]")} />
+                <Icon className={cn("h-5 w-5 transition-colors", active && "text-ait-purple")} />
                 <span className="text-[9px] font-medium truncate max-w-full px-0.5">
                   {item.label}
                 </span>

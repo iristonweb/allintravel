@@ -39,8 +39,11 @@ npm install   # drizzle-kit >= 0.31 нужен для db:push на Neon
 npm run db:push
 # Версионирование схемы: npm run db:generate → migrations/ → npm run db:migrate (prod)
 npm run db:seed
-# опционально — города для автодополнения:
+# Каталог мест (~465 POI) и геоданные для автодополнения:
+npm run db:seed-catalog
 npm run geo:import
+# или одной командой (рекомендуется для Supabase — transaction pooler + retry):
+npm run db:import-all
 ```
 
 Без `DATABASE_URL` используется in-memory хранилище (данные сбрасываются при перезапуске).

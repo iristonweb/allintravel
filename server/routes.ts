@@ -2152,6 +2152,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { ok: false as const, status: 403, message: "Forbidden" };
   };
 
+  const assertRoomMessageMember = async (roomId: string, messageId: string, userId: string) => {
+    const room = await storage.getChatRoom(roomId);
+    if (!room) return { ok: false as const, status: 404, message: "Room not found" };
+    const access = await resolveChatRoomAccess(storage, room.slug, userId);
+    if (!access.allowed) return { ok: false as const, status: 403, message: access.reason };
+    const msg = await storage.getChatMessage(messageId);
+    if (!msg || msg.chatRoom !== room.slug) {
+      return { ok: false as const, status: 404, message: "Message not found" };
+    }
+    return { ok: true as const, room, msg };
+  };
+
+  const broadcastToRoomMembers = async (
+    roomId: string,
+    payload: Record<string, unknown>,
+    excludeUserId?: string,
+  ) => {
+    const { broadcastToUser } = await import("./realtime-hub");
+    const members = await storage.getChatRoomMembers(roomId);
+    for (const m of members) {
+      if (excludeUserId && m.userId === excludeUserId) continue;
+      broadcastToUser(m.userId, payload);
+    }
+  };
+
   app.post(
     "/api/chat/rooms/:roomId/messages/:messageId/pin",
     isAuthenticated,
@@ -2232,6 +2257,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const access = await canManageChatMessage(req.params.roomId, req.params.messageId, userId);
         if (!access.ok) return res.status(access.status).json({ message: access.message });
         await storage.deleteChatMessage(req.params.messageId);
+        const room = await storage.getChatRoom(req.params.roomId);
+        if (room) {
+          await broadcastToRoomMembers(req.params.roomId, {
+            type: "message_deleted",
+            roomSlug: room.slug,
+            messageId: req.params.messageId,
+          });
+        }
         res.status(204).send();
       } catch (error) {
         console.error("Error deleting message:", error);
@@ -2246,19 +2279,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
-        const msg = await storage.getChatMessage(req.params.messageId);
-        if (!msg) return res.status(404).json({ message: "Message not found" });
-        if (msg.userId !== userId) return res.status(403).json({ message: "Only author can edit" });
+        const access = await assertRoomMessageMember(
+          req.params.roomId,
+          req.params.messageId,
+          userId,
+        );
+        if (!access.ok) return res.status(access.status).json({ message: access.message });
+        if (access.msg.userId !== userId) {
+          return res.status(403).json({ message: "Only author can edit" });
+        }
         const { content } = updateChatMessageSchema.parse(req.body);
         const updated = await storage.updateChatMessage(req.params.messageId, content);
         const sender = await storage.getUser(userId);
         const likeMeta = await storage.getChatMessageReactionsMeta([req.params.messageId], userId);
         const meta = likeMeta[req.params.messageId] ?? { reactions: [] };
-        res.json({
+        const payload = {
           ...updated,
           ...meta,
           sender: sender ? toPublicUser(sender) : null,
+        };
+        await broadcastToRoomMembers(req.params.roomId, {
+          type: "message_edited",
+          roomSlug: access.room.slug,
+          message: payload,
         });
+        res.json(payload);
       } catch (error) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: "Invalid content", errors: error.errors });
@@ -2314,10 +2359,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
-        const msg = await storage.getChatMessage(req.params.messageId);
-        if (!msg) return res.status(404).json({ message: "Message not found" });
+        const access = await assertRoomMessageMember(
+          req.params.roomId,
+          req.params.messageId,
+          userId,
+        );
+        if (!access.ok) return res.status(access.status).json({ message: access.message });
         const body = z.object({ emoji: z.string().min(1).max(16).nullable() }).parse(req.body);
         const meta = await storage.setChatMessageReaction(req.params.messageId, userId, body.emoji);
+        const msg = access.msg;
         if (body.emoji && msg.userId && msg.userId !== userId) {
           const reactor = await storage.getUser(userId);
           const room = await storage.getChatRoom(req.params.roomId);
@@ -2345,6 +2395,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         }
+        broadcastToUser(userId, {
+          type: "reaction_updated",
+          roomId: req.params.roomId,
+          messageId: req.params.messageId,
+          reactions: meta.reactions,
+        });
         res.json(meta);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -2903,10 +2959,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { content } = updatePrivateMessageSchema.parse(req.body);
       const updated = await storage.updatePrivateMessage(req.params.messageId, content);
       const likeMeta = await storage.getPrivateMessageReactionsMeta([req.params.messageId], userId);
-      res.json({
+      const payload = {
         ...updated,
         ...(likeMeta[req.params.messageId] ?? { reactions: [] }),
-      });
+      };
+      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      if (partnerId) {
+        const { broadcastToUser } = await import("./realtime-hub");
+        broadcastToUser(partnerId, {
+          type: "private_message_edited",
+          message: payload,
+        });
+      }
+      res.json(payload);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid content", errors: error.errors });
@@ -2924,6 +2989,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (msg.senderId !== userId)
         return res.status(403).json({ message: "Only author can delete" });
       await storage.deletePrivateMessage(req.params.messageId);
+      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      if (partnerId) {
+        const { broadcastToUser } = await import("./realtime-hub");
+        broadcastToUser(partnerId, {
+          type: "private_message_deleted",
+          messageId: req.params.messageId,
+        });
+      }
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting private message:", error);

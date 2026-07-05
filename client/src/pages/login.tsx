@@ -143,10 +143,10 @@ export function Login() {
           ← На главную
         </Link>
       </div>
-      <Card className="w-full max-w-md ait-glass-strong ait-gradient-border">
+      <Card className="w-full max-w-md ait-glass-strong ait-surface-glow rounded-card-xl shadow-ait-elevation-2">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <BrandLogo href="/" variant="nav" className="justify-center" />
+            <BrandLogo href="/" variant="nav" showText className="justify-center" />
           </div>
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-[0.25em] text-ait-purple font-medium">

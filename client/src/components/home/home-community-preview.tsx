@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useMemo, useState } from "react";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import HomeSectionHeader from "@/components/home/home-section-header";
@@ -35,8 +35,8 @@ function PostCard({
   bookmarkLabel: string;
 }) {
   return (
-    <GlassCard strong className="overflow-hidden min-w-[280px] max-w-sm flex-1 snap-start">
-      <div className="p-5 flex items-center gap-3">
+    <AitSurface strong padding="none" radius="xl" glow hover className="overflow-hidden min-w-[280px] max-w-sm flex-1 snap-start">
+      <div className="p-card flex items-center gap-3">
         <Avatar className="h-12 w-12 border-2 border-ait-purple/40">
           <AvatarImage src={resolveMediaUrl(post.authorAvatar) ?? post.authorAvatar} />
           <AvatarFallback>{post.authorName[0]}</AvatarFallback>
@@ -50,7 +50,7 @@ function PostCard({
         </div>
       </div>
       <div
-        className="h-56 md:h-64 bg-cover bg-center relative"
+        className="h-56 md:h-72 bg-cover bg-center relative"
         style={{ backgroundImage: `url('${post.imageUrl}')` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-[#050816]/90 via-transparent to-transparent" />
@@ -87,7 +87,7 @@ function PostCard({
           <Bookmark className="h-4 w-4" />
         </Button>
       </div>
-    </GlassCard>
+    </AitSurface>
   );
 }
 

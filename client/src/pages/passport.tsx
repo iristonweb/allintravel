@@ -1,4 +1,5 @@
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PageShell from "@/components/layout/page-shell";
 import PassportCard from "@/components/passport/PassportCard";
 import FogOfWarMap from "@/components/passport/FogOfWarMap";
@@ -9,10 +10,10 @@ export function PassportPage() {
   const { t } = useTranslation();
 
   return (
-    <AppLayout>
+    <AppLayout rightRail={<DiscoveryRightRail />}>
       <PageMeta title={t("passport.title")} description={t("passport.subtitle")} path="/passport" />
       <PageShell title={t("passport.title")} description={t("passport.subtitle")}>
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="space-y-section">
           <PassportCard />
           <FogOfWarMap />
         </div>

@@ -83,4 +83,5 @@ export const FEED_MODE_TAB_FILTER_DEFS: FilterOptionDef[] = [
   { value: "following", labelKey: "filters.feedMode.following" },
   { value: "popular", labelKey: "filters.feedMode.popular" },
   { value: "nearby", labelKey: "filters.feedMode.nearby" },
+  { value: "trending", labelKey: "filters.feedMode.trending" },
 ];

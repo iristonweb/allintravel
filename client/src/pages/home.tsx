@@ -8,11 +8,10 @@ import HomeCommunityPreview from "@/components/home/home-community-preview";
 import HomeMobileShowcase from "@/components/home/home-mobile-showcase";
 import HomePersonalized from "@/components/home/home-personalized";
 import HomeSimilar from "@/components/home/home-similar";
-import HeroStats from "@/components/home/hero-stats";
+import CommunityStatsRow from "@/components/community/CommunityStatsRow";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import { useToast } from "@/hooks/use-toast";
 import EmptyState from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -110,14 +109,14 @@ export function Home() {
       <OnboardingWizard open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
       <CinematicHero trips={trips} showAnchorPills />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-section">
         <motion.section
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="md:hidden"
         >
-          <HeroStats />
+          <CommunityStatsRow />
         </motion.section>
 
         <motion.section
@@ -134,7 +133,6 @@ export function Home() {
           <div className="md:hidden">
             <HomeQuickActions hideSearch />
           </div>
-          {isAuthenticated && <AitDailyPulse />}
         </motion.section>
 
         {dataError ? (
