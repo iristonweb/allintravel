@@ -78,10 +78,10 @@ export const COMMUNITY_SIDEBAR_ITEMS: NavGroupItem[] = [
   { href: "/places", labelKey: "nav.places", icon: MapPin },
   { href: "/map", labelKey: "nav.map", icon: Map },
   { href: "/trips?ai=1", labelKey: "nav.aiPlanner", icon: Sparkles, badgeKey: "nav.badges.new" },
-  { href: "/profile-edit?tab=favorites", labelKey: "nav.favorites", icon: Heart },
+  { href: "/profile/edit?tab=favorites", labelKey: "nav.favorites", icon: Heart },
   { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
   { href: "/profile", labelKey: "nav.profile", icon: User },
-  { href: "/profile-settings", labelKey: "nav.settings", icon: Settings },
+  { href: "/profile/settings", labelKey: "nav.settings", icon: Settings },
 ];
 
 export const MOBILE_MAIN_NAV_HREFS = ["/", "/map", "/trips", "/social-feed"] as const;
@@ -132,8 +132,8 @@ export function matchNavHref(pathname: string, search: string, href: string): bo
     if (hrefPath === "/trips") {
       return pathname === "/trips" && !locParams.get("ai");
     }
-    if (hrefPath === "/profile-edit") {
-      return pathname === "/profile-edit" && !locParams.get("tab");
+    if (hrefPath === "/profile/edit") {
+      return pathname === "/profile/edit" && !locParams.get("tab");
     }
     return pathname === hrefPath;
   }

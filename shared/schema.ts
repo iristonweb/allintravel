@@ -636,6 +636,7 @@ export const userProfiles = pgTable("user_profiles", {
   languages: text("languages").array(),
   interests: text("interests").array(),
   isPublic: boolean("is_public").default(true),
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

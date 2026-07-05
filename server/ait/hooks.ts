@@ -106,6 +106,16 @@ export async function grantForPostCommented(
   return { commenterGrant, authorGrant };
 }
 
+export async function grantForChatMessageLiked(
+  authorId: string,
+  messageId: string,
+): Promise<AitGrantResult | null> {
+  return grantCreator(authorId, "chat_like_received", {
+    entityType: "chat_message",
+    entityId: messageId,
+  });
+}
+
 export async function grantForChatMessage(
   userId: string,
   content: string,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import PassportCard from "@/components/passport/PassportCard";
+import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
 import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import PlatformWalletCard from "@/components/wallet/PlatformWalletCard";
 import { Link } from "wouter";
@@ -179,7 +179,7 @@ export function Profile() {
                 )}
               </GlassCard>
 
-              <PassportCard compact />
+              <TravelIdentityCard compact />
 
               <AitDailyPulse className="mb-6" />
 

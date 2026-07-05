@@ -55,6 +55,8 @@ const EMPTY_DRAFT: SocialNewPostDraft = {
   title: "",
   content: "",
   location: "",
+  latitude: null,
+  longitude: null,
   tags: [],
   tagInput: "",
   isPublic: true,

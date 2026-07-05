@@ -6,6 +6,7 @@ import ActivityRings from "@/components/ait/ActivityRings";
 import { useAitClaimQuest, useAitDashboard, useAitSpend } from "@/hooks/useAit";
 import { useToast } from "@/hooks/use-toast";
 import { Gift, ShoppingBag, TrendingUp, Flame } from "lucide-react";
+import CreatorSpotlight from "@/components/ait/CreatorSpotlight";
 import CreatorFundCard from "@/components/ait/CreatorFundCard";
 import ReferralCard from "@/components/ait/ReferralCard";
 import AitLeaderboard from "@/components/ait/AitLeaderboard";
@@ -46,6 +47,14 @@ export default function AitHub() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <PlatformWalletCard embedded />
+
+      <section>
+        <h2 className="text-base font-semibold mb-2">Creator dashboard</h2>
+        <div className="space-y-4">
+          <CreatorSpotlight />
+          <CreatorFundCard />
+        </div>
+      </section>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-6">
@@ -201,27 +210,6 @@ export default function AitHub() {
                 );
               })}
             </div>
-          </section>
-
-          <CreatorFundCard />
-
-          <section>
-            <h2 className="text-base font-semibold mb-2 flex items-center gap-2">
-              <Gift className="h-5 w-5 text-ait-orange" />
-              Для создателей
-            </h2>
-            <GlassCard className="p-5 text-sm text-muted-foreground space-y-2">
-              <p>
-                Публикуйте посты, stories и журналы — получайте{" "}
-                <strong className="text-foreground">Creator AIT</strong> за лайки, комментарии и
-                чаевые под постами.
-              </p>
-              <p>
-                Зрители отправляют чаевые из ленты · 90% идёт автору. Ранг растёт с{" "}
-                <strong className="text-foreground">{data.lifetimeCreatorEarned}</strong> lifetime
-                Creator AIT.
-              </p>
-            </GlassCard>
           </section>
         </div>
       </div>

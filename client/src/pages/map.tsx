@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { useLocation, useSearch } from "wouter";
 
@@ -8,8 +8,11 @@ import { motion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 
 import AppLayout from "@/components/app-layout";
+import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import MapLayersPanel, { type MapLayerState } from "@/components/map/MapLayersPanel";
+import TravelJourneyStrip from "@/components/journey/TravelJourneyStrip";
 
 import InteractiveMap from "@/components/interactive-map";
 
@@ -18,9 +21,10 @@ import DestinationCard from "@/components/brand/destination-card";
 import MapSearchPanel from "@/components/map/MapSearchPanel";
 
 import { resolveMapHref } from "@/lib/map-navigate";
+import { useAuth } from "@/hooks/useAuth";
 
 import { useTranslation } from "react-i18next";
-import type { Place } from "@shared/schema";
+import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
 import { MAP_SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
 
 const showcaseDestinations = [...MAP_SHOWCASE_DESTINATIONS];
@@ -28,6 +32,7 @@ const showcaseDestinations = [...MAP_SHOWCASE_DESTINATIONS];
 export function MapPage() {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
 
   const searchString = useSearch();
 
@@ -46,6 +51,11 @@ export function MapPage() {
   const [filterType, setFilterType] = useState(urlType);
 
   const [geocoding, setGeocoding] = useState(false);
+
+  const [layers, setLayers] = useState<MapLayerState>({
+    myTrips: true,
+    passportExplored: false,
+  });
 
   useEffect(() => {
     setSearch(urlQuery);
@@ -92,7 +102,56 @@ export function MapPage() {
 
   const places = poiResponse?.places ?? [];
 
-  const mapPlaces = places
+  const { data: myTrips = [] } = useQuery<Trip[]>({
+    queryKey: ["/api/trips", { limit: 6 }],
+    enabled: isAuthenticated && layers.myTrips,
+  });
+
+  const waypointQueries = useQueries({
+    queries: myTrips.slice(0, 5).map((trip) => ({
+      queryKey: ["/api/trips", trip.id, "waypoints"],
+      enabled: isAuthenticated && layers.myTrips,
+    })),
+  });
+
+  const { data: fogData } = useQuery<{ exploredCount: number; exploredCountries: string[] }>({
+    queryKey: ["/api/passport/fog-map"],
+    enabled: isAuthenticated && layers.passportExplored,
+  });
+
+  const tripLayerPlaces = useMemo(() => {
+    if (!layers.myTrips) return [];
+    const out: {
+      id: string;
+      name: string;
+      latitude: string;
+      longitude: string;
+      type?: string;
+      averageRating?: string | null;
+      priceRange?: string | null;
+      address?: string | null;
+    }[] = [];
+    waypointQueries.forEach((q, i) => {
+      const trip = myTrips[i];
+      const wps = (q.data as TripWaypointWithPlace[] | undefined) ?? [];
+      for (const w of wps) {
+        if (!w.place?.latitude || !w.place?.longitude) continue;
+        out.push({
+          id: `trip-${trip?.id}-${w.id}`,
+          name: w.place.name,
+          latitude: String(w.place.latitude),
+          longitude: String(w.place.longitude),
+          type: w.place.type ?? "attraction",
+          averageRating: w.place.averageRating,
+          priceRange: w.place.priceRange,
+          address: w.place.address,
+        });
+      }
+    });
+    return out;
+  }, [layers.myTrips, myTrips, waypointQueries]);
+
+  const mapPlaces = [...places, ...tripLayerPlaces]
 
     .filter((p) => p.latitude != null && p.longitude != null)
 
@@ -174,9 +233,20 @@ export function MapPage() {
   };
 
   return (
-    <AppLayout fullWidth layout="full-bleed" immersive contentClassName="p-0">
+    <AppLayout
+      fullWidth
+      layout="full-bleed"
+      immersive
+      contentClassName="p-0"
+      rightRail={isAuthenticated ? <DiscoveryRightRail /> : undefined}
+    >
       <div className="relative h-[calc(100vh-var(--ait-header-h))] min-h-[600px]">
-        <div className="absolute top-[calc(var(--ait-header-h)+5rem)] left-3 right-3 md:left-[calc(72px+1rem)] md:right-8 z-50 pointer-events-none flex justify-center">
+        <div className="absolute top-[calc(var(--ait-header-h)+5rem)] left-3 right-3 md:left-[calc(72px+1rem)] md:right-8 z-50 pointer-events-none flex flex-col items-center gap-2">
+          {isAuthenticated && (
+            <div className="w-full max-w-3xl pointer-events-auto hidden md:block">
+              <TravelJourneyStrip activeStep="explore" compact />
+            </div>
+          )}
           <motion.div
             className="w-full"
             initial={{ opacity: 0, y: -12 }}
@@ -213,6 +283,16 @@ export function MapPage() {
               </p>
             )}
           </motion.div>
+          {isAuthenticated && (
+            <div className="self-end pointer-events-auto mt-1">
+              <MapLayersPanel
+                layers={layers}
+                onChange={setLayers}
+                tripCount={myTrips.length}
+                exploredCount={fogData?.exploredCount ?? 0}
+              />
+            </div>
+          )}
         </div>
 
         <InteractiveMap
@@ -223,7 +303,20 @@ export function MapPage() {
           mapFocus={mapFocus}
           showDestinationPin={mapFocus != null}
           onPlaceClick={(place) => {
-            if (String(place.id).startsWith("osm-")) return;
+            if (String(place.id).startsWith("osm-")) {
+              const lat = place.latitude;
+              const lon = place.longitude;
+              if (lat != null && lon != null) {
+                navigate(
+                  `/map?q=${encodeURIComponent(place.name)}&lat=${lat}&lon=${lon}`,
+                );
+              }
+              return;
+            }
+            if (String(place.id).startsWith("trip-")) {
+              navigate("/trips");
+              return;
+            }
             navigate(`/place/${place.id}`);
           }}
         />

@@ -43,6 +43,13 @@
       "when": 1780891000000,
       "tag": "0005_ait_hard_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780892000000,
+      "tag": "0006_onboarding_completed",
+      "breakpoints": true
     }
   ]
 }

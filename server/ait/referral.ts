@@ -142,10 +142,15 @@ async function insertReferralLink(referredUserId: string, referrerId: string): P
 
 async function completeReferralRewards(
   referredUserId: string,
-  _referrerId: string,
+  referrerId: string,
 ): Promise<{ ok: boolean; message?: string; grant?: AitGrantResult }> {
   const { rewardReferralMilestone } = await import("./referral-milestones");
+  const { tryGrantSpend } = await import("./service");
   await rewardReferralMilestone(referredUserId, "signup");
+  await tryGrantSpend(referrerId, "referral_inviter", {
+    entityType: "user",
+    entityId: referredUserId,
+  });
 
   const grant: AitGrantResult = {
     granted: true,

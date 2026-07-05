@@ -48,6 +48,8 @@ import DestinationPage from "@/pages/destination";
 import DestinationsIndexPage from "@/pages/destinations";
 import TelegramAppPage from "@/pages/telegram-app";
 import PassportPage from "@/pages/passport";
+import PassportUsernameRedirect from "@/pages/passport-username-redirect";
+import PublicSocialFeed from "@/pages/public-social-feed";
 import NomadHubsPage from "@/pages/nomad-hubs";
 import CreatorsPage from "@/pages/creators";
 import LaunchPage from "@/pages/launch";
@@ -107,6 +109,8 @@ function Router() {
           <Route path="/blog/:id" component={BlogPostRedirect} />
           <Route path="/blog" component={BlogRedirect} />
           <Route path="/post/:id" component={PostDetailPage} />
+          <Route path="/guides" component={PublicSocialFeed} />
+          <Route path="/passport/:username" component={PassportUsernameRedirect} />
           <Route path="/trips/:id/public" component={TripPublic} />
           <Route path="/trips/join/:token" component={TripJoinPage} />
           <Route path="/destinations" component={DestinationsIndexPage} />

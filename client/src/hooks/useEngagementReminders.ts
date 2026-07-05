@@ -22,12 +22,12 @@ const RING_LINKS: Record<ActivityRingId, string> = {
 };
 
 const GENERIC_REMINDERS = [
-  { key: "exploreMap", url: "/places" },
+  { key: "exploreMap", url: "/map" },
   { key: "checkChats", url: "/chat" },
   { key: "planTrip", url: "/trips" },
   { key: "socialFeed", url: "/social-feed" },
   { key: "wallet", url: "/wallet" },
-  { key: "passport", url: "/profile" },
+  { key: "passport", url: "/passport" },
   { key: "events", url: "/events" },
   { key: "community", url: "/friends" },
 ] as const;

@@ -600,6 +600,46 @@ export async function incrementRing(
   return getRingProgress(userId);
 }
 
+/** Sum ring actions since Monday UTC (for weekly quests). */
+export async function getWeeklyRingTotal(userId: string, ring: ActivityRingId): Promise<number> {
+  const start = weekStartMondayUtc();
+  const startStr = start.toISOString().slice(0, 10);
+  const today = todayUtc();
+  const db = getDb();
+
+  if (!db) {
+    let total = 0;
+    for (const [key, counts] of Array.from(memRingCounts.entries())) {
+      const sep = key.indexOf(":");
+      if (sep < 0) continue;
+      const uid = key.slice(0, sep);
+      const date = key.slice(sep + 1);
+      if (uid === userId && date >= startStr && date <= today) {
+        total += counts[ring] ?? 0;
+      }
+    }
+    return total;
+  }
+
+  const column =
+    ring === "voice"
+      ? "voice_count"
+      : ring === "story"
+        ? "story_count"
+        : ring === "echo"
+          ? "echo_count"
+          : "pulse_count";
+
+  const res = await db.execute(sql`
+    SELECT coalesce(sum(${sql.raw(column)}), 0)::int AS total
+    FROM ait_ring_daily
+    WHERE user_id = ${userId}
+      AND ring_date >= ${startStr}::date
+      AND ring_date <= ${today}::date
+  `);
+  return Number((res as unknown as { rows?: { total: number }[] }).rows?.[0]?.total ?? 0);
+}
+
 export async function getRingProgress(
   userId: string,
 ): Promise<Record<ActivityRingId, { count: number; percent: number }>> {
@@ -725,9 +765,8 @@ export async function getQuestProgress(
   userId: string,
 ): Promise<Record<string, { claimed: boolean; progress: number }>> {
   const wk = weekKey();
-  const rings = await getRingProgress(userId);
   const db = getDb();
-  const { WEEKLY_QUESTS, RING_DAILY_TARGET } = await import("@shared/ait");
+  const { WEEKLY_QUESTS } = await import("@shared/ait");
 
   const claimedSet = new Set<string>();
   if (!db) {
@@ -750,11 +789,11 @@ export async function getQuestProgress(
     if (q.id === "pulse_5") {
       progress = Math.min(q.target, weeklyLogins);
     } else if (q.ring) {
-      progress = Math.min(q.target, rings[q.ring]?.count ?? 0);
+      const weeklyTotal = await getWeeklyRingTotal(userId, q.ring);
+      progress = Math.min(q.target, weeklyTotal);
     }
     out[q.id] = { claimed: claimedSet.has(q.id), progress };
   }
-  void RING_DAILY_TARGET;
   return out;
 }
 

@@ -20,6 +20,8 @@ export type SocialNewPostDraft = {
   title: string;
   content: string;
   location: string;
+  latitude?: string | null;
+  longitude?: string | null;
   tags: string[];
   tagInput: string;
   isPublic: boolean;
@@ -118,7 +120,16 @@ export default function SocialComposer({
                   <LocationAutocompleteInput
                     placeholder={t("social.composer.locationOptional")}
                     value={draft.location}
-                    onChange={(v) => setDraft({ location: v })}
+                    onChange={(v) => setDraft({ location: v, latitude: null, longitude: null })}
+                    onSelectItem={(item) =>
+                      setDraft({
+                        location: item.label,
+                        latitude:
+                          item.lat != null && Number.isFinite(item.lat) ? String(item.lat) : null,
+                        longitude:
+                          item.lon != null && Number.isFinite(item.lon) ? String(item.lon) : null,
+                      })
+                    }
                   />
                   <div className="flex gap-2">
                     <Input

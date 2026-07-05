@@ -120,6 +120,12 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
 
+  const { data: fraudData } = useQuery<{ flags: { userId: string; level: number; reason: string | null }[] }>({
+    queryKey: ["/api/admin/ait/fraud"],
+    queryFn: () => apiRequestJson("GET", "/api/admin/ait/fraud"),
+    enabled: isAdmin,
+  });
+
   const adjustMutation = useMutation({
     mutationFn: () =>
       apiRequestJson("POST", "/api/admin/ait/adjust", {
@@ -192,6 +198,10 @@ export default function AdminPage() {
             <TabsTrigger value="push" className="gap-1">
               <Bell className="h-4 w-4" />
               Push
+            </TabsTrigger>
+            <TabsTrigger value="fraud" className="gap-1">
+              <Shield className="h-4 w-4" />
+              Fraud
             </TabsTrigger>
           </TabsList>
 
@@ -431,6 +441,26 @@ export default function AdminPage() {
                     Отправить push
                   </Button>
                 </>
+              )}
+            </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="fraud" className="mt-4 space-y-4">
+            <GlassCard className="p-5">
+              <h3 className="font-semibold mb-3">Active fraud flags</h3>
+              {(fraudData?.flags ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No active flags</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {fraudData?.flags.map((f) => (
+                    <li key={f.userId} className="flex justify-between gap-2 border-b border-white/5 pb-2">
+                      <span className="font-mono text-xs">{f.userId}</span>
+                      <span>
+                        L{f.level} · {f.reason ?? "—"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </GlassCard>
           </TabsContent>

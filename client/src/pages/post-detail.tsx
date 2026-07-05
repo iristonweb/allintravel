@@ -13,6 +13,7 @@ import { renderRichText } from "@/lib/rich-text";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import PageMeta from "@/components/seo/PageMeta";
 import { useTranslation } from "react-i18next";
 
 export function PostDetailPage() {
@@ -33,6 +34,13 @@ export function PostDetailPage() {
 
   return (
     <AppLayout rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
+      {post && (
+        <PageMeta
+          title={post.title}
+          description={post.content.slice(0, 160)}
+          path={`/post/${post.id}`}
+        />
+      )}
       <div className="max-w-3xl mx-auto">
         <PageShell
           title={post?.title ?? t("social.article")}

@@ -132,6 +132,8 @@ export function useSocialFeedMutations(bookmarkedSet: Set<string>) {
       title: string;
       content: string;
       location: string;
+      latitude?: string | null;
+      longitude?: string | null;
       tags: string[];
       isPublic: boolean;
       images?: string[];
