@@ -39,7 +39,9 @@ export function PublicSocialFeed() {
             </p>
           </div>
           <Button variant="premium" asChild>
-            <Link href="/login?redirect=/social-feed">{t("nav.login", { defaultValue: "Login" })}</Link>
+            <Link href="/login?redirect=/social-feed">
+              {t("nav.login", { defaultValue: "Login" })}
+            </Link>
           </Button>
         </div>
         {isLoading ? (

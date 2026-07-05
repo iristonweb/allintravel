@@ -136,10 +136,14 @@ export default function PassportCard({ username, compact }: PassportCardProps) {
               <p className="text-sm text-muted-foreground">{t("passport.empty")}</p>
               <div className="flex flex-wrap gap-2">
                 <Button variant="premium" size="sm" className="rounded-xl" asChild>
-                  <Link href="/trips">{t("passport.planTrip", { defaultValue: "Plan a trip" })}</Link>
+                  <Link href="/trips">
+                    {t("passport.planTrip", { defaultValue: "Plan a trip" })}
+                  </Link>
                 </Button>
                 <Button variant="outline" size="sm" className="rounded-xl" asChild>
-                  <Link href="/map">{t("passport.exploreMap", { defaultValue: "Explore map" })}</Link>
+                  <Link href="/map">
+                    {t("passport.exploreMap", { defaultValue: "Explore map" })}
+                  </Link>
                 </Button>
               </div>
             </div>

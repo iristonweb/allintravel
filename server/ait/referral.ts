@@ -1,5 +1,9 @@
 import { sql } from "drizzle-orm";
-import { AIT_REFERRAL_MILESTONES, AIT_REFERRAL_REWARD, type ReferralMilestoneId } from "@shared/ait";
+import {
+  AIT_REFERRAL_MILESTONES,
+  AIT_REFERRAL_REWARD,
+  type ReferralMilestoneId,
+} from "@shared/ait";
 import { getDb } from "../db";
 import { storage } from "../storage";
 import type { AitGrantResult } from "./service";
@@ -286,9 +290,7 @@ export async function getReferralInfo(userId: string): Promise<ReferralInfo> {
         SELECT count(*)::int AS c FROM ait_referral_milestones
         WHERE referrer_id = ${userId} AND milestone = ${id}
       `);
-      completedCount = Number(
-        (res as unknown as { rows?: { c: number }[] }).rows?.[0]?.c ?? 0,
-      );
+      completedCount = Number((res as unknown as { rows?: { c: number }[] }).rows?.[0]?.c ?? 0);
     }
     milestones.push({
       id,

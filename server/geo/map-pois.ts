@@ -61,10 +61,10 @@ export async function searchMapPois(
     acceptLanguage: params.acceptLanguage,
   });
 
-  return [...Array.from(catalogMap.values()), ...osmPlaces.filter((o) => !catalogMap.has(o.id))].slice(
-    0,
-    40,
-  );
+  return [
+    ...Array.from(catalogMap.values()),
+    ...osmPlaces.filter((o) => !catalogMap.has(o.id)),
+  ].slice(0, 40);
 }
 
 export type MapPoiLike = {

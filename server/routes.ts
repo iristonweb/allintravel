@@ -1820,12 +1820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ ok: true, cleared: true });
         return;
       }
-      await setFraudFlag(
-        body.userId,
-        body.level,
-        body.reason,
-        body.expiresInDays ?? 30,
-      );
+      await setFraudFlag(body.userId, body.level, body.reason, body.expiresInDays ?? 30);
       res.json({ ok: true });
     } catch (error) {
       if (error instanceof z.ZodError) {

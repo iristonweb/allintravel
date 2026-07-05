@@ -124,7 +124,8 @@ function heuristicSuggestions(prompt: string, places: MapPoi[]): CopilotSuggesti
     }
     if (styles.includes("food") && p.type === "restaurant") score += 3;
     if (styles.includes("luxury") && poiPriceRange(p) === "$$$$") score += 2;
-    if (styles.includes("budget") && (poiPriceRange(p) === "$" || poiPriceRange(p) === "$$")) score += 2;
+    if (styles.includes("budget") && (poiPriceRange(p) === "$" || poiPriceRange(p) === "$$"))
+      score += 2;
     if (styles.includes("culture") && p.type === "attraction") score += 2;
     if (styles.includes("adventure") && p.type === "attraction") score += 1;
     return { place: p, score };

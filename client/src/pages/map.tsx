@@ -321,8 +321,7 @@ export function MapPage() {
                 type: place.type,
                 latitude: place.latitude,
                 longitude: place.longitude,
-                averageRating:
-                  place.averageRating != null ? String(place.averageRating) : null,
+                averageRating: place.averageRating != null ? String(place.averageRating) : null,
                 priceRange: place.priceRange,
                 address: place.address,
               });
@@ -344,8 +343,7 @@ export function MapPage() {
               type: place.type,
               latitude: place.latitude,
               longitude: place.longitude,
-              averageRating:
-                place.averageRating != null ? String(place.averageRating) : null,
+              averageRating: place.averageRating != null ? String(place.averageRating) : null,
               priceRange: place.priceRange,
               address: place.address,
             });

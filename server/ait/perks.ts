@@ -104,6 +104,9 @@ export async function getMaxOwnedChatRooms(userId: string): Promise<number> {
 }
 
 export async function canCreateChatRoom(userId: string): Promise<boolean> {
-  const [owned, max] = await Promise.all([countOwnedChatRooms(userId), getMaxOwnedChatRooms(userId)]);
+  const [owned, max] = await Promise.all([
+    countOwnedChatRooms(userId),
+    getMaxOwnedChatRooms(userId),
+  ]);
   return owned < max;
 }

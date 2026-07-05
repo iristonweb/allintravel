@@ -37,9 +37,7 @@ export default function MapLayersPanel({
           <Label htmlFor="layer-trips" className="flex items-center gap-2 text-sm cursor-pointer">
             <MapPin className="h-3.5 w-3.5 text-ait-orange" />
             {t("map.layers.myTrips", { defaultValue: "My trips" })}
-            {tripCount > 0 && (
-              <span className="text-xs text-muted-foreground">({tripCount})</span>
-            )}
+            {tripCount > 0 && <span className="text-xs text-muted-foreground">({tripCount})</span>}
           </Label>
           <Switch
             id="layer-trips"

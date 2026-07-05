@@ -47,10 +47,7 @@ export default function AiContextChips({
 
   return (
     <div
-      className={cn(
-        "ait-glass rounded-2xl border border-white/10 px-3 py-2 space-y-2",
-        className,
-      )}
+      className={cn("ait-glass rounded-2xl border border-white/10 px-3 py-2 space-y-2", className)}
     >
       {!compact && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">

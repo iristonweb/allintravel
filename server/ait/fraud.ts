@@ -163,8 +163,7 @@ export async function setFraudFlag(
   expiresInDays: number | null,
 ): Promise<void> {
   const db = getDb();
-  const expiresAt =
-    expiresInDays != null ? new Date(Date.now() + expiresInDays * 86400000) : null;
+  const expiresAt = expiresInDays != null ? new Date(Date.now() + expiresInDays * 86400000) : null;
   if (!db) {
     memFraudFlags.set(userId, { level, expiresAt });
     return;

@@ -10,11 +10,20 @@ export default function EconomyContextBar({ surface = "trip" }: { surface?: "tri
   const items =
     surface === "passport"
       ? [
-          { icon: Coins, label: t("economy.fogShare", { defaultValue: "+25 AIT · share fog map" }) },
-          { icon: MapPin, label: t("economy.stamp", { defaultValue: "+15 AIT · new country stamp" }) },
+          {
+            icon: Coins,
+            label: t("economy.fogShare", { defaultValue: "+25 AIT · share fog map" }),
+          },
+          {
+            icon: MapPin,
+            label: t("economy.stamp", { defaultValue: "+15 AIT · new country stamp" }),
+          },
         ]
       : [
-          { icon: MapPin, label: t("economy.checkin", { defaultValue: "+12 AIT · daily check-in" }) },
+          {
+            icon: MapPin,
+            label: t("economy.checkin", { defaultValue: "+12 AIT · daily check-in" }),
+          },
           { icon: Film, label: t("economy.cinema", { defaultValue: "+20 AIT · Trip Cinema" }) },
         ];
 

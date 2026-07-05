@@ -120,7 +120,9 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
 
-  const { data: fraudData } = useQuery<{ flags: { userId: string; level: number; reason: string | null }[] }>({
+  const { data: fraudData } = useQuery<{
+    flags: { userId: string; level: number; reason: string | null }[];
+  }>({
     queryKey: ["/api/admin/ait/fraud"],
     queryFn: () => apiRequestJson("GET", "/api/admin/ait/fraud"),
     enabled: isAdmin,
@@ -453,7 +455,10 @@ export default function AdminPage() {
               ) : (
                 <ul className="space-y-2 text-sm">
                   {fraudData?.flags.map((f) => (
-                    <li key={f.userId} className="flex justify-between gap-2 border-b border-white/5 pb-2">
+                    <li
+                      key={f.userId}
+                      className="flex justify-between gap-2 border-b border-white/5 pb-2"
+                    >
                       <span className="font-mono text-xs">{f.userId}</span>
                       <span>
                         L{f.level} · {f.reason ?? "—"}

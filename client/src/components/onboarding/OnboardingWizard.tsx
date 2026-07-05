@@ -203,7 +203,9 @@ export default function OnboardingWizard({ open, onClose }: OnboardingWizardProp
                 <Map className="h-4 w-4 text-ait-orange" />
                 {t("onboarding.exploreMap")}
               </p>
-              <p className="text-xs text-muted-foreground">{destLabel || t("onboarding.destinationPlaceholder")}</p>
+              <p className="text-xs text-muted-foreground">
+                {destLabel || t("onboarding.destinationPlaceholder")}
+              </p>
               <Button variant="outline" size="sm" className="rounded-xl" asChild>
                 <Link href={mapPreviewHref}>{t("onboarding.openMap")}</Link>
               </Button>
