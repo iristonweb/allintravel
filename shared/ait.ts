@@ -51,6 +51,7 @@ export type AitReasonCode =
   | "fog_share"
   | "passport_stamp"
   | "creator_fund_payout"
+  | "trip_fork_bonus"
   | "admin_adjust";
 
 /** Platform launch for emission cap tiers */
@@ -164,6 +165,7 @@ export const AIT_CREATOR_REWARDS: Partial<Record<AitReasonCode, number>> = {
   like_received: 1,
   comment_received: 1,
   chat_like_received: 1,
+  trip_fork_bonus: 30,
   creator_fund_payout: 0,
 };
 
@@ -191,6 +193,7 @@ export const AIT_DAILY_CAPS: Partial<Record<AitReasonCode, number>> = {
   referral_milestone: 30,
   fog_share: 1,
   passport_stamp: 10,
+  trip_fork_bonus: 20,
   streak_bonus: 1,
 };
 

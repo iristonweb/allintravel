@@ -162,6 +162,18 @@ export async function grantForFriendAccepted(
   });
 }
 
+export async function grantForTripForked(
+  sourceAuthorId: string,
+  forkedByUserId: string,
+  sourceTripId: string,
+): Promise<AitGrantResult | null> {
+  if (sourceAuthorId === forkedByUserId) return null;
+  return grantCreator(sourceAuthorId, "trip_fork_bonus", {
+    entityType: "trip",
+    entityId: `${sourceTripId}:${forkedByUserId}`,
+  });
+}
+
 export async function grantForFollow(
   followerId: string,
   followingId: string,

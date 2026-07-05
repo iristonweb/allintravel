@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { AIT_REFERRAL_REWARD } from "@shared/ait";
+import { AIT_REFERRAL_MILESTONES, AIT_REFERRAL_REWARD, type ReferralMilestoneId } from "@shared/ait";
 import { getDb } from "../db";
 import { storage } from "../storage";
 import type { AitGrantResult } from "./service";
@@ -21,6 +21,13 @@ export type ReferralInvitee = {
   createdAt: string;
 };
 
+export type ReferralMilestoneProgress = {
+  id: ReferralMilestoneId;
+  amount: number;
+  completedCount: number;
+  totalPossible: number;
+};
+
 export type ReferralInfo = {
   code: string;
   invited: number;
@@ -29,6 +36,7 @@ export type ReferralInfo = {
   hasUsedCode: boolean;
   myReferrerCode: string | null;
   invitees: ReferralInvitee[];
+  milestones: ReferralMilestoneProgress[];
 };
 
 export async function ensureReferralSchema(): Promise<void> {
@@ -269,6 +277,27 @@ export async function getReferralInfo(userId: string): Promise<ReferralInfo> {
     ? await (await import("./referral-milestones")).sumReferralMilestoneEarnings(userId)
     : rewardedCount * AIT_REFERRAL_REWARD;
 
+  const milestoneIds = Object.keys(AIT_REFERRAL_MILESTONES) as ReferralMilestoneId[];
+  const milestones: ReferralMilestoneProgress[] = [];
+  for (const id of milestoneIds) {
+    let completedCount = 0;
+    if (db) {
+      const res = await db.execute(sql`
+        SELECT count(*)::int AS c FROM ait_referral_milestones
+        WHERE referrer_id = ${userId} AND milestone = ${id}
+      `);
+      completedCount = Number(
+        (res as unknown as { rows?: { c: number }[] }).rows?.[0]?.c ?? 0,
+      );
+    }
+    milestones.push({
+      id,
+      amount: AIT_REFERRAL_MILESTONES[id],
+      completedCount,
+      totalPossible: invited,
+    });
+  }
+
   return {
     code,
     invited,
@@ -277,5 +306,6 @@ export async function getReferralInfo(userId: string): Promise<ReferralInfo> {
     hasUsedCode: Boolean(myReferrerId),
     myReferrerCode,
     invitees,
+    milestones,
   };
 }

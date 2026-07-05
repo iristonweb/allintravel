@@ -764,7 +764,7 @@ export const en = {
   },
   onboarding: {
     title: "Where are we headed?",
-    description: "Three steps — and you'll have a personal trip on your home screen.",
+    description: "Four steps — destination, style, community, and your first trip.",
     destinationPlaceholder: "City or country",
     startDate: "Start",
     endDate: "End",
@@ -789,6 +789,12 @@ export const en = {
     successDescription: "Welcome to All In Travel!",
     failTitle: "Trip not created",
     failDescription: "You can create one later in Trips.",
+    exploreMap: "Explore your destination on the map",
+    openMap: "Open map",
+    followTravelers: "Follow 3 travelers",
+    follow: "Follow",
+    following: "Following",
+    followError: "Could not follow user",
   },
   ait: {
     rings: {

@@ -1,5 +1,17 @@
 import type { IStorage } from "../storage";
-import type { Place } from "@shared/schema";
+import type { MapPoi } from "../geo/map-pois";
+
+function poiRating(p: MapPoi): number {
+  return "averageRating" in p ? Number(p.averageRating ?? 0) : 0;
+}
+
+function poiDescription(p: MapPoi): string {
+  return "description" in p ? (p.description ?? "") : "";
+}
+
+function poiPriceRange(p: MapPoi): string | null | undefined {
+  return "priceRange" in p ? p.priceRange : null;
+}
 
 export type CopilotSuggestion = {
   placeId: string;
@@ -31,7 +43,7 @@ function detectStyles(text: string): string[] {
 
 async function suggestFromOpenAI(
   prompt: string,
-  places: Place[],
+  places: MapPoi[],
 ): Promise<CopilotSuggestion[] | null> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) return null;
@@ -40,7 +52,7 @@ async function suggestFromOpenAI(
     id: p.id,
     name: p.name,
     type: p.type,
-    rating: p.averageRating,
+    rating: poiRating(p),
   }));
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -96,7 +108,7 @@ async function suggestFromOpenAI(
   }
 }
 
-function heuristicSuggestions(prompt: string, places: Place[]): CopilotSuggestion[] {
+function heuristicSuggestions(prompt: string, places: MapPoi[]): CopilotSuggestion[] {
   const styles = detectStyles(prompt);
   const words = prompt
     .toLowerCase()
@@ -104,15 +116,15 @@ function heuristicSuggestions(prompt: string, places: Place[]): CopilotSuggestio
     .filter((w) => w.length > 3);
 
   const scored = places.map((p) => {
-    let score = Number(p.averageRating ?? 0);
+    let score = poiRating(p);
     const nameLower = p.name.toLowerCase();
-    const descLower = (p.description ?? "").toLowerCase();
+    const descLower = poiDescription(p).toLowerCase();
     for (const w of words) {
       if (nameLower.includes(w) || descLower.includes(w)) score += 2;
     }
     if (styles.includes("food") && p.type === "restaurant") score += 3;
-    if (styles.includes("luxury") && p.priceRange === "$$$$") score += 2;
-    if (styles.includes("budget") && (p.priceRange === "$" || p.priceRange === "$$")) score += 2;
+    if (styles.includes("luxury") && poiPriceRange(p) === "$$$$") score += 2;
+    if (styles.includes("budget") && (poiPriceRange(p) === "$" || poiPriceRange(p) === "$$")) score += 2;
     if (styles.includes("culture") && p.type === "attraction") score += 2;
     if (styles.includes("adventure") && p.type === "attraction") score += 1;
     return { place: p, score };
@@ -135,10 +147,28 @@ export async function generateTripCopilotPlan(
   prompt: string,
 ): Promise<CopilotResult> {
   const city = destination.split(",")[0]?.trim() || destination;
-  const places = await storage.getPlaces({ search: city, limit: 40 });
+  const { searchMapPois, ensureCatalogPlaceId } = await import("../geo/map-pois");
+  const places = await searchMapPois(storage, { q: city });
 
   const aiSuggestions = await suggestFromOpenAI(`${destination}. ${prompt}`, places);
-  const suggestions = aiSuggestions?.length ? aiSuggestions : heuristicSuggestions(prompt, places);
+  const rawSuggestions = aiSuggestions?.length
+    ? aiSuggestions
+    : heuristicSuggestions(prompt, places);
+
+  const suggestions: CopilotSuggestion[] = [];
+  for (const s of rawSuggestions) {
+    const source = places.find((p) => p.id === s.placeId);
+    const resolvedId = await ensureCatalogPlaceId(storage, {
+      id: s.placeId,
+      name: s.name,
+      latitude: source?.latitude,
+      longitude: source?.longitude,
+      type: source?.type ?? s.type,
+      address: source?.address,
+    });
+    if (!resolvedId) continue;
+    suggestions.push({ ...s, placeId: resolvedId });
+  }
 
   const styleNote = detectStyles(prompt).length
     ? ` Стиль: ${detectStyles(prompt).join(", ")}.`

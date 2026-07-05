@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import ActivityRings from "@/components/ait/ActivityRings";
 import { useAitClaimQuest, useAitDashboard, useAitSpend } from "@/hooks/useAit";
 import { useToast } from "@/hooks/use-toast";
-import { Gift, ShoppingBag, TrendingUp, Flame } from "lucide-react";
+import { ShoppingBag, TrendingUp, Flame } from "lucide-react";
 import CreatorSpotlight from "@/components/ait/CreatorSpotlight";
 import CreatorFundCard from "@/components/ait/CreatorFundCard";
 import ReferralCard from "@/components/ait/ReferralCard";

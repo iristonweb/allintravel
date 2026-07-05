@@ -18,6 +18,7 @@ import FollowButton from "@/components/social/FollowButton";
 import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import EmptyState from "@/components/empty-state";
+import PageMeta from "@/components/seo/PageMeta";
 
 type PublicUserView = {
   id: string;
@@ -54,6 +55,16 @@ export function UserPublicProfile() {
   const { data: profile } = useQuery<UserProfile | null>({
     queryKey: [`/api/profile/${publicUser?.id}`],
     enabled: !!publicUser?.id,
+  });
+
+  const { data: passportShare } = useQuery<{
+    displayName: string;
+    countriesCount: number;
+    stamps: unknown[];
+    profileImageUrl: string | null;
+  }>({
+    queryKey: [`/api/passport/public/${username}`],
+    enabled: username.length >= 3,
   });
 
   const sendRequestMutation = useMutation({
@@ -112,6 +123,13 @@ export function UserPublicProfile() {
 
   return (
     <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
+      {passportShare && (
+        <PageMeta
+          title={`${passportShare.displayName} — Travel Passport | All In Travel`}
+          description={`${passportShare.countriesCount} стран · ${passportShare.stamps?.length ?? 0} штампов. Паспорт путешественника на All In Travel.`}
+          path={`/u/${username}`}
+        />
+      )}
       <AppBreadcrumbs items={[{ label: "Профиль", href: "/profile" }, { label: displayLabel }]} />
       <GlassCard className="p-6">
         <div className="flex gap-4 items-start">
