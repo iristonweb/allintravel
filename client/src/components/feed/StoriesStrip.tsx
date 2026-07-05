@@ -47,13 +47,14 @@ export default function StoriesStrip({
             <button
               type="button"
               onClick={onCreateClick}
-              className="flex flex-col items-center gap-2 group w-[68px] sm:w-[72px]"
+              className="flex flex-col items-center gap-2 group w-[56px] sm:w-[60px]"
             >
               <motion.div className="relative" {...scaleTap}>
                 <AitAvatarRing
                   src={yourStoryAvatar.src}
                   fallback={yourStoryAvatar.fallback}
                   size="lg"
+                  shape="story"
                   active={false}
                 />
                 <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full ait-btn-glow border-2 border-background">
@@ -73,13 +74,14 @@ export default function StoriesStrip({
             type="button"
             variants={staggerItem}
             onClick={() => onItemClick?.(item)}
-            className="snap-start shrink-0 flex flex-col items-center gap-2 group w-[68px] sm:w-[72px] text-left"
+            className="snap-start shrink-0 flex flex-col items-center gap-2 group w-[56px] sm:w-[60px] text-left transition-colors duration-200"
           >
             <motion.div {...scaleTap}>
               <AitAvatarRing
                 src={item.avatarSrc}
                 fallback={item.fallback}
                 size="lg"
+                shape="story"
                 active={item.unviewed ?? false}
               />
             </motion.div>
@@ -104,9 +106,15 @@ export function StoriesStripCreateLink({
   avatar: { src?: string | null; fallback: string };
 }) {
   return (
-    <Link href={href} className="flex flex-col items-center gap-2 group w-[68px] sm:w-[72px]">
+    <Link href={href} className="flex flex-col items-center gap-2 group w-[56px] sm:w-[60px]">
       <motion.div className="relative" {...scaleTap}>
-        <AitAvatarRing src={avatar.src} fallback={avatar.fallback} size="lg" active={false} />
+        <AitAvatarRing
+          src={avatar.src}
+          fallback={avatar.fallback}
+          size="lg"
+          shape="story"
+          active={false}
+        />
         <div className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full ait-btn-glow border-2 border-background">
           <Plus className="h-3.5 w-3.5 text-white" />
         </div>

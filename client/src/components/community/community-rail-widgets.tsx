@@ -6,6 +6,7 @@ import RightPanelWidgets, {
   type TrendingWidgetItem,
 } from "@/components/community/RightPanelWidgets";
 import type { TravelPostWithAuthor } from "@shared/schema";
+import { DEMO_FEATURED_GUIDE, DEMO_TRENDS, isSocialFeedDemoMode } from "@/lib/demo-reels-feed";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
@@ -32,22 +33,32 @@ type CommunityRailWidgetsProps = {
 /** Data adapter: maps feed posts + API data into {@link RightPanelWidgets}. */
 export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) {
   const { t } = useTranslation();
-  const trends = useMemo(() => computeTrends(posts), [posts]);
+  const demoMode = isSocialFeedDemoMode() || posts.some((p) => p.id.startsWith("demo-"));
+
+  const trends = useMemo(() => {
+    if (demoMode) return DEMO_TRENDS;
+    const live = computeTrends(posts);
+    return live.length > 0 ? live : DEMO_TRENDS;
+  }, [posts, demoMode]);
 
   const { data: publicPosts = [] } = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", { format: "public", limit: "1" }],
+    enabled: !demoMode,
   });
   const featuredPost = publicPosts[0];
 
-  const featured: FeaturedGuideWidgetData = {
-    title:
-      featuredPost?.title ?? t("social.exploreGuides", { defaultValue: "Explore travel guides" }),
-    imageSrc: featuredPost?.images?.[0]
-      ? (resolveMediaUrl(featuredPost.images[0]) ?? COMMUNITY_TRAVEL_SRC)
-      : COMMUNITY_TRAVEL_SRC,
-    href: featuredPost ? `/post/${featuredPost.id}` : "/social-feed?format=public",
-    badgeLabel: t("social.featuredGuide", { defaultValue: "Featured Guide" }),
-  };
+  const featured: FeaturedGuideWidgetData = demoMode
+    ? DEMO_FEATURED_GUIDE
+    : {
+        title:
+          featuredPost?.title ??
+          t("social.exploreGuides", { defaultValue: "Explore travel guides" }),
+        imageSrc: featuredPost?.images?.[0]
+          ? (resolveMediaUrl(featuredPost.images[0]) ?? COMMUNITY_TRAVEL_SRC)
+          : COMMUNITY_TRAVEL_SRC,
+        href: featuredPost ? `/post/${featuredPost.id}` : "/social-feed?format=public",
+        badgeLabel: t("social.featuredGuide", { defaultValue: "Featured Guide" }),
+      };
 
   return (
     <RightPanelWidgets
@@ -56,11 +67,7 @@ export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) 
         linkLabel: t("social.openMap", { defaultValue: "Open map →" }),
         href: "/map",
       }}
-      trends={
-        trends.length
-          ? { title: t("social.trending", { defaultValue: "Trending" }), items: trends }
-          : undefined
-      }
+      trends={{ title: t("social.trending", { defaultValue: "Trending" }), items: trends }}
       featured={featured}
     />
   );

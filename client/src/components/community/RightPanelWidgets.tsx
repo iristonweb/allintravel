@@ -1,15 +1,19 @@
-import { Link } from "wouter";
 import { Globe, MapPin, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import AitSurface from "@/components/ait-ui/AitSurface";
+import TravelMapPreview from "@/components/community/TravelMapPreview";
+import { formatTrendCount } from "@/lib/demo-reels-feed";
 import { staggerContainer, staggerItem } from "@/lib/ait-motion";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { Link } from "wouter";
 
 export type TrendingWidgetItem = {
   id: string;
   name: string;
   count: number;
+  flagEmoji?: string;
+  countLabel?: string;
 };
 
 export type FeaturedGuideWidgetData = {
@@ -17,6 +21,7 @@ export type FeaturedGuideWidgetData = {
   imageSrc: string;
   href: string;
   badgeLabel: string;
+  meta?: string;
 };
 
 type MapWidgetProps = {
@@ -27,38 +32,7 @@ type MapWidgetProps = {
 };
 
 export function MapWidget({ title, linkLabel, href, className }: MapWidgetProps) {
-  return (
-    <AitSurface padding="none" radius="lg" className={cn("overflow-hidden", className)} hover>
-      <div className="relative aspect-[16/10] bg-gradient-to-br from-ait-deep via-ait-navy to-ait-void">
-        <div className="absolute inset-0 opacity-40">
-          <svg viewBox="0 0 400 200" className="w-full h-full" aria-hidden>
-            <ellipse
-              cx="200"
-              cy="100"
-              rx="180"
-              ry="80"
-              fill="none"
-              stroke="rgba(139,92,246,0.3)"
-              strokeWidth="1"
-            />
-            <circle cx="120" cy="90" r="6" fill="#ff7a18" className="ait-glow-pulse" />
-            <circle cx="240" cy="70" r="4" fill="#8b5cf6" />
-            <circle cx="280" cy="120" r="5" fill="#ff7a18" />
-            <circle cx="160" cy="130" r="3" fill="#a855f7" />
-          </svg>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
-          <p className="text-sm font-semibold text-white">{title}</p>
-          <Link
-            href={href}
-            className="text-xs text-ait-purple hover:text-ait-orange transition-colors"
-          >
-            {linkLabel}
-          </Link>
-        </div>
-      </div>
-    </AitSurface>
-  );
+  return <TravelMapPreview title={title} linkLabel={linkLabel} href={href} className={className} />;
 }
 
 type TrendsWidgetProps = {
@@ -82,13 +56,21 @@ export function TrendsWidget({ title, items, className }: TrendsWidgetProps) {
             key={item.id}
             className="flex items-center justify-between gap-2 text-sm"
             whileHover={{ x: 2 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.2 }}
           >
             <span className="flex items-center gap-2 min-w-0 text-slate-200 truncate">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-ait-purple" />
+              {item.flagEmoji ? (
+                <span className="text-base shrink-0" aria-hidden>
+                  {item.flagEmoji}
+                </span>
+              ) : (
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-ait-purple" />
+              )}
               {item.name}
             </span>
-            <span className="text-xs text-muted-foreground shrink-0">{item.count}</span>
+            <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+              {item.countLabel ?? formatTrendCount(item.count)}
+            </span>
           </motion.li>
         ))}
       </ul>
@@ -112,14 +94,15 @@ export function FeaturedGuideWidget({ data, className }: FeaturedGuideWidgetProp
         className={cn("overflow-hidden block", className)}
       >
         <div className="relative aspect-[4/3]">
-          <img src={data.imageSrc} alt="" className="w-full h-full object-cover" />
+          <img src={data.imageSrc} alt="" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-4">
-            <div className="flex items-center gap-1.5 text-ait-orange text-xs font-bold uppercase mb-1">
+            <div className="flex items-center gap-1.5 text-ait-orange text-xs font-bold uppercase tracking-wider mb-1">
               <Globe className="h-3.5 w-3.5" />
               {data.badgeLabel}
             </div>
             <p className="text-white font-semibold line-clamp-2">{data.title}</p>
+            {data.meta && <p className="text-xs text-white/70 mt-1">{data.meta}</p>}
           </div>
         </div>
       </AitSurface>

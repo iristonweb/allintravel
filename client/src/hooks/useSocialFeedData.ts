@@ -5,6 +5,12 @@ import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import type { PostFormat } from "@shared/post-formats";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import type { SocialContentFormat } from "@/hooks/useSocialFeedParams";
+import {
+  DEMO_STATS,
+  getDemoStoryPosts,
+  isSocialFeedDemoMode,
+  resolveDemoPosts,
+} from "@/lib/demo-reels-feed";
 
 export type PostsQueryParams = Record<string, string>;
 
@@ -48,7 +54,8 @@ export function useSocialFeedPosts({
   });
 
   const displayedPosts = useMemo(() => {
-    const posts = query.data ?? [];
+    const raw = query.data ?? [];
+    const posts = resolveDemoPosts(raw, contentFormat);
     if (contentFormat === "public") return posts;
     return filterPostsForFeedMode(posts, feedMode, {
       userLat,
@@ -56,8 +63,13 @@ export function useSocialFeedPosts({
     });
   }, [query.data, feedMode, userLat, userLon, contentFormat]);
 
+  const posts = useMemo(
+    () => resolveDemoPosts(query.data ?? [], contentFormat),
+    [query.data, contentFormat],
+  );
+
   return {
-    posts: query.data ?? [],
+    posts,
     displayedPosts,
     isLoading: query.isLoading,
     isError: query.isError,
@@ -67,10 +79,18 @@ export function useSocialFeedPosts({
 }
 
 export function useStoryPosts(enabled: boolean) {
-  return useQuery<TravelPostWithAuthor[]>({
+  const query = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", { format: "story", limit: "24" }],
     enabled,
   });
+
+  const data = useMemo(() => {
+    const api = query.data ?? [];
+    if (isSocialFeedDemoMode() || api.length === 0) return getDemoStoryPosts();
+    return api;
+  }, [query.data]);
+
+  return { ...query, data };
 }
 
 export function useReelsCount(enabled: boolean) {
@@ -78,8 +98,13 @@ export function useReelsCount(enabled: boolean) {
     queryKey: ["/api/posts", { format: "reel", limit: "100" }],
     enabled,
   });
+  const reelsCount = useMemo(() => {
+    if (isSocialFeedDemoMode()) return 89000;
+    return query.data?.length ?? 0;
+  }, [query.data]);
   return {
-    reelsCount: query.data?.length ?? 0,
+    reelsCount,
+    displayReelsCount: isSocialFeedDemoMode() ? DEMO_STATS.reels : undefined,
     isLoading: query.isLoading,
   };
 }

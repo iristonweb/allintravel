@@ -286,7 +286,7 @@ export default function ReelCard({
       </div>
 
       <motion.div
-        className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 sm:p-4 pr-14 sm:pr-20 pb-4 sm:pb-5 pointer-events-none"
+        className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 sm:p-4 pr-14 sm:pr-20 pb-4 sm:pb-5 pointer-events-none"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: isActive ? 1 : 0.85, y: 0 }}
         transition={{ duration: 0.3 }}

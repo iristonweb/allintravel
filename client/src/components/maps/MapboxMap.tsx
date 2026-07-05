@@ -20,6 +20,7 @@ type MapboxMapProps = {
   showDestinationPin?: boolean;
   /** Road geometry from Yandex Router [lng, lat] */
   routeGeometry?: [number, number][];
+  compact?: boolean;
 };
 
 const DEMO_ROUTES = demoRoutesMapbox();
@@ -42,6 +43,7 @@ export default function MapboxMap({
   mapFocus,
   showDestinationPin,
   routeGeometry,
+  compact,
 }: MapboxMapProps) {
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,13 +64,24 @@ export default function MapboxMap({
       container: containerRef.current,
       style: "mapbox://styles/mapbox/satellite-streets-v12",
       center: [10, 30],
-      zoom: 1.6,
-      pitch: 28,
-      bearing: -12,
+      zoom: compact ? 1.2 : 1.6,
+      pitch: compact ? 0 : 28,
+      bearing: compact ? 0 : -12,
       antialias: true,
+      interactive: !compact,
     });
 
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
+    if (!compact) {
+      map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), "top-right");
+    } else {
+      map.scrollZoom.disable();
+      map.boxZoom.disable();
+      map.dragRotate.disable();
+      map.dragPan.disable();
+      map.keyboard.disable();
+      map.doubleClickZoom.disable();
+      map.touchZoomRotate.disable();
+    }
     mapRef.current = map;
 
     map.on("load", () => {
@@ -115,7 +128,7 @@ export default function MapboxMap({
       mapRef.current = null;
       setReady(false);
     };
-  }, [token]);
+  }, [token, compact]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -226,7 +239,10 @@ export default function MapboxMap({
 
   if (!token) {
     return (
-      <div className={cn("relative", className)} style={{ height }}>
+      <div
+        className={cn("relative", className)}
+        style={{ height, minHeight: compact ? 0 : undefined }}
+      >
         <PlaceMap
           places={validPlaces}
           height={height}
@@ -238,10 +254,12 @@ export default function MapboxMap({
           onPlaceClick={onPlaceClick}
           className="h-full rounded-none border-0"
         />
-        <div className="absolute bottom-4 left-4 z-[1000] ait-glass rounded-xl px-3 py-2 text-xs text-muted-foreground max-w-xs">
-          Добавьте <code className="text-ait-purple">VITE_MAPBOX_TOKEN</code> для спутниковой карты
-          Mapbox
-        </div>
+        {!compact && (
+          <div className="absolute bottom-4 left-4 z-[1000] ait-glass rounded-xl px-3 py-2 text-xs text-muted-foreground max-w-xs">
+            Добавьте <code className="text-ait-purple">VITE_MAPBOX_TOKEN</code> для спутниковой
+            карты Mapbox
+          </div>
+        )}
       </div>
     );
   }
@@ -250,7 +268,7 @@ export default function MapboxMap({
     <div
       ref={containerRef}
       className={cn("w-full", className)}
-      style={{ height, minHeight: 400 }}
+      style={{ height, minHeight: compact ? 0 : 400 }}
     />
   );
 }

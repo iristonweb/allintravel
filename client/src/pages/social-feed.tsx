@@ -22,12 +22,15 @@ import ReelsRightRail from "@/components/community/ReelsRightRail";
 import CommunityStatsRow from "@/components/community/CommunityStatsRow";
 import MobileRightRailSheet from "@/components/layout/mobile-right-rail-sheet";
 import StoriesStrip, { StoriesStripCreateLink } from "@/components/feed/StoriesStrip";
+import StoriesStripSkeleton from "@/components/feed/StoriesStripSkeleton";
+import CommunityWidgetsSkeleton from "@/components/community/CommunityWidgetsSkeleton";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import {
   groupStories,
   mapStoryGroupsToStripItems,
   storyGroupsByUserId,
 } from "@/lib/stories-strip-mapper";
+import { getDemoStoryStripItems, isSocialFeedDemoMode, DEMO_STATS } from "@/lib/demo-reels-feed";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitFilterPills from "@/components/ait-ui/AitFilterPills";
@@ -162,8 +165,8 @@ export function SocialFeed() {
     userLon: userCoords?.lon,
   });
 
-  const { data: storyPosts = [] } = useStoryPosts(isAuthenticated);
-  const { reelsCount } = useReelsCount(isAuthenticated);
+  const { data: storyPosts = [], isLoading: storiesLoading } = useStoryPosts(isAuthenticated);
+  const { reelsCount, displayReelsCount } = useReelsCount(isAuthenticated);
   const { bookmarkedSet } = useBookmarks(isAuthenticated);
   const { createPostMutation, likePostMutation, commentMutation, toggleBookmarkMutation } =
     useSocialFeedMutations(bookmarkedSet);
@@ -298,16 +301,25 @@ export function SocialFeed() {
           ? t("social.composer.journal")
           : t("social.composer.feed");
 
+  const demoMode = isSocialFeedDemoMode();
+  const showMarketingReels = demoMode || displayedPosts.some((p) => p.id.startsWith("demo-reel"));
   const headerMeta = FORMAT_HEADER_KEYS[contentFormat];
-  const rightRail =
-    contentFormat === "reels" ? (
-      <ReelsRightRail posts={displayedPosts} />
-    ) : (
-      <CommunityRightRail posts={displayedPosts} />
-    );
+  const rightRailLoading = isLoading && !demoMode && contentFormat === "reels";
+  const rightRail = rightRailLoading ? (
+    <CommunityWidgetsSkeleton />
+  ) : contentFormat === "reels" ? (
+    <ReelsRightRail posts={displayedPosts} />
+  ) : (
+    <CommunityRightRail posts={displayedPosts} />
+  );
 
   const storyGroups = useMemo(() => groupStories(storyPosts), [storyPosts]);
-  const storyStripItems = useMemo(() => mapStoryGroupsToStripItems(storyGroups), [storyGroups]);
+  const storyStripItems = useMemo(() => {
+    if (demoMode || storyPosts.some((p) => p.id.startsWith("demo-story"))) {
+      return getDemoStoryStripItems();
+    }
+    return mapStoryGroupsToStripItems(storyGroups);
+  }, [storyGroups, storyPosts, demoMode]);
   const storyGroupsById = useMemo(() => storyGroupsByUserId(storyGroups), [storyGroups]);
   const userStoryFallback =
     `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.trim() || "?";
@@ -350,28 +362,38 @@ export function SocialFeed() {
             }
           />
         }
-        stats={<CommunityStatsRow reelsCount={reelsCount} />}
+        stats={
+          <CommunityStatsRow
+            reelsCount={reelsCount}
+            displayReelsCount={showMarketingReels ? DEMO_STATS.reels : displayReelsCount}
+            useMarketingStats={showMarketingReels}
+          />
+        }
         stories={
           <>
             <MobileRightRailSheet title={t("social.widgets", { defaultValue: "Discover" })}>
               {rightRail}
             </MobileRightRailSheet>
-            <StoriesStrip
-              createLabel={t("social.stories.yourStory", { defaultValue: "Your story" })}
-              yourStoryAvatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
-              items={storyStripItems}
-              createAction={
-                <StoriesStripCreateLink
-                  href="/social-feed?format=stories&create=1"
-                  label={t("social.stories.yourStory", { defaultValue: "Your story" })}
-                  avatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
-                />
-              }
-              onItemClick={(item) => {
-                const group = storyGroupsById.get(item.id);
-                if (group) setStoryView({ posts: group.posts, index: 0 });
-              }}
-            />
+            {storiesLoading && !demoMode ? (
+              <StoriesStripSkeleton />
+            ) : (
+              <StoriesStrip
+                createLabel={t("social.stories.yourStory", { defaultValue: "Your story" })}
+                yourStoryAvatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
+                items={storyStripItems}
+                createAction={
+                  <StoriesStripCreateLink
+                    href="/social-feed?format=stories&create=1"
+                    label={t("social.stories.yourStory", { defaultValue: "Your story" })}
+                    avatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
+                  />
+                }
+                onItemClick={(item) => {
+                  const group = storyGroupsById.get(item.id);
+                  if (group) setStoryView({ posts: group.posts, index: 0 });
+                }}
+              />
+            )}
           </>
         }
         tabs={

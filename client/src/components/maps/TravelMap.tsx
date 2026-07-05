@@ -14,6 +14,8 @@ type TravelMapProps = {
   mapFocus?: MapFocus | null;
   showDestinationPin?: boolean;
   routeGeometry?: [number, number][];
+  /** Preview tile: fixed height, no pan/zoom, hidden controls */
+  compact?: boolean;
 };
 
 function mapProvider(): "yandex" | "mapbox" | "leaflet" {

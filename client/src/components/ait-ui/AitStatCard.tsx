@@ -18,7 +18,12 @@ export default function AitStatCard({
   className,
 }: AitStatCardProps) {
   return (
-    <AitSurface padding="sm" radius="lg" hover className={cn("text-center min-w-0", className)}>
+    <AitSurface
+      padding="sm"
+      radius="lg"
+      hover
+      className={cn("text-center min-w-0 transition-all duration-200", className)}
+    >
       {Icon && (
         <div
           className={cn(

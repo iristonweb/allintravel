@@ -19,6 +19,7 @@ type YandexMapProps = {
   onPlaceClick?: (place: YandexPlace) => void;
   /** Road geometry from Yandex Router API as [lng, lat] pairs */
   routeGeometry?: [number, number][];
+  compact?: boolean;
 };
 
 function resolveInitialView(
@@ -70,6 +71,7 @@ export default function YandexMap({
   showDestinationPin,
   onPlaceClick,
   routeGeometry,
+  compact,
 }: YandexMapProps) {
   const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY as string | undefined;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,8 +101,8 @@ export default function YandexMap({
           containerRef.current,
           {
             center,
-            zoom,
-            controls: ["zoomControl", "fullscreenControl"],
+            zoom: compact ? 2 : zoom,
+            controls: compact ? [] : ["zoomControl", "fullscreenControl"],
             type: "yandex#satellite",
           },
           {
@@ -108,6 +110,10 @@ export default function YandexMap({
             yandexMapDisablePoiInteractivity: true,
           },
         );
+
+        if (compact) {
+          map.behaviors.disable(["drag", "scrollZoom", "dblClickZoom", "multiTouch"]);
+        }
 
         mapRef.current = map;
       })
@@ -305,7 +311,7 @@ export default function YandexMap({
     <div
       ref={containerRef}
       className={cn("w-full overflow-hidden bg-[#050816]", className)}
-      style={{ height, minHeight: 400 }}
+      style={{ height, minHeight: compact ? 0 : 400 }}
     />
   );
 }

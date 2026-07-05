@@ -3,10 +3,13 @@ import { Film, Globe, MapPin, Star, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import AitStatCard from "@/components/ait-ui/AitStatCard";
 import { staggerContainer, staggerItem } from "@/lib/ait-motion";
+import { DEMO_STATS } from "@/lib/demo-reels-feed";
 import { useTranslation } from "react-i18next";
 
 type CommunityStatsRowProps = {
   reelsCount?: number;
+  displayReelsCount?: string;
+  useMarketingStats?: boolean;
 };
 
 function formatReelsCount(count: number): string {
@@ -14,46 +17,61 @@ function formatReelsCount(count: number): string {
   return String(count);
 }
 
-export default function CommunityStatsRow({ reelsCount = 0 }: CommunityStatsRowProps) {
+export default function CommunityStatsRow({
+  reelsCount = 0,
+  displayReelsCount,
+  useMarketingStats = false,
+}: CommunityStatsRowProps) {
   const { t } = useTranslation();
 
   const stats = useMemo(
     () => [
       {
-        value: "196",
+        value: DEMO_STATS.countries,
         label: t("marketing.stats.countries", { defaultValue: "Countries" }),
         icon: Globe,
       },
       {
-        value: "25K+",
+        value: useMarketingStats ? DEMO_STATS.places : "42K",
         label: t("marketing.stats.places", { defaultValue: "Places" }),
         icon: MapPin,
       },
       {
-        value: "1.2M",
+        value: DEMO_STATS.travelers,
         label: t("marketing.stats.travelers", { defaultValue: "Travelers" }),
         icon: Users,
       },
       {
-        value: formatReelsCount(reelsCount),
+        value:
+          displayReelsCount ??
+          (useMarketingStats ? DEMO_STATS.reels : formatReelsCount(reelsCount)),
         label: t("marketing.stats.reels", { defaultValue: "Reels" }),
         icon: Film,
       },
-      { value: "4.9", label: t("marketing.stats.rating", { defaultValue: "Rating" }), icon: Star },
+      {
+        value: DEMO_STATS.rating,
+        label: t("marketing.stats.rating", { defaultValue: "Rating" }),
+        icon: Star,
+      },
     ],
-    [t, reelsCount],
+    [t, reelsCount, displayReelsCount, useMarketingStats],
   );
 
   return (
     <motion.div
-      className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 mb-section"
+      className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-section"
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
     >
       {stats.map((s) => (
-        <motion.div key={s.label} variants={staggerItem}>
-          <AitStatCard value={s.value} label={s.label} icon={s.icon} />
+        <motion.div key={s.label} variants={staggerItem} className="min-h-[88px]">
+          <AitStatCard
+            value={s.value}
+            label={s.label}
+            icon={s.icon}
+            className="h-full min-h-[88px]"
+          />
         </motion.div>
       ))}
     </motion.div>
