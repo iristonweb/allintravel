@@ -114,7 +114,8 @@ npm run geo:import
 | `YANDEX_GEOSUGGEST_API_KEY` | нет | Геосаджест (подсказки) |
 | `YANDEX_GEOCODER_API_KEY` | нет | HTTP Геокодер |
 | `YANDEX_ROUTER_API_KEY` | нет | Маршрутизация (поездки) |
-| `BLOB_READ_WRITE_TOKEN` | нет (Vercel) | Vercel Blob — постоянные загрузки (аватар, медиа) |
+| `ADMIN_EMAILS` | да (prod) | Список email админов через запятую, напр. `iristonweb@gmail.com` — доступ к `/admin` |
+| `BLOB_READ_WRITE_TOKEN` | да (Vercel) | Vercel Blob — постоянные загрузки (аватар, медиа). **Без Blob публикация в ленте на production не работает.** |
 | `BLOB_STORE_ID` | нет (Vercel) | OIDC-доступ к Blob store |
 | `BLOB_ACCESS` | нет | `public` или `private` для Blob store |
 

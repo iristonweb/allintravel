@@ -52,10 +52,10 @@ export default function ReelsPageLayout({
   return (
     <div className={cn("space-y-section", className)}>
       {header && <AnimatedSlot delay={0}>{header}</AnimatedSlot>}
-      {stats && <AnimatedSlot delay={0.05}>{stats}</AnimatedSlot>}
-      {stories && <AnimatedSlot delay={0.1}>{stories}</AnimatedSlot>}
-      {tabs && <AnimatedSlot delay={0.14}>{tabs}</AnimatedSlot>}
-      {filters && <AnimatedSlot delay={0.18}>{filters}</AnimatedSlot>}
+      {filters && <AnimatedSlot delay={0.04}>{filters}</AnimatedSlot>}
+      {stats && <AnimatedSlot delay={0.08}>{stats}</AnimatedSlot>}
+      {stories && <AnimatedSlot delay={0.12}>{stories}</AnimatedSlot>}
+      {tabs && <AnimatedSlot delay={0.16}>{tabs}</AnimatedSlot>}
       {toolbar && <AnimatedSlot delay={0.2}>{toolbar}</AnimatedSlot>}
       {composer && <AnimatedSlot delay={0.22}>{composer}</AnimatedSlot>}
       <AnimatedSlot delay={0.26} className="min-h-0">

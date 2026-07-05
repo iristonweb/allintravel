@@ -371,11 +371,94 @@ export function getDemoStoryStripItems(): StoryStripItem[] {
     return {
       id: author.id,
       label: author.handle,
-      avatarSrc: image ?? author.avatar,
+      avatarSrc: author.avatar,
+      previewSrc: image ?? author.avatar,
       fallback: author.firstName[0] ?? "?",
       unviewed,
     };
   });
+}
+
+const DEMO_ALEXEI: DemoAuthor = {
+  id: "demo-alexei",
+  handle: "@alexei.north",
+  firstName: "Алексей",
+  lastName: "К.",
+  avatar: "https://i.pravatar.cc/150?img=11",
+  isPro: true,
+};
+
+export function getDemoFeedPosts(): TravelPostWithAuthor[] {
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const weekAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+
+  return [
+    withAuthor(
+      basePost({
+        id: "demo-feed-1",
+        format: "post",
+        userId: DEMO_ALEXEI.id,
+        title: "Северное сияние в Исландии — это магия!",
+        content:
+          "Три ночи охоты за aurora окупились этим кадром. Делюсь маршрутом и лучшими точками вокруг Рейкьявика — сохраняйте в закладки!",
+        location: "Исландия",
+        images: [DEST_ICELAND_SRC, DEST_NORWAY_SRC, DEST_ICELAND_SRC, DEST_NORWAY_SRC],
+        likesCount: 4820,
+        commentsCount: 312,
+        tags: ["исландия", "aurora", "природа"],
+        createdAt: twoDaysAgo,
+        updatedAt: twoDaysAgo,
+      }),
+      DEMO_ALEXEI,
+    ),
+    withAuthor(
+      basePost({
+        id: "demo-feed-2",
+        format: "post",
+        userId: DEMO_AUTHORS[0]!.id,
+        title: "Уличная еда в Осаке",
+        content:
+          "Dotonbori вечером — лучший гастротур за один вечер. Топ-5 ларьков оставлю в комментариях.",
+        location: "Япония",
+        images: [DEST_JAPAN_SRC, DEST_JAPAN_SRC],
+        likesCount: 2190,
+        commentsCount: 94,
+        tags: ["япония", "еда"],
+        createdAt: weekAgo,
+        updatedAt: weekAgo,
+      }),
+      DEMO_AUTHORS[0]!,
+    ),
+  ];
+}
+
+export function getDemoJournalPosts(): TravelPostWithAuthor[] {
+  const monthAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+  return [
+    withAuthor(
+      basePost({
+        id: "demo-journal-1",
+        format: "journal",
+        userId: DEMO_AUTHORS[3]!.id,
+        title: "Две недели по Амальфитанскому побережью",
+        content:
+          "Путешествие началось в Сорренто — идеальная база для поездок по побережью. " +
+          "Первые три дня мы исследовали Позитано и Равелло, наслаждаясь видами с террас. " +
+          "День четвёртый посвятили катеру до Капри: Голубой грот оказался главным открытием. " +
+          "В Амальфи обязательно зайдите в Duomo и попробуйте лимончелло у порта. " +
+          "Совет: бронируйте парковки заранее, узкие дороги не прощают опозданий.",
+        location: "Италия, Амальфи",
+        images: [DEST_ITALY_SRC, DEST_ITALY_SRC],
+        likesCount: 890,
+        commentsCount: 64,
+        tags: ["италия", "амальфи", "журнал"],
+        isPublic: true,
+        createdAt: monthAgo,
+        updatedAt: monthAgo,
+      }),
+      DEMO_AUTHORS[3]!,
+    ),
+  ];
 }
 
 export function shouldUseDemoFeed(
@@ -383,7 +466,12 @@ export function shouldUseDemoFeed(
   contentFormat: "feed" | "stories" | "reels" | "journals" | "public",
 ): boolean {
   if (isSocialFeedDemoMode()) return contentFormat !== "public";
-  if (contentFormat === "reels" || contentFormat === "stories") {
+  if (
+    contentFormat === "reels" ||
+    contentFormat === "stories" ||
+    contentFormat === "feed" ||
+    contentFormat === "journals"
+  ) {
     return apiPosts.length === 0;
   }
   return false;
@@ -396,5 +484,7 @@ export function resolveDemoPosts(
   if (!shouldUseDemoFeed(apiPosts, contentFormat)) return apiPosts;
   if (contentFormat === "reels") return getDemoReelPosts();
   if (contentFormat === "stories") return getDemoStoryPosts();
+  if (contentFormat === "feed") return getDemoFeedPosts();
+  if (contentFormat === "journals") return getDemoJournalPosts();
   return apiPosts;
 }

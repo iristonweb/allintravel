@@ -55,6 +55,12 @@ function isPrivateStoreError(message: string): boolean {
   return /private store|private access/i.test(message);
 }
 
+export function getBlobAccessMode(): "public" | "private" {
+  const accessEnv = process.env.BLOB_ACCESS?.trim().toLowerCase();
+  if (accessEnv === "private") return "private";
+  return "public";
+}
+
 /** Vercel Blob via static token or OIDC (BLOB_STORE_ID + token on deploy). */
 export function hasBlobStorage(): boolean {
   if (process.env.BLOB_READ_WRITE_TOKEN?.trim()) return true;

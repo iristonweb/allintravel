@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import GlassCard from "@/components/brand/glass-card";
@@ -44,12 +44,38 @@ import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { uploadUserAvatar } from "@/lib/upload-media";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
+import { notifyUrlSearchChange } from "@/hooks/useUrlSearch";
+
+const PROFILE_TABS = ["posts", "trips", "reviews", "favorites"] as const;
+type ProfileTab = (typeof PROFILE_TABS)[number];
+
+function profileTabFromSearch(search: string): ProfileTab {
+  const tab = new URLSearchParams(search).get("tab");
+  return PROFILE_TABS.includes(tab as ProfileTab) ? (tab as ProfileTab) : "posts";
+}
 
 export function ProfileEdit() {
+  const searchString = useSearch();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => profileTabFromSearch(searchString));
+
+  useEffect(() => {
+    setActiveTab(profileTabFromSearch(searchString));
+  }, [searchString]);
+
+  const handleProfileTabChange = (tab: string) => {
+    const next = tab as ProfileTab;
+    setActiveTab(next);
+    const url = new URL(window.location.href);
+    if (next === "posts") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
+    const search = url.searchParams.toString();
+    window.history.replaceState({}, "", url.pathname + (search ? `?${search}` : ""));
+    notifyUrlSearchChange();
+  };
 
   const avatarUploadMutation = useMutation({
     mutationFn: (file: File) => uploadUserAvatar(file),
@@ -482,7 +508,7 @@ export function ProfileEdit() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="posts" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleProfileTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="posts">Посты</TabsTrigger>
             <TabsTrigger value="trips">Поездки</TabsTrigger>

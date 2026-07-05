@@ -16,7 +16,8 @@ export function useAuth() {
     queryKey: ["/api/auth/user"],
     queryFn: fetchAuthUser,
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    staleTime: 60_000,
   });
 
   return {

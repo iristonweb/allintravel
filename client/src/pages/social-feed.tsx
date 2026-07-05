@@ -1,17 +1,18 @@
 import { useState, useMemo, useEffect } from "react";
-import { type FeedMode } from "@/lib/feed-utils";
+import { type FeedMode, sortPostsByFeedSort } from "@/lib/feed-utils";
 import AppLayout from "@/components/app-layout";
 import { Badge } from "@/components/ui/badge";
-import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { TravelPostWithAuthor } from "@shared/schema";
-import { uploadMediaFile } from "@/lib/upload-media";
+import { uploadMediaFile, isVideoFile, SERVER_UPLOAD_MAX_BYTES } from "@/lib/upload-media";
+import { formatApiErrorDescription, isApiError } from "@/lib/api-error";
 import type { PostFormat } from "@shared/post-formats";
 import StoryViewer from "@/components/feed/StoryViewer";
 import SocialFormatTabs from "@/components/social/SocialFormatTabs";
+import FeedSortTabs from "@/components/social/FeedSortTabs";
 import SocialComposer, { type SocialNewPostDraft } from "@/components/social/SocialComposer";
 import SocialFeedList from "@/components/social/SocialFeedList";
 import { type SocialContentFormat } from "@/hooks/useSocialFeedParams";
@@ -30,7 +31,11 @@ import {
   mapStoryGroupsToStripItems,
   storyGroupsByUserId,
 } from "@/lib/stories-strip-mapper";
-import { getDemoStoryStripItems, isSocialFeedDemoMode, DEMO_STATS } from "@/lib/demo-reels-feed";
+import {
+  getDemoStoryStripItems,
+  getDemoStoryPosts,
+  isSocialFeedDemoMode,
+} from "@/lib/demo-reels-feed";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitFilterPills from "@/components/ait-ui/AitFilterPills";
@@ -68,7 +73,12 @@ const FORMAT_HEADER_KEYS: Record<
   SocialContentFormat,
   { titleKey: string; descriptionKey: string; titleDefault?: string; descriptionDefault?: string }
 > = {
-  feed: { titleKey: "nav.communityHub", descriptionKey: "social.subtitle" },
+  feed: {
+    titleKey: "social.communityTitle",
+    descriptionKey: "social.communityTagline",
+    titleDefault: "Travelers community",
+    descriptionDefault: "GET INSPIRED • SHARE • PLAN",
+  },
   stories: {
     titleKey: "social.formats.stories",
     descriptionKey: "social.headers.stories.subtitle",
@@ -114,11 +124,10 @@ export function SocialFeed() {
     isCreating,
     setIsCreating,
     reelsFilterPills,
-    feedModeTabs,
-    showFeedModeTabs,
-    showReelsFilterPills,
     showComposer,
     createHref,
+    feedSort,
+    setFeedSort,
   } = useSocialFeedTabs({
     isAuthenticated,
     onFormatChange: () => {
@@ -166,7 +175,7 @@ export function SocialFeed() {
   });
 
   const { data: storyPosts = [], isLoading: storiesLoading } = useStoryPosts(isAuthenticated);
-  const { reelsCount, displayReelsCount } = useReelsCount(isAuthenticated);
+  const { reelsCount } = useReelsCount(isAuthenticated);
   const { bookmarkedSet } = useBookmarks(isAuthenticated);
   const { createPostMutation, likePostMutation, commentMutation, toggleBookmarkMutation } =
     useSocialFeedMutations(bookmarkedSet);
@@ -206,13 +215,32 @@ export function SocialFeed() {
       setNewPost(EMPTY_DRAFT);
     };
     const onError = (err: Error) => {
-      const msg = err?.message ?? "";
-      const description = msg.includes("401")
-        ? t("social.toasts.signInRequired")
-        : msg.includes("5")
-          ? t("social.toasts.serverError")
-          : t("social.toasts.publishFailed");
-      toast({ title: t("social.toasts.publishErrorTitle"), description, variant: "destructive" });
+      if (isApiError(err)) {
+        if (err.status === 401 || err.message === "Unauthorized") {
+          toast({
+            title: t("social.toasts.signInRequired"),
+            variant: "destructive",
+          });
+          return;
+        }
+        const description =
+          err.status === 400 && err.errors?.length
+            ? formatApiErrorDescription(err)
+            : err.status >= 500
+              ? err.message || t("social.toasts.serverError")
+              : err.message || t("social.toasts.publishFailed");
+        toast({
+          title: t("social.toasts.publishErrorTitle"),
+          description,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: t("social.toasts.publishErrorTitle"),
+        description: err.message || t("social.toasts.publishFailed"),
+        variant: "destructive",
+      });
     };
 
     if (format === "story") {
@@ -240,7 +268,7 @@ export function SocialFeed() {
     }
 
     if (format === "journal") {
-      if (!newPost.title.trim()) {
+      if (!newPost.title.trim() || newPost.title.trim().length < 2) {
         toast({ title: t("social.toasts.journalTitleRequired"), variant: "destructive" });
         return;
       }
@@ -255,7 +283,7 @@ export function SocialFeed() {
       return;
     }
 
-    if (!newPost.title.trim() || !newPost.content.trim()) {
+    if (!newPost.title.trim() || newPost.title.trim().length < 2 || !newPost.content.trim()) {
       toast({ title: t("social.toasts.postFieldsRequired"), variant: "destructive" });
       return;
     }
@@ -269,15 +297,39 @@ export function SocialFeed() {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (!files.length) return;
+
+    const validFiles: File[] = [];
+    for (const file of files) {
+      if (contentFormat === "reels" && !isVideoFile(file)) {
+        toast({ title: t("social.toasts.reelVideoRequired"), variant: "destructive" });
+        continue;
+      }
+      if (import.meta.env.PROD && file.size > SERVER_UPLOAD_MAX_BYTES) {
+        toast({
+          title: t("social.toasts.largeUploadTitle"),
+          description: t("social.toasts.largeUploadHint"),
+        });
+      }
+      validFiles.push(file);
+    }
+    if (!validFiles.length) return;
+
     setUploadingMedia(true);
     try {
       const urls: string[] = [];
-      for (const file of files) urls.push(await uploadMediaFile(file));
+      for (const file of validFiles) {
+        urls.push(await uploadMediaFile(file));
+      }
       setNewPost((prev) => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (err) {
+      const description = isApiError(err)
+        ? formatApiErrorDescription(err)
+        : err instanceof Error
+          ? err.message
+          : undefined;
       toast({
         title: t("social.toasts.uploadFailed"),
-        description: err instanceof Error ? err.message : undefined,
+        description,
         variant: "destructive",
       });
     } finally {
@@ -302,8 +354,29 @@ export function SocialFeed() {
           : t("social.composer.feed");
 
   const demoMode = isSocialFeedDemoMode();
-  const showMarketingReels = demoMode || displayedPosts.some((p) => p.id.startsWith("demo-reel"));
   const headerMeta = FORMAT_HEADER_KEYS[contentFormat];
+
+  const feedSortTabs = useMemo(
+    () => [
+      { id: "popular" as const, label: t("social.feedSort.popular", { defaultValue: "Popular" }) },
+      { id: "new" as const, label: t("social.feedSort.new", { defaultValue: "New" }) },
+      {
+        id: "discussed" as const,
+        label: t("social.feedSort.discussed", { defaultValue: "Discussed" }),
+      },
+    ],
+    [t],
+  );
+
+  const isHubView = contentFormat === "feed";
+  const showStoriesStrip = isHubView || contentFormat === "stories";
+  const showFilterPills =
+    contentFormat === "feed" || contentFormat === "reels" || contentFormat === "journals";
+
+  const feedPosts = useMemo(() => {
+    if (contentFormat !== "feed") return displayedPosts;
+    return sortPostsByFeedSort(displayedPosts, feedSort);
+  }, [contentFormat, displayedPosts, feedSort]);
   const rightRailLoading = isLoading && !demoMode && contentFormat === "reels";
   const rightRail = rightRailLoading ? (
     <CommunityWidgetsSkeleton />
@@ -363,64 +436,69 @@ export function SocialFeed() {
           />
         }
         stats={
-          <CommunityStatsRow
-            reelsCount={reelsCount}
-            displayReelsCount={showMarketingReels ? DEMO_STATS.reels : displayReelsCount}
-            useMarketingStats={showMarketingReels}
-          />
+          isHubView ? (
+            <CommunityStatsRow reelsCount={reelsCount} useMarketingStats={reelsCount === 0} />
+          ) : undefined
         }
         stories={
-          <>
+          showStoriesStrip ? (
+            <>
+              <MobileRightRailSheet title={t("social.widgets", { defaultValue: "Discover" })}>
+                {rightRail}
+              </MobileRightRailSheet>
+              {storiesLoading && !demoMode ? (
+                <StoriesStripSkeleton />
+              ) : (
+                <StoriesStrip
+                  createLabel={t("social.stories.yourStory", { defaultValue: "Your story" })}
+                  yourStoryAvatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
+                  items={storyStripItems}
+                  createAction={
+                    <StoriesStripCreateLink
+                      href="/social-feed?format=stories&create=1"
+                      label={t("social.stories.yourStory", { defaultValue: "Your story" })}
+                      avatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
+                    />
+                  }
+                  onItemClick={(item) => {
+                    const group = storyGroupsById.get(item.id);
+                    if (group) {
+                      setStoryView({ posts: group.posts, index: 0 });
+                      return;
+                    }
+                    const demoPosts = getDemoStoryPosts().filter((p) => p.userId === item.id);
+                    if (demoPosts.length) setStoryView({ posts: demoPosts, index: 0 });
+                  }}
+                />
+              )}
+            </>
+          ) : (
             <MobileRightRailSheet title={t("social.widgets", { defaultValue: "Discover" })}>
               {rightRail}
             </MobileRightRailSheet>
-            {storiesLoading && !demoMode ? (
-              <StoriesStripSkeleton />
-            ) : (
-              <StoriesStrip
-                createLabel={t("social.stories.yourStory", { defaultValue: "Your story" })}
-                yourStoryAvatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
-                items={storyStripItems}
-                createAction={
-                  <StoriesStripCreateLink
-                    href="/social-feed?format=stories&create=1"
-                    label={t("social.stories.yourStory", { defaultValue: "Your story" })}
-                    avatar={{ src: user?.profileImageUrl, fallback: userStoryFallback }}
-                  />
-                }
-                onItemClick={(item) => {
-                  const group = storyGroupsById.get(item.id);
-                  if (group) setStoryView({ posts: group.posts, index: 0 });
-                }}
-              />
-            )}
-          </>
+          )
         }
         tabs={
-          <SocialFormatTabs
-            value={contentFormat}
-            onChange={setContentFormat}
-            className="overflow-x-auto scrollbar-hide"
-          />
-        }
-        filters={
-          showReelsFilterPills ? (
-            <AitFilterPills
-              items={reelsFilterPills}
-              value={feedMode}
-              onChange={(id) => setFeedMode(id as FeedMode)}
-              className="mb-4"
+          <div className="lg:hidden">
+            <SocialFormatTabs
+              value={contentFormat}
+              onChange={setContentFormat}
+              className="overflow-x-auto scrollbar-hide"
             />
-          ) : undefined
+          </div>
         }
         toolbar={
-          showFeedModeTabs ? (
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <ChatFilterTabs
-                tabs={feedModeTabs}
+          isHubView ? (
+            <FeedSortTabs items={feedSortTabs} value={feedSort} onChange={setFeedSort} />
+          ) : undefined
+        }
+        filters={
+          showFilterPills ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <AitFilterPills
+                items={reelsFilterPills}
                 value={feedMode}
                 onChange={(id) => setFeedMode(id as FeedMode)}
-                layoutId="social-feed-mode-glider"
               />
               {activeTag && (
                 <Badge
@@ -466,7 +544,7 @@ export function SocialFeed() {
               <SocialFeedList
                 contentFormat={contentFormat}
                 feedMode={feedMode}
-                posts={displayedPosts}
+                posts={feedPosts}
                 isLoading={isLoading}
                 isError={isError}
                 error={error}

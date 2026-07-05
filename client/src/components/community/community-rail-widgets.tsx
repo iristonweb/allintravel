@@ -47,27 +47,35 @@ export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) 
   });
   const featuredPost = publicPosts[0];
 
-  const featured: FeaturedGuideWidgetData = demoMode
-    ? DEMO_FEATURED_GUIDE
-    : {
-        title:
-          featuredPost?.title ??
-          t("social.exploreGuides", { defaultValue: "Explore travel guides" }),
-        imageSrc: featuredPost?.images?.[0]
-          ? (resolveMediaUrl(featuredPost.images[0]) ?? COMMUNITY_TRAVEL_SRC)
-          : COMMUNITY_TRAVEL_SRC,
-        href: featuredPost ? `/post/${featuredPost.id}` : "/social-feed?format=public",
-        badgeLabel: t("social.featuredGuide", { defaultValue: "Featured Guide" }),
-      };
+  const featured: FeaturedGuideWidgetData =
+    featuredPost && !demoMode
+      ? {
+          title:
+            featuredPost.title ??
+            t("social.exploreGuides", { defaultValue: "Explore travel guides" }),
+          imageSrc: resolveMediaUrl(featuredPost.images?.[0]) ?? COMMUNITY_TRAVEL_SRC,
+          href: `/post/${featuredPost.id}`,
+          badgeLabel: t("social.featuredNow", { defaultValue: "Featured" }),
+          meta: featuredPost.location ?? undefined,
+        }
+      : {
+          ...DEMO_FEATURED_GUIDE,
+          badgeLabel: t("social.featuredNow", { defaultValue: "Featured" }),
+        };
 
   return (
     <RightPanelWidgets
       map={{
         title: t("social.travelMap", { defaultValue: "Travel Map" }),
-        linkLabel: t("social.openMap", { defaultValue: "Open map →" }),
+        linkLabel: t("social.openMap", { defaultValue: "View map →" }),
         href: "/map",
       }}
-      trends={{ title: t("social.trending", { defaultValue: "Trending" }), items: trends }}
+      trends={{
+        title: t("social.trending", { defaultValue: "Trends" }),
+        items: trends,
+        viewAllHref: "/social-feed?format=public",
+        viewAllLabel: t("social.viewAllTrends", { defaultValue: "View all →" }),
+      }}
       featured={featured}
     />
   );

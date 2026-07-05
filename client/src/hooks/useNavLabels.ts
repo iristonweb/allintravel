@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { NavItem } from "@/lib/nav-config";
 import {
   NAV_GROUPS,
+  COMMUNITY_SIDEBAR_ITEMS,
   MOBILE_MAIN_NAV_HREFS,
   MOBILE_ECOSYSTEM_HREFS,
   type NavGroup,
@@ -58,8 +59,15 @@ export function useNavLabels() {
       };
     });
 
+    const communitySidebarItems = COMMUNITY_SIDEBAR_ITEMS.map((item) => ({
+      ...item,
+      label: t(item.labelKey),
+      badge: item.badgeKey ? t(item.badgeKey) : undefined,
+    }));
+
     return {
       navGroups,
+      communitySidebarItems,
       guestAnchors: [
         { href: "#explore", label: t("nav.explore") },
         { href: "#community", label: t("nav.community") },

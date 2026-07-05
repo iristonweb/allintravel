@@ -39,6 +39,30 @@ export function sortPostsByTrending(posts: TravelPostWithAuthor[]): TravelPostWi
   return [...posts].sort((a, b) => engagementScore(b) - engagementScore(a));
 }
 
+export type FeedSort = "popular" | "new" | "discussed";
+
+export function feedSortFromQuery(value: string | null): FeedSort {
+  if (value === "new" || value === "discussed") return value;
+  return "popular";
+}
+
+export function sortPostsByFeedSort(
+  posts: TravelPostWithAuthor[],
+  sort: FeedSort,
+): TravelPostWithAuthor[] {
+  if (sort === "new") {
+    return [...posts].sort(
+      (a, b) =>
+        new Date(b.createdAt as string | Date).getTime() -
+        new Date(a.createdAt as string | Date).getTime(),
+    );
+  }
+  if (sort === "discussed") {
+    return [...posts].sort((a, b) => (b.commentsCount ?? 0) - (a.commentsCount ?? 0));
+  }
+  return sortPostsByPopularity(posts);
+}
+
 function haversineKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;

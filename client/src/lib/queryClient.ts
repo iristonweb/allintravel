@@ -1,5 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { emitAitGrant, extractAitGrantFromBody } from "@/lib/ait-toast";
+import { parseErrorResponse } from "@/lib/api-error";
+
+export { ApiError } from "@/lib/api-error";
 
 const API_BASE =
   (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_ORIGIN) || "";
@@ -12,15 +15,7 @@ export function toApiUrl(path: string): string {
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    let message = text;
-    try {
-      const json = JSON.parse(text) as { message?: string };
-      if (json.message) message = json.message;
-    } catch {
-      /* plain text error */
-    }
-    throw new Error(message);
+    throw await parseErrorResponse(res);
   }
 }
 

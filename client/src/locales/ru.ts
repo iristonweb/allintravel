@@ -20,7 +20,7 @@ export const ru = {
     error: "Ошибка",
   },
   search: {
-    placeholder: "Искать места, маршруты…",
+    placeholder: "Поиск мест, маршрутов, статей, пользователей…",
   },
   discovery: {
     aiHint: "Спланируйте следующее приключение с AI",
@@ -55,7 +55,16 @@ export const ru = {
     settings: "Настройки",
     logout: "Выйти",
     upgrade: "Upgrade",
+    premiumTitle: "AllInTravel Premium",
+    premiumSubscribe: "Оформить подписку",
     premiumHint: "AI-инструменты и награды",
+    guides: "Гиды",
+    routes: "Маршруты",
+    aiPlanner: "AI Planner",
+    favorites: "Избранное",
+    badges: {
+      new: "NEW",
+    },
     groups: {
       explore: "Исследовать",
       plan: "Планировать",
@@ -63,6 +72,8 @@ export const ru = {
     },
   },
   social: {
+    communityTitle: "Сообщество путешественников",
+    communityTagline: "ВДОХНОВЛЯЙСЯ • ДЕЛИСЬ • ПЛАНИРУЙ",
     subtitle: "Лента путешественников — Stories, Reels, Journals и публичные статьи",
     storiesTeaser: "Stories сообщества",
     storiesTeaserHint: "Открыть все Stories →",
@@ -74,10 +85,13 @@ export const ru = {
     emptyHint: "Создайте первую запись в этом формате",
     create: "Создать",
     widgets: "Обзор",
-    trending: "В тренде",
+    trending: "Тренды",
+    viewAllTrends: "Смотреть все →",
+    trendPostCount: "{{count}} постов",
     travelMap: "Карта путешествий",
-    openMap: "Открыть карту →",
+    openMap: "Смотреть карту →",
     featuredGuide: "Гид недели",
+    featuredNow: "Актуальное",
     exploreGuides: "Исследуйте путеводители",
     article: "Статья",
     loadingArticle: "Загрузка статьи…",
@@ -92,6 +106,11 @@ export const ru = {
     },
     reelsFilters: {
       forYou: "Для вас",
+    },
+    feedSort: {
+      popular: "Популярные",
+      new: "Новые",
+      discussed: "Обсуждаемые",
     },
     reels: {
       empty: "Пока нет Reels",
@@ -167,6 +186,8 @@ export const ru = {
       journalMinLength: "Текст журнала — минимум 80 символов",
       postFieldsRequired: "Заполните заголовок и текст поста",
       uploadFailed: "Не удалось загрузить файл",
+      largeUploadTitle: "Загрузка большого файла",
+      largeUploadHint: "Файл больше 4 МБ — загрузка может занять больше времени.",
     },
   },
   landing: {
@@ -630,7 +651,7 @@ export const ru = {
       countries: "стран",
       places: "мест",
       travelers: "путешественников",
-      reels: "Reels",
+      reels: "Stories и Reels",
       rating: "рейтинг",
     },
     appDownload: {

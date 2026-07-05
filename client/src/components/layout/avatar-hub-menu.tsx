@@ -10,7 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { getUserInitial } from "@shared/user-display";
-import { LogOut, Settings, User, Wallet } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { LogOut, Settings, Shield, User, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -27,6 +28,8 @@ type AvatarHubMenuProps = {
 export default function AvatarHubMenu({ user, hasUnreadBadge }: AvatarHubMenuProps) {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.isAdmin ?? false;
   const label = user ? getUserInitial(user) : "U";
 
   const handleLogout = async () => {
@@ -76,6 +79,14 @@ export default function AvatarHubMenu({ user, hasUnreadBadge }: AvatarHubMenuPro
             {t("nav.wallet", { defaultValue: "Wallet" })}
           </Link>
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link href="/admin" className="cursor-pointer gap-2">
+              <Shield className="h-4 w-4" />
+              {t("nav.admin", { defaultValue: "Admin" })}
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator className="bg-white/10" />
         <DropdownMenuItem
           className="cursor-pointer gap-2 text-red-400 focus:text-red-300"

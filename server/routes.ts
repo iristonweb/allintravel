@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, getSession, type SessionUser } from "./auth";
+import { resolveIsAdmin } from "./admin";
 import { authConfigPayload } from "./auth-readiness";
 import { isGoogleAuthEnabled } from "./google-auth";
 import passport from "passport";
@@ -246,9 +247,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const user = await storage.getUser(userId);
+      let user = await storage.getUser(userId);
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+      if (resolveIsAdmin(user.email) && !user.isAdmin) {
+        user = await storage.setUserAdmin(userId, true);
       }
       res.json(toSelfUser(user));
     } catch (error) {

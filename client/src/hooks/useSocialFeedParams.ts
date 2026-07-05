@@ -1,4 +1,10 @@
-import { feedModeFromQuery, type FeedMode } from "@/lib/feed-utils";
+import {
+  feedModeFromQuery,
+  feedSortFromQuery,
+  type FeedMode,
+  type FeedSort,
+} from "@/lib/feed-utils";
+import { notifyUrlSearchChange } from "@/hooks/useUrlSearch";
 import { useCallback, useEffect, useState } from "react";
 
 export type SocialContentFormat = "feed" | "stories" | "reels" | "journals" | "public";
@@ -12,8 +18,8 @@ function formatFromQuery(param: string | null): SocialContentFormat {
   return "feed";
 }
 
-function defaultFeedMode(format: SocialContentFormat): FeedMode {
-  return format === "reels" ? "all" : "following";
+function defaultFeedMode(_format: SocialContentFormat): FeedMode {
+  return "all";
 }
 
 function contentFormatFromUrl(search?: string): SocialContentFormat {
@@ -39,11 +45,16 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
     () => new URLSearchParams(window.location.search).get("create") === "1",
   );
 
+  const [feedSort, setFeedSortState] = useState<FeedSort>(() =>
+    feedSortFromQuery(new URLSearchParams(window.location.search).get("sort")),
+  );
+
   const replaceParams = useCallback((mutate: (params: URLSearchParams) => void) => {
     const url = new URL(window.location.href);
     mutate(url.searchParams);
     const search = url.searchParams.toString();
     window.history.replaceState({}, "", url.pathname + (search ? `?${search}` : ""));
+    notifyUrlSearchChange();
   }, []);
 
   useEffect(() => {
@@ -63,11 +74,17 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
       } else {
         setIsCreatingState(false);
       }
+
+      setFeedSortState(feedSortFromQuery(params.get("sort")));
     };
 
     syncFromUrl();
     window.addEventListener("popstate", syncFromUrl);
-    return () => window.removeEventListener("popstate", syncFromUrl);
+    window.addEventListener("ait:location", syncFromUrl);
+    return () => {
+      window.removeEventListener("popstate", syncFromUrl);
+      window.removeEventListener("ait:location", syncFromUrl);
+    };
   }, [isAuthenticated]);
 
   const setFeedMode = useCallback(
@@ -87,6 +104,7 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
       replaceParams((params) => {
         if (format === "feed") params.delete("format");
         else params.set("format", format);
+        if (format !== "feed") params.delete("sort");
       });
     },
     [replaceParams],
@@ -103,6 +121,17 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
     [replaceParams],
   );
 
+  const setFeedSort = useCallback(
+    (sort: FeedSort) => {
+      setFeedSortState(sort);
+      replaceParams((params) => {
+        if (sort === "popular") params.delete("sort");
+        else params.set("sort", sort);
+      });
+    },
+    [replaceParams],
+  );
+
   return {
     feedMode,
     setFeedMode,
@@ -110,5 +139,7 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
     setContentFormat,
     isCreating,
     setIsCreating,
+    feedSort,
+    setFeedSort,
   };
 }

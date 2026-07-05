@@ -20,9 +20,13 @@ function formatReelsCount(count: number): string {
 export default function CommunityStatsRow({
   reelsCount = 0,
   displayReelsCount,
-  useMarketingStats = false,
+  useMarketingStats = true,
 }: CommunityStatsRowProps) {
   const { t } = useTranslation();
+
+  const reelsValue =
+    displayReelsCount ??
+    (reelsCount > 0 && !useMarketingStats ? formatReelsCount(reelsCount) : DEMO_STATS.reels);
 
   const stats = useMemo(
     () => [
@@ -30,31 +34,34 @@ export default function CommunityStatsRow({
         value: DEMO_STATS.countries,
         label: t("marketing.stats.countries", { defaultValue: "Countries" }),
         icon: Globe,
+        iconClassName: "bg-ait-purple/20",
       },
       {
-        value: useMarketingStats ? DEMO_STATS.places : "42K",
+        value: DEMO_STATS.places,
         label: t("marketing.stats.places", { defaultValue: "Places" }),
         icon: MapPin,
+        iconClassName: "bg-ait-purple/20",
       },
       {
         value: DEMO_STATS.travelers,
         label: t("marketing.stats.travelers", { defaultValue: "Travelers" }),
         icon: Users,
+        iconClassName: "bg-ait-orange/20 [&_svg]:text-ait-orange",
       },
       {
-        value:
-          displayReelsCount ??
-          (useMarketingStats ? DEMO_STATS.reels : formatReelsCount(reelsCount)),
-        label: t("marketing.stats.reels", { defaultValue: "Reels" }),
+        value: reelsValue,
+        label: t("marketing.stats.reels", { defaultValue: "Stories & Reels" }),
         icon: Film,
+        iconClassName: "bg-ait-purple/20",
       },
       {
         value: DEMO_STATS.rating,
         label: t("marketing.stats.rating", { defaultValue: "Rating" }),
         icon: Star,
+        iconClassName: "bg-amber-500/20 [&_svg]:text-amber-400",
       },
     ],
-    [t, reelsCount, displayReelsCount, useMarketingStats],
+    [t, reelsValue],
   );
 
   return (
@@ -70,6 +77,7 @@ export default function CommunityStatsRow({
             value={s.value}
             label={s.label}
             icon={s.icon}
+            iconClassName={s.iconClassName}
             className="h-full min-h-[88px]"
           />
         </motion.div>

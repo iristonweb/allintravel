@@ -24,6 +24,8 @@ export function useSocialFeedTabs({
     setContentFormat: setContentFormatParam,
     isCreating,
     setIsCreating,
+    feedSort,
+    setFeedSort,
   } = useSocialFeedParams(isAuthenticated);
 
   const reelsFilterPills = useMemo(
@@ -101,5 +103,7 @@ export function useSocialFeedTabs({
     showReelsFilterPills,
     showComposer,
     createHref,
+    feedSort,
+    setFeedSort,
   };
 }

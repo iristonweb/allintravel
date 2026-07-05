@@ -9,10 +9,13 @@ import { useEngagementReminders } from "@/hooks/useEngagementReminders";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import AppShellPlayerPadding from "@/components/layout/app-shell-player-padding";
 import BroadcastModal from "@/components/admin/BroadcastModal";
-import ThreeColumnLayout from "@/components/layout/three-column-layout";
+import ThreeColumnLayout, {
+  type ThreeColumnMaxWidth,
+} from "@/components/layout/three-column-layout";
 import { cn } from "@/lib/utils";
 import { useEffect, type ReactNode } from "react";
-import type { ThreeColumnMaxWidth } from "@/components/layout/three-column-layout";
+import { useLocation } from "wouter";
+import { isCommunityHubRoute } from "@/lib/nav-groups";
 
 export type AppShellLayout = "default" | "immersive" | "full-bleed";
 
@@ -42,6 +45,8 @@ export default function AppShell({
   contentClassName,
 }: AppShellProps) {
   const { isAuthenticated } = useAuth();
+  const [location] = useLocation();
+  const communitySidebar = isCommunityHubRoute(location);
   usePresenceHeartbeat();
   useRealtimeNotifications();
   useEngagementReminders();
@@ -84,7 +89,9 @@ export default function AppShell({
           layout === "full-bleed" && "pt-0",
           isAuthenticated && !effectiveImmersive && "pb-24 md:pb-8",
           isAuthenticated && effectiveImmersive && "pb-24 md:pb-0",
-          isAuthenticated && !minimalChrome && "md:pl-[72px]",
+          isAuthenticated &&
+            !minimalChrome &&
+            (communitySidebar ? "md:pl-[240px]" : "md:pl-[72px]"),
           className,
         )}
       >

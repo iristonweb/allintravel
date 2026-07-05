@@ -2,11 +2,14 @@ import { Readable } from "node:stream";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import multer, { MulterError } from "multer";
 import { get } from "@vercel/blob";
+import type { HandleUploadBody } from "@vercel/blob/client";
 import { getAuthUserId, isAuthenticated } from "./auth";
 import { uploadLimiter } from "./rate-limit";
 import { storage } from "./storage";
 import {
   getUploadsStaticDir,
+  hasBlobStorage,
+  getBlobAccessMode,
   isValidBlobDeliveryPathname,
   persistUploadedFile,
   persistUserAvatar,
@@ -88,6 +91,25 @@ export function handleMulter(
   });
 }
 
+const ALLOWED_CONTENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "audio/webm",
+  "audio/x-m4a",
+  "audio/mp3",
+];
+
 export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolean }): void {
   logMediaStorageStatus();
   const upload = createUploadMiddleware();
@@ -97,6 +119,14 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
     const dir = getUploadsStaticDir();
     app.use("/uploads", express.static(dir));
   }
+
+  app.get("/api/upload/capabilities", isAuthenticated, (_req: Request, res: Response) => {
+    res.json({
+      blob: hasBlobStorage(),
+      access: getBlobAccessMode(),
+      serverMaxBytes: 4 * 1024 * 1024,
+    });
+  });
 
   app.get("/api/media/blob", async (req: Request, res: Response) => {
     const pathname = typeof req.query.pathname === "string" ? req.query.pathname : "";
@@ -134,6 +164,35 @@ export function mountUploadRoutes(app: Express, options?: { serveStatic?: boolea
       } catch (e) {
         const message = e instanceof Error ? e.message : "Не удалось сохранить файл";
         console.error("[upload]", message);
+        res.status(500).json({ message });
+      }
+    },
+  );
+
+  app.post(
+    "/api/upload/client",
+    uploadLimiter,
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        if (!hasBlobStorage()) {
+          return res.status(503).json({ message: VERCEL_BLOB_REQUIRED_MSG });
+        }
+        const blobClient = await import("@vercel/blob/client");
+        const body = req.body as HandleUploadBody;
+        const result = await blobClient.handleUpload({
+          body,
+          request: req,
+          onBeforeGenerateToken: async () => ({
+            maximumSizeInBytes: 50 * 1024 * 1024,
+            allowedContentTypes: ALLOWED_CONTENT_TYPES,
+            addRandomSuffix: true,
+          }),
+        });
+        res.json(result);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Не удалось подготовить загрузку";
+        console.error("[upload/client]", message);
         res.status(500).json({ message });
       }
     },

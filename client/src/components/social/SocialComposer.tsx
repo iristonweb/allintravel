@@ -201,9 +201,17 @@ export default function SocialComposer({
                   {draft.images.map((url) => (
                     <div key={url} className="relative">
                       {isVideoUrl(url) ? (
-                        <video src={url} className="h-24 w-32 rounded-card object-cover" muted />
+                        <video
+                          src={resolveMediaUrl(url)}
+                          className="h-24 w-32 rounded-card object-cover"
+                          muted
+                        />
                       ) : (
-                        <img src={url} alt="" className="h-24 w-32 rounded-card object-cover" />
+                        <img
+                          src={resolveMediaUrl(url)}
+                          alt=""
+                          className="h-24 w-32 rounded-card object-cover"
+                        />
                       )}
                       <button
                         type="button"
@@ -219,9 +227,19 @@ export default function SocialComposer({
                 </div>
               )}
               <div className="flex gap-3 pt-1">
-                <AitButton onClick={onPublish} disabled={publishing} variant="primary">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("social.composer.publish")}
+                <AitButton
+                  onClick={onPublish}
+                  disabled={publishing || uploadingMedia}
+                  variant="primary"
+                >
+                  {uploadingMedia ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  {uploadingMedia
+                    ? t("common.loading", { defaultValue: "Loading…" })
+                    : t("social.composer.publish")}
                 </AitButton>
                 <AitButton variant="glass" onClick={() => onCreatingChange(false)}>
                   {t("common.cancel")}

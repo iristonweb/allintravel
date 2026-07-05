@@ -132,6 +132,15 @@ export function Trips() {
     setSearch(new URLSearchParams(searchString).get("search") ?? "");
   }, [searchString]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    if (params.get("ai") !== "1") return;
+    setOpen(true);
+    params.delete("ai");
+    const rest = params.toString();
+    setLocation(`/trips${rest ? `?${rest}` : ""}`, { replace: true });
+  }, [searchString, setLocation]);
+
   const {
     data: trips = [],
     isLoading,

@@ -6,6 +6,7 @@ import { formatTrendCount } from "@/lib/demo-reels-feed";
 import { staggerContainer, staggerItem } from "@/lib/ait-motion";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 
 export type TrendingWidgetItem = {
@@ -38,27 +39,49 @@ export function MapWidget({ title, linkLabel, href, className }: MapWidgetProps)
 type TrendsWidgetProps = {
   title: string;
   items: TrendingWidgetItem[];
+  viewAllHref?: string;
+  viewAllLabel?: string;
   className?: string;
 };
 
-export function TrendsWidget({ title, items, className }: TrendsWidgetProps) {
+export function TrendsWidget({
+  title,
+  items,
+  viewAllHref,
+  viewAllLabel,
+  className,
+}: TrendsWidgetProps) {
+  const { t } = useTranslation();
   if (!items.length) return null;
 
   return (
     <AitSurface padding="md" radius="lg" hover className={className}>
-      <div className="flex items-center gap-2 mb-4">
-        <TrendingUp className="h-4 w-4 text-ait-orange" />
-        <h3 className="font-semibold text-sm">{title}</h3>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <TrendingUp className="h-4 w-4 text-ait-orange shrink-0" />
+          <h3 className="font-semibold text-sm truncate">{title}</h3>
+        </div>
+        {viewAllHref && viewAllLabel && (
+          <Link
+            href={viewAllHref}
+            className="text-xs text-ait-purple hover:text-ait-orange transition-colors shrink-0"
+          >
+            {viewAllLabel}
+          </Link>
+        )}
       </div>
       <ul className="space-y-3">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <motion.li
             key={item.id}
-            className="flex items-center justify-between gap-2 text-sm"
+            className="flex items-center gap-3 text-sm"
             whileHover={{ x: 2 }}
             transition={{ duration: 0.2 }}
           >
-            <span className="flex items-center gap-2 min-w-0 text-slate-200 truncate">
+            <span className="w-4 text-xs font-semibold text-muted-foreground tabular-nums shrink-0">
+              {index + 1}
+            </span>
+            <span className="flex items-center gap-2 min-w-0 text-slate-200 truncate flex-1">
               {item.flagEmoji ? (
                 <span className="text-base shrink-0" aria-hidden>
                   {item.flagEmoji}
@@ -69,7 +92,11 @@ export function TrendsWidget({ title, items, className }: TrendsWidgetProps) {
               {item.name}
             </span>
             <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-              {item.countLabel ?? formatTrendCount(item.count)}
+              {item.countLabel ??
+                t("social.trendPostCount", {
+                  count: formatTrendCount(item.count),
+                  defaultValue: "{{count}} posts",
+                })}
             </span>
           </motion.li>
         ))}

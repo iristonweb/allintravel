@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import BrandLogo from "@/components/brand/brand-logo";
 import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
 import { useNavLabels } from "@/hooks/useNavLabels";
-import { isNavActive } from "@/lib/nav-groups";
+import { isCommunityHubRoute, isNavActive } from "@/lib/nav-groups";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 import AvatarHubMenu from "@/components/layout/avatar-hub-menu";
@@ -37,6 +37,7 @@ const EMPTY_NOTIFICATIONS = {
 export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const { user, isAuthenticated } = useAuth();
   const [location, navigate] = useLocation();
+  const communitySidebar = isCommunityHubRoute(location);
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
   const { guestAnchors, navGroups } = useNavLabels();
@@ -124,7 +125,12 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
         minimalChrome ? "ait-chrome-minimal-nav" : "ait-glass-nav border-b border-white/[0.06]",
       )}
     >
-      <div className="max-w-[1600px] mx-auto flex h-[var(--ait-header-h,4.5rem)] items-center gap-3 px-4 lg:px-8 md:pl-[calc(72px+1rem)]">
+      <div
+        className={cn(
+          "max-w-[1600px] mx-auto flex h-[var(--ait-header-h,4.5rem)] items-center gap-3 px-4 lg:px-8",
+          communitySidebar ? "md:pl-[calc(240px+1rem)]" : "md:pl-[calc(72px+1rem)]",
+        )}
+      >
         <BrandLogo variant="nav" showText className="shrink-0 min-w-0 hidden sm:flex" />
 
         <HeaderOmnibar />

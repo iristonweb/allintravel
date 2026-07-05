@@ -106,22 +106,49 @@ export default function FeedPostCard({
         </div>
 
         {post.images && post.images.length > 0 && resolveMediaUrl(post.images[0]) ? (
-          <div className="rounded-card-lg overflow-hidden -mx-1">
-            {isVideoUrl(post.images[0]) ? (
-              <video
-                src={resolveMediaUrl(post.images[0])!}
-                className="w-full min-h-[320px] md:min-h-[420px] object-cover"
-                controls
-                playsInline
-              />
-            ) : (
-              <img
-                src={resolveMediaUrl(post.images[0])!}
-                alt={post.title}
-                className="w-full min-h-[320px] md:min-h-[420px] object-cover"
-              />
-            )}
-          </div>
+          post.images.length > 1 ? (
+            <div
+              className={cn(
+                "grid gap-1.5 rounded-card-lg overflow-hidden -mx-1",
+                post.images.length === 2 ? "grid-cols-2" : "grid-cols-2 auto-rows-fr",
+              )}
+            >
+              {post.images.slice(0, 4).map((img, i) => {
+                const src = resolveMediaUrl(img);
+                if (!src) return null;
+                return (
+                  <img
+                    key={i}
+                    src={src}
+                    alt=""
+                    className={cn(
+                      "w-full object-cover",
+                      post.images!.length >= 3 && i === 0
+                        ? "row-span-2 min-h-[280px]"
+                        : "min-h-[140px]",
+                    )}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-card-lg overflow-hidden -mx-1">
+              {isVideoUrl(post.images[0]) ? (
+                <video
+                  src={resolveMediaUrl(post.images[0])!}
+                  className="w-full min-h-[320px] md:min-h-[420px] object-cover"
+                  controls
+                  playsInline
+                />
+              ) : (
+                <img
+                  src={resolveMediaUrl(post.images[0])!}
+                  alt={post.title}
+                  className="w-full min-h-[320px] md:min-h-[420px] object-cover"
+                />
+              )}
+            </div>
+          )
         ) : (
           <div
             className="rounded-card-lg overflow-hidden -mx-1 min-h-[320px] md:min-h-[420px] bg-cover bg-center"

@@ -20,7 +20,7 @@ export const en = {
     error: "Error",
   },
   search: {
-    placeholder: "Search places, routes…",
+    placeholder: "Search places, routes, articles, people…",
   },
   discovery: {
     aiHint: "Plan your next adventure with AI",
@@ -55,7 +55,16 @@ export const en = {
     settings: "Settings",
     logout: "Sign out",
     upgrade: "Upgrade",
+    premiumTitle: "AllInTravel Premium",
+    premiumSubscribe: "Subscribe",
     premiumHint: "Unlock AI tools & rewards",
+    guides: "Guides",
+    routes: "Routes",
+    aiPlanner: "AI Planner",
+    favorites: "Favorites",
+    badges: {
+      new: "NEW",
+    },
     groups: {
       explore: "Explore",
       plan: "Plan",
@@ -63,6 +72,8 @@ export const en = {
     },
   },
   social: {
+    communityTitle: "Travelers community",
+    communityTagline: "GET INSPIRED • SHARE • PLAN",
     subtitle: "Travelers feed — Stories, Reels, Journals, and public articles",
     storiesTeaser: "Community Stories",
     storiesTeaserHint: "Open all Stories →",
@@ -74,10 +85,13 @@ export const en = {
     emptyHint: "Create the first entry in this format",
     create: "Create",
     widgets: "Discover",
-    trending: "Trending",
+    trending: "Trends",
+    viewAllTrends: "View all →",
+    trendPostCount: "{{count}} posts",
     travelMap: "Travel map",
-    openMap: "Open map →",
+    openMap: "View map →",
     featuredGuide: "Featured guide",
+    featuredNow: "Featured",
     exploreGuides: "Explore travel guides",
     article: "Article",
     loadingArticle: "Loading article…",
@@ -92,6 +106,11 @@ export const en = {
     },
     reelsFilters: {
       forYou: "For you",
+    },
+    feedSort: {
+      popular: "Popular",
+      new: "New",
+      discussed: "Discussed",
     },
     reels: {
       empty: "No Reels yet",
@@ -167,6 +186,8 @@ export const en = {
       journalMinLength: "Journal text must be at least 80 characters",
       postFieldsRequired: "Fill in title and post text",
       uploadFailed: "Could not upload file",
+      largeUploadTitle: "Uploading a large file",
+      largeUploadHint: "Files over 4 MB may take longer to upload.",
     },
   },
   landing: {
@@ -627,7 +648,7 @@ export const en = {
       countries: "countries",
       places: "places",
       travelers: "travelers",
-      reels: "Reels",
+      reels: "Stories & Reels",
       rating: "rating",
     },
     appDownload: {

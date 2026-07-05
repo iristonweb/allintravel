@@ -13,7 +13,8 @@ export function mapStoryGroupsToStripItems(groups: StoryGroup[]): StoryStripItem
     return {
       id: group.userId,
       label: group.label,
-      avatarSrc: cover ?? group.avatarUrl,
+      avatarSrc: group.avatarUrl,
+      previewSrc: cover ?? group.avatarUrl,
       fallback: group.label[0]?.toUpperCase() || "?",
       unviewed: !allViewed,
     };
