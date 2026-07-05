@@ -2,10 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { type FeedMode } from "@/lib/feed-utils";
 import { useFilterLabels } from "@/hooks/useFilterLabels";
-import {
-  useSocialFeedParams,
-  type SocialContentFormat,
-} from "@/hooks/useSocialFeedParams";
+import { useSocialFeedParams, type SocialContentFormat } from "@/hooks/useSocialFeedParams";
 
 type UseSocialFeedTabsOptions = {
   isAuthenticated: boolean;
@@ -31,11 +28,17 @@ export function useSocialFeedTabs({
 
   const reelsFilterPills = useMemo(
     () => [
-      { id: "all" as FeedMode, label: t("social.reelsFilters.forYou", { defaultValue: "For you" }) },
+      {
+        id: "all" as FeedMode,
+        label: t("social.reelsFilters.forYou", { defaultValue: "For you" }),
+      },
       { id: "popular" as FeedMode, label: t("filters.feedMode.popular") },
       { id: "following" as FeedMode, label: t("filters.feedMode.following") },
       { id: "nearby" as FeedMode, label: t("filters.feedMode.nearby") },
-      { id: "trending" as FeedMode, label: t("filters.feedMode.trending", { defaultValue: "Trending" }) },
+      {
+        id: "trending" as FeedMode,
+        label: t("filters.feedMode.trending", { defaultValue: "Trending" }),
+      },
     ],
     [t],
   );
@@ -55,7 +58,11 @@ export function useSocialFeedTabs({
   const setContentFormat = useCallback(
     (format: SocialContentFormat) => {
       setContentFormatParam(format);
-      if (format === "reels" && feedMode !== "all" && !new URLSearchParams(window.location.search).get("mode")) {
+      if (
+        format === "reels" &&
+        feedMode !== "all" &&
+        !new URLSearchParams(window.location.search).get("mode")
+      ) {
         setFeedModeParam("all");
       }
       if (format !== "reels" && isCreating && format !== "stories") {

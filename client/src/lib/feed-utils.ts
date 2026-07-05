@@ -12,12 +12,7 @@ export const FEED_MODE_LABELS: Record<FeedMode, string> = {
 };
 
 export function feedModeFromQuery(value: string | null): FeedMode {
-  if (
-    value === "following" ||
-    value === "popular" ||
-    value === "nearby" ||
-    value === "trending"
-  ) {
+  if (value === "following" || value === "popular" || value === "nearby" || value === "trending") {
     return value;
   }
   return "all";

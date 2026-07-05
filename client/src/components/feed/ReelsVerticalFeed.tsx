@@ -103,7 +103,9 @@ export default function ReelsVerticalFeed({
         variant="glass"
         icon={Film}
         title={t("social.reels.empty", { defaultValue: "No Reels yet" })}
-        description={t("social.reels.emptyHint", { defaultValue: "Upload a vertical video to get started" })}
+        description={t("social.reels.emptyHint", {
+          defaultValue: "Upload a vertical video to get started",
+        })}
         action={
           <AitButton variant="primary" onClick={onCreateClick}>
             {t("social.create")}
@@ -130,11 +132,7 @@ export default function ReelsVerticalFeed({
         );
 
         return (
-          <ReelsSnapItem
-            key={post.id}
-            ref={(el) => setItemRef(index, el)}
-            data-reel-index={index}
-          >
+          <ReelsSnapItem key={post.id} ref={(el) => setItemRef(index, el)} data-reel-index={index}>
             {shouldRender ? (
               <ReelCard
                 reel={mapPostToReelCard(post, {

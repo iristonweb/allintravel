@@ -11,7 +11,6 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrandLogo from "@/components/brand/brand-logo";
 import { GuestAnchorLink } from "@/components/nav/guest-anchor-link";
-import { scrollToAnchor } from "@/lib/nav-config";
 import { useNavLabels } from "@/hooks/useNavLabels";
 import { isNavActive } from "@/lib/nav-groups";
 import LanguageSwitcher from "@/components/i18n/LanguageSwitcher";
@@ -23,13 +22,6 @@ import HeaderOmnibar from "@/components/layout/header-omnibar";
 import HeaderAiScout from "@/components/layout/header-ai-scout";
 import AitBalancePill from "@/components/ait/AitBalancePill";
 import { toApiUrl } from "@/lib/queryClient";
-
-function resolvePageTitle(path: string, titles: Record<string, string>): string | null {
-  if (path.startsWith("/messages")) return titles["/chat"] ?? null;
-  if (titles[path]) return titles[path];
-  const base = `/${path.split("/").filter(Boolean)[0] ?? ""}`;
-  return titles[base] ?? null;
-}
 
 type AppTopNavProps = {
   minimalChrome?: boolean;
@@ -47,7 +39,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
   const [location, navigate] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
-  const { guestAnchors, navGroups, pageTitles: navPageTitles } = useNavLabels();
+  const { guestAnchors, navGroups } = useNavLabels();
 
   const queryClient = useQueryClient();
 
@@ -87,8 +79,6 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
     }
     if (item.link) navigate(item.link);
   };
-
-  const pageTitle = resolvePageTitle(location, navPageTitles);
 
   if (!isAuthenticated) {
     return (

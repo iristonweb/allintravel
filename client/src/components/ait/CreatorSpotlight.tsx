@@ -32,7 +32,10 @@ export default function CreatorSpotlight() {
             </p>
           </div>
         </div>
-        <Link href="/wallet" className="text-xs font-semibold text-ait-orange hover:underline shrink-0">
+        <Link
+          href="/wallet"
+          className="text-xs font-semibold text-ait-orange hover:underline shrink-0"
+        >
           AIT Hub →
         </Link>
       </div>

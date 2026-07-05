@@ -1,5 +1,4 @@
 import { useChatGroupSearchDialog } from "@/components/chat/ChatGroupSearchContext";
-import AitSearchBar from "@/components/ait-ui/AitSearchBar";
 import { Search } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";

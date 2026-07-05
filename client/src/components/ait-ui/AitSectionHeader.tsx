@@ -15,7 +15,12 @@ export default function AitSectionHeader({
   className,
 }: AitSectionHeaderProps) {
   return (
-    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-section", className)}>
+    <div
+      className={cn(
+        "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-section",
+        className,
+      )}
+    >
       <div className="min-w-0">
         <h1 className="ait-section-title text-white">{title}</h1>
         {description && <p className="text-muted-foreground mt-2 text-base">{description}</p>}

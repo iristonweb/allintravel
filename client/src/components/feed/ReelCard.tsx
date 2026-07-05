@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bookmark, Heart, MapPin, MessageCircle, Share2, Volume2, VolumeX, Pause, Play } from "lucide-react";
+import {
+  Bookmark,
+  Heart,
+  MapPin,
+  MessageCircle,
+  Share2,
+  Volume2,
+  VolumeX,
+  Pause,
+  Play,
+} from "lucide-react";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitBadge from "@/components/ait-ui/AitBadge";
 import AitAvatarRing from "@/components/ait-ui/AitAvatarRing";
@@ -230,7 +240,9 @@ export default function ReelCard({
         ) : mediaSrc ? (
           <img src={mediaSrc} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center text-white/50 text-sm">{labels.videoUnavailable}</div>
+          <div className="flex h-full items-center justify-center text-white/50 text-sm">
+            {labels.videoUnavailable}
+          </div>
         )}
       </motion.button>
 
@@ -281,7 +293,12 @@ export default function ReelCard({
       >
         <div className="pointer-events-auto flex items-center gap-2 mb-2">
           {reel.authorAction ?? (
-            <AitAvatarRing src={reel.authorAvatar} fallback={reel.authorFallback} size="sm" active={false} />
+            <AitAvatarRing
+              src={reel.authorAvatar}
+              fallback={reel.authorFallback}
+              size="sm"
+              active={false}
+            />
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -304,14 +321,21 @@ export default function ReelCard({
             )}
           </div>
         </div>
-        {reel.title && <p className="text-white font-semibold text-sm line-clamp-2">{reel.title}</p>}
+        {reel.title && (
+          <p className="text-white font-semibold text-sm line-clamp-2">{reel.title}</p>
+        )}
         {reel.description?.trim() && reel.description.trim() !== " " && (
-          <p className="text-white/80 text-xs mt-1 line-clamp-2 leading-relaxed">{reel.description}</p>
+          <p className="text-white/80 text-xs mt-1 line-clamp-2 leading-relaxed">
+            {reel.description}
+          </p>
         )}
       </motion.div>
 
       <div className="absolute right-1.5 sm:right-3 bottom-20 sm:bottom-24 z-10 flex flex-col items-center gap-1.5 sm:gap-3">
-        <motion.div animate={likePulse ? { scale: [1, 1.2, 1] } : { scale: 1 }} transition={{ duration: 0.35 }}>
+        <motion.div
+          animate={likePulse ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+          transition={{ duration: 0.35 }}
+        >
           <ReelActionButton
             label={labels.like}
             onClick={handleLikeClick}
@@ -322,18 +346,26 @@ export default function ReelCard({
           </ReelActionButton>
         </motion.div>
         {(reel.likesCount ?? 0) > 0 && (
-          <span className="text-[10px] sm:text-xs text-white font-medium -mt-1.5 sm:-mt-2">{reel.likesCount}</span>
+          <span className="text-[10px] sm:text-xs text-white font-medium -mt-1.5 sm:-mt-2">
+            {reel.likesCount}
+          </span>
         )}
 
         <ReelActionButton label={labels.comments} onClick={onCommentToggle}>
           <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
         </ReelActionButton>
         {(reel.commentsCount ?? 0) > 0 && (
-          <span className="text-[10px] sm:text-xs text-white font-medium -mt-1.5 sm:-mt-2">{reel.commentsCount}</span>
+          <span className="text-[10px] sm:text-xs text-white font-medium -mt-1.5 sm:-mt-2">
+            {reel.commentsCount}
+          </span>
         )}
 
         <ReelActionButton label={muted ? labels.unmute : labels.mute} onClick={onToggleMute}>
-          {muted ? <VolumeX className="h-5 w-5 sm:h-6 sm:w-6" /> : <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+          {muted ? (
+            <VolumeX className="h-5 w-5 sm:h-6 sm:w-6" />
+          ) : (
+            <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />
+          )}
         </ReelActionButton>
 
         <ReelActionButton
@@ -341,7 +373,11 @@ export default function ReelCard({
           onClick={togglePlay}
           hideOnMobile
         >
-          {isPlaying ? <Pause className="h-5 w-5 sm:h-6 sm:w-6" /> : <Play className="h-5 w-5 sm:h-6 sm:w-6" />}
+          {isPlaying ? (
+            <Pause className="h-5 w-5 sm:h-6 sm:w-6" />
+          ) : (
+            <Play className="h-5 w-5 sm:h-6 sm:w-6" />
+          )}
         </ReelActionButton>
 
         <ReelActionButton label={labels.share} onClick={onShare}>

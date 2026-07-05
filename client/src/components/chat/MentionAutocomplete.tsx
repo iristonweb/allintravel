@@ -66,7 +66,11 @@ const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocom
     ref,
   ) {
     const localAnchorRef = useRef<HTMLDivElement>(null);
-    const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null);
+    const [dropdownStyle, setDropdownStyle] = useState<{
+      top: number;
+      left: number;
+      width: number;
+    } | null>(null);
 
     const { data: searchResults = [], isFetching } = useQuery<User[]>({
       queryKey: ["/api/search/users", { q: query, limit: 8 }],
@@ -194,9 +198,7 @@ const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocom
             ? {
                 top: position === "below" ? dropdownStyle.top : undefined,
                 bottom:
-                  position === "above"
-                    ? `calc(100vh - ${dropdownStyle.top}px + 6px)`
-                    : undefined,
+                  position === "above" ? `calc(100vh - ${dropdownStyle.top}px + 6px)` : undefined,
                 left: dropdownStyle.left,
                 width: dropdownStyle.width,
                 transform: position === "above" ? "translateY(-100%)" : undefined,

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import SmartSearchField from "@/components/search/SmartSearchField";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink, Music2, Play, Plus, Search, Trash2, Upload } from "lucide-react";
+import { Download, ExternalLink, Music2, Play, Plus, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { uploadMediaFile } from "@/lib/upload-media";

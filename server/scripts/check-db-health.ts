@@ -33,7 +33,15 @@ async function main() {
     process.exit(1);
   }
 
-  for (const table of ["users", "places", "countries", "cities", "trips", "sessions", "travel_posts"]) {
+  for (const table of [
+    "users",
+    "places",
+    "countries",
+    "cities",
+    "trips",
+    "sessions",
+    "travel_posts",
+  ]) {
     try {
       const r = await db.execute(sql.raw(`SELECT count(*)::int AS c FROM "${table}"`));
       const count = (r.rows as { c: number }[])[0]?.c ?? "?";

@@ -18,12 +18,17 @@ export default function DiscoveryRightRail() {
       <AitSurface padding="md" radius="lg">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-ait-purple" />
-          <h3 className="font-semibold text-sm">{t("nav.aiScout", { defaultValue: "AI Scout" })}</h3>
+          <h3 className="font-semibold text-sm">
+            {t("nav.aiScout", { defaultValue: "AI Scout" })}
+          </h3>
         </div>
         <p className="text-xs text-muted-foreground mb-3">
           {t("discovery.aiHint", { defaultValue: "Plan your next adventure with AI" })}
         </p>
-        <Link href="/trips" className="text-sm font-medium text-ait-purple hover:text-ait-orange transition-colors">
+        <Link
+          href="/trips"
+          className="text-sm font-medium text-ait-purple hover:text-ait-orange transition-colors"
+        >
           {t("discovery.startPlanning", { defaultValue: "Start planning →" })}
         </Link>
       </AitSurface>
@@ -32,7 +37,9 @@ export default function DiscoveryRightRail() {
         <AitSurface padding="md" radius="lg">
           <div className="flex items-center gap-2 mb-3">
             <Compass className="h-4 w-4 text-ait-orange" />
-            <h3 className="font-semibold text-sm">{t("discovery.popular", { defaultValue: "Popular places" })}</h3>
+            <h3 className="font-semibold text-sm">
+              {t("discovery.popular", { defaultValue: "Popular places" })}
+            </h3>
           </div>
           <ul className="space-y-2">
             {places.slice(0, 5).map((p) => (

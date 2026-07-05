@@ -19,10 +19,26 @@ export default function CommunityStatsRow({ reelsCount = 0 }: CommunityStatsRowP
 
   const stats = useMemo(
     () => [
-      { value: "196", label: t("marketing.stats.countries", { defaultValue: "Countries" }), icon: Globe },
-      { value: "25K+", label: t("marketing.stats.places", { defaultValue: "Places" }), icon: MapPin },
-      { value: "1.2M", label: t("marketing.stats.travelers", { defaultValue: "Travelers" }), icon: Users },
-      { value: formatReelsCount(reelsCount), label: t("marketing.stats.reels", { defaultValue: "Reels" }), icon: Film },
+      {
+        value: "196",
+        label: t("marketing.stats.countries", { defaultValue: "Countries" }),
+        icon: Globe,
+      },
+      {
+        value: "25K+",
+        label: t("marketing.stats.places", { defaultValue: "Places" }),
+        icon: MapPin,
+      },
+      {
+        value: "1.2M",
+        label: t("marketing.stats.travelers", { defaultValue: "Travelers" }),
+        icon: Users,
+      },
+      {
+        value: formatReelsCount(reelsCount),
+        label: t("marketing.stats.reels", { defaultValue: "Reels" }),
+        icon: Film,
+      },
       { value: "4.9", label: t("marketing.stats.rating", { defaultValue: "Rating" }), icon: Star },
     ],
     [t, reelsCount],

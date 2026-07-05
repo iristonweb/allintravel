@@ -370,211 +370,214 @@ export function Trips() {
               className="flex flex-col flex-1 min-h-0 overflow-hidden"
             >
               <div className="px-6 overflow-y-auto flex-1 min-h-0 ait-scrollbar space-y-5 pb-4">
-              <MediaUploadField
-                label={t("tripsPage.create.coverLabel")}
-                multiple={false}
-                maxFiles={1}
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                value={tripCoverUrl ? [tripCoverUrl] : []}
-                onChange={(urls) => setTripCoverUrl(urls[0] ?? "")}
-              />
+                <MediaUploadField
+                  label={t("tripsPage.create.coverLabel")}
+                  multiple={false}
+                  maxFiles={1}
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  value={tripCoverUrl ? [tripCoverUrl] : []}
+                  onChange={(urls) => setTripCoverUrl(urls[0] ?? "")}
+                />
 
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("tripsPage.create.tripTitle")}</FormLabel>
-                    <FormControl>
-                      <Input placeholder={t("tripsPage.create.tripTitlePlaceholder")} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="destination"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("tripsPage.create.destination")}</FormLabel>
-                    <FormControl>
-                      <LocationAutocompleteInput
-                        placeholder={t("tripsPage.create.destinationPlaceholder")}
-                        value={field.value ?? ""}
-                        onChange={(v) => field.onChange(v)}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        dropdownPortal
-                      />
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      {t("tripsPage.create.destinationHint")}
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("tripsPage.create.descriptionLabel")}</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder={t("tripsPage.create.descriptionPlaceholder")}
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="startDate"
+                  name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("tripsPage.create.startDate")}</FormLabel>
+                      <FormLabel>{t("tripsPage.create.tripTitle")}</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          placeholder={t("tripsPage.create.tripTitlePlaceholder")}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("tripsPage.create.endDate")}</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  name="maxParticipants"
+                  name="destination"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("tripsPage.create.maxParticipants")}</FormLabel>
+                      <FormLabel>{t("tripsPage.create.destination")}</FormLabel>
                       <FormControl>
-                        <Input type="number" min={2} max={50} {...field} />
+                        <LocationAutocompleteInput
+                          placeholder={t("tripsPage.create.destinationPlaceholder")}
+                          value={field.value ?? ""}
+                          onChange={(v) => field.onChange(v)}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          dropdownPortal
+                        />
                       </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        {t("tripsPage.create.destinationHint")}
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="budgetMin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("tripsPage.create.budgetMin")}</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="0" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="budgetMax"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("tripsPage.create.budgetMax")}</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="∞" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
-              <TripInvitePicker
-                value={inviteUsers}
-                onChange={setInviteUsers}
-                onDraftChange={setInviteDraft}
-                max={Math.max(1, (form.watch("maxParticipants") ?? 5) - 1)}
-                currentUserId={user?.id}
-              />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("tripsPage.create.descriptionLabel")}</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder={t("tripsPage.create.descriptionPlaceholder")}
+                          rows={3}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                <div>
-                  <FormLabel>{t("tripsPage.create.routeLabel")}</FormLabel>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("tripsPage.create.routeHint")}
-                  </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("tripsPage.create.startDate")}</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("tripsPage.create.endDate")}</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <LocationAutocompleteInput
-                  placeholder={t("tripsPage.create.routePlaceholder")}
-                  value={routeQuery}
-                  onChange={(v) => {
-                    setRouteQuery(v);
-                    setSelectedRouteGeo(null);
-                  }}
-                  onSelectItem={(item) => {
-                    setRouteQuery(item.label);
-                    setSelectedRouteGeo(item);
-                  }}
-                  scope="full"
-                  limit={12}
-                  debounceMs={280}
-                  dropdownPortal
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="maxParticipants"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("tripsPage.create.maxParticipants")}</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={2} max={50} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="budgetMin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("tripsPage.create.budgetMin")}</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="budgetMax"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("tripsPage.create.budgetMax")}</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="∞" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <TripInvitePicker
+                  value={inviteUsers}
+                  onChange={setInviteUsers}
+                  onDraftChange={setInviteDraft}
+                  max={Math.max(1, (form.watch("maxParticipants") ?? 5) - 1)}
+                  currentUserId={user?.id}
                 />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  disabled={routeQuery.trim().length < 2 || createMutation.isPending}
-                  onClick={() => void addRouteDraft()}
-                >
-                  <MapPin className="h-4 w-4 mr-2" />
-                  {t("tripsPage.create.addRouteStop")}
-                </Button>
-                {routeDrafts.length > 0 && (
-                  <ol className="space-y-2 list-none">
-                    {routeDrafts.map((stop, index) => (
-                      <li
-                        key={`${stop.label}-${index}`}
-                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
-                      >
-                        <span className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-semibold flex items-center justify-center">
-                          {index + 1}
-                        </span>
-                        <span className="flex-1 min-w-0 truncate">{stop.label}</span>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 shrink-0"
-                          aria-label={t("tripsPage.create.removeRouteStop")}
-                          onClick={() =>
-                            setRouteDrafts((prev) => prev.filter((_, i) => i !== index))
-                          }
+
+                <div className="space-y-3 pt-2 border-t border-white/10">
+                  <div>
+                    <FormLabel>{t("tripsPage.create.routeLabel")}</FormLabel>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("tripsPage.create.routeHint")}
+                    </p>
+                  </div>
+                  <LocationAutocompleteInput
+                    placeholder={t("tripsPage.create.routePlaceholder")}
+                    value={routeQuery}
+                    onChange={(v) => {
+                      setRouteQuery(v);
+                      setSelectedRouteGeo(null);
+                    }}
+                    onSelectItem={(item) => {
+                      setRouteQuery(item.label);
+                      setSelectedRouteGeo(item);
+                    }}
+                    scope="full"
+                    limit={12}
+                    debounceMs={280}
+                    dropdownPortal
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={routeQuery.trim().length < 2 || createMutation.isPending}
+                    onClick={() => void addRouteDraft()}
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    {t("tripsPage.create.addRouteStop")}
+                  </Button>
+                  {routeDrafts.length > 0 && (
+                    <ol className="space-y-2 list-none">
+                      {routeDrafts.map((stop, index) => (
+                        <li
+                          key={`${stop.label}-${index}`}
+                          className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </div>
+                          <span className="shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-semibold flex items-center justify-center">
+                            {index + 1}
+                          </span>
+                          <span className="flex-1 min-w-0 truncate">{stop.label}</span>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 shrink-0"
+                            aria-label={t("tripsPage.create.removeRouteStop")}
+                            onClick={() =>
+                              setRouteDrafts((prev) => prev.filter((_, i) => i !== index))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
               </div>
 
               <div className="px-6 pb-6 pt-3 shrink-0 border-t border-white/10 flex gap-3">

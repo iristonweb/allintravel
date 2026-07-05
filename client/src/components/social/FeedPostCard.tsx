@@ -80,7 +80,9 @@ export default function FeedPostCard({
                 {formatDate(post.createdAt as unknown as string)}
               </span>
               {(post as { promoteLabel?: string | null }).promoteLabel ? (
-                <AitBadge tone="accent">{(post as { promoteLabel?: string }).promoteLabel}</AitBadge>
+                <AitBadge tone="accent">
+                  {(post as { promoteLabel?: string }).promoteLabel}
+                </AitBadge>
               ) : (post as { isBoosted?: boolean }).isBoosted ? (
                 <AitBadge tone="accent">Boost</AitBadge>
               ) : null}
@@ -153,7 +155,9 @@ export default function FeedPostCard({
               disabled={likePending}
               className={cn(
                 "rounded-xl h-10 px-3 transition-all duration-300",
-                post.isLiked ? "text-red-500 bg-red-500/10" : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10",
+                post.isLiked
+                  ? "text-red-500 bg-red-500/10"
+                  : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10",
               )}
             >
               <Heart className={`mr-1.5 h-4 w-4 ${post.isLiked ? "fill-current" : ""}`} />

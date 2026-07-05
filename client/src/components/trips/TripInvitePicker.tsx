@@ -189,7 +189,12 @@ export async function flushTripInvitePending(
   if (!q) return { users: value, unresolved: false };
   const selectedIds = new Set(value.map((u) => u.id));
   const fromFriends = friends.find((f) => f.username === q);
-  if (fromFriends && fromFriends.id && !selectedIds.has(fromFriends.id) && fromFriends.id !== currentUserId) {
+  if (
+    fromFriends &&
+    fromFriends.id &&
+    !selectedIds.has(fromFriends.id) &&
+    fromFriends.id !== currentUserId
+  ) {
     if (value.length >= max) return { users: value, unresolved: true };
     return { users: [...value, fromFriends], unresolved: false };
   }

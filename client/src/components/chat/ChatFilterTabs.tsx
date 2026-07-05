@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type TabItem<T extends string> = { id: T; label: React.ReactNode };

@@ -329,7 +329,9 @@ export function SocialFeed() {
         header={
           <AitSectionHeader
             title={t(headerMeta.titleKey, { defaultValue: headerMeta.titleDefault })}
-            description={t(headerMeta.descriptionKey, { defaultValue: headerMeta.descriptionDefault })}
+            description={t(headerMeta.descriptionKey, {
+              defaultValue: headerMeta.descriptionDefault,
+            })}
             actions={
               <>
                 <AitButton variant="primary" className="gap-2" asChild>
@@ -372,7 +374,13 @@ export function SocialFeed() {
             />
           </>
         }
-        tabs={<SocialFormatTabs value={contentFormat} onChange={setContentFormat} className="overflow-x-auto scrollbar-hide" />}
+        tabs={
+          <SocialFormatTabs
+            value={contentFormat}
+            onChange={setContentFormat}
+            className="overflow-x-auto scrollbar-hide"
+          />
+        }
         filters={
           showReelsFilterPills ? (
             <AitFilterPills

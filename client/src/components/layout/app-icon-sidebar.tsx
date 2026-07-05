@@ -30,7 +30,9 @@ function NavItem({ item, active }: { item: NavItemWithMeta; active: boolean }) {
         <span
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-250",
-            active ? "bg-ait-purple/30 text-white scale-105" : "bg-white/[0.07] text-slate-200 group-hover:scale-105",
+            active
+              ? "bg-ait-purple/30 text-white scale-105"
+              : "bg-white/[0.07] text-slate-200 group-hover:scale-105",
           )}
         >
           <Icon className="h-[18px] w-[18px]" aria-hidden />

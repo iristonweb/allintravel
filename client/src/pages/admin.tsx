@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import AdminBroadcastDialog from "@/components/admin/AdminBroadcastDialog";
 import MessageComposer from "@/components/chat/MessageComposer";
 import EmptyState from "@/components/empty-state";
-import { Shield, Coins, Bell, Megaphone, Search, AlertCircle, Loader2 } from "lucide-react";
+import { Shield, Coins, Bell, Megaphone, AlertCircle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 

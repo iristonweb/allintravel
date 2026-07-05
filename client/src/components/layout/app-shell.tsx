@@ -48,7 +48,8 @@ export default function AppShell({
   const { supported: pushSupported, vapidReady, subscribe: subscribePush } = usePushNotifications();
 
   const minimalChrome = chrome === "minimal";
-  const effectiveImmersive = immersive || minimalChrome || layout === "immersive" || layout === "full-bleed";
+  const effectiveImmersive =
+    immersive || minimalChrome || layout === "immersive" || layout === "full-bleed";
   const effectiveFullWidth = fullWidth || layout === "full-bleed";
 
   useEffect(() => {
@@ -89,7 +90,10 @@ export default function AppShell({
       >
         <main
           className={cn(
-            !effectiveFullWidth && !effectiveImmersive && !rightRail && "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
+            !effectiveFullWidth &&
+              !effectiveImmersive &&
+              !rightRail &&
+              "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
             effectiveFullWidth && !rightRail && "w-full",
             effectiveImmersive && !rightRail && "w-full",
             (rightRail || effectiveFullWidth) && "py-8",

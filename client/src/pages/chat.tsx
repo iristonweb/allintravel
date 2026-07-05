@@ -510,8 +510,7 @@ export function Chat() {
   const patchHistoryMessage = useCallback(
     (messageId: string, patch: Partial<ChatMessageWithSender>) => {
       queryClient.setQueryData<ChatHistoryPayload | ChatMessageWithSender[]>(historyKey, (old) => {
-        const apply = (m: ChatMessageWithSender) =>
-          m.id === messageId ? { ...m, ...patch } : m;
+        const apply = (m: ChatMessageWithSender) => (m.id === messageId ? { ...m, ...patch } : m);
         if (Array.isArray(old)) return old.map(apply);
         if (!old?.messages) return old;
         return { ...old, messages: old.messages.map(apply) };

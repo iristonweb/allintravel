@@ -40,7 +40,8 @@ export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) 
   const featuredPost = publicPosts[0];
 
   const featured: FeaturedGuideWidgetData = {
-    title: featuredPost?.title ?? t("social.exploreGuides", { defaultValue: "Explore travel guides" }),
+    title:
+      featuredPost?.title ?? t("social.exploreGuides", { defaultValue: "Explore travel guides" }),
     imageSrc: featuredPost?.images?.[0]
       ? (resolveMediaUrl(featuredPost.images[0]) ?? COMMUNITY_TRAVEL_SRC)
       : COMMUNITY_TRAVEL_SRC,

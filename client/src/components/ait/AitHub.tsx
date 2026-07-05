@@ -95,7 +95,10 @@ export default function AitHub() {
             <h2 className="text-base font-semibold mb-2">Квесты недели</h2>
             <div className="grid gap-3">
               {data.quests.map((q) => (
-                <GlassCard key={q.id} className="p-4 flex flex-wrap items-center justify-between gap-3">
+                <GlassCard
+                  key={q.id}
+                  className="p-4 flex flex-wrap items-center justify-between gap-3"
+                >
                   <div>
                     <p className="font-medium">{q.title}</p>
                     <p className="text-sm text-muted-foreground">{q.description}</p>

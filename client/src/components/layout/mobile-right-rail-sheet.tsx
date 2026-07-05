@@ -35,12 +35,7 @@ export default function MobileRightRailSheet({
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div
-            variants={slideUpPanel}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
+          <motion.div variants={slideUpPanel} initial="hidden" animate="visible" exit="exit">
             <AitSurface padding="md" radius="lg" className="space-y-4">
               {children}
             </AitSurface>

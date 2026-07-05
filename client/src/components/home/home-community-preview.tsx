@@ -35,7 +35,14 @@ function PostCard({
   bookmarkLabel: string;
 }) {
   return (
-    <AitSurface strong padding="none" radius="xl" glow hover className="overflow-hidden min-w-[280px] max-w-sm flex-1 snap-start">
+    <AitSurface
+      strong
+      padding="none"
+      radius="xl"
+      glow
+      hover
+      className="overflow-hidden min-w-[280px] max-w-sm flex-1 snap-start"
+    >
       <div className="p-card flex items-center gap-3">
         <Avatar className="h-12 w-12 border-2 border-ait-purple/40">
           <AvatarImage src={resolveMediaUrl(post.authorAvatar) ?? post.authorAvatar} />

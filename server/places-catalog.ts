@@ -45,7 +45,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "France",
     lat: "48.8566",
     lon: "2.3522",
-    attractions: ["Eiffel Tower", "Louvre Museum", "Notre-Dame", "Montmartre", "Palace of Versailles"],
+    attractions: [
+      "Eiffel Tower",
+      "Louvre Museum",
+      "Notre-Dame",
+      "Montmartre",
+      "Palace of Versailles",
+    ],
     hotels: ["Le Meurice", "Hotel Plaza Athénée"],
     restaurants: [
       { name: "Le Comptoir du Relais", cuisine: "French" },
@@ -57,7 +63,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "United Kingdom",
     lat: "51.5074",
     lon: "-0.1278",
-    attractions: ["British Museum", "Tower of London", "Buckingham Palace", "Hyde Park", "Westminster Abbey"],
+    attractions: [
+      "British Museum",
+      "Tower of London",
+      "Buckingham Palace",
+      "Hyde Park",
+      "Westminster Abbey",
+    ],
     hotels: ["The Savoy", "Claridge's"],
     restaurants: [
       { name: "Dishoom", cuisine: "Indian" },
@@ -105,7 +117,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Germany",
     lat: "52.52",
     lon: "13.405",
-    attractions: ["Brandenburg Gate", "Museum Island", "East Side Gallery", "Reichstag", "Charlottenburg Palace"],
+    attractions: [
+      "Brandenburg Gate",
+      "Museum Island",
+      "East Side Gallery",
+      "Reichstag",
+      "Charlottenburg Palace",
+    ],
     hotels: ["Hotel Adlon Kempinski", "SO/Berlin"],
     restaurants: [
       { name: "Zur Letzten Instanz", cuisine: "German" },
@@ -117,7 +135,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Czech Republic",
     lat: "50.0755",
     lon: "14.4378",
-    attractions: ["Charles Bridge", "Prague Castle", "Old Town Square", "Astronomical Clock", "Vyšehrad"],
+    attractions: [
+      "Charles Bridge",
+      "Prague Castle",
+      "Old Town Square",
+      "Astronomical Clock",
+      "Vyšehrad",
+    ],
     hotels: ["Augustine Hotel", "Four Seasons Prague"],
     restaurants: [
       { name: "Lokál Dlouhááá", cuisine: "Czech" },
@@ -141,7 +165,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Turkey",
     lat: "41.0082",
     lon: "28.9784",
-    attractions: ["Hagia Sophia", "Blue Mosque", "Grand Bazaar", "Topkapi Palace", "Bosphorus Cruise"],
+    attractions: [
+      "Hagia Sophia",
+      "Blue Mosque",
+      "Grand Bazaar",
+      "Topkapi Palace",
+      "Bosphorus Cruise",
+    ],
     hotels: ["Four Seasons Sultanahmet", "Çırağan Palace"],
     restaurants: [
       { name: "Mikla", cuisine: "Turkish" },
@@ -165,7 +195,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Japan",
     lat: "35.6762",
     lon: "139.6503",
-    attractions: ["Senso-ji Temple", "Shibuya Crossing", "Meiji Shrine", "Tokyo Skytree", "Tsukiji Outer Market"],
+    attractions: [
+      "Senso-ji Temple",
+      "Shibuya Crossing",
+      "Meiji Shrine",
+      "Tokyo Skytree",
+      "Tsukiji Outer Market",
+    ],
     hotels: ["Aman Tokyo", "Park Hyatt Tokyo"],
     restaurants: [
       { name: "Ichiran Ramen", cuisine: "Japanese" },
@@ -177,7 +213,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Japan",
     lat: "35.0116",
     lon: "135.7681",
-    attractions: ["Fushimi Inari Shrine", "Arashiyama Bamboo Grove", "Kinkaku-ji", "Gion District", "Philosopher's Path"],
+    attractions: [
+      "Fushimi Inari Shrine",
+      "Arashiyama Bamboo Grove",
+      "Kinkaku-ji",
+      "Gion District",
+      "Philosopher's Path",
+    ],
     hotels: ["Hoshinoya Kyoto", "The Ritz-Carlton Kyoto"],
     restaurants: [
       { name: "Nishiki Market Stalls", cuisine: "Japanese" },
@@ -189,7 +231,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "South Korea",
     lat: "37.5665",
     lon: "126.978",
-    attractions: ["Gyeongbokgung Palace", "Bukchon Hanok Village", "N Seoul Tower", "Myeongdong", "DMZ Tour"],
+    attractions: [
+      "Gyeongbokgung Palace",
+      "Bukchon Hanok Village",
+      "N Seoul Tower",
+      "Myeongdong",
+      "DMZ Tour",
+    ],
     hotels: ["Signiel Seoul", "Lotte Hotel Seoul"],
     restaurants: [
       { name: "Gwangjang Market", cuisine: "Korean" },
@@ -213,7 +261,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Singapore",
     lat: "1.3521",
     lon: "103.8198",
-    attractions: ["Gardens by the Bay", "Marina Bay Sands", "Sentosa Island", "Chinatown", "Singapore Zoo"],
+    attractions: [
+      "Gardens by the Bay",
+      "Marina Bay Sands",
+      "Sentosa Island",
+      "Chinatown",
+      "Singapore Zoo",
+    ],
     hotels: ["Raffles Singapore", "Marina Bay Sands"],
     restaurants: [
       { name: "Hawker Chan", cuisine: "Chinese" },
@@ -225,7 +279,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Indonesia",
     lat: "-8.3405",
     lon: "115.092",
-    attractions: ["Tegallalang Rice Terraces", "Uluwatu Temple", "Ubud Monkey Forest", "Tanah Lot", "Mount Batur"],
+    attractions: [
+      "Tegallalang Rice Terraces",
+      "Uluwatu Temple",
+      "Ubud Monkey Forest",
+      "Tanah Lot",
+      "Mount Batur",
+    ],
     hotels: ["Four Seasons Bali", "COMO Shambhala"],
     restaurants: [
       { name: "Locavore", cuisine: "Indonesian" },
@@ -237,7 +297,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Australia",
     lat: "-33.8688",
     lon: "151.2093",
-    attractions: ["Sydney Opera House", "Harbour Bridge", "Bondi Beach", "Royal Botanic Garden", "Manly Ferry"],
+    attractions: [
+      "Sydney Opera House",
+      "Harbour Bridge",
+      "Bondi Beach",
+      "Royal Botanic Garden",
+      "Manly Ferry",
+    ],
     hotels: ["Park Hyatt Sydney", "Capella Sydney"],
     restaurants: [
       { name: "Quay Restaurant", cuisine: "Australian" },
@@ -249,7 +315,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Australia",
     lat: "-37.8136",
     lon: "144.9631",
-    attractions: ["Federation Square", "Great Ocean Road", "Royal Exhibition Building", "St Kilda Beach", "Queen Victoria Market"],
+    attractions: [
+      "Federation Square",
+      "Great Ocean Road",
+      "Royal Exhibition Building",
+      "St Kilda Beach",
+      "Queen Victoria Market",
+    ],
     hotels: ["Crown Towers", "The Langham Melbourne"],
     restaurants: [
       { name: "Attica", cuisine: "Australian" },
@@ -261,7 +333,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "USA",
     lat: "40.7128",
     lon: "-74.006",
-    attractions: ["Statue of Liberty", "Central Park", "Times Square", "Brooklyn Bridge", "Metropolitan Museum"],
+    attractions: [
+      "Statue of Liberty",
+      "Central Park",
+      "Times Square",
+      "Brooklyn Bridge",
+      "Metropolitan Museum",
+    ],
     hotels: ["The Plaza", "The Standard High Line"],
     restaurants: [
       { name: "Katz's Delicatessen", cuisine: "American" },
@@ -273,7 +351,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "USA",
     lat: "34.0522",
     lon: "-118.2437",
-    attractions: ["Hollywood Sign", "Griffith Observatory", "Santa Monica Pier", "Getty Center", "Venice Beach"],
+    attractions: [
+      "Hollywood Sign",
+      "Griffith Observatory",
+      "Santa Monica Pier",
+      "Getty Center",
+      "Venice Beach",
+    ],
     hotels: ["Beverly Hills Hotel", "The Line Hotel"],
     restaurants: [
       { name: "Republique", cuisine: "French" },
@@ -285,7 +369,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "USA",
     lat: "37.7749",
     lon: "-122.4194",
-    attractions: ["Golden Gate Bridge", "Alcatraz Island", "Fisherman's Wharf", "Lombard Street", "Golden Gate Park"],
+    attractions: [
+      "Golden Gate Bridge",
+      "Alcatraz Island",
+      "Fisherman's Wharf",
+      "Lombard Street",
+      "Golden Gate Park",
+    ],
     hotels: ["Fairmont San Francisco", "Proper Hotel"],
     restaurants: [
       { name: "Tartine Bakery", cuisine: "Bakery" },
@@ -297,7 +387,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "USA",
     lat: "25.7617",
     lon: "-80.1918",
-    attractions: ["South Beach", "Art Deco District", "Wynwood Walls", "Vizcaya Museum", "Everglades Tour"],
+    attractions: [
+      "South Beach",
+      "Art Deco District",
+      "Wynwood Walls",
+      "Vizcaya Museum",
+      "Everglades Tour",
+    ],
     hotels: ["Faena Hotel", "The Setai"],
     restaurants: [
       { name: "Joe's Stone Crab", cuisine: "Seafood" },
@@ -309,7 +405,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Mexico",
     lat: "19.4326",
     lon: "-99.1332",
-    attractions: ["Zócalo", "Teotihuacán Pyramids", "Frida Kahlo Museum", "Chapultepec Castle", "Xochimilco"],
+    attractions: [
+      "Zócalo",
+      "Teotihuacán Pyramids",
+      "Frida Kahlo Museum",
+      "Chapultepec Castle",
+      "Xochimilco",
+    ],
     hotels: ["Four Seasons Mexico City", "Condesa DF"],
     restaurants: [
       { name: "Pujol", cuisine: "Mexican" },
@@ -321,7 +423,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Brazil",
     lat: "-22.9068",
     lon: "-43.1729",
-    attractions: ["Christ the Redeemer", "Sugarloaf Mountain", "Copacabana Beach", "Selarón Steps", "Tijuca Forest"],
+    attractions: [
+      "Christ the Redeemer",
+      "Sugarloaf Mountain",
+      "Copacabana Beach",
+      "Selarón Steps",
+      "Tijuca Forest",
+    ],
     hotels: ["Belmond Copacabana Palace", "Fasano Rio"],
     restaurants: [
       { name: "Aprazível", cuisine: "Brazilian" },
@@ -345,7 +453,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Peru",
     lat: "-12.0464",
     lon: "-77.0428",
-    attractions: ["Historic Center", "Miraflores", "Barranco", "Larco Museum", "Machu Picchu Gateway"],
+    attractions: [
+      "Historic Center",
+      "Miraflores",
+      "Barranco",
+      "Larco Museum",
+      "Machu Picchu Gateway",
+    ],
     hotels: ["Country Club Lima Hotel", "Atemporal"],
     restaurants: [
       { name: "Central", cuisine: "Peruvian" },
@@ -357,7 +471,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "South Africa",
     lat: "-33.9249",
     lon: "18.4241",
-    attractions: ["Table Mountain", "Cape of Good Hope", "V&A Waterfront", "Boulders Beach Penguins", "Robben Island"],
+    attractions: [
+      "Table Mountain",
+      "Cape of Good Hope",
+      "V&A Waterfront",
+      "Boulders Beach Penguins",
+      "Robben Island",
+    ],
     hotels: ["One&Only Cape Town", "Ellerman House"],
     restaurants: [
       { name: "The Test Kitchen", cuisine: "South African" },
@@ -369,7 +489,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Morocco",
     lat: "31.6295",
     lon: "-7.9811",
-    attractions: ["Jemaa el-Fnaa", "Bahia Palace", "Majorelle Garden", "Medina Souks", "Atlas Mountains Day Trip"],
+    attractions: [
+      "Jemaa el-Fnaa",
+      "Bahia Palace",
+      "Majorelle Garden",
+      "Medina Souks",
+      "Atlas Mountains Day Trip",
+    ],
     hotels: ["Royal Mansour", "La Mamounia"],
     restaurants: [
       { name: "Nomad", cuisine: "Moroccan" },
@@ -381,7 +507,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Egypt",
     lat: "30.0444",
     lon: "31.2357",
-    attractions: ["Pyramids of Giza", "Egyptian Museum", "Khan el-Khalili", "Saqqara", "Nile Felucca Ride"],
+    attractions: [
+      "Pyramids of Giza",
+      "Egyptian Museum",
+      "Khan el-Khalili",
+      "Saqqara",
+      "Nile Felucca Ride",
+    ],
     hotels: ["Marriott Mena House", "Four Seasons Nile Plaza"],
     restaurants: [
       { name: "Abou El Sid", cuisine: "Egyptian" },
@@ -393,7 +525,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Russia",
     lat: "55.7558",
     lon: "37.6173",
-    attractions: ["Red Square", "Kremlin", "St. Basil's Cathedral", "Bolshoi Theatre", "Gorky Park"],
+    attractions: [
+      "Red Square",
+      "Kremlin",
+      "St. Basil's Cathedral",
+      "Bolshoi Theatre",
+      "Gorky Park",
+    ],
     hotels: ["Four Seasons Moscow", "Lotte Hotel Moscow"],
     restaurants: [
       { name: "White Rabbit", cuisine: "Russian" },
@@ -405,7 +543,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Russia",
     lat: "59.9311",
     lon: "30.3609",
-    attractions: ["Hermitage Museum", "Church of the Savior on Spilled Blood", "Peterhof Palace", "Nevsky Prospect", "Mariinsky Theatre"],
+    attractions: [
+      "Hermitage Museum",
+      "Church of the Savior on Spilled Blood",
+      "Peterhof Palace",
+      "Nevsky Prospect",
+      "Mariinsky Theatre",
+    ],
     hotels: ["Belmond Grand Hotel Europe", "Four Seasons Lion Palace"],
     restaurants: [
       { name: "Palkin", cuisine: "Russian" },
@@ -429,7 +573,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Greece",
     lat: "36.3932",
     lon: "25.4615",
-    attractions: ["Oia Sunset", "Fira Caldera View", "Red Beach", "Akrotiri Ruins", "Santorini Wine Tour"],
+    attractions: [
+      "Oia Sunset",
+      "Fira Caldera View",
+      "Red Beach",
+      "Akrotiri Ruins",
+      "Santorini Wine Tour",
+    ],
     hotels: ["Canaves Oia", "Katikies Hotel"],
     restaurants: [
       { name: "Ambrosia", cuisine: "Greek" },
@@ -453,7 +603,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Iceland",
     lat: "64.1466",
     lon: "-21.9426",
-    attractions: ["Blue Lagoon", "Golden Circle", "Northern Lights Tour", "Hallgrímskirkja", "Glacier Hike"],
+    attractions: [
+      "Blue Lagoon",
+      "Golden Circle",
+      "Northern Lights Tour",
+      "Hallgrímskirkja",
+      "Glacier Hike",
+    ],
     hotels: ["Ion Adventure Hotel", "Canopy by Hilton"],
     restaurants: [
       { name: "Dill Restaurant", cuisine: "Nordic" },
@@ -501,7 +657,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Vietnam",
     lat: "21.0278",
     lon: "105.8342",
-    attractions: ["Old Quarter", "Hoan Kiem Lake", "Temple of Literature", "Ha Long Bay Tour", "Train Street"],
+    attractions: [
+      "Old Quarter",
+      "Hoan Kiem Lake",
+      "Temple of Literature",
+      "Ha Long Bay Tour",
+      "Train Street",
+    ],
     hotels: ["Sofitel Legend Metropole", "Capella Hanoi"],
     restaurants: [
       { name: "Pho Gia Truyen", cuisine: "Vietnamese" },
@@ -513,7 +675,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Vietnam",
     lat: "10.8231",
     lon: "106.6297",
-    attractions: ["Ben Thanh Market", "War Remnants Museum", "Cu Chi Tunnels", "Notre-Dame Cathedral", "Mekong Delta"],
+    attractions: [
+      "Ben Thanh Market",
+      "War Remnants Museum",
+      "Cu Chi Tunnels",
+      "Notre-Dame Cathedral",
+      "Mekong Delta",
+    ],
     hotels: ["Park Hyatt Saigon", "The Reverie Saigon"],
     restaurants: [
       { name: "Pizza 4P's", cuisine: "Italian" },
@@ -525,7 +693,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "China",
     lat: "22.3193",
     lon: "114.1694",
-    attractions: ["Victoria Peak", "Star Ferry", "Temple Street Night Market", "Big Buddha", "Dragon's Back Hike"],
+    attractions: [
+      "Victoria Peak",
+      "Star Ferry",
+      "Temple Street Night Market",
+      "Big Buddha",
+      "Dragon's Back Hike",
+    ],
     hotels: ["The Peninsula", "Mandarin Oriental"],
     restaurants: [
       { name: "Tim Ho Wan", cuisine: "Dim sum" },
@@ -537,7 +711,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "China",
     lat: "31.2304",
     lon: "121.4737",
-    attractions: ["The Bund", "Yu Garden", "Shanghai Tower", "French Concession", "Zhujiajiao Water Town"],
+    attractions: [
+      "The Bund",
+      "Yu Garden",
+      "Shanghai Tower",
+      "French Concession",
+      "Zhujiajiao Water Town",
+    ],
     hotels: ["Fairmont Peace Hotel", "Capella Shanghai"],
     restaurants: [
       { name: "Din Tai Fung", cuisine: "Chinese" },
@@ -549,7 +729,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "China",
     lat: "39.9042",
     lon: "116.4074",
-    attractions: ["Great Wall", "Forbidden City", "Temple of Heaven", "Summer Palace", "798 Art District"],
+    attractions: [
+      "Great Wall",
+      "Forbidden City",
+      "Temple of Heaven",
+      "Summer Palace",
+      "798 Art District",
+    ],
     hotels: ["Aman Summer Palace", "The Peninsula Beijing"],
     restaurants: [
       { name: "Da Dong Roast Duck", cuisine: "Peking duck" },
@@ -561,7 +747,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "India",
     lat: "19.076",
     lon: "72.8777",
-    attractions: ["Gateway of India", "Marine Drive", "Elephanta Caves", "Chhatrapati Shivaji Terminus", "Dharavi Tour"],
+    attractions: [
+      "Gateway of India",
+      "Marine Drive",
+      "Elephanta Caves",
+      "Chhatrapati Shivaji Terminus",
+      "Dharavi Tour",
+    ],
     hotels: ["Taj Mahal Palace", "The Oberoi Mumbai"],
     restaurants: [
       { name: "Britannia & Co.", cuisine: "Parsi" },
@@ -585,7 +777,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Nepal",
     lat: "27.7172",
     lon: "85.324",
-    attractions: ["Boudhanath Stupa", "Pashupatinath Temple", "Durbar Square", "Swayambhunath", "Everest Flight"],
+    attractions: [
+      "Boudhanath Stupa",
+      "Pashupatinath Temple",
+      "Durbar Square",
+      "Swayambhunath",
+      "Everest Flight",
+    ],
     hotels: ["Dwarika's Hotel", "Hyatt Regency Kathmandu"],
     restaurants: [
       { name: "Bhojan Griha", cuisine: "Nepali" },
@@ -597,7 +795,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "New Zealand",
     lat: "-45.0312",
     lon: "168.6626",
-    attractions: ["Milford Sound", "Skyline Gondola", "Lake Wakatipu", "Bungee Jumping", "Arrowtown"],
+    attractions: [
+      "Milford Sound",
+      "Skyline Gondola",
+      "Lake Wakatipu",
+      "Bungee Jumping",
+      "Arrowtown",
+    ],
     hotels: ["Eichardt's Private Hotel", "Matakauri Lodge"],
     restaurants: [
       { name: "Fergburger", cuisine: "Burgers" },
@@ -621,7 +825,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "USA",
     lat: "36.1699",
     lon: "-115.1398",
-    attractions: ["The Strip", "Fremont Street", "Grand Canyon Tour", "Bellagio Fountains", "Red Rock Canyon"],
+    attractions: [
+      "The Strip",
+      "Fremont Street",
+      "Grand Canyon Tour",
+      "Bellagio Fountains",
+      "Red Rock Canyon",
+    ],
     hotels: ["Bellagio", "The Venetian"],
     restaurants: [
       { name: "é by José Andrés", cuisine: "Spanish" },
@@ -633,7 +843,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Canada",
     lat: "43.6532",
     lon: "-79.3832",
-    attractions: ["CN Tower", "Royal Ontario Museum", "Distillery District", "Niagara Falls Day Trip", "Toronto Islands"],
+    attractions: [
+      "CN Tower",
+      "Royal Ontario Museum",
+      "Distillery District",
+      "Niagara Falls Day Trip",
+      "Toronto Islands",
+    ],
     hotels: ["Fairmont Royal York", "Shangri-La Toronto"],
     restaurants: [
       { name: "St. Lawrence Market", cuisine: "Market" },
@@ -645,7 +861,13 @@ const CITY_BUNDLES: CityBundle[] = [
     country: "Canada",
     lat: "49.2827",
     lon: "-123.1207",
-    attractions: ["Stanley Park", "Capilano Suspension Bridge", "Granville Island", "Grouse Mountain", "Seawall"],
+    attractions: [
+      "Stanley Park",
+      "Capilano Suspension Bridge",
+      "Granville Island",
+      "Grouse Mountain",
+      "Seawall",
+    ],
     hotels: ["Fairmont Pacific Rim", "Rosewood Hotel Georgia"],
     restaurants: [
       { name: "Miku", cuisine: "Japanese" },
@@ -673,7 +895,8 @@ export function buildPlacesCatalog(): CatalogPlace[] {
     {
       id: SEED_PLACE_IDS.santorini,
       name: "Santorini Sunset Terrace",
-      description: "Breathtaking caldera views with iconic white-washed buildings and stunning sunsets.",
+      description:
+        "Breathtaking caldera views with iconic white-washed buildings and stunning sunsets.",
       type: "attraction" as const,
       address: "Oia, Santorini 847 02, Greece",
       latitude: "36.4618",

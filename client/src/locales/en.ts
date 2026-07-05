@@ -457,7 +457,13 @@ export const en = {
       attraction: "Activities",
       tour: "Tours",
     },
-    feedMode: { all: "All", following: "Following", popular: "Popular", nearby: "Nearby", trending: "Trending" },
+    feedMode: {
+      all: "All",
+      following: "Following",
+      popular: "Popular",
+      nearby: "Nearby",
+      trending: "Trending",
+    },
   },
   profile: {
     signInRequired: "Sign in required",

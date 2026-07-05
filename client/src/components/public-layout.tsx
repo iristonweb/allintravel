@@ -14,7 +14,9 @@ export default function PublicLayout({ children, contentClassName }: PublicLayou
     <AmbientBackground showOrbs={false}>
       <div className="min-h-screen flex flex-col">
         <AppTopNav />
-        <div className={cn("flex-1 pt-[var(--ait-header-h,4.5rem)]", contentClassName)}>{children}</div>
+        <div className={cn("flex-1 pt-[var(--ait-header-h,4.5rem)]", contentClassName)}>
+          {children}
+        </div>
         <FeatureFooter showAnchors />
       </div>
     </AmbientBackground>

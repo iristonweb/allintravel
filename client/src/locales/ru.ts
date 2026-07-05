@@ -458,7 +458,13 @@ export const ru = {
       attraction: "Активности",
       tour: "Туры",
     },
-    feedMode: { all: "Все", following: "Подписки", popular: "Популярное", nearby: "Рядом", trending: "Тренды" },
+    feedMode: {
+      all: "Все",
+      following: "Подписки",
+      popular: "Популярное",
+      nearby: "Рядом",
+      trending: "Тренды",
+    },
   },
   profile: {
     signInRequired: "Войдите в систему",

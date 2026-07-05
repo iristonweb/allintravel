@@ -51,7 +51,8 @@ export default function ThreeColumnLayout({
       <aside
         className={cn(
           "hidden xl:block min-w-0",
-          rightRailSticky && "sticky top-[calc(var(--ait-header-h)+1.5rem)] self-start max-h-[calc(100vh-var(--ait-header-h)-2rem)] overflow-y-auto ait-scrollbar",
+          rightRailSticky &&
+            "sticky top-[calc(var(--ait-header-h)+1.5rem)] self-start max-h-[calc(100vh-var(--ait-header-h)-2rem)] overflow-y-auto ait-scrollbar",
           rightClassName,
         )}
       >

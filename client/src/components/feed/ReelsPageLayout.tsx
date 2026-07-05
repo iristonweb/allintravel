@@ -102,11 +102,7 @@ type ReelsSnapItemProps = HTMLAttributes<HTMLDivElement> & {
 /** Single snap page inside {@link ReelsSnapFeed}. */
 export const ReelsSnapItem = forwardRef<HTMLDivElement, ReelsSnapItemProps>(
   ({ children, className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("h-full snap-start snap-always shrink-0", className)}
-      {...props}
-    >
+    <div ref={ref} className={cn("h-full snap-start snap-always shrink-0", className)} {...props}>
       {children}
     </div>
   ),

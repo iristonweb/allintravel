@@ -73,9 +73,7 @@ export function useEngagementReminders() {
       const rings = aitDataRef.current?.rings as
         | Record<ActivityRingId, { count: number; percent: number }>
         | undefined;
-      const incomplete = rings
-        ? RING_ORDER.filter((id) => (rings[id]?.percent ?? 0) < 100)
-        : [];
+      const incomplete = rings ? RING_ORDER.filter((id) => (rings[id]?.percent ?? 0) < 100) : [];
 
       if (incomplete.length > 0 && incomplete[0]) {
         const ringId = incomplete[0];

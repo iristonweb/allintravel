@@ -32,7 +32,15 @@ export function MapWidget({ title, linkLabel, href, className }: MapWidgetProps)
       <div className="relative aspect-[16/10] bg-gradient-to-br from-ait-deep via-ait-navy to-ait-void">
         <div className="absolute inset-0 opacity-40">
           <svg viewBox="0 0 400 200" className="w-full h-full" aria-hidden>
-            <ellipse cx="200" cy="100" rx="180" ry="80" fill="none" stroke="rgba(139,92,246,0.3)" strokeWidth="1" />
+            <ellipse
+              cx="200"
+              cy="100"
+              rx="180"
+              ry="80"
+              fill="none"
+              stroke="rgba(139,92,246,0.3)"
+              strokeWidth="1"
+            />
             <circle cx="120" cy="90" r="6" fill="#ff7a18" className="ait-glow-pulse" />
             <circle cx="240" cy="70" r="4" fill="#8b5cf6" />
             <circle cx="280" cy="120" r="5" fill="#ff7a18" />
@@ -41,7 +49,10 @@ export function MapWidget({ title, linkLabel, href, className }: MapWidgetProps)
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
           <p className="text-sm font-semibold text-white">{title}</p>
-          <Link href={href} className="text-xs text-ait-purple hover:text-ait-orange transition-colors">
+          <Link
+            href={href}
+            className="text-xs text-ait-purple hover:text-ait-orange transition-colors"
+          >
             {linkLabel}
           </Link>
         </div>
@@ -93,7 +104,13 @@ type FeaturedGuideWidgetProps = {
 export function FeaturedGuideWidget({ data, className }: FeaturedGuideWidgetProps) {
   return (
     <Link href={data.href}>
-      <AitSurface padding="none" radius="lg" hover glow className={cn("overflow-hidden block", className)}>
+      <AitSurface
+        padding="none"
+        radius="lg"
+        hover
+        glow
+        className={cn("overflow-hidden block", className)}
+      >
         <div className="relative aspect-[4/3]">
           <img src={data.imageSrc} alt="" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -118,7 +135,13 @@ type RightPanelWidgetsProps = {
   className?: string;
 };
 
-export default function RightPanelWidgets({ map, trends, featured, footer, className }: RightPanelWidgetsProps) {
+export default function RightPanelWidgets({
+  map,
+  trends,
+  featured,
+  footer,
+  className,
+}: RightPanelWidgetsProps) {
   return (
     <motion.div
       className={cn("space-y-6", className)}

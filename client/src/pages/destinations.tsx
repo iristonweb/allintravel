@@ -60,9 +60,5 @@ export default function DestinationsIndexPage() {
     );
   }
 
-  return (
-    <PublicLayout contentClassName="py-8">
-      {pageBody}
-    </PublicLayout>
-  );
+  return <PublicLayout contentClassName="py-8">{pageBody}</PublicLayout>;
 }

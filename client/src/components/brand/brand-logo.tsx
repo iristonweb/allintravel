@@ -1,11 +1,6 @@
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import {
-  BRAND_NAV_MARK_SRC,
-  BRAND_WORDMARK_SRC,
-  SITE_NAME,
-  SITE_TAGLINE,
-} from "@/lib/site-meta";
+import { BRAND_NAV_MARK_SRC, BRAND_WORDMARK_SRC, SITE_NAME, SITE_TAGLINE } from "@/lib/site-meta";
 
 type BrandLogoProps = {
   className?: string;
