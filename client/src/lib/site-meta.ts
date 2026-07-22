@@ -8,8 +8,7 @@ const SITE_COPY = {
   en: {
     description:
       "All In Travel — a unified ecosystem for travelers: interactive world map, trip planner, community, chats, and the best places on the planet.",
-    descriptionShort:
-      "Map, planner, and traveler community in one premium app.",
+    descriptionShort: "Map, planner, and traveler community in one premium app.",
   },
   ru: {
     description:

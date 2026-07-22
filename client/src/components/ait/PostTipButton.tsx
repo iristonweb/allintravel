@@ -46,7 +46,11 @@ export default function PostTipButton({ postId, authorId, currentUserId }: PostT
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <AitButton variant="ghost" size="sm" className="gap-1 text-ait-orange hover:text-ait-orange">
+        <AitButton
+          variant="ghost"
+          size="sm"
+          className="gap-1 text-ait-orange hover:text-ait-orange"
+        >
           <Gift className="h-4 w-4" />
           {t("ait.tip.button")}
         </AitButton>

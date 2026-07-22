@@ -363,11 +363,7 @@ export default function ReelCard({
           </span>
         )}
 
-        <ReelActionButton
-          label={labels.comments}
-          onClick={onCommentToggle}
-          disabled={disabled}
-        >
+        <ReelActionButton label={labels.comments} onClick={onCommentToggle} disabled={disabled}>
           <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
         </ReelActionButton>
         {(reel.commentsCount ?? 0) > 0 && (

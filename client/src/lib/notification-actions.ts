@@ -13,10 +13,7 @@ export async function markNotificationRead(item: AppNotification): Promise<void>
   await apiRequest("PUT", "/api/notifications/read-batch", { ids });
 }
 
-export function formatAggregatedActorLabel(
-  actors: UserLabelFields[],
-  totalCount: number,
-): string {
+export function formatAggregatedActorLabel(actors: UserLabelFields[], totalCount: number): string {
   if (totalCount <= 0 || actors.length === 0) return i18n.t("notifications.someone");
 
   const names = actors.map((a) => getUserDisplayLabel(a));

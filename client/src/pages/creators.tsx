@@ -22,7 +22,9 @@ export default function CreatorsPage() {
   const [niche, setNiche] = useState("");
   const [message, setMessage] = useState("");
 
-  const { data, isLoading } = useQuery<{ perks: { id: string; title: string; description: string }[] }>({
+  const { data, isLoading } = useQuery<{
+    perks: { id: string; title: string; description: string }[];
+  }>({
     queryKey: ["/api/gtm/creators"],
   });
 

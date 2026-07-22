@@ -70,9 +70,7 @@ export default function TravelJourneyStrip({
                 )}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
-                {!compact && (
-                  <span>{t(`journey.steps.${step.id}`)}</span>
-                )}
+                {!compact && <span>{t(`journey.steps.${step.id}`)}</span>}
               </Link>
             </div>
           );

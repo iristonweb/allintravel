@@ -129,7 +129,9 @@ export default function AddStopSearch({
 
       {debouncedQ.length >= 2 && catalogPlaces.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground px-1">{t("planner.addStopSearch.catalogHint")}</p>
+          <p className="text-xs text-muted-foreground px-1">
+            {t("planner.addStopSearch.catalogHint")}
+          </p>
           {catalogPlaces.map((place) => (
             <CatalogPlaceRow
               key={place.id}

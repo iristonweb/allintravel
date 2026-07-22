@@ -31,7 +31,8 @@
     "db:reset-geo": "tsx server/scripts/reset-geo-schema.ts",
     "db:inspect-geo": "tsx server/scripts/inspect-geo-schema.ts",
     "geo:import": "tsx server/scripts/import-geonames.ts",
-    "db:import-all": "tsx server/scripts/run-all-imports.ts"
+    "db:import-all": "tsx server/scripts/run-all-imports.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -144,6 +145,8 @@
     "esbuild": "^0.25.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "postcss": "^8.4.47",
     "prettier": "^3.6.2",
     "supertest": "^7.2.2",
@@ -156,5 +159,23 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "lint-staged": {
+    "client/src/**/*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --max-warnings 0"
+    ],
+    "server/**/*.ts": [
+      "prettier --write",
+      "eslint --max-warnings 0"
+    ],
+    "shared/**/*.ts": [
+      "prettier --write",
+      "eslint --max-warnings 0"
+    ],
+    "scripts/**/*.ts": [
+      "prettier --write",
+      "eslint --max-warnings 0"
+    ]
   }
 }

@@ -460,16 +460,76 @@ export function getDemoStoryPosts(): TravelPostWithAuthor[] {
   ];
 
   const storiesEn: StorySpec[] = [
-    { id: "demo-story-1", authorIdx: 0, image: DEST_JAPAN_SRC, location: "Tokyo", unviewedGroup: true },
-    { id: "demo-story-2", authorIdx: 1, image: DEST_ICELAND_SRC, location: "Reykjavik", unviewedGroup: true },
-    { id: "demo-story-3", authorIdx: 2, image: DEST_PERU_SRC, location: "Cusco", unviewedGroup: true },
-    { id: "demo-story-4", authorIdx: 3, image: DEST_BALI_SRC, location: "Bali", unviewedGroup: false },
-    { id: "demo-story-5", authorIdx: 4, image: DEST_NORWAY_SRC, location: "Bergen", unviewedGroup: true },
-    { id: "demo-story-6", authorIdx: 0, image: DEST_ITALY_SRC, location: "Rome", unviewedGroup: true },
-    { id: "demo-story-7", authorIdx: 1, image: DEST_JAPAN_SRC, location: "Osaka", unviewedGroup: false },
-    { id: "demo-story-8", authorIdx: 2, image: DEST_ICELAND_SRC, location: "Vik", unviewedGroup: true },
-    { id: "demo-story-9", authorIdx: 3, image: DEST_BALI_SRC, location: "Ubud", unviewedGroup: false },
-    { id: "demo-story-10", authorIdx: 4, image: DEST_PERU_SRC, location: "Lima", unviewedGroup: true },
+    {
+      id: "demo-story-1",
+      authorIdx: 0,
+      image: DEST_JAPAN_SRC,
+      location: "Tokyo",
+      unviewedGroup: true,
+    },
+    {
+      id: "demo-story-2",
+      authorIdx: 1,
+      image: DEST_ICELAND_SRC,
+      location: "Reykjavik",
+      unviewedGroup: true,
+    },
+    {
+      id: "demo-story-3",
+      authorIdx: 2,
+      image: DEST_PERU_SRC,
+      location: "Cusco",
+      unviewedGroup: true,
+    },
+    {
+      id: "demo-story-4",
+      authorIdx: 3,
+      image: DEST_BALI_SRC,
+      location: "Bali",
+      unviewedGroup: false,
+    },
+    {
+      id: "demo-story-5",
+      authorIdx: 4,
+      image: DEST_NORWAY_SRC,
+      location: "Bergen",
+      unviewedGroup: true,
+    },
+    {
+      id: "demo-story-6",
+      authorIdx: 0,
+      image: DEST_ITALY_SRC,
+      location: "Rome",
+      unviewedGroup: true,
+    },
+    {
+      id: "demo-story-7",
+      authorIdx: 1,
+      image: DEST_JAPAN_SRC,
+      location: "Osaka",
+      unviewedGroup: false,
+    },
+    {
+      id: "demo-story-8",
+      authorIdx: 2,
+      image: DEST_ICELAND_SRC,
+      location: "Vik",
+      unviewedGroup: true,
+    },
+    {
+      id: "demo-story-9",
+      authorIdx: 3,
+      image: DEST_BALI_SRC,
+      location: "Ubud",
+      unviewedGroup: false,
+    },
+    {
+      id: "demo-story-10",
+      authorIdx: 4,
+      image: DEST_PERU_SRC,
+      location: "Lima",
+      unviewedGroup: true,
+    },
   ];
 
   const stories = pickLocalized(storiesRu, storiesEn);

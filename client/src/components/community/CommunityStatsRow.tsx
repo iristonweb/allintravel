@@ -27,11 +27,7 @@ export default function CommunityStatsRow({
 
   const reelsValue =
     displayReelsCount ??
-    (reelsCount > 0
-      ? formatReelsCount(reelsCount)
-      : useMarketingStats
-        ? DEMO_STATS.reels
-        : empty);
+    (reelsCount > 0 ? formatReelsCount(reelsCount) : useMarketingStats ? DEMO_STATS.reels : empty);
 
   const stats = useMemo(
     () => [

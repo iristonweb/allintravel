@@ -68,7 +68,11 @@ export function ProfileMusic() {
   if (!isAuthenticated) {
     return (
       <AppLayout contentClassName="py-16">
-        <EmptyState variant="glass" title={t("profileMusic.signInRequired")} className="max-w-md mx-auto" />
+        <EmptyState
+          variant="glass"
+          title={t("profileMusic.signInRequired")}
+          className="max-w-md mx-auto"
+        />
       </AppLayout>
     );
   }
@@ -208,156 +212,158 @@ function ProfileMusicContent() {
   return (
     <div className="space-y-section">
       <AitSurface padding="sm" className="space-y-3">
-          <Label htmlFor="music-search">{t("profileMusic.searchLabel")}</Label>
-          <SmartSearchField
-            id="music-search"
-            placeholder={t("profileMusic.searchPlaceholder")}
-            value={searchInput}
-            onChange={setSearchInput}
-          />
-          {searchQuery.length >= 2 && (
-            <div className="space-y-4 pt-1">
-              {searchLoading && <p className="text-xs text-muted-foreground">{t("profileMusic.searching")}</p>}
-              {jamendoResults.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t("profileMusic.jamendoSection")}
-                  </p>
-                  {jamendoResults.map((item) => (
-                    <div
-                      key={`jamendo-${item.id}`}
-                      className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {item.artist}
-                          {item.durationSeconds ? ` · ${formatDuration(item.durationSeconds)}` : ""}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        title={t("profileMusic.listen")}
-                        aria-label={t("profileMusic.listen")}
-                        onClick={() =>
-                          previewExternal(`${item.title} — ${item.artist}`, item.streamUrl)
-                        }
-                      >
-                        <Play className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={importMutation.isPending}
-                        onClick={() =>
-                          importMutation.mutate({ source: "jamendo", externalId: item.id })
-                        }
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        {t("profileMusic.addToLibrary")}
-                      </Button>
+        <Label htmlFor="music-search">{t("profileMusic.searchLabel")}</Label>
+        <SmartSearchField
+          id="music-search"
+          placeholder={t("profileMusic.searchPlaceholder")}
+          value={searchInput}
+          onChange={setSearchInput}
+        />
+        {searchQuery.length >= 2 && (
+          <div className="space-y-4 pt-1">
+            {searchLoading && (
+              <p className="text-xs text-muted-foreground">{t("profileMusic.searching")}</p>
+            )}
+            {jamendoResults.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("profileMusic.jamendoSection")}
+                </p>
+                {jamendoResults.map((item) => (
+                  <div
+                    key={`jamendo-${item.id}`}
+                    className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.artist}
+                        {item.durationSeconds ? ` · ${formatDuration(item.durationSeconds)}` : ""}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-              {itunesResults.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {t("profileMusic.itunesSection")}
-                  </p>
-                  {itunesResults.map((item) => (
-                    <div
-                      key={`itunes-${item.id}`}
-                      className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      title={t("profileMusic.listen")}
+                      aria-label={t("profileMusic.listen")}
+                      onClick={() =>
+                        previewExternal(`${item.title} — ${item.artist}`, item.streamUrl)
+                      }
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {item.artist}
-                          {item.album ? ` · ${item.album}` : ""}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        title={t("profileMusic.preview")}
-                        aria-label={t("profileMusic.preview")}
-                        onClick={() =>
-                          previewExternal(`${item.title} — ${item.artist}`, item.previewUrl)
-                        }
-                      >
-                        <Play className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={importMutation.isPending}
-                        onClick={() =>
-                          importMutation.mutate({ source: "itunes", externalId: item.id })
-                        }
-                      >
-                        {t("profileMusic.savePreview")}
-                      </Button>
-                      {item.trackViewUrl && (
-                        <Button type="button" size="icon" variant="ghost" asChild>
-                          <a
-                            href={item.trackViewUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={t("profileMusic.openAppleMusic")}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      )}
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={importMutation.isPending}
+                      onClick={() =>
+                        importMutation.mutate({ source: "jamendo", externalId: item.id })
+                      }
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      {t("profileMusic.addToLibrary")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {itunesResults.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("profileMusic.itunesSection")}
+                </p>
+                {itunesResults.map((item) => (
+                  <div
+                    key={`itunes-${item.id}`}
+                    className="flex items-center gap-2 rounded-xl border border-border/50 p-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.artist}
+                        {item.album ? ` · ${item.album}` : ""}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-              {!searchLoading && jamendoResults.length === 0 && itunesResults.length === 0 && (
-                <p className="text-sm text-muted-foreground">{t("profileMusic.noResults")}</p>
-              )}
-            </div>
-          )}
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      title={t("profileMusic.preview")}
+                      aria-label={t("profileMusic.preview")}
+                      onClick={() =>
+                        previewExternal(`${item.title} — ${item.artist}`, item.previewUrl)
+                      }
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={importMutation.isPending}
+                      onClick={() =>
+                        importMutation.mutate({ source: "itunes", externalId: item.id })
+                      }
+                    >
+                      {t("profileMusic.savePreview")}
+                    </Button>
+                    {item.trackViewUrl && (
+                      <Button type="button" size="icon" variant="ghost" asChild>
+                        <a
+                          href={item.trackViewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={t("profileMusic.openAppleMusic")}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {!searchLoading && jamendoResults.length === 0 && itunesResults.length === 0 && (
+              <p className="text-sm text-muted-foreground">{t("profileMusic.noResults")}</p>
+            )}
+          </div>
+        )}
       </AitSurface>
 
       <AitSurface padding="sm" className="space-y-4">
-          <div>
-            <Label htmlFor="track-title">{t("profileMusic.trackTitleLabel")}</Label>
-            <Input
-              id="track-title"
-              placeholder={t("profileMusic.trackTitlePlaceholder")}
-              value={uploadTitle}
-              onChange={(e) => setUploadTitle(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/x-m4a,.mp3,.m4a,.ogg,.wav"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleUpload(file);
-              e.target.value = "";
-            }}
+        <div>
+          <Label htmlFor="track-title">{t("profileMusic.trackTitleLabel")}</Label>
+          <Input
+            id="track-title"
+            placeholder={t("profileMusic.trackTitlePlaceholder")}
+            value={uploadTitle}
+            onChange={(e) => setUploadTitle(e.target.value)}
+            className="mt-1"
           />
-          <AitButton
-            type="button"
-            className="w-full"
-            variant="primary"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-4 w-4 mr-2" strokeWidth={1.5} />
-            {uploading ? t("profileMusic.uploading") : t("profileMusic.uploadTrack")}
-          </AitButton>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/x-m4a,.mp3,.m4a,.ogg,.wav"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleUpload(file);
+            e.target.value = "";
+          }}
+        />
+        <AitButton
+          type="button"
+          className="w-full"
+          variant="primary"
+          disabled={uploading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload className="h-4 w-4 mr-2" strokeWidth={1.5} />
+          {uploading ? t("profileMusic.uploading") : t("profileMusic.uploadTrack")}
+        </AitButton>
       </AitSurface>
 
       {tracks.length > 0 && (

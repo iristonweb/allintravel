@@ -10,9 +10,7 @@ export function Wallet() {
   return (
     <AppLayout rightRail={<DiscoveryRightRail />}>
       <ReelsPageLayout
-        header={
-          <AitSectionHeader title={t("nav.wallet")} description={t("wallet.description")} />
-        }
+        header={<AitSectionHeader title={t("nav.wallet")} description={t("wallet.description")} />}
         feed={<AitHub />}
       />
     </AppLayout>

@@ -15,7 +15,13 @@ import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
 import { homeDaysFromWaypoints, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
 import { fetchBuiltRoute } from "@/lib/fetch-route";
-import { DEMO_PLANNER_DAYS, DEST_ICELAND_SRC, DEST_NORWAY_SRC, DEST_PERU_SRC, SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
+import {
+  DEMO_PLANNER_DAYS,
+  DEST_ICELAND_SRC,
+  DEST_NORWAY_SRC,
+  DEST_PERU_SRC,
+  SHOWCASE_DESTINATIONS,
+} from "@/lib/marketing-images";
 import { useTranslation } from "react-i18next";
 
 type DemoRoutePoint = {
@@ -149,7 +155,11 @@ function DayList({
   const { t } = useTranslation();
 
   return (
-    <AitSurface strong padding="none" className={cn("p-4 overflow-y-auto space-y-3 h-full min-h-0", className)}>
+    <AitSurface
+      strong
+      padding="none"
+      className={cn("p-4 overflow-y-auto space-y-3 h-full min-h-0", className)}
+    >
       <div className="flex items-center gap-2 text-sm font-semibold text-ait-purple mb-2 sticky top-0 bg-inherit pb-1">
         <Route className="h-4 w-4 shrink-0" />
         <span className="truncate">{tripTitle}</span>
@@ -247,7 +257,13 @@ function ExploreMap({
   onNavigateMap: () => void;
   onPlaceClick: (id: string) => void;
   className?: string;
-  showcaseDestinations: { id: string; name: string; imageUrl: string; placesCount: number; rating: number }[];
+  showcaseDestinations: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    placesCount: number;
+    rating: number;
+  }[];
 }) {
   return (
     <div
@@ -483,7 +499,11 @@ export default function HomeExplorePlannerSection({
         </Tabs>
       </div>
 
-      <AitSurface strong padding="none" className="px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+      <AitSurface
+        strong
+        padding="none"
+        className="px-5 py-4 flex flex-wrap items-center justify-between gap-4"
+      >
         <div className="flex flex-wrap gap-6 text-sm">
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-ait-purple" />

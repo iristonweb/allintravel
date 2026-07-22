@@ -25,7 +25,11 @@ export default function MessageStatusTicks({
         className,
       )}
       aria-label={
-        isRead ? t("messages.statusRead") : isDelivered ? t("messages.statusDelivered") : t("messages.statusSent")
+        isRead
+          ? t("messages.statusRead")
+          : isDelivered
+            ? t("messages.statusDelivered")
+            : t("messages.statusSent")
       }
     />
   );

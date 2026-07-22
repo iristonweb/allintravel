@@ -255,7 +255,8 @@ export const en = {
     },
     demo: {
       bannerLabel: "Demo mode",
-      bannerHint: "— likes and comments are disabled. Add ?demo=0 or open the feed without the parameter.",
+      bannerHint:
+        "— likes and comments are disabled. Add ?demo=0 or open the feed without the parameter.",
     },
   },
   landing: {
@@ -296,8 +297,7 @@ export const en = {
     fogOfWar: "Fog of War",
     fogShare: "Share map (+25 AIT/wk)",
     fogShareTitle: "My travel map",
-    fogShareText:
-      "I've explored {{percent}}% of the world on All In Travel ({{count}} countries)!",
+    fogShareText: "I've explored {{percent}}% of the world on All In Travel ({{count}} countries)!",
     fogShareReward: "+{{amount}} AIT for sharing your map!",
     fogShareRecorded: "Share recorded (weekly reward already claimed)",
     fogShareError: "Could not record map share",
@@ -661,7 +661,8 @@ export const en = {
     requestSent: "Request sent",
     requestFailed: "Could not send request",
     loading: "Loading profile",
-    metaDescription: "{{countries}} countries · {{stamps}} stamps. Travel passport on All In Travel.",
+    metaDescription:
+      "{{countries}} countries · {{stamps}} stamps. Travel passport on All In Travel.",
     metaTitle: "{{name}} — Travel Passport | All In Travel",
   },
   placeDetail: {
@@ -1463,7 +1464,8 @@ export const en = {
     loading: "Loading planner…",
     addStopSearch: {
       geoFailedTitle: "Could not resolve coordinates",
-      geoFailedDesc: "Pick an item from suggestions or clarify the address (street, building, city).",
+      geoFailedDesc:
+        "Pick an item from suggestions or clarify the address (street, building, city).",
       addFailedTitle: "Could not add stop",
       addFailedDesc: "Check your connection and try again.",
       placeholder: "City, street, venue…",
@@ -1488,14 +1490,16 @@ export const en = {
     subtitle: "Sign in or register with email — account is created on first login",
     configDatabase:
       "Server cannot see DATABASE_URL. Add Postgres URL (Supabase) in Vercel → Environment Variables (Production) and redeploy.",
-    configSession: "SESSION_SECRET is not configured on the server (needs a string ≥32 chars in Vercel).",
+    configSession:
+      "SESSION_SECRET is not configured on the server (needs a string ≥32 chars in Vercel).",
     invalid: "Invalid email or password.",
     database:
       "Database not connected. In Vercel → Settings → Environment Variables add DATABASE_URL (Supabase) and redeploy.",
     sessionSecret:
       "SESSION_SECRET is missing or too short. Add a random string ≥32 chars in Vercel and redeploy.",
     dbConnect: "Could not connect to database. Check DATABASE_URL and Supabase.",
-    schema: "DB schema not ready. Connect production DATABASE_URL locally and run npm run db:migrate.",
+    schema:
+      "DB schema not ready. Connect production DATABASE_URL locally and run npm run db:migrate.",
     session: "Could not save session. Ensure sessions table exists (npm run db:migrate).",
     server: "Server error during sign-in. Try again later or contact support.",
     emailPlaceholder: "you@email.com",
@@ -1531,7 +1535,8 @@ export const en = {
     rightsTitle: "Your rights",
     rightsBody1:
       "In Profile you can download a copy of your data (JSON) or delete your account. Deletion is irreversible and removes related records.",
-    rightsBody2: "For data processing questions contact the service administrator via site contacts.",
+    rightsBody2:
+      "For data processing questions contact the service administrator via site contacts.",
     cookiesTitle: "Cookies",
     cookiesBody:
       "Sign-in uses an httpOnly session cookie. UI language and settings may be stored in localStorage on your device.",

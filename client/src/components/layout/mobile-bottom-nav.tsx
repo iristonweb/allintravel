@@ -90,7 +90,9 @@ export default function MobileBottomNav() {
               )}
             >
               <MoreHorizontal className="h-5 w-5" strokeWidth={1.5} />
-              <span className="text-[9px] font-medium">{t("nav.more", { defaultValue: "More" })}</span>
+              <span className="text-[9px] font-medium">
+                {t("nav.more", { defaultValue: "More" })}
+              </span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

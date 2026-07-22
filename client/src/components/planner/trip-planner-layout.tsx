@@ -493,7 +493,10 @@ export default function TripPlannerLayout({
           </div>
 
           <div className="grid lg:grid-cols-[320px_1fr] gap-4 min-h-[480px]">
-            <AitSurface padding="none" className="p-4 overflow-y-auto max-h-[70vh] lg:max-h-[calc(100vh-12rem)]">
+            <AitSurface
+              padding="none"
+              className="p-4 overflow-y-auto max-h-[70vh] lg:max-h-[calc(100vh-12rem)]"
+            >
               <div className="flex items-center justify-between mb-4">
                 <span className="font-semibold flex items-center gap-2">
                   <Route className="h-4 w-4 text-ait-purple" />
@@ -624,7 +627,11 @@ export default function TripPlannerLayout({
               </div>
             </AitSurface>
 
-            <AitSurface padding="none" strong className="p-0 overflow-hidden min-h-[420px] ait-gradient-border">
+            <AitSurface
+              padding="none"
+              strong
+              className="p-0 overflow-hidden min-h-[420px] ait-gradient-border"
+            >
               {routePlaces.length > 0 ? (
                 <TravelMap
                   places={routePlaces}

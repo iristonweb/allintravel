@@ -227,118 +227,117 @@ export function Places() {
         }
         feed={
           <CatalogPageLayout
-          search={
-            <>
-              <DestinationSearch
-                value={search}
-                onChange={setSearch}
-                onNavigate={(href) => {
-                  if (href.startsWith("/place/")) {
-                    navigate(href);
-                    return;
-                  }
-                  if (href.startsWith("/map")) {
-                    navigate(href);
-                    return;
-                  }
-                  const params = new URLSearchParams(href.split("?")[1] ?? "");
-                  applySearch(params.get("search") ?? search);
-                }}
-                placeType={typeFilter || undefined}
-                placeholder={t("places.searchPlaceholder")}
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                {t("places.searchHint")} <code className="text-ait-purple">npm run geo:import</code>
-              </p>
-            </>
-          }
-          filters={
-            <CatalogFilterPanel
-              onClear={clearFilters}
-              showClear={Boolean(hasActiveFilters)}
-              rows={[
-                {
-                  label: t("places.filterType"),
-                  options: filters.placeType,
-                  value: typeFilter,
-                  onChange: setTypeFilter,
-                  icon: MapPin,
-                },
-                {
-                  label: t("places.filterRating"),
-                  options: filters.placeRating,
-                  value: minRating,
-                  onChange: setMinRating,
-                  icon: Star,
-                },
-                {
-                  label: t("places.filterPrice"),
-                  options: filters.placePrice,
-                  value: priceRange,
-                  onChange: setPriceRange,
-                  icon: DollarSign,
-                },
-              ]}
-            />
-          }
-          stats={
-            <StatPill value={String(places.length)} label={t("places.statsInCatalog")} />
-          }
-        >
-          {isLoading ? (
-            <div
-              className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
-              aria-busy="true"
-              aria-label={t("places.loading")}
-            >
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <PlaceCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : isError ? (
-            <EmptyState
-              variant="glass"
-              icon={AlertCircle}
-              title={t("places.loadError")}
-              description={error instanceof Error ? error.message : t("social.errors.connection")}
-              action={
-                <AitButton variant="glass" size="sm" onClick={() => refetch()}>
-                  {t("common.retry")}
-                </AitButton>
-              }
-            />
-          ) : places.length === 0 ? (
-            <EmptyState
-              variant="glass"
-              icon={MapPin}
-              title={t("places.notFound")}
-              description={t("places.notFoundHint")}
-              action={
-                hasActiveFilters ? (
-                  <AitButton variant="glass" size="sm" onClick={clearFilters}>
-                    {t("places.resetFilters")}
-                  </AitButton>
-                ) : isAuthenticated ? (
-                  <AitButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" strokeWidth={1.5} aria-hidden />
-                    {t("places.addPlace")}
-                  </AitButton>
-                ) : undefined
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
-              {places.map((place) => (
-                <PlaceCard
-                  key={place.id}
-                  place={place}
-                  isFavorite={isFavorite(place.id)}
-                  onToggleFavorite={toggleFavorite}
+            search={
+              <>
+                <DestinationSearch
+                  value={search}
+                  onChange={setSearch}
+                  onNavigate={(href) => {
+                    if (href.startsWith("/place/")) {
+                      navigate(href);
+                      return;
+                    }
+                    if (href.startsWith("/map")) {
+                      navigate(href);
+                      return;
+                    }
+                    const params = new URLSearchParams(href.split("?")[1] ?? "");
+                    applySearch(params.get("search") ?? search);
+                  }}
+                  placeType={typeFilter || undefined}
+                  placeholder={t("places.searchPlaceholder")}
                 />
-              ))}
-            </div>
-          )}
-        </CatalogPageLayout>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {t("places.searchHint")}{" "}
+                  <code className="text-ait-purple">npm run geo:import</code>
+                </p>
+              </>
+            }
+            filters={
+              <CatalogFilterPanel
+                onClear={clearFilters}
+                showClear={Boolean(hasActiveFilters)}
+                rows={[
+                  {
+                    label: t("places.filterType"),
+                    options: filters.placeType,
+                    value: typeFilter,
+                    onChange: setTypeFilter,
+                    icon: MapPin,
+                  },
+                  {
+                    label: t("places.filterRating"),
+                    options: filters.placeRating,
+                    value: minRating,
+                    onChange: setMinRating,
+                    icon: Star,
+                  },
+                  {
+                    label: t("places.filterPrice"),
+                    options: filters.placePrice,
+                    value: priceRange,
+                    onChange: setPriceRange,
+                    icon: DollarSign,
+                  },
+                ]}
+              />
+            }
+            stats={<StatPill value={String(places.length)} label={t("places.statsInCatalog")} />}
+          >
+            {isLoading ? (
+              <div
+                className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
+                aria-busy="true"
+                aria-label={t("places.loading")}
+              >
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <PlaceCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : isError ? (
+              <EmptyState
+                variant="glass"
+                icon={AlertCircle}
+                title={t("places.loadError")}
+                description={error instanceof Error ? error.message : t("social.errors.connection")}
+                action={
+                  <AitButton variant="glass" size="sm" onClick={() => refetch()}>
+                    {t("common.retry")}
+                  </AitButton>
+                }
+              />
+            ) : places.length === 0 ? (
+              <EmptyState
+                variant="glass"
+                icon={MapPin}
+                title={t("places.notFound")}
+                description={t("places.notFoundHint")}
+                action={
+                  hasActiveFilters ? (
+                    <AitButton variant="glass" size="sm" onClick={clearFilters}>
+                      {t("places.resetFilters")}
+                    </AitButton>
+                  ) : isAuthenticated ? (
+                    <AitButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1" strokeWidth={1.5} aria-hidden />
+                      {t("places.addPlace")}
+                    </AitButton>
+                  ) : undefined
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+                {places.map((place) => (
+                  <PlaceCard
+                    key={place.id}
+                    place={place}
+                    isFavorite={isFavorite(place.id)}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                ))}
+              </div>
+            )}
+          </CatalogPageLayout>
         }
       />
     </AppLayout>

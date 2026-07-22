@@ -287,131 +287,131 @@ export function Events() {
         }
         feed={
           <CatalogPageLayout
-          search={
-            <CatalogSearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder={t("events.searchPlaceholder")}
-            />
-          }
-          filters={
-            <CatalogFilterPanel
-              onClear={clearEventFilters}
-              showClear={hasActiveEventFilters}
-              rows={[
-                {
-                  label: t("events.filterPeriod"),
-                  options: filters.eventTime,
-                  value: timeFilter,
-                  onChange: setTimeFilter,
-                  icon: Calendar,
-                },
-                {
-                  label: t("events.filterType"),
-                  options: filters.eventType,
-                  value: activeType,
-                  onChange: setActiveType,
-                  icon: Sparkles,
-                },
-              ]}
-            />
-          }
-          stats={
-            <>
-              <StatPill value={String(upcoming.length)} label={t("events.upcomingSoon")} />
-              <StatPill
-                value={`${Math.max(filters.eventType.length - 1, 1)}+`}
-                label={t("events.formatsHint")}
+            search={
+              <CatalogSearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder={t("events.searchPlaceholder")}
               />
-            </>
-          }
-        >
-          {isLoading ? (
-            <div
-              className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
-              aria-busy="true"
-              aria-label={t("events.loading")}
-            >
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <EventCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : isError ? (
-            <EmptyState
-              variant="glass"
-              icon={AlertCircle}
-              title={t("events.loadError")}
-              description={error instanceof Error ? error.message : t("social.errors.connection")}
-              action={
-                <AitButton variant="glass" size="sm" onClick={() => refetch()}>
-                  {t("common.retry")}
-                </AitButton>
-              }
-            />
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              variant="glass"
-              icon={Calendar}
-              title={t("events.notFound")}
-              description={t("events.notFoundHint")}
-              action={
-                hasActiveEventFilters ? (
-                  <AitButton variant="glass" size="sm" onClick={clearEventFilters}>
-                    {t("places.resetFilters")}
+            }
+            filters={
+              <CatalogFilterPanel
+                onClear={clearEventFilters}
+                showClear={hasActiveEventFilters}
+                rows={[
+                  {
+                    label: t("events.filterPeriod"),
+                    options: filters.eventTime,
+                    value: timeFilter,
+                    onChange: setTimeFilter,
+                    icon: Calendar,
+                  },
+                  {
+                    label: t("events.filterType"),
+                    options: filters.eventType,
+                    value: activeType,
+                    onChange: setActiveType,
+                    icon: Sparkles,
+                  },
+                ]}
+              />
+            }
+            stats={
+              <>
+                <StatPill value={String(upcoming.length)} label={t("events.upcomingSoon")} />
+                <StatPill
+                  value={`${Math.max(filters.eventType.length - 1, 1)}+`}
+                  label={t("events.formatsHint")}
+                />
+              </>
+            }
+          >
+            {isLoading ? (
+              <div
+                className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
+                aria-busy="true"
+                aria-label={t("events.loading")}
+              >
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <EventCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : isError ? (
+              <EmptyState
+                variant="glass"
+                icon={AlertCircle}
+                title={t("events.loadError")}
+                description={error instanceof Error ? error.message : t("social.errors.connection")}
+                action={
+                  <AitButton variant="glass" size="sm" onClick={() => refetch()}>
+                    {t("common.retry")}
                   </AitButton>
-                ) : (
-                  <AitButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" strokeWidth={1.5} aria-hidden />
-                    {t("events.create")}
-                  </AitButton>
-                )
-              }
-            />
-          ) : (
-            <>
-              {showUpcoming && upcoming.length > 0 && (
-                <section className="mb-10" aria-labelledby={upcomingSectionId}>
-                  <h2 id={upcomingSectionId} className="text-xl font-semibold mb-4">
-                    {t("events.upcomingSection")}
-                    <Badge variant="secondary" className="ml-2 rounded-full border-border/50">
-                      {upcoming.length}
-                    </Badge>
-                  </h2>
-                  <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
-                    {upcoming.map((event) => (
-                      <EventCard
-                        key={event.id}
-                        event={event}
-                        isRegistered={registeredSet.has(event.id)}
-                        onRegister={handleRegister}
-                        registerPending={registeringEventId === event.id}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
+                }
+              />
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                variant="glass"
+                icon={Calendar}
+                title={t("events.notFound")}
+                description={t("events.notFoundHint")}
+                action={
+                  hasActiveEventFilters ? (
+                    <AitButton variant="glass" size="sm" onClick={clearEventFilters}>
+                      {t("places.resetFilters")}
+                    </AitButton>
+                  ) : (
+                    <AitButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1" strokeWidth={1.5} aria-hidden />
+                      {t("events.create")}
+                    </AitButton>
+                  )
+                }
+              />
+            ) : (
+              <>
+                {showUpcoming && upcoming.length > 0 && (
+                  <section className="mb-10" aria-labelledby={upcomingSectionId}>
+                    <h2 id={upcomingSectionId} className="text-xl font-semibold mb-4">
+                      {t("events.upcomingSection")}
+                      <Badge variant="secondary" className="ml-2 rounded-full border-border/50">
+                        {upcoming.length}
+                      </Badge>
+                    </h2>
+                    <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+                      {upcoming.map((event) => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          isRegistered={registeredSet.has(event.id)}
+                          onRegister={handleRegister}
+                          registerPending={registeringEventId === event.id}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-              {showPast && past.length > 0 && (
-                <section aria-labelledby={pastSectionId}>
-                  <h2
-                    id={pastSectionId}
-                    className="text-xl font-semibold mb-4 text-muted-foreground"
-                  >
-                    {t("events.pastSection")}
-                    <Badge variant="outline" className="ml-2 rounded-full border-border/50">
-                      {past.length}
-                    </Badge>
-                  </h2>
-                  <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
-                    {past.map((event) => (
-                      <EventCard key={event.id} event={event} dimmed />
-                    ))}
-                  </div>
-                </section>
-              )}
-            </>
-          )}
-        </CatalogPageLayout>
+                {showPast && past.length > 0 && (
+                  <section aria-labelledby={pastSectionId}>
+                    <h2
+                      id={pastSectionId}
+                      className="text-xl font-semibold mb-4 text-muted-foreground"
+                    >
+                      {t("events.pastSection")}
+                      <Badge variant="outline" className="ml-2 rounded-full border-border/50">
+                        {past.length}
+                      </Badge>
+                    </h2>
+                    <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+                      {past.map((event) => (
+                        <EventCard key={event.id} event={event} dimmed />
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </CatalogPageLayout>
         }
       />
     </AppLayout>

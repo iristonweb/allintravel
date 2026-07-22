@@ -77,10 +77,7 @@ export default function DestinationSearch({
 }: DestinationSearchProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("search.destinationPlaceholder");
-  const popular = useMemo(
-    () => POPULAR_KEYS.map((key) => t(`search.popular.${key}`)),
-    [t],
-  );
+  const popular = useMemo(() => POPULAR_KEYS.map((key) => t(`search.popular.${key}`)), [t]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -897,98 +897,98 @@ export function Chat() {
             />
           }
           feed={
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-4 ait-chat-grid min-h-[560px]">
-            <div
-              className={cn("h-full min-h-0 flex flex-col", mobileThreadOpen && "hidden lg:flex")}
-            >
-              <ChatSidebarPanel
-                chatTab={chatTab}
-                statusLabel={statusLabel}
-                roomQuery={roomQuery}
-                onRoomQueryChange={setRoomQuery}
-                onSearchFocus={() => setSearchFocused(true)}
-                onSearchBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
-                searchPlaceholder={searchPlaceholder}
-                discoverSearch={discoverSearch}
-                searchFocused={searchFocused}
-                urlDiscoverQ={urlDiscoverQ}
-                discoverRooms={discoverRooms}
-                discoverLoading={discoverLoading}
-                joinRoomMutation={joinRoomMutation}
-                visibleConversations={visibleConversations}
-                conversationsLoading={conversationsLoading}
-                conversationsError={conversationsError}
-                refetchConversations={refetchConversations}
-                roomsLoading={roomsLoading}
-                roomsError={roomsError}
-                refetchRooms={refetchRooms}
-                filteredRooms={filteredRooms}
-                urlWithUserId={urlWithUserId}
-                activeRoom={activeRoom}
-                onOpenPersonalChat={openPersonalChat}
-                onSelectRoom={selectRoom}
-              />
-            </div>
-
-            <div
-              className={cn(
-                "ait-chat-panel flex flex-col overflow-hidden min-h-0",
-                !mobileThreadOpen &&
-                  (showChatPlaceholder || mobileGroupListOnly) &&
-                  "hidden lg:flex",
-              )}
-            >
-              {urlWithUserId ? (
-                <PersonalChatThread
-                  peerUserId={urlWithUserId}
-                  onBack={mobileThreadOpen ? clearThreadSelection : undefined}
-                />
-              ) : showChatPlaceholder ? (
-                <ChatThreadPlaceholder chatTab={chatTab === "unread" ? "unread" : "personal"} />
-              ) : (
-                <GroupChatPanel
-                  mobileThreadOpen={mobileThreadOpen}
-                  onBack={clearThreadSelection}
-                  roomBreadcrumbs={roomBreadcrumbs}
-                  activeRoom={activeRoom}
-                  activeRoomMeta={activeRoomMeta}
-                  showRoomInfo={showRoomInfo}
-                  onShowRoomInfoChange={setShowRoomInfo}
-                  currentUser={user}
-                  onLeftRoom={() => selectRoom("general")}
-                  latestPinned={latestPinned}
-                  pinnedMessages={pinnedMessages}
-                  pinnedIds={pinnedIds}
-                  onScrollToMessage={scrollToMessage}
-                  joinRequired={Boolean(joinRequired)}
-                  joinPreview={joinPreview}
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-4 ait-chat-grid min-h-[560px]">
+              <div
+                className={cn("h-full min-h-0 flex flex-col", mobileThreadOpen && "hidden lg:flex")}
+              >
+                <ChatSidebarPanel
+                  chatTab={chatTab}
+                  statusLabel={statusLabel}
+                  roomQuery={roomQuery}
+                  onRoomQueryChange={setRoomQuery}
+                  onSearchFocus={() => setSearchFocused(true)}
+                  onSearchBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
+                  searchPlaceholder={searchPlaceholder}
+                  discoverSearch={discoverSearch}
+                  searchFocused={searchFocused}
+                  urlDiscoverQ={urlDiscoverQ}
+                  discoverRooms={discoverRooms}
+                  discoverLoading={discoverLoading}
                   joinRoomMutation={joinRoomMutation}
-                  historyLoading={historyLoading}
-                  historyError={historyError}
-                  historyErrorMessage={chatHistoryErrorMessage(historyFetchError, t)}
-                  onRefetchHistory={refetchHistory}
-                  allMessages={allMessages}
-                  chatBgClass={chatBgClass}
-                  scrollRef={scrollRef}
-                  roomId={roomId}
-                  isRoomAdmin={isRoomAdmin}
-                  reactionMutation={reactionMutation}
-                  pinMutation={pinMutation}
-                  deleteMutation={deleteMutation}
-                  editMutation={editMutation}
-                  onStartReply={startReply}
-                  showLegacyJoinHint={showLegacyJoinHint}
-                  messageText={messageText}
-                  onMessageTextChange={setMessageText}
-                  onSend={handleSend}
-                  canSend={canSend}
-                  mentionSuggestUsers={mentionSuggestUsers}
-                  replyTo={replyTo}
-                  onCancelReply={() => setReplyTo(null)}
+                  visibleConversations={visibleConversations}
+                  conversationsLoading={conversationsLoading}
+                  conversationsError={conversationsError}
+                  refetchConversations={refetchConversations}
+                  roomsLoading={roomsLoading}
+                  roomsError={roomsError}
+                  refetchRooms={refetchRooms}
+                  filteredRooms={filteredRooms}
+                  urlWithUserId={urlWithUserId}
+                  activeRoom={activeRoom}
+                  onOpenPersonalChat={openPersonalChat}
+                  onSelectRoom={selectRoom}
                 />
-              )}
+              </div>
+
+              <div
+                className={cn(
+                  "ait-chat-panel flex flex-col overflow-hidden min-h-0",
+                  !mobileThreadOpen &&
+                    (showChatPlaceholder || mobileGroupListOnly) &&
+                    "hidden lg:flex",
+                )}
+              >
+                {urlWithUserId ? (
+                  <PersonalChatThread
+                    peerUserId={urlWithUserId}
+                    onBack={mobileThreadOpen ? clearThreadSelection : undefined}
+                  />
+                ) : showChatPlaceholder ? (
+                  <ChatThreadPlaceholder chatTab={chatTab === "unread" ? "unread" : "personal"} />
+                ) : (
+                  <GroupChatPanel
+                    mobileThreadOpen={mobileThreadOpen}
+                    onBack={clearThreadSelection}
+                    roomBreadcrumbs={roomBreadcrumbs}
+                    activeRoom={activeRoom}
+                    activeRoomMeta={activeRoomMeta}
+                    showRoomInfo={showRoomInfo}
+                    onShowRoomInfoChange={setShowRoomInfo}
+                    currentUser={user}
+                    onLeftRoom={() => selectRoom("general")}
+                    latestPinned={latestPinned}
+                    pinnedMessages={pinnedMessages}
+                    pinnedIds={pinnedIds}
+                    onScrollToMessage={scrollToMessage}
+                    joinRequired={Boolean(joinRequired)}
+                    joinPreview={joinPreview}
+                    joinRoomMutation={joinRoomMutation}
+                    historyLoading={historyLoading}
+                    historyError={historyError}
+                    historyErrorMessage={chatHistoryErrorMessage(historyFetchError, t)}
+                    onRefetchHistory={refetchHistory}
+                    allMessages={allMessages}
+                    chatBgClass={chatBgClass}
+                    scrollRef={scrollRef}
+                    roomId={roomId}
+                    isRoomAdmin={isRoomAdmin}
+                    reactionMutation={reactionMutation}
+                    pinMutation={pinMutation}
+                    deleteMutation={deleteMutation}
+                    editMutation={editMutation}
+                    onStartReply={startReply}
+                    showLegacyJoinHint={showLegacyJoinHint}
+                    messageText={messageText}
+                    onMessageTextChange={setMessageText}
+                    onSend={handleSend}
+                    canSend={canSend}
+                    mentionSuggestUsers={mentionSuggestUsers}
+                    replyTo={replyTo}
+                    onCancelReply={() => setReplyTo(null)}
+                  />
+                )}
+              </div>
             </div>
-          </div>
           }
         />
       </div>

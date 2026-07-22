@@ -705,7 +705,9 @@ export function Trips() {
                   variant="glass"
                   icon={AlertCircle}
                   title={t("tripsPage.loadError")}
-                  description={error instanceof Error ? error.message : t("social.errors.connection")}
+                  description={
+                    error instanceof Error ? error.message : t("social.errors.connection")
+                  }
                   action={
                     <AitButton variant="glass" size="sm" onClick={() => refetch()}>
                       {t("common.retry")}
@@ -724,11 +726,21 @@ export function Trips() {
                   }
                   action={
                     q ? (
-                      <AitButton variant="glass" size="sm" type="button" onClick={() => setSearch("")}>
+                      <AitButton
+                        variant="glass"
+                        size="sm"
+                        type="button"
+                        onClick={() => setSearch("")}
+                      >
                         {t("tripsPage.resetSearch")}
                       </AitButton>
                     ) : (
-                      <AitButton variant="primary" size="sm" type="button" onClick={openCreateDialog}>
+                      <AitButton
+                        variant="primary"
+                        size="sm"
+                        type="button"
+                        onClick={openCreateDialog}
+                      >
                         <Plus className="h-4 w-4 mr-1" strokeWidth={1.5} aria-hidden />
                         {t("tripsPage.createTrip")}
                       </AitButton>

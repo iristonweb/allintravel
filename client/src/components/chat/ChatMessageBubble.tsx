@@ -243,7 +243,9 @@ export default function ChatMessageBubble({
 
       <div className={cn("flex items-center gap-1.5 px-1", isOwn && "flex-row-reverse")}>
         {timestamp}
-        {edited && <span className="text-[10px] text-muted-foreground italic">{t("messages.edited")}</span>}
+        {edited && (
+          <span className="text-[10px] text-muted-foreground italic">{t("messages.edited")}</span>
+        )}
         {isOwn && deliveryStatus && <MessageStatusTicks status={deliveryStatus} />}
       </div>
     </div>

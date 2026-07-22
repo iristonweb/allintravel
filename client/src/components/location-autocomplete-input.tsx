@@ -174,7 +174,9 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
                 <div className="px-3 py-2 text-sm text-destructive">{error}</div>
               )}
               {!loading && !error && items.length === 0 && shouldQuery && (
-                <CommandEmpty className="py-4">{t("locationAutocomplete.nothingFound")}</CommandEmpty>
+                <CommandEmpty className="py-4">
+                  {t("locationAutocomplete.nothingFound")}
+                </CommandEmpty>
               )}
               {!loading &&
                 !error &&

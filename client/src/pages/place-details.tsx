@@ -62,7 +62,8 @@ export default function PlaceDetails() {
       ? {
           title: `${place.name} | All In Travel`,
           description:
-            place.description?.slice(0, 160) ?? t("placeDetail.metaDescription", { name: place.name }),
+            place.description?.slice(0, 160) ??
+            t("placeDetail.metaDescription", { name: place.name }),
           image: place.imageUrl ?? undefined,
           url: `${window.location.origin}/place/${id}`,
         }
@@ -245,220 +246,228 @@ export default function PlaceDetails() {
         }
         feed={
           <>
-      <div className="relative h-64 md:h-96 rounded-card-xl overflow-hidden mb-6">
-          <img
-            src={place?.imageUrl || PLACE_CARD_FALLBACK_SRC}
-            alt={place?.name || "Place"}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute top-4 right-4 flex space-x-2">
-            {isAuthenticated ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => toggleFavoriteMutation.mutate()}
-                disabled={toggleFavoriteMutation.isPending}
-                className="ait-glass hover:bg-card/50"
-              >
-                <Heart
-                  className={`h-4 w-4 ${favoriteStatus?.isFavorite ? "fill-primary text-primary" : "text-muted-foreground"}`}
-                />
-              </Button>
-            ) : null}
-            <Button
-              variant="secondary"
-              size="sm"
-              className="ait-glass hover:bg-card/50"
-              onClick={() =>
-                shareUrl(window.location.href, place?.name, place?.description?.slice(0, 120))
-              }
-            >
-              <Share2 className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </div>
-        </div>
-
-        <AitSurface className="mb-6">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h2 className="text-2xl font-semibold text-foreground">{place?.name}</h2>
-                <Badge variant="outline" className="capitalize rounded-full">
-                  {typeLabel}
-                </Badge>
-                {place?.isVerified && (
-                  <Badge className="bg-green-500/15 text-green-500 border border-green-500/30 rounded-full">
-                    {t("placeDetail.verified")}
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-4 mb-4">
-                <div className="flex items-center">
-                  <div className="flex text-yellow-400 mr-2">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${i < Math.round(averageRating) ? "fill-current" : ""}`}
-                        strokeWidth={1.5}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {t("placeDetail.reviewsCount", {
-                      rating: averageRating.toFixed(1),
-                      count: place?.reviewCount || 0,
-                    })}
-                  </span>
-                </div>
-                {place?.priceRange && (
-                  <div className="text-primary font-medium">{place.priceRange}</div>
-                )}
-              </div>
-
-              {place?.description && (
-                <p className="text-muted-foreground mb-4">{place.description}</p>
-              )}
-
-              {place?.latitude && place?.longitude && (
-                <div className="mb-6">
-                  <TravelMap
-                    places={[
-                      {
-                        id: place.id,
-                        name: place.name,
-                        type: place.type ?? undefined,
-                        latitude: place.latitude,
-                        longitude: place.longitude,
-                      },
-                    ]}
-                    height="16rem"
-                    className="rounded-xl overflow-hidden"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                {place?.address && (
-                  <div className="flex items-center text-muted-foreground">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    <span>{place.address}</span>
-                  </div>
-                )}
-                {place?.phone && (
-                  <div className="flex items-center text-muted-foreground">
-                    <Phone className="h-4 w-4 mr-2" />
-                    <span>{place.phone}</span>
-                  </div>
-                )}
-                {place?.website && (
-                  <div className="flex items-center text-muted-foreground">
-                    <Globe className="h-4 w-4 mr-2" />
-                    <a
-                      href={place.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-primary"
-                    >
-                      {place.website}
-                    </a>
-                  </div>
-                )}
+            <div className="relative h-64 md:h-96 rounded-card-xl overflow-hidden mb-6">
+              <img
+                src={place?.imageUrl || PLACE_CARD_FALLBACK_SRC}
+                alt={place?.name || "Place"}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-4 right-4 flex space-x-2">
+                {isAuthenticated ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => toggleFavoriteMutation.mutate()}
+                    disabled={toggleFavoriteMutation.isPending}
+                    className="ait-glass hover:bg-card/50"
+                  >
+                    <Heart
+                      className={`h-4 w-4 ${favoriteStatus?.isFavorite ? "fill-primary text-primary" : "text-muted-foreground"}`}
+                    />
+                  </Button>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="ait-glass hover:bg-card/50"
+                  onClick={() =>
+                    shareUrl(window.location.href, place?.name, place?.description?.slice(0, 120))
+                  }
+                >
+                  <Share2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-              {isAuthenticated ? (
-                <AddPlaceToTripButton placeId={place.id} placeName={place.name} />
-              ) : (
-                <AitButton variant="primary" size="sm" className="gap-2" asChild>
+
+            <AitSurface className="mb-6">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h2 className="text-2xl font-semibold text-foreground">{place?.name}</h2>
+                    <Badge variant="outline" className="capitalize rounded-full">
+                      {typeLabel}
+                    </Badge>
+                    {place?.isVerified && (
+                      <Badge className="bg-green-500/15 text-green-500 border border-green-500/30 rounded-full">
+                        {t("placeDetail.verified")}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 mb-4">
+                    <div className="flex items-center">
+                      <div className="flex text-yellow-400 mr-2">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${i < Math.round(averageRating) ? "fill-current" : ""}`}
+                            strokeWidth={1.5}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {t("placeDetail.reviewsCount", {
+                          rating: averageRating.toFixed(1),
+                          count: place?.reviewCount || 0,
+                        })}
+                      </span>
+                    </div>
+                    {place?.priceRange && (
+                      <div className="text-primary font-medium">{place.priceRange}</div>
+                    )}
+                  </div>
+
+                  {place?.description && (
+                    <p className="text-muted-foreground mb-4">{place.description}</p>
+                  )}
+
+                  {place?.latitude && place?.longitude && (
+                    <div className="mb-6">
+                      <TravelMap
+                        places={[
+                          {
+                            id: place.id,
+                            name: place.name,
+                            type: place.type ?? undefined,
+                            latitude: place.latitude,
+                            longitude: place.longitude,
+                          },
+                        ]}
+                        height="16rem"
+                        className="rounded-xl overflow-hidden"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {place?.address && (
+                      <div className="flex items-center text-muted-foreground">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>{place.address}</span>
+                      </div>
+                    )}
+                    {place?.phone && (
+                      <div className="flex items-center text-muted-foreground">
+                        <Phone className="h-4 w-4 mr-2" />
+                        <span>{place.phone}</span>
+                      </div>
+                    )}
+                    {place?.website && (
+                      <div className="flex items-center text-muted-foreground">
+                        <Globe className="h-4 w-4 mr-2" />
+                        <a
+                          href={place.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-primary"
+                        >
+                          {place.website}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
+                  {isAuthenticated ? (
+                    <AddPlaceToTripButton placeId={place.id} placeName={place.name} />
+                  ) : (
+                    <AitButton variant="primary" size="sm" className="gap-2" asChild>
+                      <Link
+                        href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
+                      >
+                        <LogIn className="h-4 w-4" strokeWidth={1.5} />
+                        {t("placeDetail.signInToAddTrip")}
+                      </Link>
+                    </AitButton>
+                  )}
+                </div>
+              </div>
+            </AitSurface>
+
+            {place.type === "hotel" && (
+              <div className="mb-6">
+                <AffiliateHotelWidget placeName={place.name} city={place.address?.split(",")[0]} />
+              </div>
+            )}
+
+            {isAuthenticated ? (
+              <AitSurface className="mb-8">
+                <h3 className="text-lg font-semibold mb-4">{t("placeDetail.addReview")}</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      {t("placeDetail.ratingLabel")}
+                    </label>
+                    <Select value={reviewRating} onValueChange={setReviewRating}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="4">4</SelectItem>
+                        <SelectItem value="3">3</SelectItem>
+                        <SelectItem value="2">2</SelectItem>
+                        <SelectItem value="1">1</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      {t("placeDetail.reviewTextLabel")}
+                    </label>
+                    <Textarea
+                      placeholder={t("placeDetail.reviewPlaceholder")}
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                  <AitButton
+                    onClick={handleSubmitReview}
+                    disabled={createReviewMutation.isPending}
+                    variant="primary"
+                    size="sm"
+                  >
+                    {createReviewMutation.isPending
+                      ? t("placeDetail.publishing")
+                      : t("placeDetail.publish")}
+                  </AitButton>
+                </div>
+              </AitSurface>
+            ) : (
+              <AitSurface className="mb-8 text-center">
+                <p className="text-muted-foreground mb-3">{t("placeDetail.signInToReview")}</p>
+                <AitButton variant="glass" size="sm" asChild>
                   <Link href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}>
-                    <LogIn className="h-4 w-4" strokeWidth={1.5} />
-                    {t("placeDetail.signInToAddTrip")}
+                    {t("placeDetail.signIn")}
                   </Link>
                 </AitButton>
+              </AitSurface>
+            )}
+
+            <AitSurface>
+              <h2 className="text-2xl font-bold text-foreground mb-6">
+                {t("placeDetail.reviewsTitle", { count: place?.reviewCount || 0 })}
+              </h2>
+
+              {reviewsLoading ? (
+                <div className="space-y-6">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-muted rounded-xl h-32 animate-pulse" />
+                  ))}
+                </div>
+              ) : reviews && reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {reviews.map((review) => (
+                    <ReviewCard key={review.id} review={review} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center py-8 text-muted-foreground">
+                  {t("placeDetail.noReviews")}
+                </p>
               )}
-            </div>
-          </div>
-        </AitSurface>
-
-        {place.type === "hotel" && (
-          <div className="mb-6">
-            <AffiliateHotelWidget placeName={place.name} city={place.address?.split(",")[0]} />
-          </div>
-        )}
-
-      {isAuthenticated ? (
-        <AitSurface className="mb-8">
-          <h3 className="text-lg font-semibold mb-4">{t("placeDetail.addReview")}</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">{t("placeDetail.ratingLabel")}</label>
-              <Select value={reviewRating} onValueChange={setReviewRating}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="4">4</SelectItem>
-                  <SelectItem value="3">3</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="1">1</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">{t("placeDetail.reviewTextLabel")}</label>
-              <Textarea
-                placeholder={t("placeDetail.reviewPlaceholder")}
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                className="min-h-[100px]"
-              />
-            </div>
-            <AitButton
-              onClick={handleSubmitReview}
-              disabled={createReviewMutation.isPending}
-              variant="primary"
-              size="sm"
-            >
-              {createReviewMutation.isPending
-                ? t("placeDetail.publishing")
-                : t("placeDetail.publish")}
-            </AitButton>
-          </div>
-        </AitSurface>
-      ) : (
-        <AitSurface className="mb-8 text-center">
-          <p className="text-muted-foreground mb-3">{t("placeDetail.signInToReview")}</p>
-          <AitButton variant="glass" size="sm" asChild>
-            <Link href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}>
-              {t("placeDetail.signIn")}
-            </Link>
-          </AitButton>
-        </AitSurface>
-      )}
-
-      <AitSurface>
-        <h2 className="text-2xl font-bold text-foreground mb-6">
-          {t("placeDetail.reviewsTitle", { count: place?.reviewCount || 0 })}
-        </h2>
-
-        {reviewsLoading ? (
-          <div className="space-y-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-muted rounded-xl h-32 animate-pulse" />
-            ))}
-          </div>
-        ) : reviews && reviews.length > 0 ? (
-          <div className="space-y-6">
-            {reviews.map((review) => (
-              <ReviewCard key={review.id} review={review} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-center py-8 text-muted-foreground">{t("placeDetail.noReviews")}</p>
-        )}
-      </AitSurface>
+            </AitSurface>
           </>
         }
       />

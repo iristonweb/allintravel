@@ -64,7 +64,11 @@ export default function TripJoinPage() {
   if (isLoading || authLoading) {
     return (
       <Layout contentClassName="py-8">
-        <div className="space-y-4 max-w-lg mx-auto" aria-busy="true" aria-label={t("tripJoin.loading")}>
+        <div
+          className="space-y-4 max-w-lg mx-auto"
+          aria-busy="true"
+          aria-label={t("tripJoin.loading")}
+        >
           <Skeleton className="h-10 w-48 mx-auto rounded-lg" />
           <Skeleton className="h-48 w-full rounded-card-xl" />
         </div>

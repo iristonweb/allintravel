@@ -262,7 +262,10 @@ export default function AdminPage() {
             </AitSurface>
 
             {userDetailLoading && selectedId ? (
-              <AitSurface padding="none" className="p-5 flex items-center justify-center gap-2 text-muted-foreground">
+              <AitSurface
+                padding="none"
+                className="p-5 flex items-center justify-center gap-2 text-muted-foreground"
+              >
                 <Loader2 className="h-5 w-5 animate-spin" />
                 {t("admin.loadingUser")}
               </AitSurface>
@@ -345,7 +348,9 @@ export default function AdminPage() {
                 </Button>
 
                 <div className="border-t border-white/10 pt-4 max-h-56 overflow-y-auto">
-                  <p className="text-xs font-bold uppercase text-muted-foreground mb-2">{t("admin.ledger")}</p>
+                  <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
+                    {t("admin.ledger")}
+                  </p>
                   {userDetail.ait.ledger.map((tx) => (
                     <div key={tx.id} className="flex justify-between text-xs py-1.5">
                       <span>{tx.title}</span>

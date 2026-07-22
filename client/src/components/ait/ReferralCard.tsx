@@ -82,7 +82,12 @@ export default function ReferralCard() {
 
   if (isLoading || !data) {
     return (
-      <AitSurface padding="md" className="border-ait-purple/20 animate-pulse" aria-busy="true" aria-label={t("ait.referral.loading")}>
+      <AitSurface
+        padding="md"
+        className="border-ait-purple/20 animate-pulse"
+        aria-busy="true"
+        aria-label={t("ait.referral.loading")}
+      >
         <div className="h-24" />
       </AitSurface>
     );
@@ -212,9 +217,7 @@ export default function ReferralCard() {
                           : "text-muted-foreground text-xs shrink-0"
                       }
                     >
-                      {inv.rewarded
-                        ? `+${AIT_REFERRAL_REWARD} AIT`
-                        : t("ait.referral.pending")}
+                      {inv.rewarded ? `+${AIT_REFERRAL_REWARD} AIT` : t("ait.referral.pending")}
                     </span>
                   </li>
                 ))}

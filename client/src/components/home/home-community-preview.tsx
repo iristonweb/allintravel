@@ -254,26 +254,26 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
 
       <AnimatePresence mode="wait">
         {posts.length > 0 && (
-        <motion.div
-          key={feedMode}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Link href={feedHref}>
-            <div className="flex gap-4 overflow-x-auto pb-2 snap-x scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible cursor-pointer">
-              {posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onAction={handlePostAction}
-                  bookmarkLabel={t("home.communityPreview.bookmark")}
-                />
-              ))}
-            </div>
-          </Link>
-        </motion.div>
+          <motion.div
+            key={feedMode}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+          >
+            <Link href={feedHref}>
+              <div className="flex gap-4 overflow-x-auto pb-2 snap-x scrollbar-hide md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible cursor-pointer">
+                {posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onAction={handlePostAction}
+                    bookmarkLabel={t("home.communityPreview.bookmark")}
+                  />
+                ))}
+              </div>
+            </Link>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.section>

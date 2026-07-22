@@ -116,7 +116,11 @@ export function ProfileSettings() {
   if (!isAuthenticated) {
     return (
       <AppLayout contentClassName="py-16">
-        <EmptyState variant="glass" title={t("profileSettings.signInRequired")} className="max-w-md mx-auto" />
+        <EmptyState
+          variant="glass"
+          title={t("profileSettings.signInRequired")}
+          className="max-w-md mx-auto"
+        />
       </AppLayout>
     );
   }
@@ -155,162 +159,175 @@ export function ProfileSettings() {
           ) : (
             <div className="space-y-6">
               <AitSurface className="space-y-5">
-              <div>
-                <h2 className="text-lg font-semibold">{t("profileSettings.privacyTitle")}</h2>
-                <p className="text-sm text-muted-foreground">{t("profileSettings.privacyHint")}</p>
-              </div>
-              <div className="space-y-5">
-                <div className="flex items-center justify-between gap-4">
-                  <Label htmlFor="private-account">{t("profileSettings.privateAccount")}</Label>
-                  <Switch
-                    id="private-account"
-                    checked={form.isPrivateAccount ?? false}
-                    onCheckedChange={(v) => {
-                      const next = { ...form, isPrivateAccount: v };
-                      setForm(next);
-                      saveMutation.mutate({ isPrivateAccount: v });
+                <div>
+                  <h2 className="text-lg font-semibold">{t("profileSettings.privacyTitle")}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t("profileSettings.privacyHint")}
+                  </p>
+                </div>
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="private-account">{t("profileSettings.privateAccount")}</Label>
+                    <Switch
+                      id="private-account"
+                      checked={form.isPrivateAccount ?? false}
+                      onCheckedChange={(v) => {
+                        const next = { ...form, isPrivateAccount: v };
+                        setForm(next);
+                        saveMutation.mutate({ isPrivateAccount: v });
+                      }}
+                    />
+                  </div>
+                  <AudienceSelect
+                    label={t("profileSettings.showOnlineStatus")}
+                    value={form.showOnlineStatus ?? "friends"}
+                    onChange={(v) => {
+                      setForm({ ...form, showOnlineStatus: v });
+                      saveMutation.mutate({ showOnlineStatus: v });
+                    }}
+                  />
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="last-seen">{t("profileSettings.showLastSeen")}</Label>
+                    <Switch
+                      id="last-seen"
+                      checked={form.showLastSeen ?? true}
+                      onCheckedChange={(v) => {
+                        setForm({ ...form, showLastSeen: v });
+                        saveMutation.mutate({ showLastSeen: v });
+                      }}
+                    />
+                  </div>
+                  <AudienceSelect
+                    label={t("profileSettings.allowDmFrom")}
+                    value={form.allowDmFrom ?? "friends"}
+                    onChange={(v) => {
+                      setForm({ ...form, allowDmFrom: v });
+                      saveMutation.mutate({ allowDmFrom: v });
+                    }}
+                  />
+                  <AudienceSelect
+                    label={t("profileSettings.allowFriendRequests")}
+                    value={form.allowFriendRequestsFrom ?? "everyone"}
+                    onChange={(v) => {
+                      setForm({ ...form, allowFriendRequestsFrom: v });
+                      saveMutation.mutate({ allowFriendRequestsFrom: v });
+                    }}
+                  />
+                  <AudienceSelect
+                    label={t("profileSettings.showProfileTo")}
+                    value={form.showProfileTo ?? "everyone"}
+                    onChange={(v) => {
+                      setForm({ ...form, showProfileTo: v });
+                      saveMutation.mutate({ showProfileTo: v });
                     }}
                   />
                 </div>
-                <AudienceSelect
-                  label={t("profileSettings.showOnlineStatus")}
-                  value={form.showOnlineStatus ?? "friends"}
-                  onChange={(v) => {
-                    setForm({ ...form, showOnlineStatus: v });
-                    saveMutation.mutate({ showOnlineStatus: v });
-                  }}
-                />
-                <div className="flex items-center justify-between gap-4">
-                  <Label htmlFor="last-seen">{t("profileSettings.showLastSeen")}</Label>
-                  <Switch
-                    id="last-seen"
-                    checked={form.showLastSeen ?? true}
-                    onCheckedChange={(v) => {
-                      setForm({ ...form, showLastSeen: v });
-                      saveMutation.mutate({ showLastSeen: v });
-                    }}
-                  />
-                </div>
-                <AudienceSelect
-                  label={t("profileSettings.allowDmFrom")}
-                  value={form.allowDmFrom ?? "friends"}
-                  onChange={(v) => {
-                    setForm({ ...form, allowDmFrom: v });
-                    saveMutation.mutate({ allowDmFrom: v });
-                  }}
-                />
-                <AudienceSelect
-                  label={t("profileSettings.allowFriendRequests")}
-                  value={form.allowFriendRequestsFrom ?? "everyone"}
-                  onChange={(v) => {
-                    setForm({ ...form, allowFriendRequestsFrom: v });
-                    saveMutation.mutate({ allowFriendRequestsFrom: v });
-                  }}
-                />
-                <AudienceSelect
-                  label={t("profileSettings.showProfileTo")}
-                  value={form.showProfileTo ?? "everyone"}
-                  onChange={(v) => {
-                    setForm({ ...form, showProfileTo: v });
-                    saveMutation.mutate({ showProfileTo: v });
-                  }}
-                />
-              </div>
-            </AitSurface>
+              </AitSurface>
 
-            <AitSurface className="space-y-3">
-              <div>
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Bell className="h-5 w-5" strokeWidth={1.5} aria-hidden />
-                  {t("profileSettings.pushTitle")}
-                </h2>
-                <p className="text-sm text-muted-foreground">{t("profileSettings.pushHint")}</p>
-              </div>
-              <div className="space-y-3">
-                {!pushSupported && (
-                  <p className="text-sm text-muted-foreground">
-                    {t("profileSettings.pushUnsupported")}
-                  </p>
-                )}
-                {pushSupported && !vapidReady && (
-                  <p className="text-sm text-muted-foreground">
-                    {t("profileSettings.pushNoVapid")}
-                  </p>
-                )}
-                {pushSupported && vapidReady && (
-                  <>
+              <AitSurface className="space-y-3">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Bell className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+                    {t("profileSettings.pushTitle")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{t("profileSettings.pushHint")}</p>
+                </div>
+                <div className="space-y-3">
+                  {!pushSupported && (
                     <p className="text-sm text-muted-foreground">
-                      {subscribed
-                        ? t("profileSettings.pushEnabled")
-                        : t("profileSettings.pushDisabled")}
+                      {t("profileSettings.pushUnsupported")}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      <AitButton type="button" variant="primary" size="sm" onClick={() => subscribe()}>
+                  )}
+                  {pushSupported && !vapidReady && (
+                    <p className="text-sm text-muted-foreground">
+                      {t("profileSettings.pushNoVapid")}
+                    </p>
+                  )}
+                  {pushSupported && vapidReady && (
+                    <>
+                      <p className="text-sm text-muted-foreground">
                         {subscribed
-                          ? t("profileSettings.pushRefresh")
-                          : t("profileSettings.pushSubscribe")}
-                      </AitButton>
-                      <AitButton
-                        type="button"
-                        variant="glass"
-                        size="sm"
-                        onClick={() => testPush().catch(() => {})}
-                      >
-                        {t("profileSettings.pushTest")}
-                      </AitButton>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                      <div>
-                        <p className="text-sm font-medium">{t("profileSettings.soundTitle")}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {t("profileSettings.soundHint")}
-                        </p>
+                          ? t("profileSettings.pushEnabled")
+                          : t("profileSettings.pushDisabled")}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <AitButton
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => subscribe()}
+                        >
+                          {subscribed
+                            ? t("profileSettings.pushRefresh")
+                            : t("profileSettings.pushSubscribe")}
+                        </AitButton>
+                        <AitButton
+                          type="button"
+                          variant="glass"
+                          size="sm"
+                          onClick={() => testPush().catch(() => {})}
+                        >
+                          {t("profileSettings.pushTest")}
+                        </AitButton>
                       </div>
-                      <Switch
-                        checked={soundOn}
-                        onCheckedChange={(v) => {
-                          setSoundOn(v);
-                          setNotificationSoundEnabled(v);
-                          if (v) playNotificationSound("default");
-                        }}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-            </AitSurface>
+                      <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                        <div>
+                          <p className="text-sm font-medium">{t("profileSettings.soundTitle")}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {t("profileSettings.soundHint")}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={soundOn}
+                          onCheckedChange={(v) => {
+                            setSoundOn(v);
+                            setNotificationSoundEnabled(v);
+                            if (v) playNotificationSound("default");
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </AitSurface>
 
-            <AitSurface className="space-y-3">
-              <div>
+              <AitSurface className="space-y-3">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Smartphone className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+                    {t("profileSettings.pinTitle")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{t("profileSettings.pinHint")}</p>
+                </div>
+                <AitButton variant="glass" size="sm" disabled>
+                  {t("profileSettings.pinSoon")}
+                </AitButton>
+              </AitSurface>
+
+              <AitSurface className="space-y-3">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Smartphone className="h-5 w-5" strokeWidth={1.5} aria-hidden />
-                  {t("profileSettings.pinTitle")}
+                  <Shield className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+                  {t("profileSettings.accountTitle")}
                 </h2>
-                <p className="text-sm text-muted-foreground">{t("profileSettings.pinHint")}</p>
-              </div>
-              <AitButton variant="glass" size="sm" disabled>
-                {t("profileSettings.pinSoon")}
-              </AitButton>
-            </AitSurface>
-
-            <AitSurface className="space-y-3">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Shield className="h-5 w-5" strokeWidth={1.5} aria-hidden />
-                {t("profileSettings.accountTitle")}
-              </h2>
-              <div className="flex flex-wrap gap-3">
-                <AitButton variant="glass" size="sm" asChild>
-                  <Link href="/privacy">{t("profileSettings.privacyPolicy")}</Link>
-                </AitButton>
-                <AitButton variant="glass" size="sm" type="button" onClick={handleExport}>
-                  {t("profileSettings.exportData")}
-                </AitButton>
-                <AitButton variant="ghost" size="sm" type="button" onClick={handleDelete} className="text-destructive hover:text-destructive">
-                  {t("profileSettings.deleteAccount")}
-                </AitButton>
-              </div>
-            </AitSurface>
-          </div>
+                <div className="flex flex-wrap gap-3">
+                  <AitButton variant="glass" size="sm" asChild>
+                    <Link href="/privacy">{t("profileSettings.privacyPolicy")}</Link>
+                  </AitButton>
+                  <AitButton variant="glass" size="sm" type="button" onClick={handleExport}>
+                    {t("profileSettings.exportData")}
+                  </AitButton>
+                  <AitButton
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={handleDelete}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    {t("profileSettings.deleteAccount")}
+                  </AitButton>
+                </div>
+              </AitSurface>
+            </div>
           )
         }
       />

@@ -209,8 +209,7 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
               className="space-y-2"
             >
               <p className="text-xs uppercase tracking-widest text-ait-purple">
-                {currentDayInfo?.label ??
-                  t("cinema.dayFallback", { day: currentStop.day })}
+                {currentDayInfo?.label ?? t("cinema.dayFallback", { day: currentStop.day })}
               </p>
               <h3 className="text-2xl sm:text-3xl font-bold">{currentStop.name}</h3>
               <p className="text-sm text-white/50">
@@ -238,9 +237,7 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
                   destination: trip.destination,
                 })}
               </p>
-              {watched && (
-                <p className="text-sm text-ait-orange">{t("cinema.aitReward")}</p>
-              )}
+              {watched && <p className="text-sm text-ait-orange">{t("cinema.aitReward")}</p>}
             </motion.div>
           )}
         </AnimatePresence>

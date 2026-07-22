@@ -25,7 +25,11 @@ type PostCommentsProps = {
 export default function PostComments({ postId, enabled }: PostCommentsProps) {
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
-  const { data: comments = [], isLoading, isError } = useQuery<PostCommentWithAuthor[]>({
+  const {
+    data: comments = [],
+    isLoading,
+    isError,
+  } = useQuery<PostCommentWithAuthor[]>({
     queryKey: [`/api/posts/${postId}/comments`],
     enabled,
   });
@@ -33,27 +37,15 @@ export default function PostComments({ postId, enabled }: PostCommentsProps) {
   if (!enabled) return null;
 
   if (isLoading) {
-    return (
-      <p className="text-sm text-muted-foreground px-1">
-        {t("social.comments.loading")}
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground px-1">{t("social.comments.loading")}</p>;
   }
 
   if (isError) {
-    return (
-      <p className="text-sm text-destructive px-1">
-        {t("social.comments.loadFailed")}
-      </p>
-    );
+    return <p className="text-sm text-destructive px-1">{t("social.comments.loadFailed")}</p>;
   }
 
   if (comments.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground px-1">
-        {t("social.comments.empty")}
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground px-1">{t("social.comments.empty")}</p>;
   }
 
   return (

@@ -56,8 +56,7 @@ function TripPublicContent({ guest }: { guest: boolean }) {
       toast({ title: t("tripPublic.copied") });
       window.location.href = `/trips/${trip.id}`;
     },
-    onError: () =>
-      toast({ title: t("tripPublic.copyRequiresSignIn"), variant: "destructive" }),
+    onError: () => toast({ title: t("tripPublic.copyRequiresSignIn"), variant: "destructive" }),
   });
 
   const Layout = guest ? PublicLayout : AppLayout;
@@ -76,7 +75,12 @@ function TripPublicContent({ guest }: { guest: boolean }) {
   if (!data) {
     return (
       <Layout contentClassName="py-8">
-        <EmptyState variant="glass" title={t("tripPublic.notFoundTitle")} description={t("tripPublic.notFound")} className="max-w-md mx-auto" />
+        <EmptyState
+          variant="glass"
+          title={t("tripPublic.notFoundTitle")}
+          description={t("tripPublic.notFound")}
+          className="max-w-md mx-auto"
+        />
       </Layout>
     );
   }
@@ -103,7 +107,11 @@ function TripPublicContent({ guest }: { guest: boolean }) {
         feed={
           <AitSurface className="space-y-4">
             {mapPlaces.length > 0 && (
-              <TravelMap places={mapPlaces} height="18rem" className="rounded-card-xl overflow-hidden" />
+              <TravelMap
+                places={mapPlaces}
+                height="18rem"
+                className="rounded-card-xl overflow-hidden"
+              />
             )}
 
             <ol className="space-y-2">

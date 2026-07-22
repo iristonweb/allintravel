@@ -54,7 +54,9 @@ export default function CreatorFundCard() {
                 <p className="text-xl font-bold tabular-nums">{data.yourMonthCreatorEarned}</p>
               </div>
               <div className="ait-glass rounded-xl p-3">
-                <p className="text-xs text-muted-foreground">{t("ait.creatorFund.estimatedShare")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("ait.creatorFund.estimatedShare")}
+                </p>
                 <p className="text-xl font-bold text-ait-cyan tabular-nums">
                   ~{data.estimatedShare} AIT
                 </p>

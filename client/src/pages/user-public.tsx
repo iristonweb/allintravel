@@ -76,8 +76,7 @@ export function UserPublicProfile() {
       toast({ title: t("userPublic.requestSent") });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/sent"] });
     },
-    onError: () =>
-      toast({ title: t("userPublic.requestFailed"), variant: "destructive" }),
+    onError: () => toast({ title: t("userPublic.requestFailed"), variant: "destructive" }),
   });
 
   if (isLoading) {
@@ -190,7 +189,9 @@ export function UserPublicProfile() {
                   )}
                 </div>
               </div>
-              {profile?.bio && <p className="mt-4 text-muted-foreground leading-relaxed">{profile.bio}</p>}
+              {profile?.bio && (
+                <p className="mt-4 text-muted-foreground leading-relaxed">{profile.bio}</p>
+              )}
               {profile?.location && (
                 <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 shrink-0" strokeWidth={1.5} />

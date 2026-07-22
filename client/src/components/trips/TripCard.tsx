@@ -2,15 +2,7 @@ import { Link } from "wouter";
 import { format, differenceInCalendarDays } from "date-fns";
 import { enUS, ru } from "date-fns/locale";
 import { motion } from "framer-motion";
-import {
-  Calendar,
-  Clock,
-  DollarSign,
-  GitFork,
-  MapPin,
-  Route,
-  User,
-} from "lucide-react";
+import { Calendar, Clock, DollarSign, GitFork, MapPin, Route, User } from "lucide-react";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitSurface from "@/components/ait-ui/AitSurface";
 import { Badge } from "@/components/ui/badge";
@@ -82,10 +74,7 @@ export default function TripCard({
 
   const dayCount =
     trip.startDate && trip.endDate
-      ? Math.max(
-          1,
-          differenceInCalendarDays(new Date(trip.endDate), new Date(trip.startDate)) + 1,
-        )
+      ? Math.max(1, differenceInCalendarDays(new Date(trip.endDate), new Date(trip.startDate)) + 1)
       : null;
 
   const isForked = Boolean(trip.forkedFromTripId);
@@ -130,7 +119,9 @@ export default function TripCard({
             </Badge>
           )}
           <div className="absolute inset-x-0 bottom-0 p-4">
-            <h3 className="text-lg font-medium text-white leading-snug line-clamp-2">{trip.title}</h3>
+            <h3 className="text-lg font-medium text-white leading-snug line-clamp-2">
+              {trip.title}
+            </h3>
             <p className="flex items-center gap-1.5 text-sm text-white/80 mt-1">
               <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
               <span className="truncate">{trip.destination}</span>

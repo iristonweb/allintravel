@@ -94,37 +94,55 @@ export default function EventCard({
           {typeLabel}
         </Badge>
         <div className="absolute inset-x-0 bottom-0 p-4">
-          <h3 className="text-lg font-medium text-white leading-snug line-clamp-2">{event.title}</h3>
+          <h3 className="text-lg font-medium text-white leading-snug line-clamp-2">
+            {event.title}
+          </h3>
         </div>
       </div>
 
       <div className="p-4 space-y-3">
         <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 shrink-0 text-ait-purple" strokeWidth={1.5} aria-hidden />
+            <Calendar
+              className="h-3.5 w-3.5 shrink-0 text-ait-purple"
+              strokeWidth={1.5}
+              aria-hidden
+            />
             <span className="truncate">{formatDate(event.startDate)}</span>
           </div>
           {event.location && (
             <div className="flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-ait-orange" strokeWidth={1.5} aria-hidden />
+              <MapPin
+                className="h-3.5 w-3.5 shrink-0 text-ait-orange"
+                strokeWidth={1.5}
+                aria-hidden
+              />
               <span className="truncate">{event.location}</span>
             </div>
           )}
           <div className="flex items-center gap-2">
-            <DollarSign className="h-3.5 w-3.5 shrink-0 text-ait-palm" strokeWidth={1.5} aria-hidden />
+            <DollarSign
+              className="h-3.5 w-3.5 shrink-0 text-ait-palm"
+              strokeWidth={1.5}
+              aria-hidden
+            />
             <span>{formatPrice(event.price)}</span>
           </div>
         </div>
 
         {event.description && (
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{event.description}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+            {event.description}
+          </p>
         )}
 
         <div className="flex items-center justify-between gap-2 pt-1">
           {event.organizerId ? (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
               <User className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-              <span className="truncate">{t("events.card.organizer", { defaultValue: "Organizer" })}</span>
+              <span className="truncate">
+                {t("events.card.organizer", { defaultValue: "Organizer" })}
+              </span>
             </div>
           ) : (
             <span />

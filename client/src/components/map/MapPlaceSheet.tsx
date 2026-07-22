@@ -92,7 +92,13 @@ export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetPro
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-start justify-between gap-2">
             <span>{place.name}</span>
-            <AitButton type="button" variant="ghost" size="icon" className="shrink-0" onClick={onClose}>
+            <AitButton
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={onClose}
+            >
               <X className="h-4 w-4" />
             </AitButton>
           </SheetTitle>

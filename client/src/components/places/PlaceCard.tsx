@@ -84,7 +84,9 @@ export default function PlaceCard({
             </motion.button>
           </div>
           <div className="absolute inset-x-0 bottom-0 p-4">
-            <h3 className="text-lg font-medium text-white leading-snug line-clamp-2">{place.name}</h3>
+            <h3 className="text-lg font-medium text-white leading-snug line-clamp-2">
+              {place.name}
+            </h3>
             {place.address && (
               <p className="flex items-center gap-1.5 text-sm text-white/80 mt-1">
                 <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
@@ -101,7 +103,11 @@ export default function PlaceCard({
             {typeLabel}
           </Badge>
           <span className="inline-flex items-center gap-1 rounded-full border border-border/50 bg-card px-2.5 py-1 text-xs font-medium">
-            <Star className="h-3.5 w-3.5 fill-ait-accent text-ait-accent" strokeWidth={1.5} aria-hidden />
+            <Star
+              className="h-3.5 w-3.5 fill-ait-accent text-ait-accent"
+              strokeWidth={1.5}
+              aria-hidden
+            />
             {rating.toFixed(1)}
             <span className="text-muted-foreground font-normal">
               {t("places.card.reviews", { count: reviewCount, defaultValue: "({{count}})" })}
@@ -116,7 +122,9 @@ export default function PlaceCard({
         </div>
 
         {place.description && (
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{place.description}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+            {place.description}
+          </p>
         )}
 
         <motion.div {...scaleTap}>

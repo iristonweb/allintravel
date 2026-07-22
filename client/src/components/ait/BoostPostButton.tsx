@@ -19,7 +19,10 @@ export default function BoostPostButton({
 }: BoostPostButtonProps) {
   const { t } = useTranslation();
   const { data } = useAitDashboard();
-  const { data: quote } = useBoostQuote(postId, Boolean(currentUserId && currentUserId === authorId));
+  const { data: quote } = useBoostQuote(
+    postId,
+    Boolean(currentUserId && currentUserId === authorId),
+  );
   const spend = useAitSpend();
   const { toast } = useToast();
 

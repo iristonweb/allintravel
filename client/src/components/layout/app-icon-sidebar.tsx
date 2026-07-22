@@ -43,7 +43,8 @@ function NavItem({
           active
             ? "bg-primary/10 text-primary before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-7 before:w-0.5 before:rounded-full before:bg-primary before:content-['']"
             : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-          !labelsVisible && "group-hover/sidebar:hover:bg-muted/50 group-hover/sidebar:hover:text-foreground",
+          !labelsVisible &&
+            "group-hover/sidebar:hover:bg-muted/50 group-hover/sidebar:hover:text-foreground",
         )}
       >
         <span
@@ -270,19 +271,19 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
         >
           <SidebarUserPreview expanded={communityMode} />
           <AitSurface padding="sm" radius="lg" glow className="mx-0.5 border border-amber-500/20">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-4 w-4 text-ait-orange shrink-0" />
-            <p className="text-xs font-bold text-foreground truncate">
-              {t("nav.premiumTitle", { defaultValue: "AllInTravel Premium" })}
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-ait-orange shrink-0" />
+              <p className="text-xs font-bold text-foreground truncate">
+                {t("nav.premiumTitle", { defaultValue: "AllInTravel Premium" })}
+              </p>
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-3 leading-snug">
+              {t("nav.premiumHint")}
             </p>
-          </div>
-          <p className="text-[10px] text-muted-foreground mb-3 leading-snug">
-            {t("nav.premiumHint")}
-          </p>
-          <AitButton variant="primary" size="sm" className="w-full h-8 text-xs" asChild>
-            <Link href="/wallet">{t("nav.premiumSubscribe", { defaultValue: "Subscribe" })}</Link>
-          </AitButton>
-        </AitSurface>
+            <AitButton variant="primary" size="sm" className="w-full h-8 text-xs" asChild>
+              <Link href="/wallet">{t("nav.premiumSubscribe", { defaultValue: "Subscribe" })}</Link>
+            </AitButton>
+          </AitSurface>
         </div>
       </div>
     </aside>

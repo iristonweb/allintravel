@@ -134,7 +134,8 @@ function resolveShopButton(
     const active = entitlements.find((e) => e.sku === item.sku);
     const canAfford = totalBalance >= item.cost;
     const activeLabel =
-      active?.expiresAt && format(new Date(active.expiresAt), "d MMM HH:mm", { locale: dateLocale });
+      active?.expiresAt &&
+      format(new Date(active.expiresAt), "d MMM HH:mm", { locale: dateLocale });
     const roomHint = active?.entityId ? t("ait.hub.shopLinkedGroup") : "";
     return {
       label: activeLabel
@@ -154,7 +155,8 @@ function resolveShopButton(
     const active = entitlements.find((e) => e.sku === item.sku);
     const canAfford = totalBalance >= item.cost;
     const activeLabel =
-      active?.expiresAt && format(new Date(active.expiresAt), "d MMM HH:mm", { locale: dateLocale });
+      active?.expiresAt &&
+      format(new Date(active.expiresAt), "d MMM HH:mm", { locale: dateLocale });
     return {
       label: activeLabel
         ? t("ait.hub.shopActiveUntil", { date: activeLabel })
@@ -212,8 +214,7 @@ export default function AitHub() {
   }
 
   const totalBalance = data.spendBalance + data.creatorBalance;
-  const spotlightCost =
-    data.catalog.find((c) => c.sku === "room_spotlight_48h")?.cost ?? 300;
+  const spotlightCost = data.catalog.find((c) => c.sku === "room_spotlight_48h")?.cost ?? 300;
 
   const buy = (sku: string, postId?: string, roomId?: string) => {
     spendMutation.mutate(
@@ -297,7 +298,9 @@ export default function AitHub() {
                   {t("ait.hub.allRingsBonus")}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground mt-4 text-center">{t("ait.hub.ringsHint")}</p>
+              <p className="text-xs text-muted-foreground mt-4 text-center">
+                {t("ait.hub.ringsHint")}
+              </p>
             </AitSurface>
           </section>
 
@@ -458,8 +461,7 @@ export default function AitHub() {
                       {item.purchasable === "stackable" && item.sku === "extra_chat_room" && (
                         <p className="text-xs text-muted-foreground mt-1">
                           {t("ait.hub.extraSlots", {
-                            count:
-                              data.entitlements.filter((e) => e.sku === item.sku).length || 0,
+                            count: data.entitlements.filter((e) => e.sku === item.sku).length || 0,
                           })}
                           {data.chatRooms
                             ? ` · ${t("ait.hub.chatRooms", {

@@ -74,9 +74,7 @@ export function Profile() {
     <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
         <ReelsPageLayout
-          header={
-            <AitSectionHeader title={t("nav.profile")} description={t("profile.hubHint")} />
-          }
+          header={<AitSectionHeader title={t("nav.profile")} description={t("profile.hubHint")} />}
           feed={
             friendsLoading ? (
               <div aria-label={t("profile.loading")}>
@@ -99,10 +97,7 @@ export function Profile() {
                 <TravelIdentityCard compact />
                 <AitDailyPulse />
                 <PlatformWalletCard compact />
-                <ProfileHubGrid
-                  links={linksWithMap}
-                  walletBalance={walletProfile?.spendBalance}
-                />
+                <ProfileHubGrid links={linksWithMap} walletBalance={walletProfile?.spendBalance} />
                 <ProfileUsernameSearch
                   value={nickSearch}
                   onChange={setNickSearch}

@@ -78,11 +78,7 @@ export default function RadialScoreRing({
           strokeDasharray={circumference}
           initial={false}
           animate={{ strokeDashoffset: offset }}
-          transition={
-            reduceMotion
-              ? { duration: 0 }
-              : { duration: 1, ease: [0.22, 1, 0.36, 1] }
-          }
+          transition={reduceMotion ? { duration: 0 } : { duration: 1, ease: [0.22, 1, 0.36, 1] }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2">

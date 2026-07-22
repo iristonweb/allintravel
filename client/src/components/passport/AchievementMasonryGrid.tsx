@@ -32,17 +32,14 @@ export default function AchievementMasonryGrid({
           className="break-inside-avoid mb-4"
           variants={reduceMotion ? undefined : staggerItem}
         >
-          <AitSurface
-            padding="sm"
-            radius="lg"
-            hover
-            className="flex items-start gap-2.5"
-          >
+          <AitSurface padding="sm" radius="lg" hover className="flex items-start gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ait-purple/20">
               <Trophy className="h-4 w-4 text-ait-purple" strokeWidth={1.5} aria-hidden />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground leading-snug">{achievement.label}</p>
+              <p className="text-sm font-medium text-foreground leading-snug">
+                {achievement.label}
+              </p>
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mt-0.5">
                 {t("passport.achievementUnlocked", { defaultValue: "Unlocked" })}
               </p>

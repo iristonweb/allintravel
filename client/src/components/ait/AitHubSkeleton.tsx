@@ -5,11 +5,7 @@ import { useTranslation } from "react-i18next";
 export default function AitHubSkeleton() {
   const { t } = useTranslation();
   return (
-    <div
-      className="max-w-6xl mx-auto space-y-6"
-      aria-busy="true"
-      aria-label={t("ait.hub.loading")}
-    >
+    <div className="max-w-6xl mx-auto space-y-6" aria-busy="true" aria-label={t("ait.hub.loading")}>
       <AitSurface className="p-6 space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-12 w-full max-w-sm" />
