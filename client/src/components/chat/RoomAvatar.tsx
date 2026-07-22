@@ -20,7 +20,11 @@ export default function RoomAvatar({
 
   if (resolved) {
     return (
-      <img src={resolved} alt="" className={cn("rounded-full object-cover shrink-0", className)} />
+      <img
+        src={resolved}
+        alt=""
+        className={cn("aspect-square rounded-full object-cover object-center shrink-0", className)}
+      />
     );
   }
 

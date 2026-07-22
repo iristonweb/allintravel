@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
 type AitAvatarRingProps = {
   src?: string | null;
@@ -39,7 +40,7 @@ export default function AitAvatarRing({
     <div
       className={cn(
         "shrink-0",
-        isStory ? "p-[3px] rounded-[28px]" : "p-[2px] rounded-full",
+        isStory ? "p-[3px] rounded-[28px]" : "p-[2.5px] rounded-full",
         active
           ? "bg-gradient-to-tr from-ait-purple via-ait-violet to-ait-orange ait-glow-pulse shadow-[0_0_16px_rgba(139,92,246,0.45)]"
           : "bg-white/15",
@@ -49,12 +50,21 @@ export default function AitAvatarRing({
       <Avatar
         className={cn(
           dimensions,
-          "border-2 border-background",
+          "border-2 border-background bg-ait-deep",
           isStory ? "rounded-[24px]" : "rounded-full",
         )}
       >
-        <AvatarImage src={src ?? undefined} className={isStory ? "object-cover" : undefined} />
-        <AvatarFallback className={isStory ? "rounded-[24px] text-xs" : undefined}>
+        <AvatarImage
+          src={resolveMediaUrl(src) ?? undefined}
+          alt=""
+          className={isStory ? "rounded-[22px] object-[center_20%]" : undefined}
+        />
+        <AvatarFallback
+          className={cn(
+            "bg-gradient-to-br from-ait-purple/70 to-ait-navy text-white",
+            isStory ? "rounded-[22px] text-xs" : undefined,
+          )}
+        >
           {fallback}
         </AvatarFallback>
       </Avatar>

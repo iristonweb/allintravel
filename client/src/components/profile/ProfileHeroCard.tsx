@@ -21,10 +21,14 @@ export default function ProfileHeroCard({ user, friends, onLogout }: ProfileHero
   return (
     <AitSurface className="mb-6">
       <div className="flex flex-col sm:flex-row gap-6 items-start">
-        <Avatar className="h-24 w-24 border-2 border-primary/20 shrink-0">
-          <AvatarImage src={resolveMediaUrl(user.profileImageUrl)} alt="" />
-          <AvatarFallback className="text-2xl">{getUserInitial(user)}</AvatarFallback>
-        </Avatar>
+        <div className="relative shrink-0 rounded-full p-[3px] bg-gradient-to-tr from-ait-purple via-ait-violet to-ait-orange shadow-[0_0_24px_rgba(139,92,246,0.35)]">
+          <Avatar className="h-24 w-24 border-[3px] border-background">
+            <AvatarImage src={resolveMediaUrl(user.profileImageUrl)} alt="" />
+            <AvatarFallback className="bg-gradient-to-br from-ait-purple to-ait-orange text-2xl text-white">
+              {getUserInitial(user)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <h2 className="text-2xl font-semibold tracking-tight">{getUserDisplayLabel(user)}</h2>

@@ -4,6 +4,7 @@ import AitButton from "@/components/ait-ui/AitButton";
 import AitSurface from "@/components/ait-ui/AitSurface";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavLabels } from "@/hooks/useNavLabels";
 import { useUrlSearch } from "@/hooks/useUrlSearch";
@@ -152,7 +153,7 @@ function SidebarCollapsedAvatar() {
       className="flex justify-center py-2 mb-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background group-hover/sidebar:hidden group-focus-within/sidebar:hidden"
     >
       <Avatar className="h-9 w-9 border border-border/50">
-        <AvatarImage src={user.profileImageUrl ?? undefined} alt="" />
+        <AvatarImage src={resolveMediaUrl(user.profileImageUrl)} alt="" />
         <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
           {initials}
         </AvatarFallback>
@@ -187,7 +188,7 @@ function SidebarUserPreview({ expanded }: { expanded: boolean }) {
         )}
       >
         <Avatar className="h-9 w-9 border border-border/50 shrink-0">
-          <AvatarImage src={user.profileImageUrl ?? undefined} alt="" />
+          <AvatarImage src={resolveMediaUrl(user.profileImageUrl)} alt="" />
           <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
             {initials}
           </AvatarFallback>
