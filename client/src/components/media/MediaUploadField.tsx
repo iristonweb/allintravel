@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,10 +24,12 @@ export default function MediaUploadField({
   onChange,
   accept = DEFAULT_ACCEPT,
   multiple = true,
-  label = "Фото / видео",
+  label,
   maxFiles = 8,
   className,
 }: MediaUploadFieldProps) {
+  const { t } = useTranslation();
+  const displayLabel = label ?? t("mediaUpload.label");
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
@@ -37,8 +40,8 @@ export default function MediaUploadField({
     if (!files.length) return;
     if (value.length + files.length > maxFiles) {
       toast({
-        title: "Слишком много файлов",
-        description: `Максимум ${maxFiles}`,
+        title: t("mediaUpload.tooManyFiles"),
+        description: t("mediaUpload.tooManyDesc", { max: maxFiles }),
         variant: "destructive",
       });
       return;
@@ -52,8 +55,8 @@ export default function MediaUploadField({
       onChange([...value, ...urls]);
     } catch (err) {
       toast({
-        title: "Не удалось загрузить",
-        description: err instanceof Error ? err.message : "Проверьте формат и размер файла",
+        title: t("mediaUpload.uploadFailed"),
+        description: err instanceof Error ? err.message : t("mediaUpload.uploadFailedDesc"),
         variant: "destructive",
       });
     } finally {
@@ -85,7 +88,7 @@ export default function MediaUploadField({
         ) : (
           <ImagePlus className="h-4 w-4 mr-1" />
         )}
-        {uploading ? "Загрузка…" : label}
+        {uploading ? t("mediaUpload.uploading") : displayLabel}
       </Button>
       {value.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -103,7 +106,7 @@ export default function MediaUploadField({
                 type="button"
                 className="absolute top-0.5 right-0.5 rounded-full bg-black/70 p-0.5 text-white"
                 onClick={() => remove(url)}
-                aria-label="Удалить"
+                aria-label={t("mediaUpload.remove")}
               >
                 <X className="h-3 w-3" />
               </button>

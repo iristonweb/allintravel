@@ -14,8 +14,10 @@ import MessageComposer from "@/components/chat/MessageComposer";
 import MessageContent from "@/components/chat/MessageContent";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export default function AdminBroadcastDialog() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -24,20 +26,23 @@ export default function AdminBroadcastDialog() {
   const sendMutation = useMutation({
     mutationFn: async () => {
       const trimmed = content.trim();
-      if (!trimmed) throw new Error("Пустое сообщение");
+      if (!trimmed) throw new Error(t("admin.broadcast.emptyMessage"));
       const res = await apiRequest("POST", "/api/admin/broadcasts", { content: trimmed });
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Рассылка отправлена", description: "Все пользователи увидят объявление." });
+      toast({
+        title: t("admin.broadcast.sentTitle"),
+        description: t("admin.broadcast.sentDesc"),
+      });
       setContent("");
       setOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/admin/broadcasts"] });
     },
     onError: (err) => {
       toast({
-        title: "Ошибка",
-        description: err instanceof Error ? err.message : "Не удалось отправить",
+        title: t("common.error"),
+        description: err instanceof Error ? err.message : t("admin.broadcast.sendFailed"),
         variant: "destructive",
       });
     },
@@ -48,16 +53,13 @@ export default function AdminBroadcastDialog() {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="hidden sm:inline-flex gap-1.5 text-xs h-8">
           <Megaphone className="h-3.5 w-3.5" />
-          Рассылка
+          {t("admin.broadcast.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent className="ait-glass-strong ait-gradient-border border-white/10 sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Рассылка всем пользователям</DialogTitle>
-          <DialogDescription>
-            Текст, фото, видео, GIF и emoji — как в чате. Появится компактным окном по центру
-            экрана.
-          </DialogDescription>
+          <DialogTitle>{t("admin.broadcast.title")}</DialogTitle>
+          <DialogDescription>{t("admin.broadcast.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <MessageComposer
@@ -65,12 +67,12 @@ export default function AdminBroadcastDialog() {
             onChange={setContent}
             onSend={() => {}}
             persistAfterMediaSend
-            placeholder="Текст объявления…"
+            placeholder={t("admin.broadcast.placeholder")}
             className="w-full"
           />
           {content.trim() && (
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-              <p className="text-xs text-muted-foreground mb-2">Предпросмотр</p>
+              <p className="text-xs text-muted-foreground mb-2">{t("admin.broadcast.preview")}</p>
               <MessageContent content={content} className="block space-y-2" />
             </div>
           )}
@@ -80,7 +82,7 @@ export default function AdminBroadcastDialog() {
             disabled={!content.trim() || sendMutation.isPending}
             onClick={() => sendMutation.mutate()}
           >
-            {sendMutation.isPending ? "Отправка…" : "Отправить всем"}
+            {sendMutation.isPending ? t("admin.broadcast.sending") : t("admin.broadcast.sendAll")}
           </Button>
         </div>
       </DialogContent>

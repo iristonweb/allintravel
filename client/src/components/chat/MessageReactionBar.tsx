@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { ReactionSummary } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 type MessageReactionBarProps = {
   reactions: ReactionSummary[];
@@ -18,6 +19,7 @@ export default function MessageReactionBar({
   className,
   title,
 }: MessageReactionBarProps) {
+  const { t } = useTranslation();
   if (!reactions.length) return null;
 
   return (
@@ -44,7 +46,7 @@ export default function MessageReactionBar({
           type="button"
           onClick={onDetailsClick}
           className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/80 text-muted-foreground hover:border-ait-purple/40 hover:text-ait-purple transition-colors"
-          aria-label="Просмотры и реакции"
+          aria-label={t("messages.insightsAria")}
         >
           <span className="text-[10px] font-bold">···</span>
         </button>

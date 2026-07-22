@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import PageShell from "@/components/layout/page-shell";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import NotificationList from "@/components/notifications/NotificationList";
 import type { NotificationFilter } from "@shared/notification-types";
 import { NOTIFICATION_FILTERS } from "@shared/notification-types";
@@ -23,19 +25,24 @@ export function NotificationsPage() {
   return (
     <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
-        <PageShell
-          title={t("notifications.page.title")}
-          description={t("notifications.page.description")}
-        >
-          <div className="rounded-3xl border border-white/10 ait-glass-strong p-4 sm:p-5 min-h-[60vh]">
-            <NotificationList
-              filter={filter}
-              onFilterChange={setFilter}
-              queryKeySuffix="page"
-              listClassName="max-h-[calc(100vh-14rem)] pr-1"
+        <ReelsPageLayout
+          header={
+            <AitSectionHeader
+              title={t("notifications.page.title")}
+              description={t("notifications.page.description")}
             />
-          </div>
-        </PageShell>
+          }
+          feed={
+            <AitSurface strong radius="xl" padding="sm" className="min-h-[60vh]">
+              <NotificationList
+                filter={filter}
+                onFilterChange={setFilter}
+                queryKeySuffix="page"
+                listClassName="max-h-[calc(100vh-14rem)] pr-1"
+              />
+            </AitSurface>
+          }
+        />
       </div>
     </AppLayout>
   );

@@ -7,6 +7,7 @@ import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { shareUrl } from "@/lib/share";
 import type { Trip } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 type TripSharePanelProps = {
   trip: Trip;
@@ -21,6 +22,7 @@ export default function TripSharePanel({
   stopCount,
   onTripUpdated,
 }: TripSharePanelProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
 
   const publicUrl = `${window.location.origin}/trips/${tripId}/public`;
@@ -28,16 +30,14 @@ export default function TripSharePanel({
   const togglePublicMutation = useMutation({
     mutationFn: async (isPublic: boolean) => {
       const res = await apiRequest("PUT", `/api/trips/${tripId}`, { isPublic });
-      if (!res.ok) throw new Error("Не удалось обновить видимость");
+      if (!res.ok) throw new Error(t("tripShare.visibilityFailed"));
       return res.json();
     },
     onSuccess: (_data, isPublic) => {
       onTripUpdated();
       toast({
-        title: isPublic ? "Поездка опубликована" : "Поездка скрыта",
-        description: isPublic
-          ? "Теперь маршрут можно открыть по ссылке без входа."
-          : "Маршрут больше не виден гостям.",
+        title: isPublic ? t("tripShare.publishedTitle") : t("tripShare.hiddenTitle"),
+        description: isPublic ? t("tripShare.publishedDesc") : t("tripShare.hiddenDesc"),
       });
     },
   });
@@ -48,23 +48,23 @@ export default function TripSharePanel({
     onSuccess: (data) => {
       void navigator.clipboard.writeText(data.inviteUrl);
       toast({
-        title: "Ссылка-приглашение скопирована",
-        description: "Друг получит AIT и присоединится к поездке после входа.",
+        title: t("tripShare.inviteCopied"),
+        description: t("tripShare.inviteCopiedDesc"),
       });
     },
-    onError: () => toast({ title: "Не удалось создать ссылку", variant: "destructive" }),
+    onError: () => toast({ title: t("tripShare.inviteFailed"), variant: "destructive" }),
   });
 
   const copyMutation = useMutation({
     mutationFn: () => apiRequestJson<Trip>("POST", `/api/trips/${tripId}/copy`),
     onSuccess: (copy) => {
       toast({
-        title: "Маршрут скопирован",
-        description: `Создана поездка «${copy.title}».`,
+        title: t("tripShare.routeCopied"),
+        description: t("tripShare.routeCopiedDesc", { title: copy.title }),
       });
       window.location.href = `/trips/${copy.id}`;
     },
-    onError: () => toast({ title: "Не удалось скопировать", variant: "destructive" }),
+    onError: () => toast({ title: t("tripShare.copyFailed"), variant: "destructive" }),
   });
 
   return (
@@ -78,7 +78,7 @@ export default function TripSharePanel({
         />
         <Label htmlFor="trip-public" className="text-sm flex items-center gap-1.5 cursor-pointer">
           <Globe className="h-3.5 w-3.5" />
-          Публичный маршрут
+          {t("tripShare.publicRoute")}
         </Label>
       </div>
 
@@ -89,11 +89,11 @@ export default function TripSharePanel({
         onClick={() => {
           const url = trip.isPublic ? publicUrl : `${window.location.origin}/trips/${tripId}`;
           void navigator.clipboard.writeText(url);
-          toast({ title: "Ссылка скопирована" });
+          toast({ title: t("tripShare.linkCopied") });
         }}
       >
         <Link2 className="h-4 w-4" />
-        Ссылка
+        {t("tripShare.link")}
       </Button>
 
       <Button
@@ -104,7 +104,7 @@ export default function TripSharePanel({
         disabled={inviteMutation.isPending}
       >
         <Users className="h-4 w-4" />
-        Пригласить
+        {t("tripShare.invite")}
       </Button>
 
       <Button
@@ -115,11 +115,11 @@ export default function TripSharePanel({
           shareUrl(
             trip.isPublic ? publicUrl : `${window.location.origin}/trips/${tripId}`,
             trip.title,
-            `${stopCount} остановок · ${trip.destination}`,
+            t("tripShare.shareStops", { count: stopCount, destination: trip.destination }),
           )
         }
       >
-        Поделиться
+        {t("tripShare.share")}
       </Button>
 
       <Button
@@ -130,7 +130,7 @@ export default function TripSharePanel({
         disabled={copyMutation.isPending}
       >
         <Copy className="h-4 w-4" />
-        Скопировать маршрут
+        {t("tripShare.copyRoute")}
       </Button>
     </div>
   );

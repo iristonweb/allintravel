@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
-import PageShell from "@/components/layout/page-shell";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import ChatFilterTabs from "@/components/chat/ChatFilterTabs";
 import ChatSidebarPanel from "@/components/chat/ChatSidebarPanel";
 import GroupChatPanel from "@/components/chat/GroupChatPanel";
@@ -861,36 +862,41 @@ export function Chat() {
   return (
     <AppLayout fullWidth immersive chrome="minimal" contentClassName="p-0 md:p-4">
       <div className="max-w-[1600px] mx-auto px-3 py-4 md:py-6 ait-chat-page">
-        <PageShell
-          title={mobileThreadOpen ? undefined : t("chat.page.title")}
-          description={mobileThreadOpen ? undefined : t("chat.page.subtitle")}
-          titleVariant="immersive"
-        >
-          <ChatFilterTabs
-            layoutId="chat-page-filter"
-            tabs={[
-              { id: "all", label: t("chat.page.tabs.all") },
-              {
-                id: "unread",
-                label:
-                  totalUnreadCount > 0
-                    ? t("chat.page.tabs.unreadCount", { count: totalUnreadCount })
-                    : t("chat.page.tabs.unread"),
-              },
-              { id: "mine", label: t("chat.page.tabs.mine") },
-              {
-                id: "personal",
-                label:
-                  conversations.length > 0
-                    ? t("chat.page.tabs.personalCount", { count: conversations.length })
-                    : t("chat.page.tabs.personal"),
-              },
-            ]}
-            value={chatTab}
-            onChange={handleChatTabChange}
-            className="mb-4"
-          />
-
+        <ReelsPageLayout
+          header={
+            !mobileThreadOpen ? (
+              <AitSectionHeader
+                title={t("chat.page.title")}
+                description={t("chat.page.subtitle")}
+              />
+            ) : undefined
+          }
+          tabs={
+            <ChatFilterTabs
+              layoutId="chat-page-filter"
+              tabs={[
+                { id: "all", label: t("chat.page.tabs.all") },
+                {
+                  id: "unread",
+                  label:
+                    totalUnreadCount > 0
+                      ? t("chat.page.tabs.unreadCount", { count: totalUnreadCount })
+                      : t("chat.page.tabs.unread"),
+                },
+                { id: "mine", label: t("chat.page.tabs.mine") },
+                {
+                  id: "personal",
+                  label:
+                    conversations.length > 0
+                      ? t("chat.page.tabs.personalCount", { count: conversations.length })
+                      : t("chat.page.tabs.personal"),
+                },
+              ]}
+              value={chatTab}
+              onChange={handleChatTabChange}
+            />
+          }
+          feed={
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-4 ait-chat-grid min-h-[560px]">
             <div
               className={cn("h-full min-h-0 flex flex-col", mobileThreadOpen && "hidden lg:flex")}
@@ -983,7 +989,8 @@ export function Chat() {
               )}
             </div>
           </div>
-        </PageShell>
+          }
+        />
       </div>
     </AppLayout>
   );

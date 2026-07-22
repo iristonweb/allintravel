@@ -57,6 +57,13 @@
       "when": 1780893000000,
       "tag": "0007_ait_runtime_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780894000000,
+      "tag": "0008_social_ait_fixes",
+      "breakpoints": true
     }
   ]
 }

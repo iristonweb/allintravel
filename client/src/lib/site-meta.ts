@@ -1,10 +1,45 @@
 /** Brand copy — used in HTML meta, manifest, and UI */
+
 export const SITE_NAME = "All In Travel";
+
 export const SITE_TAGLINE = "Explore · Plan · Share";
-export const SITE_DESCRIPTION =
-  "All In Travel — единая экосистема для путешественников: интерактивная карта мира, планировщик маршрутов, сообщество, чаты и лучшие места на планете.";
-export const SITE_DESCRIPTION_SHORT =
-  "Карта, планировщик и сообщество путешественников в одном премиальном приложении.";
+
+const SITE_COPY = {
+  en: {
+    description:
+      "All In Travel — a unified ecosystem for travelers: interactive world map, trip planner, community, chats, and the best places on the planet.",
+    descriptionShort:
+      "Map, planner, and traveler community in one premium app.",
+  },
+  ru: {
+    description:
+      "All In Travel — единая экосистема для путешественников: интерактивная карта мира, планировщик маршрутов, сообщество, чаты и лучшие места на планете.",
+    descriptionShort:
+      "Карта, планировщик и сообщество путешественников в одном премиальном приложении.",
+  },
+} as const;
+
+export type SiteLocale = keyof typeof SITE_COPY;
+
+export function resolveSiteLocale(raw?: string | null): SiteLocale {
+  return raw?.startsWith("en") ? "en" : "ru";
+}
+
+export function getSiteMeta(locale?: string | null) {
+  const lang = resolveSiteLocale(locale);
+  const copy = SITE_COPY[lang];
+  return {
+    name: SITE_NAME,
+    tagline: SITE_TAGLINE,
+    description: copy.description,
+    descriptionShort: copy.descriptionShort,
+  };
+}
+
+/** @deprecated Prefer getSiteMeta(locale).description — defaults to Russian for backwards compat */
+export const SITE_DESCRIPTION = SITE_COPY.ru.description;
+/** @deprecated Prefer getSiteMeta(locale).descriptionShort */
+export const SITE_DESCRIPTION_SHORT = SITE_COPY.ru.descriptionShort;
 
 /** Opaque square asset — favicon, OG, manifest only */
 export const BRAND_LOGO_SRC = "/brand/logo-ait.png";

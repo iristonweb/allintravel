@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, Copy, Check, Link2 } from "lucide-react";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiRequestJson } from "@/lib/queryClient";
@@ -9,6 +10,7 @@ import { AIT_REFERRAL_REWARD, type ReferralMilestoneId } from "@shared/ait";
 import { useToast } from "@/hooks/use-toast";
 import { referralShareUrl } from "@/lib/referral-pending";
 import { Link } from "wouter";
+import { useTranslation, Trans } from "react-i18next";
 
 type ReferralInvitee = {
   userId: string;
@@ -37,17 +39,9 @@ type ReferralInfo = {
   milestones: ReferralMilestoneProgress[];
 };
 
-const MILESTONE_LABELS: Record<ReferralMilestoneId, string> = {
-  signup: "Регистрация",
-  email_verified: "Email подтверждён",
-  profile_complete: "Профиль заполнен",
-  first_post: "Первый пост",
-  active_7d: "7 дней активности",
-  active_30d: "30 дней активности",
-};
-
 export default function ReferralCard() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [codeInput, setCodeInput] = useState("");
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
@@ -66,7 +60,7 @@ export default function ReferralCard() {
     },
     onError: (e: Error) => {
       const msg = e.message.includes("message") ? e.message : e.message.replace(/^\d+:\s*/, "");
-      toast({ title: msg || "Не удалось применить код", variant: "destructive" });
+      toast({ title: msg || t("ait.referral.applyFailed"), variant: "destructive" });
     },
   });
 
@@ -74,7 +68,7 @@ export default function ReferralCard() {
     if (!data?.code) return;
     void navigator.clipboard.writeText(data.code);
     setCopied("code");
-    toast({ title: "Код скопирован" });
+    toast({ title: t("ait.referral.codeCopied") });
     setTimeout(() => setCopied(null), 2000);
   };
 
@@ -82,28 +76,31 @@ export default function ReferralCard() {
     if (!data?.code) return;
     void navigator.clipboard.writeText(referralShareUrl(data.code));
     setCopied("link");
-    toast({ title: "Ссылка скопирована" });
+    toast({ title: t("ait.referral.linkCopied") });
     setTimeout(() => setCopied(null), 2000);
   };
 
   if (isLoading || !data) {
     return (
-      <GlassCard className="p-5 border-ait-purple/20 animate-pulse">
+      <AitSurface padding="md" className="border-ait-purple/20 animate-pulse" aria-busy="true" aria-label={t("ait.referral.loading")}>
         <div className="h-24" />
-      </GlassCard>
+      </AitSurface>
     );
   }
 
   return (
-    <GlassCard className="p-5 border-ait-purple/20">
+    <AitSurface padding="md" className="border-ait-purple/20">
       <div className="flex items-start gap-3">
-        <Users className="h-8 w-8 text-ait-purple shrink-0" />
+        <Users className="h-8 w-8 text-ait-purple shrink-0" aria-hidden />
         <div className="flex-1 space-y-3">
           <div>
-            <h3 className="font-bold text-lg">Пригласи друга</h3>
+            <h3 className="font-bold text-lg">{t("ait.referral.title")}</h3>
             <p className="text-sm text-muted-foreground">
-              Вы и друг получаете по <strong>{AIT_REFERRAL_REWARD} Spend AIT</strong> после ввода
-              кода. Код можно ввести один раз.
+              <Trans
+                i18nKey="ait.referral.description"
+                values={{ amount: AIT_REFERRAL_REWARD }}
+                components={{ strong: <strong className="text-foreground" /> }}
+              />
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -116,6 +113,7 @@ export default function ReferralCard() {
               size="sm"
               className="rounded-xl"
               onClick={copyCode}
+              aria-label={t("common.copy")}
             >
               {copied === "code" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
@@ -127,19 +125,21 @@ export default function ReferralCard() {
               onClick={copyLink}
             >
               {copied === "link" ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
-              Ссылка
+              {t("ait.referral.link")}
             </Button>
           </div>
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span>Приглашено: {data.invited}</span>
-            <span>Начислено бонусов: {data.rewardedCount}</span>
-            <span className="text-ait-orange font-medium">+{data.totalEarned} AIT с рефералов</span>
+            <span>{t("ait.referral.invited", { count: data.invited })}</span>
+            <span>{t("ait.referral.rewarded", { count: data.rewardedCount })}</span>
+            <span className="text-ait-orange font-medium">
+              {t("ait.referral.earned", { amount: data.totalEarned })}
+            </span>
           </div>
 
           {data.milestones?.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Milestone-бонусы
+                {t("ait.referral.milestones")}
               </p>
               <ul className="grid gap-1.5 sm:grid-cols-2">
                 {data.milestones.map((m) => (
@@ -147,7 +147,7 @@ export default function ReferralCard() {
                     key={m.id}
                     className="text-xs ait-glass rounded-lg px-2 py-1.5 flex items-center justify-between gap-2"
                   >
-                    <span>{MILESTONE_LABELS[m.id] ?? m.id}</span>
+                    <span>{t(`ait.referral.milestonesLabels.${m.id}`)}</span>
                     <span className="text-ait-orange shrink-0">
                       {m.completedCount}/{m.totalPossible || "—"} · +{m.amount}
                     </span>
@@ -159,36 +159,35 @@ export default function ReferralCard() {
 
           {data.hasUsedCode ? (
             <p className="text-sm text-ait-purple bg-ait-purple/10 rounded-xl px-3 py-2">
-              Вы уже активировали код{" "}
+              {t("ait.referral.codeUsed")}{" "}
               {data.myReferrerCode ? (
                 <code className="font-mono">{data.myReferrerCode}</code>
               ) : (
-                "пригласившего"
+                t("ait.referral.codeUsedFallback")
               )}
             </p>
           ) : (
             <div className="flex gap-2 flex-wrap">
               <Input
-                placeholder="Код друга"
+                placeholder={t("ait.referral.friendCodePlaceholder")}
                 value={codeInput}
                 onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
                 className="ait-glass rounded-xl max-w-[200px]"
               />
-              <Button
-                variant="premium"
+              <AitButton
                 className="rounded-xl"
                 disabled={codeInput.length < 4 || applyMutation.isPending}
                 onClick={() => applyMutation.mutate(codeInput)}
               >
-                Применить
-              </Button>
+                {t("ait.referral.apply")}
+              </AitButton>
             </div>
           )}
 
           {data.invitees.length > 0 && (
             <div className="space-y-2 pt-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Ваши рефералы
+                {t("ait.referral.yourReferrals")}
               </p>
               <ul className="space-y-1.5 max-h-40 overflow-y-auto">
                 {data.invitees.map((inv) => (
@@ -213,7 +212,9 @@ export default function ReferralCard() {
                           : "text-muted-foreground text-xs shrink-0"
                       }
                     >
-                      {inv.rewarded ? `+${AIT_REFERRAL_REWARD} AIT` : "ожидает"}
+                      {inv.rewarded
+                        ? `+${AIT_REFERRAL_REWARD} AIT`
+                        : t("ait.referral.pending")}
                     </span>
                   </li>
                 ))}
@@ -222,6 +223,6 @@ export default function ReferralCard() {
           )}
         </div>
       </div>
-    </GlassCard>
+    </AitSurface>
   );
 }

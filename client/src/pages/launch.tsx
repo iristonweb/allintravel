@@ -1,7 +1,7 @@
 import PublicLayout from "@/components/public-layout";
 import PageMeta from "@/components/seo/PageMeta";
-import GlassCard from "@/components/brand/glass-card";
-import { Button } from "@/components/ui/button";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
 import { Input } from "@/components/ui/input";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -37,7 +37,7 @@ export default function LaunchPage() {
     <PublicLayout>
       <PageMeta title={t("gtm.launchTitle")} description={t("gtm.launchSubtitle")} path="/launch" />
       <div className="max-w-2xl mx-auto px-4 py-16 space-y-10 text-center">
-        <Rocket className="h-12 w-12 mx-auto text-[#a78bfa]" />
+        <Rocket className="h-12 w-12 mx-auto text-[#a78bfa]" aria-hidden />
         <div className="space-y-3">
           <h1 className="ait-section-title">{t("gtm.launchTitle")}</h1>
           <p className="text-muted-foreground text-lg">
@@ -48,16 +48,16 @@ export default function LaunchPage() {
           )}
         </div>
 
-        <GlassCard className="p-6 text-left space-y-4">
+        <AitSurface padding="md" className="text-left space-y-4">
           <ul className="space-y-2">
             {(data?.features ?? []).map((f) => (
               <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" aria-hidden />
                 {f}
               </li>
             ))}
           </ul>
-        </GlassCard>
+        </AitSurface>
 
         <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
           <Input
@@ -67,20 +67,19 @@ export default function LaunchPage() {
             placeholder="you@email.com"
             className="rounded-xl flex-1"
           />
-          <Button
+          <AitButton
             type="button"
-            variant="premium"
-            className="rounded-xl shrink-0"
+            className="shrink-0"
             disabled={waitlistMutation.isPending || !email}
             onClick={() => waitlistMutation.mutate()}
           >
             {t("gtm.notifyLaunch")}
-          </Button>
+          </AitButton>
         </div>
 
-        <Button asChild variant="outline" className="rounded-xl">
+        <AitButton variant="secondary" asChild>
           <Link href="/login">{t("common.exploreFree")}</Link>
-        </Button>
+        </AitButton>
       </div>
     </PublicLayout>
   );

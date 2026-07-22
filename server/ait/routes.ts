@@ -102,6 +102,22 @@ export function registerAitRoutes(app: Express): void {
     }
   });
 
+  app.get("/api/ait/boost-quote", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub as string;
+      const postId = z.string().uuid().parse(req.query.postId);
+      const { getBoostQuote } = await import("./boost/campaigns");
+      const quote = await getBoostQuote(userId, postId);
+      if (!quote.ok) return res.status(400).json({ message: quote.message });
+      res.json(quote);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Укажите postId" });
+      }
+      res.status(500).json({ message: "Failed to load boost quote" });
+    }
+  });
+
   app.post("/api/ait/spend", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub as string;
@@ -109,6 +125,7 @@ export function registerAitRoutes(app: Express): void {
         .object({
           sku: z.string().min(1),
           postId: z.string().uuid().optional(),
+          roomId: z.string().uuid().optional(),
         })
         .parse(req.body);
 
@@ -120,7 +137,18 @@ export function registerAitRoutes(app: Express): void {
         }
       }
 
-      const result = await spendCatalogItem(userId, body.sku, { postId: body.postId });
+      if (body.sku === "room_spotlight_48h") {
+        if (!body.roomId) return res.status(400).json({ message: "Выберите группу" });
+        const room = await storage.getChatRoom(body.roomId);
+        if (!room || room.createdBy !== userId) {
+          return res.status(403).json({ message: "Spotlight только для своих групп" });
+        }
+      }
+
+      const result = await spendCatalogItem(userId, body.sku, {
+        postId: body.postId,
+        roomId: body.roomId,
+      });
       if (!result.ok) return res.status(400).json({ message: result.message });
       const dashboard = await getAitDashboard(userId);
       res.json(dashboard);
@@ -157,6 +185,8 @@ export function registerAitRoutes(app: Express): void {
 
       if (body.postId) {
         const post = await storage.getTravelPost(body.postId);
+        const { canViewPost } = await import("../post-access");
+        if (!canViewPost(post, userId)) return res.status(404).json({ message: "Post not found" });
         if (!post?.userId) return res.status(404).json({ message: "Post not found" });
         const result = await tipPost(userId, body.postId, body.amount, post.userId);
         if (!result.ok) return res.status(400).json({ message: result.message });

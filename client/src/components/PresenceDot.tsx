@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { useTranslation } from "react-i18next";
 
 type PresenceDotProps = {
   isOnline?: boolean;
@@ -9,6 +10,7 @@ type PresenceDotProps = {
 };
 
 export function PresenceDot({ isOnline, className }: PresenceDotProps) {
+  const { t } = useTranslation();
   if (isOnline === undefined) return null;
   return (
     <span
@@ -17,7 +19,7 @@ export function PresenceDot({ isOnline, className }: PresenceDotProps) {
         isOnline ? "bg-green-500" : "bg-slate-500",
         className,
       )}
-      aria-label={isOnline ? "В сети" : "Не в сети"}
+      aria-label={isOnline ? t("presence.online") : t("presence.offline")}
     />
   );
 }

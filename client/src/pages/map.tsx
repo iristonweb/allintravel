@@ -29,10 +29,16 @@ import { useTranslation } from "react-i18next";
 import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
 import { MAP_SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
 
-const showcaseDestinations = [...MAP_SHOWCASE_DESTINATIONS];
-
 export function MapPage() {
   const { t } = useTranslation();
+  const showcaseDestinations = useMemo(
+    () =>
+      MAP_SHOWCASE_DESTINATIONS.map((d) => ({
+        ...d,
+        name: t(`home.explorePlanner.destinations.${d.id}`),
+      })),
+    [t],
+  );
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
 

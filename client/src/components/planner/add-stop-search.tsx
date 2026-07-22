@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import LocationAutocompleteInput, {
   type GeoAutocompleteItem,
 } from "@/components/location-autocomplete-input";
@@ -23,6 +24,7 @@ export default function AddStopSearch({
   onAddLocation,
   adding,
 }: AddStopSearchProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [selectedGeo, setSelectedGeo] = useState<GeoAutocompleteItem | null>(null);
@@ -61,8 +63,8 @@ export default function AddStopSearch({
       }
       if (!item || !geoItemHasCoords(item)) {
         toast({
-          title: "Не удалось определить координаты",
-          description: "Выберите пункт из списка подсказок или уточните адрес (улица, дом, город).",
+          title: t("planner.addStopSearch.geoFailedTitle"),
+          description: t("planner.addStopSearch.geoFailedDesc"),
           variant: "destructive",
         });
         return;
@@ -73,8 +75,8 @@ export default function AddStopSearch({
       setSelectedGeo(null);
     } catch {
       toast({
-        title: "Не удалось добавить остановку",
-        description: "Проверьте подключение и попробуйте снова.",
+        title: t("planner.addStopSearch.addFailedTitle"),
+        description: t("planner.addStopSearch.addFailedDesc"),
         variant: "destructive",
       });
     } finally {
@@ -87,7 +89,7 @@ export default function AddStopSearch({
   return (
     <div className="space-y-3">
       <LocationAutocompleteInput
-        placeholder="Город, улица, заведение…"
+        placeholder={t("planner.addStopSearch.placeholder")}
         value={query}
         onChange={(v) => {
           setQuery(v);
@@ -119,13 +121,15 @@ export default function AddStopSearch({
           ) : (
             <MapPin className="h-4 w-4 mr-2" />
           )}
-          {selectedGeo ? `Добавить «${selectedGeo.label.split(",")[0]}»` : "Добавить в маршрут"}
+          {selectedGeo
+            ? t("planner.addStopSearch.addNamed", { name: selectedGeo.label.split(",")[0] })
+            : t("planner.addStopSearch.addToRoute")}
         </Button>
       )}
 
       {debouncedQ.length >= 2 && catalogPlaces.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground px-1">Из каталога All In Travel</p>
+          <p className="text-xs text-muted-foreground px-1">{t("planner.addStopSearch.catalogHint")}</p>
           {catalogPlaces.map((place) => (
             <CatalogPlaceRow
               key={place.id}
@@ -138,8 +142,7 @@ export default function AddStopSearch({
       )}
 
       <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
-        Можно добавить город целиком (например, «Владикавказ») — координаты подставятся
-        автоматически. Для точного адреса выберите подсказку из списка.
+        {t("planner.addStopSearch.cityHint")}
       </p>
     </div>
   );

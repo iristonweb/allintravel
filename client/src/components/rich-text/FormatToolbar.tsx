@@ -1,5 +1,6 @@
 import { Bold, Code, EyeOff, Italic, Quote, Strikethrough, Underline } from "lucide-react";
 import type { RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { applyRichFormat, type RichTextFormat } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
@@ -13,26 +14,27 @@ type FormatToolbarProps = {
   compact?: boolean;
 };
 
-const FORMATS: { id: RichTextFormat; icon: typeof Bold; title: string }[] = [
-  { id: "bold", icon: Bold, title: "Жирный (*текст*)" },
-  { id: "italic", icon: Italic, title: "Курсив (_текст_)" },
-  { id: "underline", icon: Underline, title: "Подчёркнутый (__текст__)" },
-  { id: "code", icon: Code, title: "Моно (`текст`)" },
-  { id: "strike", icon: Strikethrough, title: "Зачёркнутый (~текст~)" },
-  { id: "spoiler", icon: EyeOff, title: "Спойлер (||текст||)" },
+const FORMAT_IDS: { id: RichTextFormat; icon: typeof Bold }[] = [
+  { id: "bold", icon: Bold },
+  { id: "italic", icon: Italic },
+  { id: "underline", icon: Underline },
+  { id: "code", icon: Code },
+  { id: "strike", icon: Strikethrough },
+  { id: "spoiler", icon: EyeOff },
 ];
 
 function applyBlockQuote(
   text: string,
   selectionStart: number,
   selectionEnd: number,
+  defaultQuote: string,
 ): { next: string; selectionStart: number; selectionEnd: number } {
   const before = text.slice(0, selectionStart);
   const selected = text.slice(selectionStart, selectionEnd);
   const after = text.slice(selectionEnd);
   const lineStart = before.lastIndexOf("\n") + 1;
   const prefix = text.slice(lineStart, selectionStart);
-  const block = selected || "цитата";
+  const block = selected || defaultQuote;
   const quoted = block
     .split("\n")
     .map((line) => (line.startsWith("> ") ? line : `> ${line}`))
@@ -53,6 +55,8 @@ export default function FormatToolbar({
   className,
   compact,
 }: FormatToolbarProps) {
+  const { t } = useTranslation();
+
   const apply = (format: RichTextFormat) => {
     const el = inputRef.current;
     const start = el?.selectionStart ?? value.length;
@@ -69,7 +73,12 @@ export default function FormatToolbar({
     const el = inputRef.current;
     const start = el?.selectionStart ?? value.length;
     const end = el?.selectionEnd ?? value.length;
-    const { next, selectionStart, selectionEnd } = applyBlockQuote(value, start, end);
+    const { next, selectionStart, selectionEnd } = applyBlockQuote(
+      value,
+      start,
+      end,
+      t("richText.quoteDefault"),
+    );
     onChange(next);
     requestAnimationFrame(() => {
       el?.focus();
@@ -85,29 +94,32 @@ export default function FormatToolbar({
         className,
       )}
     >
-      {FORMATS.map(({ id, icon: Icon, title }) => (
-        <Button
-          key={id}
-          type="button"
-          variant="ghost"
-          size="icon"
-          className={cn(compact ? "h-7 w-7" : "h-8 w-8")}
-          disabled={disabled}
-          title={title}
-          aria-label={title}
-          onClick={() => apply(id)}
-        >
-          <Icon className="h-3.5 w-3.5" />
-        </Button>
-      ))}
+      {FORMAT_IDS.map(({ id, icon: Icon }) => {
+        const title = t(`richText.${id}`);
+        return (
+          <Button
+            key={id}
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(compact ? "h-7 w-7" : "h-8 w-8")}
+            disabled={disabled}
+            title={title}
+            aria-label={title}
+            onClick={() => apply(id)}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </Button>
+        );
+      })}
       <Button
         type="button"
         variant="ghost"
         size="icon"
         className={cn(compact ? "h-7 w-7" : "h-8 w-8")}
         disabled={disabled}
-        title="Цитата (> текст)"
-        aria-label="Цитата"
+        title={t("richText.quote")}
+        aria-label={t("richText.quote")}
         onClick={applyQuote}
       >
         <Quote className="h-3.5 w-3.5" />

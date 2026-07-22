@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import type { User } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 const MENTION_RE = /@([a-zA-Z0-9_]{0,30})$/;
 
@@ -61,10 +62,12 @@ const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocom
       dropdownPortal = false,
       anchorRef,
       position = "below",
-      searchingLabel = "Поиск…",
+      searchingLabel,
     },
     ref,
   ) {
+    const { t } = useTranslation();
+    const resolvedSearchingLabel = searchingLabel ?? t("common.loading");
     const localAnchorRef = useRef<HTMLDivElement>(null);
     const [dropdownStyle, setDropdownStyle] = useState<{
       top: number;
@@ -146,7 +149,7 @@ const MentionAutocomplete = forwardRef<MentionAutocompleteHandle, MentionAutocom
     const listContent = (
       <>
         {isFetching && results.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-muted-foreground">{searchingLabel}</p>
+          <p className="px-3 py-2 text-xs text-muted-foreground">{resolvedSearchingLabel}</p>
         ) : (
           <ul className="max-h-48 overflow-y-auto ait-scrollbar py-1">
             {results.map((u, i) => (

@@ -2,37 +2,24 @@ import { useState } from "react";
 import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
 import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import PlatformWalletCard from "@/components/wallet/PlatformWalletCard";
-import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import PageShell from "@/components/layout/page-shell";
-import GlassCard from "@/components/brand/glass-card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import SmartSearchField from "@/components/search/SmartSearchField";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import ProfileHeroCard from "@/components/profile/ProfileHeroCard";
+import ProfileHeroSkeleton from "@/components/profile/ProfileHeroSkeleton";
+import ProfileHubGrid from "@/components/profile/ProfileHubGrid";
+import ProfileUsernameSearch from "@/components/profile/ProfileUsernameSearch";
+import EmptyState from "@/components/empty-state";
+import { AlertCircle } from "lucide-react";
 import { useProfileHubLinks } from "@/lib/profile-hub-links";
-import {
-  Settings,
-  Search,
-  Edit,
-  AlertCircle,
-  LogOut,
-  Music,
-  Wallet,
-  ChevronRight,
-} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlatformWallet } from "@/hooks/usePlatformWallet";
 import { useQuery } from "@tanstack/react-query";
-import EmptyState from "@/components/empty-state";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import type { User } from "@shared/schema";
-import UserPreviewCell from "@/components/social/UserPreviewCell";
 import { apiRequest } from "@/lib/queryClient";
 import { unsubscribePush } from "@/lib/push-subscription";
 
@@ -62,7 +49,11 @@ export function Profile() {
   if (!isAuthenticated || !user) {
     return (
       <AppLayout contentClassName="py-16">
-        <p className="text-center text-muted-foreground">{t("profile.signInRequired")}</p>
+        <EmptyState
+          variant="glass"
+          title={t("profile.signInRequired")}
+          className="max-w-md mx-auto"
+        />
       </AppLayout>
     );
   }
@@ -82,179 +73,46 @@ export function Profile() {
   return (
     <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
-        <PageShell title={t("nav.profile")} description={t("profile.hubHint")}>
-          {friendsLoading ? (
-            <GlassCard className="mb-6 p-6 space-y-4">
-              <Skeleton className="h-24 w-24 rounded-full" />
-              <Skeleton className="h-8 w-64" />
-              <Skeleton className="h-4 w-full max-w-md" />
-            </GlassCard>
-          ) : friendsError ? (
-            <EmptyState
-              icon={AlertCircle}
-              title={t("profile.loadError")}
-              action={
-                <Button variant="outline" onClick={() => refetchFriends()}>
-                  {t("common.retry")}
-                </Button>
-              }
-            />
-          ) : (
-            <>
-              <GlassCard className="mb-6 p-6">
-                <div className="flex flex-col sm:flex-row gap-6 items-start">
-                  <Avatar className="h-24 w-24 border-2 border-primary/20">
-                    <AvatarImage src={resolveMediaUrl(user.profileImageUrl)} />
-                    <AvatarFallback className="text-2xl">{getUserInitial(user)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h1 className="text-2xl font-bold">{getUserDisplayLabel(user)}</h1>
-                      {getUserHandle(user) && (
-                        <span className="text-muted-foreground">{getUserHandle(user)}</span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href="/profile/edit">
-                          <Edit className="h-4 w-4 mr-1" />
-                          {t("profile.edit")}
-                        </Link>
-                      </Button>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href="/profile/settings">
-                          <Settings className="h-4 w-4 mr-1" />
-                          {t("profile.settings")}
-                        </Link>
-                      </Button>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href="/profile/music">
-                          <Music className="h-4 w-4 mr-1" />
-                          {t("profile.myMusic")}
-                        </Link>
-                      </Button>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href="/wallet">
-                          <Wallet className="h-4 w-4 mr-1" />
-                          {t("nav.wallet")}
-                        </Link>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => void logout()}
-                      >
-                        <LogOut className="h-4 w-4 mr-1" />
-                        {t("profile.logout")}
-                      </Button>
-                    </div>
-                    <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
-                      <Link href="/friends" className="hover:text-ait-purple transition-colors">
-                        <strong className="text-foreground">
-                          {t("profile.friendsCount", { count: friends.length })}
-                        </strong>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-                {friends.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-border/40">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-medium">{t("profile.friendsSection")}</p>
-                      <Link href="/friends" className="text-xs text-ait-purple hover:underline">
-                        {t("profile.friendsAll", { count: friends.length })}
-                      </Link>
-                    </div>
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-                      {friends.slice(0, 8).map((friend) => (
-                        <UserPreviewCell
-                          key={friend.id}
-                          user={friend}
-                          className="min-w-[100px] shrink-0"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </GlassCard>
-
-              <TravelIdentityCard compact />
-
-              <AitDailyPulse className="mb-6" />
-
-              <PlatformWalletCard compact className="mb-6" />
-
-              <GlassCard className="mb-6 p-4">
-                <h2 className="text-sm font-medium mb-3">{t("profile.hubSection")}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {linksWithMap.map((item) => (
-                    <Link key={item.href} href={item.href}>
-                      <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:bg-white/5 transition-colors">
-                        <item.icon className="h-5 w-5 text-primary shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{item.label}</p>
-                          <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
-                        </div>
-                        {item.href === "/wallet" && walletProfile ? (
-                          <Badge className="shrink-0 bg-ait-orange/90 border-0 text-[10px] tabular-nums">
-                            {walletProfile.spendBalance > 999
-                              ? `${Math.floor(walletProfile.spendBalance / 1000)}k`
-                              : walletProfile.spendBalance}
-                          </Badge>
-                        ) : item.badge ? (
-                          <Badge variant="secondary" className="shrink-0 text-[10px]">
-                            {item.badge}
-                          </Badge>
-                        ) : null}
-                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </GlassCard>
-
-              <GlassCard className="mb-6 p-4">
-                <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <Search className="h-4 w-4" />
-                  {t("profile.findByUsername")}
-                </p>
-                <div className="flex gap-2">
-                  <SmartSearchField
-                    className="flex-1"
-                    placeholder={t("profile.usernamePlaceholder")}
-                    value={nickSearch}
-                    onChange={setNickSearch}
-                    onKeyDown={(e) => e.key === "Enter" && handleNickSearch()}
-                  />
-                  <Button type="button" onClick={handleNickSearch}>
-                    {t("profile.find")}
-                  </Button>
-                </div>
-                {searchResults.length > 0 && nickSearch.length >= 3 && (
-                  <div className="mt-3 space-y-2">
-                    {searchResults.map((u) => (
-                      <Link
-                        key={u.id}
-                        href={u.username ? `/u/${u.username}` : `/chat?with=${u.id}&tab=personal`}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={resolveMediaUrl(u.profileImageUrl)} />
-                          <AvatarFallback>{getUserInitial(u)}</AvatarFallback>
-                        </Avatar>
-                        <span>{getUserDisplayLabel(u)}</span>
-                        {u.username && (
-                          <span className="text-muted-foreground text-sm">@{u.username}</span>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </GlassCard>
-            </>
-          )}
-        </PageShell>
+        <ReelsPageLayout
+          header={
+            <AitSectionHeader title={t("nav.profile")} description={t("profile.hubHint")} />
+          }
+          feed={
+            friendsLoading ? (
+              <div aria-label={t("profile.loading")}>
+                <ProfileHeroSkeleton />
+              </div>
+            ) : friendsError ? (
+              <EmptyState
+                variant="glass"
+                icon={AlertCircle}
+                title={t("profile.loadError")}
+                action={
+                  <AitButton variant="glass" size="sm" onClick={() => refetchFriends()}>
+                    {t("common.retry")}
+                  </AitButton>
+                }
+              />
+            ) : (
+              <div className="space-y-section">
+                <ProfileHeroCard user={user} friends={friends} onLogout={() => void logout()} />
+                <TravelIdentityCard compact />
+                <AitDailyPulse />
+                <PlatformWalletCard compact />
+                <ProfileHubGrid
+                  links={linksWithMap}
+                  walletBalance={walletProfile?.spendBalance}
+                />
+                <ProfileUsernameSearch
+                  value={nickSearch}
+                  onChange={setNickSearch}
+                  onSearch={handleNickSearch}
+                  results={searchResults}
+                />
+              </div>
+            )
+          }
+        />
       </div>
     </AppLayout>
   );

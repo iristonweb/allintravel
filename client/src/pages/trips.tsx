@@ -7,16 +7,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import PageShell from "@/components/layout/page-shell";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import CatalogPageLayout, { CatalogSearchInput } from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
-import TravelCompanionCard from "@/components/travel-companion-card";
+import TripCard from "@/components/trips/TripCard";
+import TripCardSkeleton from "@/components/trips/TripCardSkeleton";
 import TripRouteMatches from "@/components/planner/trip-route-matches";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
 import LocationAutocompleteInput, {
   type GeoAutocompleteItem,
 } from "@/components/location-autocomplete-input";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -121,6 +123,7 @@ export function Trips() {
   const [selectedRouteGeo, setSelectedRouteGeo] = useState<GeoAutocompleteItem | null>(null);
   const [inviteUsers, setInviteUsers] = useState<User[]>([]);
   const [inviteDraft, setInviteDraft] = useState("");
+  const [joiningTripId, setJoiningTripId] = useState<string | null>(null);
 
   const { data: friends = [] } = useQuery<User[]>({
     queryKey: ["/api/friends"],
@@ -285,6 +288,7 @@ export function Trips() {
 
   const joinMutation = useMutation({
     mutationFn: async (tripId: string) => {
+      setJoiningTripId(tripId);
       const res = await apiRequest("POST", `/api/trips/${tripId}/join`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -306,6 +310,9 @@ export function Trips() {
         description: err.message || t("tripsPage.toast.joinFailed"),
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      setJoiningTripId(null);
     },
   });
 
@@ -618,132 +625,149 @@ export function Trips() {
       </Dialog>
 
       <AppLayout rightRail={<DiscoveryRightRail />}>
-        <PageShell
-          title={t("tripsPage.title")}
-          description={t("tripsPage.description")}
-          rightSlot={
-            <Button variant="premium" type="button" onClick={openCreateDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("tripsPage.createTrip")}
-            </Button>
+        <ReelsPageLayout
+          header={
+            <AitSectionHeader
+              title={t("tripsPage.title")}
+              description={t("tripsPage.description")}
+              actions={
+                <AitButton variant="primary" className="gap-2" onClick={openCreateDialog}>
+                  <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  {t("tripsPage.createTrip")}
+                </AitButton>
+              }
+            />
           }
-        >
-          <CatalogPageLayout
-            search={
-              <CatalogSearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder={t("tripsPage.searchPlaceholder")}
-              />
-            }
-            filters={
-              <CatalogFilterPanel
-                showClear={Boolean(availability || search.trim())}
-                onClear={() => {
-                  setAvailability("");
-                  setSearch("");
-                }}
-                rows={[
-                  {
-                    label: t("tripsPage.filterGroup"),
-                    options: filters.tripAvailability,
-                    value: availability,
-                    onChange: setAvailability,
-                    icon: Users,
-                  },
-                ]}
-              />
-            }
-            stats={
-              <>
-                <StatPill
-                  value={
-                    q
-                      ? t("tripsPage.statsOf", { found: filtered.length, total: trips.length })
-                      : String(trips.length)
-                  }
-                  label={q ? t("tripsPage.statsFound") : t("tripsPage.statsAvailable")}
+          feed={
+            <CatalogPageLayout
+              search={
+                <CatalogSearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder={t("tripsPage.searchPlaceholder")}
                 />
-                {q && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-2xl ait-glass border border-white/10",
-                      "px-4 py-3 text-sm text-muted-foreground hover:text-foreground transition-colors",
-                    )}
-                  >
-                    {t("tripsPage.resetQuery", { q })}
-                  </button>
-                )}
-              </>
-            }
-          >
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[1, 2, 3, 4].map((i) => (
-                  <Card key={i} className="h-64 animate-pulse bg-muted" />
-                ))}
-              </div>
-            ) : isError ? (
-              <EmptyState
-                icon={AlertCircle}
-                title={t("tripsPage.loadError")}
-                description={error instanceof Error ? error.message : t("social.errors.connection")}
-                action={
-                  <Button variant="outline" onClick={() => refetch()}>
-                    {t("common.retry")}
-                  </Button>
-                }
-              />
-            ) : filtered.length === 0 ? (
-              <EmptyState
-                icon={MapPin}
-                title={q ? t("tripsPage.notFound") : t("tripsPage.empty")}
-                description={
-                  q
-                    ? t("tripsPage.notFoundHint", { q, total: trips.length })
-                    : t("tripsPage.emptyHint")
-                }
-                action={
-                  q ? (
-                    <Button variant="outline" type="button" onClick={() => setSearch("")}>
-                      {t("tripsPage.resetSearch")}
-                    </Button>
-                  ) : undefined
-                }
-              />
-            ) : (
-              <>
-                {primaryTripId && <TripRouteMatches tripId={primaryTripId} />}
-                {q && (
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-sm text-muted-foreground">
-                      {t("tripsPage.found", { count: filtered.length })}
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
+              }
+              filters={
+                <CatalogFilterPanel
+                  showClear={Boolean(availability || search.trim())}
+                  onClear={() => {
+                    setAvailability("");
+                    setSearch("");
+                  }}
+                  rows={[
+                    {
+                      label: t("tripsPage.filterGroup"),
+                      options: filters.tripAvailability,
+                      value: availability,
+                      onChange: setAvailability,
+                      icon: Users,
+                    },
+                  ]}
+                />
+              }
+              stats={
+                <>
+                  <StatPill
+                    value={
+                      q
+                        ? t("tripsPage.statsOf", { found: filtered.length, total: trips.length })
+                        : String(trips.length)
+                    }
+                    label={q ? t("tripsPage.statsFound") : t("tripsPage.statsAvailable")}
+                  />
+                  {q && (
+                    <button
+                      type="button"
                       onClick={() => setSearch("")}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-card-lg border border-border/50 bg-card",
+                        "px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:shadow-md transition-all duration-300",
+                      )}
                     >
-                      {q} ✕
-                    </Badge>
-                  </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filtered.map((trip) => (
-                    <TravelCompanionCard
-                      key={trip.id}
-                      trip={trip}
-                      onJoin={(id) => joinMutation.mutate(id)}
-                      isJoined={participations.tripIds.includes(trip.id)}
-                    />
+                      {t("tripsPage.resetQuery", { q })}
+                    </button>
+                  )}
+                </>
+              }
+            >
+              {isLoading ? (
+                <div
+                  className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
+                  aria-busy="true"
+                  aria-label={t("tripsPage.loading", { defaultValue: "Loading trips" })}
+                >
+                  {[1, 2, 3, 4].map((i) => (
+                    <TripCardSkeleton key={i} />
                   ))}
                 </div>
-              </>
-            )}
-          </CatalogPageLayout>
-        </PageShell>
+              ) : isError ? (
+                <EmptyState
+                  variant="glass"
+                  icon={AlertCircle}
+                  title={t("tripsPage.loadError")}
+                  description={error instanceof Error ? error.message : t("social.errors.connection")}
+                  action={
+                    <AitButton variant="glass" size="sm" onClick={() => refetch()}>
+                      {t("common.retry")}
+                    </AitButton>
+                  }
+                />
+              ) : filtered.length === 0 ? (
+                <EmptyState
+                  variant="glass"
+                  icon={MapPin}
+                  title={q ? t("tripsPage.notFound") : t("tripsPage.empty")}
+                  description={
+                    q
+                      ? t("tripsPage.notFoundHint", { q, total: trips.length })
+                      : t("tripsPage.emptyHint")
+                  }
+                  action={
+                    q ? (
+                      <AitButton variant="glass" size="sm" type="button" onClick={() => setSearch("")}>
+                        {t("tripsPage.resetSearch")}
+                      </AitButton>
+                    ) : (
+                      <AitButton variant="primary" size="sm" type="button" onClick={openCreateDialog}>
+                        <Plus className="h-4 w-4 mr-1" strokeWidth={1.5} aria-hidden />
+                        {t("tripsPage.createTrip")}
+                      </AitButton>
+                    )
+                  }
+                />
+              ) : (
+                <>
+                  {primaryTripId && <TripRouteMatches tripId={primaryTripId} />}
+                  {q && (
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-sm text-muted-foreground">
+                        {t("tripsPage.found", { count: filtered.length })}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="cursor-pointer rounded-full border-border/50"
+                        onClick={() => setSearch("")}
+                      >
+                        {q} ✕
+                      </Badge>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+                    {filtered.map((trip) => (
+                      <TripCard
+                        key={trip.id}
+                        trip={trip}
+                        onJoin={(id) => joinMutation.mutate(id)}
+                        isJoined={participations.tripIds.includes(trip.id)}
+                        joinPending={joiningTripId === trip.id}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </CatalogPageLayout>
+          }
+        />
       </AppLayout>
     </>
   );

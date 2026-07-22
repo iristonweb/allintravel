@@ -2,7 +2,11 @@ import type { NotificationType } from "@shared/notification-types";
 import {
   formatPostLikeNotificationBody,
   formatPostCommentNotificationBody,
+  postLikeNotificationTitle,
+  postCommentNotificationTitle,
 } from "@shared/notification-text";
+import { notificationCopy } from "@shared/notification-copy";
+import { normalizeNotificationLocale, type NotificationLocale } from "@shared/notification-locale";
 import type { IStorage } from "./storage";
 import { sendPushToUser } from "./push";
 import { broadcastToUser } from "./realtime-hub";
@@ -82,10 +86,16 @@ export async function notifyUser(input: NotifyInput): Promise<void> {
 
 export async function labelForUser(
   user: User | undefined,
-  fallback = "Пользователь",
+  locale: NotificationLocale = "ru",
 ): Promise<string> {
-  if (!user) return fallback;
+  if (!user) return notificationCopy(locale).userFallback;
   return getUserDisplayLabel(user);
+}
+
+async function localeForUser(userId: string): Promise<NotificationLocale> {
+  if (!storageRef) return "ru";
+  const user = await storageRef.getUser(userId);
+  return normalizeNotificationLocale(user?.preferredLocale);
 }
 
 export function truncateNotificationPreview(text: string, max = 80): string {
@@ -98,12 +108,16 @@ async function buildPostLikeNotification(
   postId: string,
   postContent: string,
   latestLiker: User,
+  recipientId: string,
 ): Promise<{ title: string; body: string; link: string }> {
+  const locale = await localeForUser(recipientId);
+  const copy = notificationCopy(locale);
+
   if (!storageRef) {
     const name = getUserDisplayLabel(latestLiker);
     return {
-      title: "Оценка публикации",
-      body: `${name} оценила вашу публикацию`,
+      title: copy.postLikeTitle,
+      body: `${name} ${copy.postLikeVerbSingle} ${copy.postTarget}`,
       link: `/social-feed?post=${postId}`,
     };
   }
@@ -117,10 +131,10 @@ async function buildPostLikeNotification(
   ) as User[];
 
   const actors = likers.length > 0 ? likers : [latestLiker];
-  const body = formatPostLikeNotificationBody(actors, likeCount, postContent);
+  const body = formatPostLikeNotificationBody(actors, likeCount, postContent, locale);
 
   return {
-    title: "Оценка публикации",
+    title: postLikeNotificationTitle(locale),
     body,
     link: `/social-feed?post=${postId}`,
   };
@@ -134,7 +148,12 @@ export async function notifyPostLiked(
 ): Promise<void> {
   if (!storageRef || postOwnerId === liker.id) return;
 
-  const { title, body, link } = await buildPostLikeNotification(postId, postContent, liker);
+  const { title, body, link } = await buildPostLikeNotification(
+    postId,
+    postContent,
+    liker,
+    postOwnerId,
+  );
   const existing = await storageRef.findNotificationByEntity(postOwnerId, "post_like", postId);
 
   let row: NotificationRow | undefined;
@@ -193,7 +212,12 @@ export async function syncPostLikeNotification(
   const latest = likerIds[0] ? await storageRef.getUser(likerIds[0]) : undefined;
   if (!latest) return;
 
-  const { title, body, link } = await buildPostLikeNotification(postId, postContent, latest);
+  const { title, body, link } = await buildPostLikeNotification(
+    postId,
+    postContent,
+    latest,
+    postOwnerId,
+  );
   const existing = await storageRef.findNotificationByEntity(postOwnerId, "post_like", postId);
   if (existing) {
     await storageRef.updateNotification(postOwnerId, existing.id, {
@@ -229,8 +253,15 @@ export async function notifyPostCommented(
   ) as User[];
   const actors = commenters.length > 0 ? commenters : [commenter];
 
-  const body = formatPostCommentNotificationBody(actors, commentCount, postContent, commentText);
-  const title = "Комментарий к публикации";
+  const locale = await localeForUser(postOwnerId);
+  const body = formatPostCommentNotificationBody(
+    actors,
+    commentCount,
+    postContent,
+    commentText,
+    locale,
+  );
+  const title = postCommentNotificationTitle(locale);
   const link = `/social-feed?post=${postId}`;
 
   const existing = await storageRef.findNotificationByEntity(postOwnerId, "post_comment", postId);
@@ -282,15 +313,17 @@ export async function notifyPrivateMessageReaction(
   messagePreview: string,
 ): Promise<void> {
   if (messageAuthorId === reactor.id) return;
+  const locale = await localeForUser(messageAuthorId);
+  const copy = notificationCopy(locale);
   const name = getUserDisplayLabel(reactor);
   const preview = truncateNotificationPreview(messagePreview);
   await notifyUser({
     userId: messageAuthorId,
     type: "message_reaction",
-    title: "Реакция на сообщение",
+    title: copy.messageReactionTitle,
     body: preview
-      ? `${name} отреагировал(а) ${emoji} на «${preview}»`
-      : `${name} отреагировал(а) ${emoji} на ваше сообщение`,
+      ? copy.messageReactionBody(name, emoji, preview)
+      : copy.messageReactionBodyFallback(name, emoji),
     link: `/chat?with=${partnerId}&tab=unread`,
     actorId: reactor.id,
     entityId: messageId,
@@ -307,15 +340,17 @@ export async function notifyChatMessageReaction(
   messagePreview: string,
 ): Promise<void> {
   if (messageAuthorId === reactor.id) return;
+  const locale = await localeForUser(messageAuthorId);
+  const copy = notificationCopy(locale);
   const name = getUserDisplayLabel(reactor);
   const preview = truncateNotificationPreview(messagePreview);
   await notifyUser({
     userId: messageAuthorId,
     type: "chat_reaction",
-    title: `Реакция в «${roomTitle}»`,
+    title: copy.chatReactionTitle(roomTitle),
     body: preview
-      ? `${name} отреагировал(а) ${emoji}: «${preview}»`
-      : `${name} отреагировал(а) ${emoji} на ваше сообщение`,
+      ? copy.chatReactionBody(name, emoji, preview)
+      : copy.chatReactionBodyFallback(name, emoji),
     link: `/chat?room=${encodeURIComponent(roomSlug)}`,
     actorId: reactor.id,
     entityId: messageId,
@@ -328,12 +363,14 @@ export async function notifyFriendRequest(
   requester: User,
   friendshipId: string,
 ): Promise<void> {
+  const locale = await localeForUser(addresseeId);
+  const copy = notificationCopy(locale);
   const name = getUserDisplayLabel(requester);
   await notifyUser({
     userId: addresseeId,
     type: "friend_request",
-    title: "Заявка в друзья",
-    body: `${name} хочет добавить вас в друзья`,
+    title: copy.friendRequestTitle,
+    body: copy.friendRequestBody(name),
     link: "/profile/friends",
     actorId: requester.id,
     entityId: friendshipId,
@@ -346,12 +383,14 @@ export async function notifyFriendAccepted(
   accepter: User,
   friendshipId: string,
 ): Promise<void> {
+  const locale = await localeForUser(requesterId);
+  const copy = notificationCopy(locale);
   const name = getUserDisplayLabel(accepter);
   await notifyUser({
     userId: requesterId,
     type: "friend_accepted",
-    title: "Заявка принята",
-    body: `${name} принял(а) вашу заявку в друзья`,
+    title: copy.friendAcceptedTitle,
+    body: copy.friendAcceptedBody(name),
     link: "/profile/friends",
     actorId: accepter.id,
     entityId: friendshipId,
@@ -363,12 +402,14 @@ export async function notifyNewMessage(
   sender: User,
   preview: string,
 ): Promise<void> {
+  const locale = await localeForUser(receiverId);
+  const copy = notificationCopy(locale);
   const name = getUserDisplayLabel(sender);
   const body = preview.length > 120 ? `${preview.slice(0, 117)}…` : preview;
   await notifyUser({
     userId: receiverId,
     type: "message",
-    title: `Сообщение от ${name}`,
+    title: copy.messageTitle(name),
     body,
     link: `/chat?with=${sender.id}&tab=unread`,
     actorId: sender.id,

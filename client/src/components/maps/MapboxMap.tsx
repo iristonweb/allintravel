@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import PlaceMap, { type MapPlace } from "@/components/PlaceMap";
 import { cn } from "@/lib/utils";
 import { demoMarkersMapbox, demoRoutesMapbox } from "@/lib/map-demo-data";
+import { useTranslation } from "react-i18next";
 
 export type MapboxPlace = MapPlace;
 
@@ -45,6 +46,7 @@ export default function MapboxMap({
   routeGeometry,
   compact,
 }: MapboxMapProps) {
+  const { t } = useTranslation();
   const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -140,7 +142,7 @@ export default function MapboxMap({
       DEMO_MARKERS.forEach((m) => {
         const el = createMarkerElement(m.label, m.variant);
         const popup = new mapboxgl.Popup({ offset: 20, closeButton: false }).setHTML(
-          `<div style="padding:6px 2px;font-weight:600">${m.label} мест</div>`,
+          `<div style="padding:6px 2px;font-weight:600">${t("map.placesCount", { label: m.label })}</div>`,
         );
         markers.push(
           new mapboxgl.Marker({ element: el }).setLngLat([m.lng, m.lat]).setPopup(popup).addTo(map),
@@ -155,7 +157,7 @@ export default function MapboxMap({
       Number.isFinite(mapFocus.lon)
     ) {
       const el = createMarkerElement("●", "purple");
-      const label = mapFocus.label ?? "Направление";
+      const label = mapFocus.label ?? t("map.destination");
       const popup = new mapboxgl.Popup({ offset: 20, closeButton: false }).setHTML(
         `<div style="padding:6px 2px;font-weight:600">${label}</div>`,
       );
@@ -227,6 +229,7 @@ export default function MapboxMap({
     routeGeometry,
     mapFocus,
     showDestinationPin,
+    t,
   ]);
 
   useEffect(() => {
@@ -256,8 +259,7 @@ export default function MapboxMap({
         />
         {!compact && (
           <div className="absolute bottom-4 left-4 z-[1000] ait-glass rounded-xl px-3 py-2 text-xs text-muted-foreground max-w-xs">
-            Добавьте <code className="text-ait-purple">VITE_MAPBOX_TOKEN</code> для спутниковой
-            карты Mapbox
+            {t("map.mapboxTokenHint")}
           </div>
         )}
       </div>

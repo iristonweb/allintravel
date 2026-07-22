@@ -42,7 +42,7 @@ export default function TravelJourneyStrip({
     >
       {!compact && (
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          {t("journey.title", { defaultValue: "Your travel journey" })}
+          {t("journey.title")}
         </p>
       )}
       <div className="flex items-center gap-1 md:gap-2 overflow-x-auto scrollbar-none">
@@ -71,7 +71,7 @@ export default function TravelJourneyStrip({
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 {!compact && (
-                  <span>{t(`journey.steps.${step.id}`, { defaultValue: step.id })}</span>
+                  <span>{t(`journey.steps.${step.id}`)}</span>
                 )}
               </Link>
             </div>

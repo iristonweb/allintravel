@@ -8,7 +8,11 @@ import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { pushRecentlyViewedPlace } from "@/lib/recentlyViewed";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import GlassCard from "@/components/brand/glass-card";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import PlaceDetailSkeleton from "@/components/places/PlaceDetailSkeleton";
 import { ReviewCard } from "@/components/review-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,12 +33,13 @@ import EmptyState from "@/components/empty-state";
 import { useState } from "react";
 import { shareUrl } from "@/lib/share";
 import TravelMap from "@/components/maps/TravelMap";
-import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
+import { useTranslation } from "react-i18next";
 import type { PlaceWithDetails, FavoriteStatus, Review } from "@shared/schema";
 import { PLACE_CARD_FALLBACK_SRC } from "@/lib/marketing-images";
 
 export default function PlaceDetails() {
   const { id } = useParams();
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -56,7 +61,8 @@ export default function PlaceDetails() {
     place
       ? {
           title: `${place.name} | All In Travel`,
-          description: place.description?.slice(0, 160) ?? `Место: ${place.name}`,
+          description:
+            place.description?.slice(0, 160) ?? t("placeDetail.metaDescription", { name: place.name }),
           image: place.imageUrl ?? undefined,
           url: `${window.location.origin}/place/${id}`,
         }
@@ -82,8 +88,8 @@ export default function PlaceDetails() {
   useEffect(() => {
     if (placeError && isUnauthorizedError(placeError as Error)) {
       toast({
-        title: "Нужен вход",
-        description: "Сессия закончилась. Перенаправляем на страницу входа…",
+        title: t("placeDetail.toast.signInRequired"),
+        description: t("placeDetail.toast.sessionExpired"),
         variant: "destructive",
       });
       setTimeout(() => {
@@ -99,8 +105,8 @@ export default function PlaceDetails() {
     },
     onSuccess: () => {
       toast({
-        title: "Отзыв добавлен",
-        description: "Спасибо! Ваш отзыв опубликован.",
+        title: t("placeDetail.toast.reviewAdded"),
+        description: t("placeDetail.toast.reviewThanks"),
       });
       setReviewText("");
       setReviewRating("5");
@@ -110,8 +116,8 @@ export default function PlaceDetails() {
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
-          title: "Нужен вход",
-          description: "Сессия закончилась. Перенаправляем на страницу входа…",
+          title: t("placeDetail.toast.signInRequired"),
+          description: t("placeDetail.toast.sessionExpired"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -121,8 +127,8 @@ export default function PlaceDetails() {
         return;
       }
       toast({
-        title: "Ошибка",
-        description: "Не удалось добавить отзыв. Попробуйте ещё раз.",
+        title: t("placeDetail.toast.error"),
+        description: t("placeDetail.toast.reviewFailed"),
         variant: "destructive",
       });
     },
@@ -136,17 +142,19 @@ export default function PlaceDetails() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/favorites", id, "check"] });
       toast({
-        title: favoriteStatus?.isFavorite ? "Удалено из избранного" : "Добавлено в избранное",
+        title: favoriteStatus?.isFavorite
+          ? t("placeDetail.toast.favoriteRemoved")
+          : t("placeDetail.toast.favoriteAdded"),
         description: favoriteStatus?.isFavorite
-          ? "Место убрано из избранного."
-          : "Место добавлено в избранное.",
+          ? t("placeDetail.toast.favoriteRemovedHint")
+          : t("placeDetail.toast.favoriteAddedHint"),
       });
     },
     onError: (error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
-          title: "Нужен вход",
-          description: "Сессия закончилась. Перенаправляем на страницу входа…",
+          title: t("placeDetail.toast.signInRequired"),
+          description: t("placeDetail.toast.sessionExpired"),
           variant: "destructive",
         });
         setTimeout(() => {
@@ -156,8 +164,8 @@ export default function PlaceDetails() {
         return;
       }
       toast({
-        title: "Ошибка",
-        description: "Не удалось обновить избранное. Попробуйте ещё раз.",
+        title: t("placeDetail.toast.error"),
+        description: t("placeDetail.toast.favoriteFailed"),
         variant: "destructive",
       });
     },
@@ -166,8 +174,8 @@ export default function PlaceDetails() {
   const handleSubmitReview = () => {
     if (!reviewText.trim()) {
       toast({
-        title: "Ошибка",
-        description: "Введите текст отзыва.",
+        title: t("placeDetail.toast.error"),
+        description: t("placeDetail.toast.reviewEmpty"),
         variant: "destructive",
       });
       return;
@@ -182,16 +190,7 @@ export default function PlaceDetails() {
   if (placeLoading) {
     return (
       <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
-        <div className="animate-pulse">
-          <div className="h-64 bg-muted rounded-xl mb-8" />
-          <div className="h-8 bg-muted rounded w-1/3 mb-4" />
-          <div className="h-4 bg-muted rounded w-2/3 mb-8" />
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-32 bg-muted rounded" />
-            ))}
-          </div>
-        </div>
+        <PlaceDetailSkeleton />
       </AppLayout>
     );
   }
@@ -200,13 +199,14 @@ export default function PlaceDetails() {
     return (
       <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
         <EmptyState
+          variant="glass"
           icon={AlertCircle}
-          title="Не удалось загрузить место"
+          title={t("placeDetail.loadError")}
           description={placeError instanceof Error ? placeError.message : undefined}
           action={
-            <Button variant="outline" onClick={() => refetchPlace()}>
-              Повторить
-            </Button>
+            <AitButton variant="glass" size="sm" onClick={() => refetchPlace()}>
+              {t("common.retry")}
+            </AitButton>
           }
         />
       </AppLayout>
@@ -216,26 +216,36 @@ export default function PlaceDetails() {
   if (!place) {
     return (
       <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Место не найдено</h1>
-          <p className="text-muted-foreground">
-            Похоже, такого места не существует или оно было удалено.
-          </p>
-        </div>
+        <EmptyState
+          variant="glass"
+          title={t("placeDetail.notFoundTitle")}
+          description={t("placeDetail.notFoundHint")}
+          className="max-w-md mx-auto"
+        />
       </AppLayout>
     );
   }
 
   const averageRating = parseFloat(place?.averageRating || "0");
+  const typeLabel = t(`filters.placeType.${place.type}`, { defaultValue: place.type });
 
   return (
     <AppLayout contentClassName="py-8" rightRail={<DiscoveryRightRail />}>
-      <AppBreadcrumbs
-        items={[{ label: "Места", href: "/places" }, { label: place?.name ?? "Место" }]}
-      />
-      {/* Place Header */}
-      <div className="mb-8">
-        <div className="relative h-64 md:h-96 rounded-xl overflow-hidden mb-6">
+      <ReelsPageLayout
+        header={
+          <div className="space-y-2">
+            <Link
+              href="/places"
+              className="text-xs text-muted-foreground hover:text-ait-purple transition-colors"
+            >
+              ← {t("placeDetail.breadcrumbPlaces")}
+            </Link>
+            <AitSectionHeader title={place.name} />
+          </div>
+        }
+        feed={
+          <>
+      <div className="relative h-64 md:h-96 rounded-card-xl overflow-hidden mb-6">
           <img
             src={place?.imageUrl || PLACE_CARD_FALLBACK_SRC}
             alt={place?.name || "Place"}
@@ -268,33 +278,37 @@ export default function PlaceDetails() {
           </div>
         </div>
 
-        <GlassCard className="p-6 mb-6">
+        <AitSurface className="mb-6">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-3xl font-bold text-foreground">{place?.name}</h1>
-                <Badge variant="outline" className="capitalize">
-                  {place?.type}
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h2 className="text-2xl font-semibold text-foreground">{place?.name}</h2>
+                <Badge variant="outline" className="capitalize rounded-full">
+                  {typeLabel}
                 </Badge>
                 {place?.isVerified && (
-                  <Badge className="bg-green-500/15 text-green-500 border border-green-500/30">
-                    Проверено
+                  <Badge className="bg-green-500/15 text-green-500 border border-green-500/30 rounded-full">
+                    {t("placeDetail.verified")}
                   </Badge>
                 )}
               </div>
 
-              <div className="flex items-center space-x-4 mb-4">
+              <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div className="flex items-center">
                   <div className="flex text-yellow-400 mr-2">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
                         key={i}
                         className={`h-4 w-4 ${i < Math.round(averageRating) ? "fill-current" : ""}`}
+                        strokeWidth={1.5}
                       />
                     ))}
                   </div>
                   <span className="text-sm text-muted-foreground">
-                    {averageRating.toFixed(1)} ({place?.reviewCount || 0} отзывов)
+                    {t("placeDetail.reviewsCount", {
+                      rating: averageRating.toFixed(1),
+                      count: place?.reviewCount || 0,
+                    })}
                   </span>
                 </div>
                 {place?.priceRange && (
@@ -356,31 +370,29 @@ export default function PlaceDetails() {
               {isAuthenticated ? (
                 <AddPlaceToTripButton placeId={place.id} placeName={place.name} />
               ) : (
-                <Button variant="premium" className="gap-2 rounded-2xl" asChild>
+                <AitButton variant="primary" size="sm" className="gap-2" asChild>
                   <Link href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}>
-                    <LogIn className="h-4 w-4" />
-                    Войти и добавить в поездку
+                    <LogIn className="h-4 w-4" strokeWidth={1.5} />
+                    {t("placeDetail.signInToAddTrip")}
                   </Link>
-                </Button>
+                </AitButton>
               )}
             </div>
           </div>
-        </GlassCard>
+        </AitSurface>
 
         {place.type === "hotel" && (
           <div className="mb-6">
             <AffiliateHotelWidget placeName={place.name} city={place.address?.split(",")[0]} />
           </div>
         )}
-      </div>
 
-      {/* Add Review Section */}
       {isAuthenticated ? (
-        <GlassCard className="mb-8 p-6">
-          <h3 className="text-lg font-semibold mb-4">Оставить отзыв</h3>
+        <AitSurface className="mb-8">
+          <h3 className="text-lg font-semibold mb-4">{t("placeDetail.addReview")}</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Оценка</label>
+              <label className="block text-sm font-medium mb-2">{t("placeDetail.ratingLabel")}</label>
               <Select value={reviewRating} onValueChange={setReviewRating}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -395,38 +407,40 @@ export default function PlaceDetails() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Текст отзыва</label>
+              <label className="block text-sm font-medium mb-2">{t("placeDetail.reviewTextLabel")}</label>
               <Textarea
-                placeholder="Поделитесь впечатлениями о месте…"
+                placeholder={t("placeDetail.reviewPlaceholder")}
                 value={reviewText}
                 onChange={(e) => setReviewText(e.target.value)}
                 className="min-h-[100px]"
               />
             </div>
-            <Button
+            <AitButton
               onClick={handleSubmitReview}
               disabled={createReviewMutation.isPending}
-              variant="premium"
+              variant="primary"
+              size="sm"
             >
-              {createReviewMutation.isPending ? "Публикуем…" : "Опубликовать"}
-            </Button>
+              {createReviewMutation.isPending
+                ? t("placeDetail.publishing")
+                : t("placeDetail.publish")}
+            </AitButton>
           </div>
-        </GlassCard>
+        </AitSurface>
       ) : (
-        <GlassCard className="mb-8 p-6 text-center">
-          <p className="text-muted-foreground mb-3">Войдите, чтобы оставить отзыв.</p>
-          <Button variant="outline" asChild>
+        <AitSurface className="mb-8 text-center">
+          <p className="text-muted-foreground mb-3">{t("placeDetail.signInToReview")}</p>
+          <AitButton variant="glass" size="sm" asChild>
             <Link href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}>
-              Войти
+              {t("placeDetail.signIn")}
             </Link>
-          </Button>
-        </GlassCard>
+          </AitButton>
+        </AitSurface>
       )}
 
-      {/* Reviews Section */}
-      <GlassCard className="p-6">
+      <AitSurface>
         <h2 className="text-2xl font-bold text-foreground mb-6">
-          Отзывы ({place?.reviewCount || 0})
+          {t("placeDetail.reviewsTitle", { count: place?.reviewCount || 0 })}
         </h2>
 
         {reviewsLoading ? (
@@ -442,11 +456,12 @@ export default function PlaceDetails() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Пока нет отзывов. Будьте первым!</p>
-          </div>
+          <p className="text-center py-8 text-muted-foreground">{t("placeDetail.noReviews")}</p>
         )}
-      </GlassCard>
+      </AitSurface>
+          </>
+        }
+      />
     </AppLayout>
   );
 }

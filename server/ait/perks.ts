@@ -4,7 +4,6 @@ import * as store from "./store";
 
 const memPostBoosts = new Map<string, Date>();
 const CREATOR_BADGE_SKU = "creator_badge";
-const ROOM_SPOTLIGHT_SKU = "room_spotlight_48h";
 
 export async function addPostBoost(postId: string, userId: string, hours = 24): Promise<void> {
   const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
@@ -48,15 +47,8 @@ export async function getUsersWithCreatorBadge(userIds: string[]): Promise<Set<s
   return out;
 }
 
-export async function getRoomOwnersWithSpotlight(ownerIds: string[]): Promise<Set<string>> {
-  if (ownerIds.length === 0) return new Set();
-  const unique = Array.from(new Set(ownerIds));
-  const out = new Set<string>();
-  for (const id of unique) {
-    const ents = await store.getEntitlements(id);
-    if (ents.some((e) => e.sku === ROOM_SPOTLIGHT_SKU)) out.add(id);
-  }
-  return out;
+export async function getRoomsWithSpotlight(roomIds: string[]): Promise<Set<string>> {
+  return store.getActiveSpotlightRoomIds(roomIds);
 }
 
 export function sortPostsWithBoosts<T extends { id: string; createdAt?: Date | string | null }>(
@@ -75,11 +67,11 @@ export function sortPostsWithBoosts<T extends { id: string; createdAt?: Date | s
 
 export function sortRoomsWithSpotlight<T extends { id: string; createdBy?: string | null }>(
   rooms: T[],
-  spotlightOwners: Set<string>,
+  spotlightRooms: Set<string>,
 ): T[] {
   return [...rooms].sort((a, b) => {
-    const as = a.createdBy && spotlightOwners.has(a.createdBy) ? 1 : 0;
-    const bs = b.createdBy && spotlightOwners.has(b.createdBy) ? 1 : 0;
+    const as = spotlightRooms.has(a.id) ? 1 : 0;
+    const bs = spotlightRooms.has(b.id) ? 1 : 0;
     if (as !== bs) return bs - as;
     return 0;
   });

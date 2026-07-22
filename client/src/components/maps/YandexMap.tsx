@@ -5,6 +5,7 @@ import PlaceMap from "@/components/PlaceMap";
 import type { MapFocus } from "@/components/maps/MapboxMap";
 import { cn } from "@/lib/utils";
 import { demoMarkersYandex, demoRoutesYandex } from "@/lib/map-demo-data";
+import { useTranslation } from "react-i18next";
 
 export type YandexPlace = MapPlace;
 
@@ -73,6 +74,7 @@ export default function YandexMap({
   routeGeometry,
   compact,
 }: YandexMapProps) {
+  const { t } = useTranslation();
   const apiKey = import.meta.env.VITE_YANDEX_MAPS_API_KEY as string | undefined;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<YMap | null>(null);
@@ -193,7 +195,7 @@ export default function YandexMap({
         [lat, lon],
         {
           iconContent: label,
-          balloonContentHeader: place?.name ?? `${label} мест`,
+          balloonContentHeader: place?.name ?? t("map.placesCount", { label }),
           balloonContentBody: place?.address ?? "",
           hintContent: place?.name ?? label,
         },
@@ -228,8 +230,8 @@ export default function YandexMap({
       const focusPlacemark = new ymaps.Placemark(
         [mapFocus.lat, mapFocus.lon],
         {
-          balloonContentHeader: mapFocus.label ?? "Направление",
-          hintContent: mapFocus.label ?? "Выбранное место",
+          balloonContentHeader: mapFocus.label ?? t("map.destination"),
+          hintContent: mapFocus.label ?? t("map.selectedPlace"),
         },
         {
           preset: "islands#violetDotIcon",
@@ -289,6 +291,7 @@ export default function YandexMap({
     onPlaceClick,
     routeGeometry,
     apiKey,
+    t,
   ]);
 
   if (!apiKey) {

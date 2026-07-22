@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, Pause, X, Film, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import AitButton from "@/components/ait-ui/AitButton";
 import TravelMap from "@/components/maps/TravelMap";
 import { apiRequestJson } from "@/lib/queryClient";
 import { fetchBuiltRoute } from "@/lib/fetch-route";
 import { groupWaypointsByDay, dayLabel, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
+import { useTranslation } from "react-i18next";
 import type { Trip, TripWaypointWithPlace } from "@shared/schema";
 
 type TripCinemaProps = {
@@ -28,6 +29,7 @@ type CinemaStop = {
 const STEP_MS = 2800;
 
 export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCinemaProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const totalDays = tripCalendarDayCount(trip);
   const byDay = useMemo(() => groupWaypointsByDay(waypoints, totalDays), [waypoints, totalDays]);
@@ -121,8 +123,8 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
 
   useEffect(() => {
     if (!playing || phase === "finale") return;
-    const t = window.setInterval(advance, phase === "intro" ? 2200 : STEP_MS);
-    return () => window.clearInterval(t);
+    const timer = window.setInterval(advance, phase === "intro" ? 2200 : STEP_MS);
+    return () => window.clearInterval(timer);
   }, [playing, phase, advance]);
 
   useEffect(() => {
@@ -142,15 +144,18 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
       <div className="fixed inset-0 z-[200] bg-[#050816] flex items-center justify-center p-6">
         <div className="text-center max-w-md">
           <Film className="h-12 w-12 text-ait-purple mx-auto mb-4" />
-          <p className="text-lg font-semibold mb-2">Нужно больше остановок</p>
-          <p className="text-muted-foreground text-sm mb-6">
-            Добавьте минимум 2 точки в маршрут, чтобы проиграть Trip Cinema.
-          </p>
-          <Button onClick={onClose}>Закрыть</Button>
+          <p className="text-lg font-semibold mb-2">{t("cinema.needMoreStops")}</p>
+          <p className="text-muted-foreground text-sm mb-6">{t("cinema.needMoreStopsHint")}</p>
+          <AitButton onClick={onClose}>{t("cinema.close")}</AitButton>
         </div>
       </div>
     );
   }
+
+  const stopsDaysLabel =
+    days.length === 1
+      ? t("cinema.stopsDaysOne", { stops: flatStops.length, days: days.length })
+      : t("cinema.stopsDays", { stops: flatStops.length, days: days.length });
 
   return (
     <div className="fixed inset-0 z-[200] bg-[#050816] flex flex-col">
@@ -171,7 +176,7 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
         type="button"
         onClick={onClose}
         className="absolute top-4 right-4 z-20 h-10 w-10 rounded-full bg-black/50 border border-white/20 flex items-center justify-center hover:bg-black/70"
-        aria-label="Закрыть"
+        aria-label={t("cinema.close")}
       >
         <X className="h-5 w-5" />
       </button>
@@ -187,13 +192,11 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
               className="space-y-3"
             >
               <p className="text-xs uppercase tracking-[0.3em] text-ait-orange font-bold">
-                Trip Cinema
+                {t("planner.tripCinema")}
               </p>
               <h2 className="text-3xl sm:text-4xl font-bold">{trip.title}</h2>
               <p className="text-lg text-muted-foreground">{trip.destination}</p>
-              <p className="text-sm text-white/60">
-                {flatStops.length} остановок · {days.length} {days.length === 1 ? "день" : "дней"}
-              </p>
+              <p className="text-sm text-white/60">{stopsDaysLabel}</p>
             </motion.div>
           )}
 
@@ -206,11 +209,15 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
               className="space-y-2"
             >
               <p className="text-xs uppercase tracking-widest text-ait-purple">
-                {currentDayInfo?.label ?? `День ${currentStop.day}`}
+                {currentDayInfo?.label ??
+                  t("cinema.dayFallback", { day: currentStop.day })}
               </p>
               <h3 className="text-2xl sm:text-3xl font-bold">{currentStop.name}</h3>
               <p className="text-sm text-white/50">
-                Остановка {stepIndex + 1} из {flatStops.length}
+                {t("cinema.stopOf", {
+                  current: stepIndex + 1,
+                  total: flatStops.length,
+                })}
               </p>
             </motion.div>
           )}
@@ -223,29 +230,31 @@ export default function TripCinema({ trip, tripId, waypoints, onClose }: TripCin
               className="space-y-4"
             >
               <Sparkles className="h-10 w-10 text-ait-orange" />
-              <h2 className="text-3xl font-bold">Поездка в кадре</h2>
+              <h2 className="text-3xl font-bold">{t("cinema.finaleTitle")}</h2>
               <p className="text-muted-foreground">
-                {flatStops.length} остановок · ~{Math.round(totalKm)} км · {trip.destination}
+                {t("cinema.finaleStats", {
+                  stops: flatStops.length,
+                  km: Math.round(totalKm),
+                  destination: trip.destination,
+                })}
               </p>
               {watched && (
-                <p className="text-sm text-ait-orange">
-                  + AIT за первый просмотр (если ещё не получали)
-                </p>
+                <p className="text-sm text-ait-orange">{t("cinema.aitReward")}</p>
               )}
             </motion.div>
           )}
         </AnimatePresence>
 
         <div className="mt-8 flex items-center gap-3">
-          <Button
-            variant="outline"
+          <AitButton
+            variant="secondary"
             size="icon"
             className="rounded-full border-white/20"
             onClick={() => setPlaying((p) => !p)}
-            aria-label={playing ? "Пауза" : "Воспроизведение"}
+            aria-label={playing ? t("cinema.pause") : t("cinema.play")}
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </Button>
+          </AitButton>
           <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-ait-purple to-ait-orange transition-all duration-500"

@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import TripPlannerLayout from "@/components/planner/trip-planner-layout";
-import { Button } from "@/components/ui/button";
+import TripPlannerSkeleton from "@/components/planner/TripPlannerSkeleton";
+import AitButton from "@/components/ait-ui/AitButton";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import TravelJourneyStrip from "@/components/journey/TravelJourneyStrip";
 import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
@@ -11,8 +12,10 @@ import EmptyState from "@/components/empty-state";
 import type { Trip } from "@shared/schema";
 import type { TripWaypointWithPlace } from "@shared/schema";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export function TripDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const [addOpen, setAddOpen] = useState(false);
 
@@ -34,11 +37,12 @@ export function TripDetail() {
   if (!id) {
     return (
       <AppLayout>
-        <p className="text-muted-foreground">Поездка не указана</p>
+        <p className="text-muted-foreground">{t("tripDetail.noId")}</p>
         <Link href="/trips">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />К поездкам
-          </Button>
+          <AitButton variant="secondary" className="mt-4 gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            {t("tripDetail.backToTrips")}
+          </AitButton>
         </Link>
       </AppLayout>
     );
@@ -46,8 +50,8 @@ export function TripDetail() {
 
   if (tripLoading) {
     return (
-      <AppLayout>
-        <div className="h-64 animate-pulse bg-white/5 rounded-2xl" />
+      <AppLayout contentClassName="pb-28" rightRail={<DiscoveryRightRail />}>
+        <TripPlannerSkeleton />
       </AppLayout>
     );
   }
@@ -57,17 +61,18 @@ export function TripDetail() {
       <AppLayout>
         <EmptyState
           icon={AlertCircle}
-          title="Не удалось загрузить поездку"
+          title={t("tripDetail.loadError")}
           action={
-            <Button variant="outline" onClick={() => refetchTrip()}>
-              Повторить
-            </Button>
+            <AitButton variant="secondary" onClick={() => refetchTrip()}>
+              {t("common.retry")}
+            </AitButton>
           }
         />
         <Link href="/trips">
-          <Button variant="outline" className="mt-4 mx-auto block">
-            <ArrowLeft className="mr-2 h-4 w-4" />К поездкам
-          </Button>
+          <AitButton variant="secondary" className="mt-4 mx-auto block gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            {t("tripDetail.backToTrips")}
+          </AitButton>
         </Link>
       </AppLayout>
     );
@@ -76,11 +81,12 @@ export function TripDetail() {
   if (!trip) {
     return (
       <AppLayout>
-        <p className="text-muted-foreground">Поездка не найдена</p>
+        <p className="text-muted-foreground">{t("tripDetail.notFound")}</p>
         <Link href="/trips">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />К поездкам
-          </Button>
+          <AitButton variant="secondary" className="mt-4 gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            {t("tripDetail.backToTrips")}
+          </AitButton>
         </Link>
       </AppLayout>
     );
@@ -88,7 +94,9 @@ export function TripDetail() {
 
   return (
     <AppLayout contentClassName="pb-28" rightRail={<DiscoveryRightRail />}>
-      <AppBreadcrumbs items={[{ label: "Поездки", href: "/trips" }, { label: trip.title }]} />
+      <AppBreadcrumbs
+        items={[{ label: t("tripDetail.tripsBreadcrumb"), href: "/trips" }, { label: trip.title }]}
+      />
       <TravelJourneyStrip activeStep="plan" className="mb-4" />
       <TripPlannerLayout
         trip={trip}

@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Star, ThumbsUp } from "lucide-react";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import type { Review } from "@shared/schema";
 
 interface ReviewCardProps {
@@ -13,10 +14,13 @@ interface ReviewCardProps {
 }
 
 function ReviewCard({ review, onHelpful, showPlaceName: _showPlaceName = false }: ReviewCardProps) {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
+
   const formatDate = (date: string | Date | null) => {
-    if (!date) return "Недавно";
+    if (!date) return t("reviews.recently");
     const dateObj = typeof date === "string" ? new Date(date) : date;
-    return format(dateObj, "d MMM yyyy", { locale: ru });
+    return format(dateObj, "d MMM yyyy", { locale: dateLocale });
   };
 
   const renderStars = (rating: number) => {
@@ -68,7 +72,7 @@ function ReviewCard({ review, onHelpful, showPlaceName: _showPlaceName = false }
               ))}
               {review.images.length > 4 && (
                 <div className="w-full h-20 bg-muted rounded flex items-center justify-center text-sm text-muted-foreground">
-                  +{review.images.length - 4} фото
+                  {t("reviews.morePhotos", { count: review.images.length - 4 })}
                 </div>
               )}
             </div>
@@ -82,7 +86,7 @@ function ReviewCard({ review, onHelpful, showPlaceName: _showPlaceName = false }
               onClick={() => onHelpful?.(review.id)}
             >
               <ThumbsUp className="h-4 w-4 mr-1" />
-              Полезно ({review.isHelpful || 0})
+              {t("reviews.helpful", { count: review.isHelpful || 0 })}
             </Button>
           </div>
         </div>

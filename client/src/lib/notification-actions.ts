@@ -1,5 +1,6 @@
 import type { AppNotification } from "@shared/notification-types";
-import { formatPostLikeActorsLabel } from "@shared/notification-text";
+import type { UserLabelFields } from "@shared/user-display";
+import { getUserDisplayLabel } from "@shared/user-display";
 import { apiRequest } from "@/lib/queryClient";
 import i18n from "@/i18n";
 
@@ -13,12 +14,29 @@ export async function markNotificationRead(item: AppNotification): Promise<void>
 }
 
 export function formatAggregatedActorLabel(
-  actors: Parameters<typeof formatPostLikeActorsLabel>[0],
+  actors: UserLabelFields[],
   totalCount: number,
 ): string {
-  const label = formatPostLikeActorsLabel(actors, totalCount);
-  if (label === "Кто-то") return i18n.t("notifications.someone");
-  return label;
+  if (totalCount <= 0 || actors.length === 0) return i18n.t("notifications.someone");
+
+  const names = actors.map((a) => getUserDisplayLabel(a));
+
+  if (totalCount <= 1) return names[0] ?? i18n.t("notifications.someone");
+
+  if (totalCount === 2) {
+    if (names.length >= 2) {
+      return i18n.t("notifications.actors.two", { first: names[0], second: names[1] });
+    }
+    if (names.length === 1) {
+      return i18n.t("notifications.actors.oneAndAnother", { name: names[0] });
+    }
+    return i18n.t("notifications.actors.twoUsers");
+  }
+
+  return i18n.t("notifications.actors.andMore", {
+    name: names[0] ?? i18n.t("notifications.someone"),
+    count: totalCount - 1,
+  });
 }
 
 export function aggregatedActionVerb(type: AppNotification["type"], count: number): string {

@@ -1,14 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import GlassCard from "@/components/brand/glass-card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Globe, MapPin, Plane, Share2, Trophy } from "lucide-react";
+import { useId } from "react";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
+import EmptyState from "@/components/empty-state";
+import AchievementMasonryGrid from "@/components/passport/AchievementMasonryGrid";
+import PassportCardSkeleton from "@/components/passport/PassportCardSkeleton";
+import PassportStampBadge from "@/components/passport/PassportStampBadge";
+import PassportStatPill from "@/components/passport/PassportStatPill";
+import { Globe, MapPin, Plane, Share2, Stamp, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
-import { shareUrl } from "@/lib/share";
+import { sharePassportProfile } from "@/lib/passport-share";
 import { useAuth } from "@/hooks/useAuth";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export type PassportData = {
   countriesCount: number;
@@ -35,16 +39,19 @@ const ACHIEVEMENT_LABELS: Record<string, string> = {
 type PassportCardProps = {
   username?: string | null;
   compact?: boolean;
+  embedded?: boolean;
 };
 
-export default function PassportCard({ username, compact }: PassportCardProps) {
+export default function PassportCard({ username, compact, embedded }: PassportCardProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
+  const achievementsHeadingId = useId();
+  const stampsHeadingId = useId();
 
   const endpoint = username ? `/api/passport/public/${username}` : "/api/passport/me";
 
-  const { data, isLoading } = useQuery<PassportData>({
+  const { data, isLoading, isError, refetch } = useQuery<PassportData>({
     queryKey: [endpoint],
     enabled: Boolean(user) || Boolean(username),
   });
@@ -52,131 +59,153 @@ export default function PassportCard({ username, compact }: PassportCardProps) {
   const handleShare = async () => {
     const handle = username ?? user?.username;
     if (!handle) return;
-    const url = `${window.location.origin}/u/${handle}`;
-    const ok = await shareUrl(url, t("passport.title"));
-    toast({
-      title: ok ? t("common.copied") : t("passport.shareCard"),
-      description: url,
-    });
+    await sharePassportProfile(handle, t, toast);
   };
 
   if (isLoading) {
+    return <PassportCardSkeleton />;
+  }
+
+  if (isError) {
     return (
-      <GlassCard className="p-6 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-24 w-full" />
-      </GlassCard>
+      <EmptyState
+        variant="glass"
+        icon={AlertCircle}
+        title={t("passport.loadError", { defaultValue: "Could not load passport" })}
+        description={t("passport.loadErrorHint", {
+          defaultValue: "Check your connection and try again.",
+        })}
+        action={
+          <AitButton variant="glass" size="sm" onClick={() => refetch()}>
+            {t("common.retry", { defaultValue: "Retry" })}
+          </AitButton>
+        }
+      />
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <EmptyState
+        variant="glass"
+        icon={Stamp}
+        title={t("passport.emptyTitle", { defaultValue: "Your passport awaits" })}
+        description={t("passport.emptyDescription", {
+          defaultValue:
+            "Every journey leaves a mark. Plan a trip or explore the map to collect your first stamp.",
+        })}
+      />
+    );
+  }
+
+  const achievements = data.achievements.map((id) => ({
+    id,
+    label: t(ACHIEVEMENT_LABELS[id] ?? "passport.explorer"),
+  }));
+
+  const visibleStamps = data.stamps.slice(0, 24);
+  const hiddenStampCount = data.stamps.length - visibleStamps.length;
 
   return (
-    <GlassCard className="p-6 space-y-5 overflow-hidden relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#a78bfa]/10 via-transparent to-[#ff7a18]/10 pointer-events-none" />
-      <div className="relative flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[#a78bfa] mb-1">
-            <Globe className="h-5 w-5" />
-            <span className="text-xs font-semibold uppercase tracking-wider">allintravel</span>
+    <AitSurface padding="md" radius="card" glow className="space-y-6 overflow-hidden relative">
+      <div className="absolute inset-0 bg-gradient-to-br from-ait-purple/10 via-transparent to-ait-orange/10 pointer-events-none" />
+
+      {!embedded && (
+        <div className="relative flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-ait-purple mb-1">
+              <Globe className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+              <span className="text-xs font-medium uppercase tracking-wider">allintravel</span>
+            </div>
+            <h2 className="text-lg font-medium text-foreground leading-snug">
+              {t("passport.title")}
+            </h2>
+            {!compact && (
+              <p className="text-base text-muted-foreground leading-relaxed mt-1">
+                {t("passport.subtitle")}
+              </p>
+            )}
           </div>
-          <h2 className="text-xl font-bold text-white">{t("passport.title")}</h2>
-          {!compact && (
-            <p className="text-sm text-muted-foreground mt-1">{t("passport.subtitle")}</p>
-          )}
+          <AitButton variant="glass" size="sm" className="gap-2 shrink-0" onClick={handleShare}>
+            <Share2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+            {t("passport.shareCard")}
+          </AitButton>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="rounded-xl gap-2"
-          onClick={handleShare}
-        >
-          <Share2 className="h-4 w-4" />
-          {t("passport.shareCard")}
-        </Button>
+      )}
+
+      <div className="relative grid grid-cols-3 gap-4">
+        <PassportStatPill
+          icon={Globe}
+          value={data.countriesCount}
+          label={t("passport.countries")}
+        />
+        <PassportStatPill icon={MapPin} value={data.citiesCount} label={t("passport.cities")} />
+        <PassportStatPill icon={Plane} value={data.tripsCount} label={t("passport.trips")} />
       </div>
 
-      <div className="relative grid grid-cols-3 gap-3">
-        {[
-          { icon: Globe, value: data.countriesCount, label: t("passport.countries") },
-          { icon: MapPin, value: data.citiesCount, label: t("passport.cities") },
-          { icon: Plane, value: data.tripsCount, label: t("passport.trips") },
-        ].map(({ icon: Icon, value, label }) => (
-          <div
-            key={label}
-            className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center"
+      {achievements.length > 0 && (
+        <section className="relative space-y-3" aria-labelledby={achievementsHeadingId}>
+          <h3
+            id={achievementsHeadingId}
+            className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
           >
-            <Icon className="h-4 w-4 mx-auto text-[#ff7a18] mb-1" />
-            <p className="text-2xl font-bold text-white">{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      {data.achievements.length > 0 && (
-        <div className="relative flex flex-wrap gap-2">
-          {data.achievements.map((id) => (
-            <Badge
-              key={id}
-              variant="secondary"
-              className="rounded-full gap-1 bg-[#a78bfa]/20 text-[#e9d5ff]"
-            >
-              <Trophy className="h-3 w-3" />
-              {t(ACHIEVEMENT_LABELS[id] ?? "passport.explorer")}
-            </Badge>
-          ))}
-        </div>
+            {t("passport.achievements")}
+          </h3>
+          <AchievementMasonryGrid achievements={achievements} />
+        </section>
       )}
 
       {!compact && (
-        <div className="relative space-y-2 max-h-48 overflow-y-auto">
+        <section className="relative space-y-3" aria-labelledby={stampsHeadingId}>
+          <h3
+            id={stampsHeadingId}
+            className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          >
+            {t("passport.stamps", { defaultValue: "Stamps" })}
+          </h3>
           {data.stamps.length === 0 ? (
-            <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">{t("passport.empty")}</p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="premium" size="sm" className="rounded-xl" asChild>
-                  <Link href="/trips">
-                    {t("passport.planTrip", { defaultValue: "Plan a trip" })}
-                  </Link>
-                </Button>
-                <Button variant="outline" size="sm" className="rounded-xl" asChild>
-                  <Link href="/map">
-                    {t("passport.exploreMap", { defaultValue: "Explore map" })}
-                  </Link>
-                </Button>
-              </div>
-            </div>
+            <EmptyState
+              variant="glass"
+              icon={Stamp}
+              title={t("passport.emptyTitle", { defaultValue: "Your passport awaits" })}
+              description={t("passport.emptyDescription", {
+                defaultValue:
+                  "Every journey leaves a mark. Plan a trip or explore the map to collect your first stamp.",
+              })}
+              action={
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <AitButton variant="primary" size="sm" asChild>
+                    <Link href="/trips">
+                      {t("passport.planTrip", { defaultValue: "Plan a trip" })}
+                    </Link>
+                  </AitButton>
+                  <AitButton variant="glass" size="sm" asChild>
+                    <Link href="/map">
+                      {t("passport.exploreMap", { defaultValue: "Explore map" })}
+                    </Link>
+                  </AitButton>
+                </div>
+              }
+            />
           ) : (
-            data.stamps.slice(0, 12).map((stamp) => (
-              <div
-                key={stamp.id}
-                className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-sm"
-              >
-                {stamp.tripId ? (
-                  <Link
-                    href={`/trips/${stamp.tripId}`}
-                    className="text-white font-medium hover:text-ait-orange transition-colors"
-                  >
-                    {stamp.cityName ? `${stamp.cityName}, ` : ""}
-                    {stamp.countryName}
-                  </Link>
-                ) : (
-                  <span className="text-white font-medium">
-                    {stamp.cityName ? `${stamp.cityName}, ` : ""}
-                    {stamp.countryName}
-                  </span>
-                )}
-                {stamp.visitedAt && (
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(stamp.visitedAt).toLocaleDateString()}
-                  </span>
-                )}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[min(24rem,50vh)] overflow-y-auto ait-scrollbar pr-1">
+                {visibleStamps.map((stamp) => (
+                  <PassportStampBadge key={stamp.id} stamp={stamp} />
+                ))}
               </div>
-            ))
+              {hiddenStampCount > 0 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {t("passport.moreStamps", {
+                    defaultValue: "+{{count}} more stamps",
+                    count: hiddenStampCount,
+                  })}
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </section>
       )}
-    </GlassCard>
+    </AitSurface>
   );
 }

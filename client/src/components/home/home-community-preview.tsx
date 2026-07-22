@@ -5,11 +5,13 @@ import AitSurface from "@/components/ait-ui/AitSurface";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import HomeSectionHeader from "@/components/home/home-section-header";
+import EmptyState from "@/components/empty-state";
+import AitButton from "@/components/ait-ui/AitButton";
 import { Bookmark, Heart, MapPin, MessageCircle, Share2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
 import { type FeedMode, feedModeToQuery, filterPostsForFeedMode } from "@/lib/feed-utils";
-import { getDemoPostsForMode, type DemoCommunityPost } from "@/lib/demo-community-posts";
+import type { DemoCommunityPost } from "@/lib/demo-community-posts";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -70,10 +72,10 @@ function PostCard({
           <Button
             variant="ghost"
             size="sm"
-            className="text-red-400 hover:text-red-300"
+            className="text-slate-400 hover:text-slate-300"
             onClick={onAction}
           >
-            <Heart className="h-4 w-4 mr-1 fill-current" />
+            <Heart className="h-4 w-4 mr-1" />
             {formatCount(post.likesCount)}
           </Button>
           <Button variant="ghost" size="sm" className="text-slate-400" onClick={onAction}>
@@ -124,7 +126,7 @@ function buildFeedHref(mode: FeedMode, isAuthenticated: boolean): string {
 }
 
 export default function HomeCommunityPreview({ useLiveData = false }: HomeCommunityPreviewProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const filters = useFilterLabels();
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const { user, isAuthenticated } = useAuth();
@@ -142,11 +144,11 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
   });
 
   const liveFiltered = filterPostsForFeedMode(apiPosts, feedMode);
-  const demoPosts = getDemoPostsForMode(feedMode, i18n.language);
-  const showLive = useLiveData && isAuthenticated && liveFiltered.length > 0;
+  const useAuthLive = useLiveData && isAuthenticated;
+  const showLive = useAuthLive && liveFiltered.length > 0;
   const posts: DemoCommunityPost[] = showLive
     ? liveFiltered.slice(0, 3).map((post) => apiPostToDemo(post, t))
-    : demoPosts;
+    : [];
 
   const feedHref = buildFeedHref(feedMode, isAuthenticated);
 
@@ -161,6 +163,10 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
       navigate(feedHref);
       return;
     }
+    toast({
+      title: t("home.communityPreview.openFeedTitle"),
+      description: t("home.communityPreview.openFeedHint"),
+    });
     navigate(feedHref);
   };
 
@@ -222,7 +228,7 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
         </p>
       )}
 
-      {!showLive && useLiveData && isAuthenticated && (
+      {useAuthLive && !showLive && (
         <p className="text-sm text-muted-foreground text-center">
           <Trans
             i18nKey="home.communityPreview.emptyLiveHint"
@@ -233,7 +239,21 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
         </p>
       )}
 
+      {!isAuthenticated && posts.length === 0 && feedMode !== "following" && (
+        <EmptyState
+          variant="glass"
+          title={t("home.communityPreview.emptyUnauthTitle")}
+          description={t("home.communityPreview.emptyUnauthHint")}
+          action={
+            <AitButton variant="primary" size="sm" asChild>
+              <Link href={feedHref}>{t("home.communityPreview.signInCta")}</Link>
+            </AitButton>
+          }
+        />
+      )}
+
       <AnimatePresence mode="wait">
+        {posts.length > 0 && (
         <motion.div
           key={feedMode}
           initial={{ opacity: 0, y: 12 }}
@@ -254,6 +274,7 @@ export default function HomeCommunityPreview({ useLiveData = false }: HomeCommun
             </div>
           </Link>
         </motion.div>
+        )}
       </AnimatePresence>
     </motion.section>
   );

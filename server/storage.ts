@@ -62,6 +62,7 @@ export interface IStorage {
       firstName?: string | null;
       lastName?: string | null;
       username?: string;
+      preferredLocale?: string;
     },
   ): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
@@ -193,7 +194,7 @@ export interface IStorage {
   updateTravelPost(id: string, post: Partial<InsertTravelPost>): Promise<TravelPost>;
   deleteTravelPost(id: string): Promise<void>;
 
-  likePost(userId: string, postId: string): Promise<PostLike>;
+  likePost(userId: string, postId: string): Promise<{ like: PostLike; created: boolean }>;
   unlikePost(userId: string, postId: string): Promise<void>;
   addPostComment(comment: InsertPostComment): Promise<PostComment>;
   getPostComments(postId: string): Promise<PostComment[]>;
@@ -793,6 +794,7 @@ export class MemStorage implements IStorage {
       firstName?: string | null;
       lastName?: string | null;
       username?: string;
+      preferredLocale?: string;
     },
   ): Promise<User> {
     const existing = this.users.get(userId);
@@ -1524,11 +1526,16 @@ export class MemStorage implements IStorage {
   }
 
   // Post interaction operations
-  async likePost(userId: string, postId: string): Promise<PostLike> {
+  async likePost(userId: string, postId: string): Promise<{ like: PostLike; created: boolean }> {
+    for (const like of Array.from(this.postLikes.values())) {
+      if (like.userId === userId && like.postId === postId) {
+        return { like, created: false };
+      }
+    }
     const id = genId();
     const like: PostLike = { id, userId, postId, createdAt: new Date() } as PostLike;
     this.postLikes.set(id, like);
-    return like;
+    return { like, created: true };
   }
 
   async unlikePost(userId: string, postId: string): Promise<void> {

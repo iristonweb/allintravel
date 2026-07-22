@@ -4,12 +4,17 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import PublicLayout from "@/components/public-layout";
 import AppLayout from "@/components/app-layout";
-import GlassCard from "@/components/brand/glass-card";
-import { Button } from "@/components/ui/button";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
+import EmptyState from "@/components/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Trip } from "@shared/schema";
 import { Users, LogIn } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type InvitePreview = {
   trip: Trip;
@@ -22,6 +27,7 @@ export default function TripJoinPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const { data, isLoading } = useQuery<InvitePreview>({
     queryKey: ["/api/trips/invite", token],
@@ -37,8 +43,8 @@ export default function TripJoinPage() {
       ),
     onSuccess: (result) => {
       toast({
-        title: "Вы в поездке!",
-        description: result.referralApplied ? "Реферальный бонус AIT начислен." : undefined,
+        title: t("tripJoin.joined"),
+        description: result.referralApplied ? t("tripJoin.referralBonus") : undefined,
       });
       navigate(`/trips/${result.trip.id}`);
     },
@@ -57,40 +63,52 @@ export default function TripJoinPage() {
 
   if (isLoading || authLoading) {
     return (
-      <Layout>
-        <div className="h-48 animate-pulse bg-muted rounded-2xl" />
+      <Layout contentClassName="py-8">
+        <div className="space-y-4 max-w-lg mx-auto" aria-busy="true" aria-label={t("tripJoin.loading")}>
+          <Skeleton className="h-10 w-48 mx-auto rounded-lg" />
+          <Skeleton className="h-48 w-full rounded-card-xl" />
+        </div>
       </Layout>
     );
   }
 
   if (!data) {
     return (
-      <Layout>
-        <p className="text-muted-foreground text-center">Приглашение не найдено или устарело.</p>
+      <Layout contentClassName="py-8">
+        <EmptyState
+          variant="glass"
+          title={t("tripJoin.notFoundTitle")}
+          description={t("tripJoin.notFound")}
+          className="max-w-md mx-auto"
+        />
       </Layout>
     );
   }
 
   return (
-    <Layout contentClassName="py-12">
-      <GlassCard className="p-8 max-w-lg mx-auto text-center space-y-4">
-        <Users className="h-10 w-10 mx-auto text-primary" />
-        <h1 className="text-xl font-bold">Приглашение в поездку</h1>
-        <p className="text-muted-foreground">
-          «{data.trip.title}» · {data.trip.destination}
-        </p>
-        <p className="text-sm">{data.stopCount} остановок в маршруте</p>
-        {!isAuthenticated ? (
-          <Button variant="premium" className="gap-2" asChild>
-            <Link href={`/login?redirect=${encodeURIComponent(`/trips/join/${token}`)}`}>
-              <LogIn className="h-4 w-4" />
-              Войти и присоединиться
-            </Link>
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">Присоединяем…</p>
-        )}
-      </GlassCard>
+    <Layout contentClassName="py-8">
+      <ReelsPageLayout
+        header={<AitSectionHeader title={t("tripJoin.title")} />}
+        feed={
+          <AitSurface padding="lg" className="max-w-lg mx-auto text-center space-y-4">
+            <Users className="h-10 w-10 mx-auto text-primary" aria-hidden />
+            <p className="text-muted-foreground">
+              «{data.trip.title}» · {data.trip.destination}
+            </p>
+            <p className="text-sm">{t("tripJoin.stops", { count: data.stopCount })}</p>
+            {!isAuthenticated ? (
+              <AitButton variant="primary" className="gap-2" asChild>
+                <Link href={`/login?redirect=${encodeURIComponent(`/trips/join/${token}`)}`}>
+                  <LogIn className="h-4 w-4" aria-hidden />
+                  {t("tripJoin.signInToJoin")}
+                </Link>
+              </AitButton>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("tripJoin.joining")}</p>
+            )}
+          </AitSurface>
+        }
+      />
     </Layout>
   );
 }

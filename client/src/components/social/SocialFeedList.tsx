@@ -31,7 +31,8 @@ type SocialFeedListProps = {
   onSubmitComment: (postId: string) => void;
   commentPending: boolean;
   onLike: (postId: string, isLiked: boolean) => void;
-  likePending: boolean;
+  likePendingPostId?: string;
+  actionsDisabled?: boolean;
   onBookmark: (postId: string) => void;
 };
 
@@ -56,7 +57,8 @@ export default function SocialFeedList({
   onSubmitComment,
   commentPending,
   onLike,
-  likePending,
+  likePendingPostId,
+  actionsDisabled = false,
   onBookmark,
 }: SocialFeedListProps) {
   const { t } = useTranslation();
@@ -127,11 +129,42 @@ export default function SocialFeedList({
         onSubmitComment={onSubmitComment}
         commentPending={commentPending}
         onLike={onLike}
-        likePending={likePending}
+        likePendingPostId={likePendingPostId}
+        actionsDisabled={actionsDisabled}
         onBookmark={onBookmark}
       />
     );
   }
+
+  const renderJournal = (post: TravelPostWithAuthor) => (
+    <JournalCard
+      key={post.id}
+      post={post}
+      formatDate={formatDate}
+      onTagClick={(tag) => onTagClick(tag)}
+      user={user}
+      bookmarked={bookmarkedSet.has(post.id)}
+      expanded={Boolean(expandedComments[post.id])}
+      commentText={commentInputs[post.id] || ""}
+      likePending={likePendingPostId === post.id}
+      commentPending={commentPending}
+      actionsDisabled={actionsDisabled}
+      onLike={() => onLike(post.id, post.isLiked ?? false)}
+      onToggleComments={() => onToggleComments(post.id)}
+      onCommentChange={(value) => onCommentChange(post.id, value)}
+      onSubmitComment={() => onSubmitComment(post.id)}
+      onBookmark={() => onBookmark(post.id)}
+    />
+  );
+
+  const renderPublicGuide = (post: TravelPostWithAuthor) => (
+    <JournalCard
+      key={post.id}
+      post={post}
+      formatDate={formatDate}
+      onTagClick={(tag) => onTagClick(tag)}
+    />
+  );
 
   if (contentFormat === "public") {
     if (posts.length === 0) {
@@ -145,14 +178,8 @@ export default function SocialFeedList({
     }
     return (
       <div className="space-y-8">
-        {posts.map((post) => (
-          <JournalCard
-            key={post.id}
-            post={post}
-            formatDate={formatDate}
-            onTagClick={(tag) => onTagClick(tag)}
-          />
-        ))}
+        <p className="text-sm text-muted-foreground text-center">{t("social.publicGuidesHint")}</p>
+        {posts.map(renderPublicGuide)}
       </div>
     );
   }
@@ -174,18 +201,7 @@ export default function SocialFeedList({
   }
 
   if (contentFormat === "journals") {
-    return (
-      <div className="space-y-8">
-        {posts.map((post) => (
-          <JournalCard
-            key={post.id}
-            post={post}
-            formatDate={formatDate}
-            onTagClick={(tag) => onTagClick(tag)}
-          />
-        ))}
-      </div>
-    );
+    return <div className="space-y-8">{posts.map(renderJournal)}</div>;
   }
 
   return (
@@ -199,8 +215,9 @@ export default function SocialFeedList({
           expanded={Boolean(expandedComments[post.id])}
           commentText={commentInputs[post.id] || ""}
           formatDate={formatDate}
-          likePending={likePending}
+          likePending={likePendingPostId === post.id}
           commentPending={commentPending}
+          isDemo={actionsDisabled}
           onToggleComments={() => onToggleComments(post.id)}
           onCommentChange={(value) => onCommentChange(post.id, value)}
           onSubmitComment={() => onSubmitComment(post.id)}

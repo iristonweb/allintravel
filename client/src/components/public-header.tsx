@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/brand/brand-logo";
 import { LogIn } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 
 type PublicHeaderProps = {
   /**
@@ -12,6 +13,7 @@ type PublicHeaderProps = {
 };
 
 export default function PublicHeader({ navItems }: PublicHeaderProps) {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
 
   return (
@@ -41,7 +43,7 @@ export default function PublicHeader({ navItems }: PublicHeaderProps) {
             className="rounded-full px-4"
           >
             <LogIn className="mr-2 h-4 w-4" />
-            Войти
+            {t("nav.login")}
           </Button>
         </div>
       </div>

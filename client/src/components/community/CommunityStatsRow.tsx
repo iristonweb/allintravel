@@ -23,45 +23,50 @@ export default function CommunityStatsRow({
   useMarketingStats = true,
 }: CommunityStatsRowProps) {
   const { t } = useTranslation();
+  const empty = "—";
 
   const reelsValue =
     displayReelsCount ??
-    (reelsCount > 0 && !useMarketingStats ? formatReelsCount(reelsCount) : DEMO_STATS.reels);
+    (reelsCount > 0
+      ? formatReelsCount(reelsCount)
+      : useMarketingStats
+        ? DEMO_STATS.reels
+        : empty);
 
   const stats = useMemo(
     () => [
       {
-        value: DEMO_STATS.countries,
-        label: t("marketing.stats.countries", { defaultValue: "Countries" }),
+        value: useMarketingStats ? DEMO_STATS.countries : empty,
+        label: t("marketing.stats.countries"),
         icon: Globe,
         iconClassName: "bg-ait-purple/20",
       },
       {
-        value: DEMO_STATS.places,
-        label: t("marketing.stats.places", { defaultValue: "Places" }),
+        value: useMarketingStats ? DEMO_STATS.places : empty,
+        label: t("marketing.stats.places"),
         icon: MapPin,
         iconClassName: "bg-ait-purple/20",
       },
       {
-        value: DEMO_STATS.travelers,
-        label: t("marketing.stats.travelers", { defaultValue: "Travelers" }),
+        value: useMarketingStats ? DEMO_STATS.travelers : empty,
+        label: t("marketing.stats.travelers"),
         icon: Users,
         iconClassName: "bg-ait-orange/20 [&_svg]:text-ait-orange",
       },
       {
         value: reelsValue,
-        label: t("marketing.stats.reels", { defaultValue: "Stories & Reels" }),
+        label: t("marketing.stats.reels"),
         icon: Film,
         iconClassName: "bg-ait-purple/20",
       },
       {
-        value: DEMO_STATS.rating,
-        label: t("marketing.stats.rating", { defaultValue: "Rating" }),
+        value: useMarketingStats ? DEMO_STATS.rating : empty,
+        label: t("marketing.stats.rating"),
         icon: Star,
         iconClassName: "bg-amber-500/20 [&_svg]:text-amber-400",
       },
     ],
-    [t, reelsValue],
+    [t, reelsValue, useMarketingStats, empty],
   );
 
   return (

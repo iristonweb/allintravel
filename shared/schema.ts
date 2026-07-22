@@ -78,6 +78,7 @@ export const users = pgTable("users", {
   passwordHash: varchar("password_hash"),
   isVerified: boolean("is_verified").default(false),
   isAdmin: boolean("is_admin").default(false),
+  preferredLocale: varchar("preferred_locale", { length: 5 }).default("ru"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -590,18 +591,22 @@ export const travelPosts = pgTable("travel_posts", {
 });
 
 // Post likes table
-export const postLikes = pgTable("post_likes", {
-  id: uuid("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  userId: varchar("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  postId: uuid("post_id")
-    .notNull()
-    .references(() => travelPosts.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const postLikes = pgTable(
+  "post_likes",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => travelPosts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("post_likes_user_post_unique").on(t.userId, t.postId)],
+);
 
 // Post comments table
 export const postComments = pgTable("post_comments", {
@@ -947,11 +952,15 @@ export const insertPostLikeSchema = createInsertSchema(postLikes).omit({
   createdAt: true,
 });
 
-export const insertPostCommentSchema = createInsertSchema(postComments).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertPostCommentSchema = createInsertSchema(postComments)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    content: z.string().trim().min(1, "Comment cannot be empty").max(4000),
+  });
 
 export const insertUserTrackSchema = createInsertSchema(userTracks).omit({
   id: true,
@@ -1195,6 +1204,7 @@ export const aitEntitlements = pgTable("ait_entitlements", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   sku: varchar("sku", { length: 64 }).notNull(),
+  entityId: varchar("entity_id", { length: 100 }),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });

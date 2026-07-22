@@ -1,6 +1,7 @@
 import type { GeoAutocompleteItem } from "@/components/location-autocomplete-input";
 import { pickBestGeoSuggestion } from "@/lib/geo-pick";
 import { apiRequest, toApiUrl } from "@/lib/queryClient";
+import i18n from "@/i18n";
 
 export function geoItemHasCoords(item: GeoAutocompleteItem): boolean {
   const lat = Number(item.lat);
@@ -71,7 +72,7 @@ export function geoItemToDraft(item: GeoAutocompleteItem): TripRouteDraft | null
 
 export async function addTripStopFromGeo(tripId: string, item: GeoAutocompleteItem): Promise<void> {
   const draft = geoItemToDraft(item);
-  if (!draft) throw new Error("Укажите место с координатами");
+  if (!draft) throw new Error(i18n.t("planner.addStopSearch.coordsRequired"));
   await apiRequest("POST", `/api/trips/${tripId}/waypoints/from-location`, {
     label: draft.label,
     lat: draft.lat,

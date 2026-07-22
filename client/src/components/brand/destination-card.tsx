@@ -1,4 +1,5 @@
 import { Star } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -17,6 +18,8 @@ type DestinationCardProps = {
 };
 
 export default function DestinationCard({ destination, className, onClick }: DestinationCardProps) {
+  const { t } = useTranslation();
+
   return (
     <motion.button
       type="button"
@@ -36,7 +39,9 @@ export default function DestinationCard({ destination, className, onClick }: Des
       <div className="p-4">
         <div className="font-semibold text-white text-lg">{destination.name}</div>
         <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
-          {destination.placesCount != null && <span>{destination.placesCount} мест</span>}
+          {destination.placesCount != null && (
+            <span>{t("places.placesCount", { count: destination.placesCount })}</span>
+          )}
           {destination.rating != null && (
             <span className="flex items-center gap-0.5 text-ait-gold">
               <Star className="h-3 w-3 fill-current" />

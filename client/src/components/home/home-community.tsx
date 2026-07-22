@@ -1,5 +1,5 @@
 import HomeSectionHeader from "@/components/home/home-section-header";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Users, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
@@ -28,7 +28,7 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <GlassCard hover className="p-6">
+        <AitSurface hover padding="md">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground">{t("home.community.yourFriends")}</p>
@@ -46,9 +46,9 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
               <Button variant="premium">{t("home.community.findFriends")}</Button>
             </Link>
           </div>
-        </GlassCard>
+        </AitSurface>
 
-        <GlassCard hover className="p-6">
+        <AitSurface hover padding="md">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm text-muted-foreground">{t("home.community.groupChat")}</p>
@@ -66,7 +66,7 @@ export default function HomeCommunity({ friendsCount }: HomeCommunityProps) {
               <Button variant="glass">{t("home.community.openChat")}</Button>
             </Link>
           </div>
-        </GlassCard>
+        </AitSurface>
       </div>
     </section>
   );

@@ -180,6 +180,7 @@ export class PgStorage implements IStorage {
       firstName?: string | null;
       lastName?: string | null;
       username?: string;
+      preferredLocale?: string;
     },
   ): Promise<User> {
     const [updated] = await this.db
@@ -973,9 +974,20 @@ export class PgStorage implements IStorage {
     await this.db.delete(travelPosts).where(eq(travelPosts.id, id));
   }
 
-  async likePost(userId: string, postId: string): Promise<PostLike> {
-    const [row] = await this.db.insert(postLikes).values({ userId, postId }).returning();
-    return row;
+  async likePost(userId: string, postId: string): Promise<{ like: PostLike; created: boolean }> {
+    const inserted = await this.db
+      .insert(postLikes)
+      .values({ userId, postId })
+      .onConflictDoNothing({ target: [postLikes.userId, postLikes.postId] })
+      .returning();
+    if (inserted[0]) return { like: inserted[0], created: true };
+    const [row] = await this.db
+      .select()
+      .from(postLikes)
+      .where(and(eq(postLikes.userId, userId), eq(postLikes.postId, postId)))
+      .limit(1);
+    if (!row) throw new Error("Failed to like post");
+    return { like: row, created: false };
   }
 
   async unlikePost(userId: string, postId: string): Promise<void> {

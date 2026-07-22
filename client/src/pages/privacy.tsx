@@ -1,54 +1,34 @@
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import { useTranslation } from "react-i18next";
 
 export function Privacy() {
+  const { t } = useTranslation();
   return (
     <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="mx-auto max-w-2xl space-y-6 p-4 pb-12">
-        <h1 className="text-2xl font-semibold">Конфиденциальность</h1>
+        <h1 className="text-2xl font-semibold">{t("privacy.title")}</h1>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Какие данные мы храним</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              Аккаунт (email, имя, аватар), профиль, посты, сообщения в чате и личные диалоги,
-              поездки, избранные места и сессия входа (cookie на сервере).
-            </p>
-            <p>Пароли хранятся в виде bcrypt-хеша, не в открытом виде.</p>
-          </CardContent>
-        </Card>
+        <AitSurface padding="md" className="space-y-3">
+          <h2 className="text-lg font-semibold">{t("privacy.dataTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("privacy.dataBody1")}</p>
+          <p className="text-sm text-muted-foreground">{t("privacy.dataBody2")}</p>
+        </AitSurface>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Ваши права</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              В разделе «Профиль» вы можете скачать копию своих данных (JSON) или удалить аккаунт.
-              Удаление необратимо и удаляет связанные записи в базе.
-            </p>
-            <p>
-              По вопросам обработки данных обращайтесь к администратору сервиса через контакты на
-              сайте.
-            </p>
-          </CardContent>
-        </Card>
+        <AitSurface padding="md" className="space-y-3">
+          <h2 className="text-lg font-semibold">{t("privacy.rightsTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("privacy.rightsBody1")}</p>
+          <p className="text-sm text-muted-foreground">{t("privacy.rightsBody2")}</p>
+        </AitSurface>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Cookies</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>
-              Для входа используется httpOnly cookie сессии. Язык интерфейса и настройки UI могут
-              сохраняться в localStorage на вашем устройстве.
-            </p>
-          </CardContent>
-        </Card>
+        <AitSurface padding="md">
+          <h2 className="text-lg font-semibold mb-3">{t("privacy.cookiesTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("privacy.cookiesBody")}</p>
+        </AitSurface>
       </div>
     </AppLayout>
   );
 }
+
+export default Privacy;

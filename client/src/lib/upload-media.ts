@@ -1,5 +1,6 @@
 import { toApiUrl } from "@/lib/queryClient";
 import { ApiError, parseErrorResponse } from "@/lib/api-error";
+import i18n from "@/i18n";
 export { isVideoUrl } from "@shared/post-formats";
 
 /** Safe max for Vercel serverless direct POST (platform limit ~4.5 MB). */
@@ -44,16 +45,12 @@ async function parseUploadResponse(res: Response): Promise<string> {
     throw await parseErrorResponse(res);
   }
   const data = (await res.json()) as { url: string };
-  if (!data.url) throw new Error("Сервер не вернул URL файла");
+  if (!data.url) throw new Error(i18n.t("mediaUpload.noUrlReturned"));
   if (data.url.startsWith("data:")) {
-    throw new Error(
-      "Сервер вернул временный data-URL вместо постоянной ссылки. Подключите Vercel Blob (BLOB_READ_WRITE_TOKEN) в настройках проекта.",
-    );
+    throw new Error(i18n.t("mediaUpload.dataUrlInsteadOfPermanent"));
   }
   if (import.meta.env.PROD && data.url.startsWith("/uploads/")) {
-    throw new Error(
-      "Файл сохранён во временное хранилище. На production подключите Vercel Blob: Dashboard → Storage → Blob → Connect to Project.",
-    );
+    throw new Error(i18n.t("mediaUpload.tempStorageProd"));
   }
   return data.url;
 }

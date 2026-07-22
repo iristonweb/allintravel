@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { canViewPost } from "./post-access";
 import { setupAuth, isAuthenticated, isAdmin, getSession, type SessionUser } from "./auth";
 import { resolveIsAdmin } from "./admin";
 import { authConfigPayload } from "./auth-readiness";
@@ -104,6 +105,7 @@ const updateUserMeSchema = z.object({
   firstName: z.string().max(100).nullable().optional(),
   lastName: z.string().max(100).nullable().optional(),
   username: z.string().optional(),
+  preferredLocale: z.enum(["en", "ru"]).optional(),
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -229,11 +231,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName?: string | null;
         lastName?: string | null;
         username?: string;
+        preferredLocale?: string;
       } = {};
 
       if (body.displayName !== undefined) patch.displayName = body.displayName;
       if (body.firstName !== undefined) patch.firstName = body.firstName;
       if (body.lastName !== undefined) patch.lastName = body.lastName;
+      if (body.preferredLocale !== undefined) patch.preferredLocale = body.preferredLocale;
 
       if (body.username !== undefined) {
         const parsed = validateUsername(body.username);
@@ -1194,6 +1198,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/bookmarks/:postId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const post = await storage.getTravelPost(req.params.postId);
+      if (!canViewPost(post, userId)) {
+        return res.status(404).json({ message: "Post not found" });
+      }
       const { addPostBookmark } = await import("./bookmarks");
       await addPostBookmark(userId, req.params.postId);
       res.status(201).json({ ok: true });
@@ -1206,6 +1214,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/bookmarks/:postId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const post = await storage.getTravelPost(req.params.postId);
+      if (!canViewPost(post, userId)) {
+        return res.status(404).json({ message: "Post not found" });
+      }
       const { removePostBookmark } = await import("./bookmarks");
       await removePostBookmark(userId, req.params.postId);
       res.status(204).send();
@@ -1923,9 +1935,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       await storage.ensureLegacyChatRooms();
       const rooms = await storage.listChatRoomsForUser(userId);
-      const { getRoomOwnersWithSpotlight, sortRoomsWithSpotlight } = await import("./ait/perks");
-      const owners = rooms.map((r) => r.createdBy).filter(Boolean) as string[];
-      const spotlight = await getRoomOwnersWithSpotlight(owners);
+      const { getRoomsWithSpotlight, sortRoomsWithSpotlight } = await import("./ait/perks");
+      const roomIds = rooms.map((r) => r.id);
+      const spotlight = await getRoomsWithSpotlight(roomIds);
       res.json(sortRoomsWithSpotlight(rooms, spotlight));
     } catch (error) {
       console.error("Error listing chat rooms:", error);
@@ -1943,7 +1955,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       const rooms = await storage.discoverChatRooms(userId, q, limit);
-      res.json(rooms);
+      const { getRoomsWithSpotlight, sortRoomsWithSpotlight } = await import("./ait/perks");
+      const roomIds = rooms.map((r) => r.id);
+      const spotlight = await getRoomsWithSpotlight(roomIds);
+      res.json(sortRoomsWithSpotlight(rooms, spotlight));
     } catch (error) {
       console.error("Error discovering chat rooms:", error);
       res.status(500).json({ message: "Failed to search rooms" });

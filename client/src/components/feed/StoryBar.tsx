@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTranslation } from "react-i18next";
 import { isStoryViewed } from "@/lib/story-views";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import type { TravelPostWithAuthor } from "@shared/schema";
@@ -36,20 +37,21 @@ function groupStories(posts: TravelPostWithAuthor[]): StoryGroup[] {
 type StoryBarProps = {
   posts: TravelPostWithAuthor[];
   onOpenGroup: (group: StoryGroup, startIndex: number) => void;
-  /** Встроен в полосу с кнопкой «Создать» — без отдельного пустого блока */
+  /** Embedded in the strip with a Create button — no separate empty block. */
   inline?: boolean;
 };
 
 export type { StoryGroup };
 
 export default function StoryBar({ posts, onOpenGroup, inline }: StoryBarProps) {
+  const { t } = useTranslation();
   const groups = groupStories(posts);
 
   if (!groups.length) {
     if (inline) return null;
     return (
       <p className="text-sm text-muted-foreground py-4 text-center">
-        Пока нет Stories — опубликуйте фото или видео на 24 часа
+        {t("social.stories.emptyHint")}
       </p>
     );
   }

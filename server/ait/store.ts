@@ -32,7 +32,7 @@ const memTx: AitTransactionRow[] = [];
 const memCaps = new Map<string, number>();
 const memEntitlements = new Map<
   string,
-  { userId: string; sku: string; expiresAt: Date | null }[]
+  { userId: string; sku: string; expiresAt: Date | null; entityId: string | null }[]
 >();
 const memRingCounts = new Map<string, Record<ActivityRingId, number>>();
 const memQuestClaims = new Set<string>();
@@ -143,8 +143,12 @@ export async function ensureAitSchema(): Promise<void> {
       user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       sku varchar(64) NOT NULL,
       expires_at timestamp,
+      entity_id varchar(100),
       created_at timestamp DEFAULT now()
     )
+  `);
+  await db.execute(sql`
+    ALTER TABLE ait_entitlements ADD COLUMN IF NOT EXISTS entity_id varchar(100)
   `);
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS ait_ring_daily (
@@ -293,6 +297,19 @@ export async function ensureAitSchema(): Promise<void> {
   `);
 }
 
+export async function setLastActiveDate(userId: string, date: string | null): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    const row = memBalances.get(userId);
+    if (row) row.lastActiveDate = date;
+    return;
+  }
+  await db.execute(sql`
+    UPDATE ait_balances SET last_active_date = ${date}::date, updated_at = now()
+    WHERE user_id = ${userId}
+  `);
+}
+
 export async function getOrCreateBalance(userId: string): Promise<AitBalanceRow> {
   const db = getDb();
   if (!db) {
@@ -398,6 +415,51 @@ export async function incrementDailyCap(userId: string, reason: AitReasonCode): 
     DO UPDATE SET count = ait_daily_caps.count + 1
   `);
   return getDailyCapCount(userId, reason);
+}
+
+/** Debit Spend + Creator wallets (Creator first, then Spend). */
+export async function debitDualWallet(
+  userId: string,
+  cost: number,
+  reason: AitReasonCode,
+  title: string,
+  entityType: string | null,
+  entityId: string | null,
+): Promise<boolean> {
+  if (cost <= 0) return true;
+  const balance = await getOrCreateBalance(userId);
+  if (balance.creatorBalance + balance.spendBalance < cost) return false;
+
+  let remaining = cost;
+  if (balance.creatorBalance > 0) {
+    const fromCreator = Math.min(balance.creatorBalance, remaining);
+    const creatorSpent = await applyBalanceDelta(
+      userId,
+      "creator",
+      -fromCreator,
+      reason,
+      `${title} (Creator)`,
+      entityType,
+      entityId,
+      { skipEmissionCap: true },
+    );
+    if (!creatorSpent) return false;
+    remaining -= fromCreator;
+  }
+  if (remaining > 0) {
+    const spent = await applyBalanceDelta(
+      userId,
+      "spend",
+      -remaining,
+      reason,
+      title,
+      entityType,
+      entityId,
+      { skipEmissionCap: true },
+    );
+    if (!spent) return false;
+  }
+  return true;
 }
 
 /** Public API — routes through ledger (supply, fraud, idempotency). */
@@ -726,39 +788,82 @@ export async function addEntitlement(
   userId: string,
   sku: string,
   expiresAt: Date | null,
+  entityId: string | null = null,
 ): Promise<void> {
   const id = genTxId();
   const db = getDb();
   if (!db) {
     const list = memEntitlements.get(userId) ?? [];
-    list.push({ userId, sku, expiresAt });
+    list.push({ userId, sku, expiresAt, entityId });
     memEntitlements.set(userId, list);
     return;
   }
   await db.execute(sql`
-    INSERT INTO ait_entitlements (id, user_id, sku, expires_at)
-    VALUES (${id}, ${userId}, ${sku}, ${expiresAt})
+    INSERT INTO ait_entitlements (id, user_id, sku, expires_at, entity_id)
+    VALUES (${id}, ${userId}, ${sku}, ${expiresAt}, ${entityId})
   `);
 }
 
 export async function getEntitlements(
   userId: string,
-): Promise<{ sku: string; expiresAt: Date | null }[]> {
+): Promise<{ sku: string; expiresAt: Date | null; entityId: string | null }[]> {
   const db = getDb();
   const now = new Date();
   if (!db) {
     return (memEntitlements.get(userId) ?? []).filter((e) => !e.expiresAt || e.expiresAt > now);
   }
   const res = await db.execute(sql`
-    SELECT sku, expires_at FROM ait_entitlements
+    SELECT sku, expires_at, entity_id FROM ait_entitlements
     WHERE user_id = ${userId} AND (expires_at IS NULL OR expires_at > now())
   `);
   const rows =
-    (res as unknown as { rows?: { sku: string; expires_at: string | null }[] }).rows ?? [];
+    (
+      res as unknown as {
+        rows?: { sku: string; expires_at: string | null; entity_id: string | null }[];
+      }
+    ).rows ?? [];
   return rows.map((r) => ({
     sku: r.sku,
     expiresAt: r.expires_at ? new Date(r.expires_at) : null,
+    entityId: r.entity_id ? String(r.entity_id) : null,
   }));
+}
+
+export async function getActiveSpotlightRoomIds(roomIds: string[]): Promise<Set<string>> {
+  if (roomIds.length === 0) return new Set();
+  const unique = Array.from(new Set(roomIds));
+  const db = getDb();
+  const out = new Set<string>();
+  const now = new Date();
+  const spotlightSku = "room_spotlight_48h";
+
+  if (!db) {
+    for (const list of Array.from(memEntitlements.values())) {
+      for (const e of list) {
+        if (
+          e.sku === spotlightSku &&
+          e.entityId &&
+          unique.includes(e.entityId) &&
+          (!e.expiresAt || e.expiresAt > now)
+        ) {
+          out.add(e.entityId);
+        }
+      }
+    }
+    return out;
+  }
+
+  const res = await db.execute(sql`
+    SELECT DISTINCT entity_id FROM ait_entitlements
+    WHERE sku = ${spotlightSku}
+      AND entity_id IS NOT NULL
+      AND (expires_at IS NULL OR expires_at > now())
+      AND entity_id = ANY(${unique}::varchar[])
+  `);
+  for (const r of (res as unknown as { rows?: { entity_id: string }[] }).rows ?? []) {
+    if (r.entity_id) out.add(String(r.entity_id));
+  }
+  return out;
 }
 
 export async function getQuestProgress(
@@ -940,17 +1045,19 @@ export async function incrementStreakFreezeUsage(userId: string, monthKey: strin
   `);
 }
 
-/** Preserve streak by setting last_active_date to today without incrementing. */
+/** Preserve streak by filling the missed day (yesterday) without incrementing. */
 export async function applyStreakFreeze(userId: string): Promise<void> {
-  const today = todayUtc();
+  const yesterday = new Date();
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const fillDate = yesterday.toISOString().slice(0, 10);
   const db = getDb();
   if (!db) {
     const row = memBalances.get(userId);
-    if (row) row.lastActiveDate = today;
+    if (row) row.lastActiveDate = fillDate;
     return;
   }
   await db.execute(sql`
-    UPDATE ait_balances SET last_active_date = ${today}::date, updated_at = now()
+    UPDATE ait_balances SET last_active_date = ${fillDate}::date, updated_at = now()
     WHERE user_id = ${userId}
   `);
 }

@@ -1,18 +1,21 @@
 import { Link } from "wouter";
 import { Wallet } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 type WalletHeaderButtonProps = {
   className?: string;
 };
 
-/** Быстрый вход в демо-кошелёк AIT рядом с аватаром */
+/** Quick access to the AIT demo wallet next to the avatar */
 export default function WalletHeaderButton({ className }: WalletHeaderButtonProps) {
+  const { t } = useTranslation();
+
   return (
     <Link
       href="/wallet"
-      aria-label="Криптокошелёк AIT"
-      title="AIT Hub — криптокошелёк платформы"
+      aria-label={t("walletHeader.ariaLabel")}
+      title={t("walletHeader.title")}
       className={cn(
         "group relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
         "border border-white/10 bg-white/[0.06] backdrop-blur-sm",

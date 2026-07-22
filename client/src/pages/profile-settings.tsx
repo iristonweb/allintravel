@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import PageShell from "@/components/layout/page-shell";
-import GlassCard from "@/components/brand/glass-card";
-import { Button } from "@/components/ui/button";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -115,38 +116,45 @@ export function ProfileSettings() {
   if (!isAuthenticated) {
     return (
       <AppLayout contentClassName="py-16">
-        <p className="text-center text-muted-foreground">{t("profileSettings.signInRequired")}</p>
+        <EmptyState variant="glass" title={t("profileSettings.signInRequired")} className="max-w-md mx-auto" />
       </AppLayout>
     );
   }
 
   return (
     <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
-      <PageShell
-        title={t("profileSettings.title")}
-        breadcrumbs={[
-          { label: t("profileSettings.breadcrumbProfile"), href: "/profile" },
-          { label: t("profileSettings.title") },
-        ]}
-      >
-        {isLoading ? (
-          <div className="space-y-6">
-            <Skeleton className="h-48 w-full rounded-2xl" />
-            <Skeleton className="h-40 w-full rounded-2xl" />
+      <ReelsPageLayout
+        header={
+          <div className="space-y-2">
+            <Link
+              href="/profile"
+              className="text-xs text-muted-foreground hover:text-ait-purple transition-colors"
+            >
+              ← {t("profileSettings.breadcrumbProfile")}
+            </Link>
+            <AitSectionHeader title={t("profileSettings.title")} />
           </div>
-        ) : isError ? (
-          <EmptyState
-            icon={AlertCircle}
-            title={t("profileSettings.loadError")}
-            action={
-              <Button variant="outline" onClick={() => refetch()}>
-                {t("common.retry")}
-              </Button>
-            }
-          />
-        ) : (
-          <div className="space-y-6">
-            <GlassCard className="p-6 space-y-5">
+        }
+        feed={
+          isLoading ? (
+            <div className="space-y-6" aria-busy="true" aria-label={t("profile.loading")}>
+              <Skeleton className="h-48 w-full rounded-card-lg" />
+              <Skeleton className="h-40 w-full rounded-card-lg" />
+            </div>
+          ) : isError ? (
+            <EmptyState
+              variant="glass"
+              icon={AlertCircle}
+              title={t("profileSettings.loadError")}
+              action={
+                <AitButton variant="glass" size="sm" onClick={() => refetch()}>
+                  {t("common.retry")}
+                </AitButton>
+              }
+            />
+          ) : (
+            <div className="space-y-6">
+              <AitSurface className="space-y-5">
               <div>
                 <h2 className="text-lg font-semibold">{t("profileSettings.privacyTitle")}</h2>
                 <p className="text-sm text-muted-foreground">{t("profileSettings.privacyHint")}</p>
@@ -208,12 +216,12 @@ export function ProfileSettings() {
                   }}
                 />
               </div>
-            </GlassCard>
+            </AitSurface>
 
-            <GlassCard className="p-6 space-y-3">
+            <AitSurface className="space-y-3">
               <div>
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
+                  <Bell className="h-5 w-5" strokeWidth={1.5} aria-hidden />
                   {t("profileSettings.pushTitle")}
                 </h2>
                 <p className="text-sm text-muted-foreground">{t("profileSettings.pushHint")}</p>
@@ -237,20 +245,21 @@ export function ProfileSettings() {
                         : t("profileSettings.pushDisabled")}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" onClick={() => subscribe()}>
+                      <AitButton type="button" variant="primary" size="sm" onClick={() => subscribe()}>
                         {subscribed
                           ? t("profileSettings.pushRefresh")
                           : t("profileSettings.pushSubscribe")}
-                      </Button>
-                      <Button
+                      </AitButton>
+                      <AitButton
                         type="button"
-                        variant="outline"
+                        variant="glass"
+                        size="sm"
                         onClick={() => testPush().catch(() => {})}
                       >
                         {t("profileSettings.pushTest")}
-                      </Button>
+                      </AitButton>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                    <div className="flex items-center justify-between pt-2 border-t border-border/40">
                       <div>
                         <p className="text-sm font-medium">{t("profileSettings.soundTitle")}</p>
                         <p className="text-xs text-muted-foreground">
@@ -269,41 +278,42 @@ export function ProfileSettings() {
                   </>
                 )}
               </div>
-            </GlassCard>
+            </AitSurface>
 
-            <GlassCard className="p-6 space-y-3">
+            <AitSurface className="space-y-3">
               <div>
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Smartphone className="h-5 w-5" />
+                  <Smartphone className="h-5 w-5" strokeWidth={1.5} aria-hidden />
                   {t("profileSettings.pinTitle")}
                 </h2>
                 <p className="text-sm text-muted-foreground">{t("profileSettings.pinHint")}</p>
               </div>
-              <Button variant="secondary" disabled>
+              <AitButton variant="glass" size="sm" disabled>
                 {t("profileSettings.pinSoon")}
-              </Button>
-            </GlassCard>
+              </AitButton>
+            </AitSurface>
 
-            <GlassCard className="p-6 space-y-3">
+            <AitSurface className="space-y-3">
               <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Shield className="h-5 w-5" />
+                <Shield className="h-5 w-5" strokeWidth={1.5} aria-hidden />
                 {t("profileSettings.accountTitle")}
               </h2>
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" asChild>
+                <AitButton variant="glass" size="sm" asChild>
                   <Link href="/privacy">{t("profileSettings.privacyPolicy")}</Link>
-                </Button>
-                <Button variant="outline" type="button" onClick={handleExport}>
+                </AitButton>
+                <AitButton variant="glass" size="sm" type="button" onClick={handleExport}>
                   {t("profileSettings.exportData")}
-                </Button>
-                <Button variant="destructive" type="button" onClick={handleDelete}>
+                </AitButton>
+                <AitButton variant="ghost" size="sm" type="button" onClick={handleDelete} className="text-destructive hover:text-destructive">
                   {t("profileSettings.deleteAccount")}
-                </Button>
+                </AitButton>
               </div>
-            </GlassCard>
+            </AitSurface>
           </div>
-        )}
-      </PageShell>
+          )
+        }
+      />
     </AppLayout>
   );
 }

@@ -1,5 +1,7 @@
 import type { UserLabelFields } from "./user-display";
 import { getUserDisplayLabel } from "./user-display";
+import { notificationCopy } from "./notification-copy";
+import type { NotificationLocale } from "./notification-locale";
 
 export function truncateNotificationPreview(text: string, max = 80): string {
   const t = text.replace(/\s+/g, " ").trim();
@@ -7,16 +9,20 @@ export function truncateNotificationPreview(text: string, max = 80): string {
   return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
-/** «Анна оценила…» / «Анна и Боб оценили…» / «Анна и ещё 3 оценили…» */
-export function formatPostLikeActorsLabel(actors: UserLabelFields[], totalCount: number): string {
+export function formatPostLikeActorsLabel(
+  actors: UserLabelFields[],
+  totalCount: number,
+  locale: NotificationLocale = "ru",
+): string {
+  const copy = notificationCopy(locale);
   const names = actors.map((a) => getUserDisplayLabel(a));
-  if (totalCount <= 1) return names[0] ?? "Кто-то";
+  if (totalCount <= 1) return names[0] ?? copy.someone;
   if (totalCount === 2) {
-    if (names.length >= 2) return `${names[0]} и ${names[1]}`;
-    if (names.length === 1) return `${names[0]} и ещё один`;
-    return "Два пользователя";
+    if (names.length >= 2) return copy.actorsTwo(names[0]!, names[1]!);
+    if (names.length === 1) return copy.actorsOneAndAnother(names[0]!);
+    return copy.twoUsers;
   }
-  return `${names[0] ?? "Кто-то"} и ещё ${totalCount - 1}`;
+  return copy.actorsAndMore(names[0] ?? copy.someone, totalCount - 1);
 }
 
 export function formatPostCommentNotificationBody(
@@ -24,27 +30,39 @@ export function formatPostCommentNotificationBody(
   totalCount: number,
   postContent: string,
   latestComment: string,
+  locale: NotificationLocale = "ru",
 ): string {
-  const label = formatPostLikeActorsLabel(actors, totalCount);
-  const verb = totalCount > 1 ? "прокомментировали" : "прокомментировала";
+  const copy = notificationCopy(locale);
+  const label = formatPostLikeActorsLabel(actors, totalCount, locale);
+  const verb = totalCount > 1 ? copy.postCommentVerbPlural : copy.postCommentVerbSingle;
   const preview = truncateNotificationPreview(postContent, 40);
   const comment = truncateNotificationPreview(latestComment, 100);
   if (preview) {
     return `${label} ${verb} «${preview}»: «${comment}»`;
   }
-  return `${label} ${verb} вашу публикацию: «${comment}»`;
+  return `${label} ${verb} ${copy.postTarget}: «${comment}»`;
 }
 
 export function formatPostLikeNotificationBody(
   actors: UserLabelFields[],
   totalCount: number,
   postContent: string,
+  locale: NotificationLocale = "ru",
 ): string {
-  const label = formatPostLikeActorsLabel(actors, totalCount);
-  const verb = totalCount > 1 ? "оценили" : "оценила";
+  const copy = notificationCopy(locale);
+  const label = formatPostLikeActorsLabel(actors, totalCount, locale);
+  const verb = totalCount > 1 ? copy.postLikeVerbPlural : copy.postLikeVerbSingle;
   const preview = truncateNotificationPreview(postContent);
   if (preview) {
-    return `${label} ${verb} вашу публикацию: «${preview}»`;
+    return `${label} ${verb} ${copy.postTarget}: «${preview}»`;
   }
-  return `${label} ${verb} вашу публикацию`;
+  return `${label} ${verb} ${copy.postTarget}`;
+}
+
+export function postLikeNotificationTitle(locale: NotificationLocale = "ru"): string {
+  return notificationCopy(locale).postLikeTitle;
+}
+
+export function postCommentNotificationTitle(locale: NotificationLocale = "ru"): string {
+  return notificationCopy(locale).postCommentTitle;
 }

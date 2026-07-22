@@ -7,12 +7,15 @@ import { X, ChevronLeft, ChevronRight, Heart, MessageCircle, Send, Loader2 } fro
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { isVideoUrl } from "@/lib/upload-media";
 import { markStoryViewed } from "@/lib/story-views";
+import { isDemoPostId } from "@/lib/demo-reels-feed";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import PostComments from "@/components/social/PostComments";
+import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 
 const STORY_REACTIONS = ["❤️", "🔥", "😂", "👏", "😮"] as const;
 const STORY_DURATION_MS = 8000;
@@ -22,9 +25,19 @@ type StoryViewerProps = {
   index: number;
   onClose: () => void;
   onIndexChange: (index: number) => void;
+  actionsDisabled?: boolean;
 };
 
-export default function StoryViewer({ posts, index, onClose, onIndexChange }: StoryViewerProps) {
+export default function StoryViewer({
+  posts,
+  index,
+  onClose,
+  onIndexChange,
+  actionsDisabled = false,
+}: StoryViewerProps) {
+  const { toast } = useToast();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
   const post = posts[index];
   const media = post?.images?.[0];
   const queryClient = useQueryClient();
@@ -34,6 +47,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
   const [localLikes, setLocalLikes] = useState(0);
   const progressRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
+  const disabled = actionsDisabled || (post?.id ? isDemoPostId(post.id) : false);
 
   useEffect(() => {
     if (post?.id) markStoryViewed(post.id);
@@ -49,18 +63,20 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
   }, [post]);
 
   const authorLabel = useMemo(() => {
-    if (!post?.author) return "Путешественник";
+    if (!post?.author) return t("social.traveler");
     return (
-      `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || "Путешественник"
+      `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || t("social.traveler")
     );
-  }, [post?.author]);
+  }, [post?.author, t]);
 
   const expiresLabel = useMemo(() => {
     if (!post?.expiresAt) return null;
     const exp = new Date(post.expiresAt);
-    if (exp.getTime() <= Date.now()) return "Истекла";
-    return `ещё ${formatDistanceToNow(exp, { locale: ru })}`;
-  }, [post?.expiresAt]);
+    if (exp.getTime() <= Date.now()) return t("social.storyViewer.expired");
+    return t("social.storyViewer.timeLeft", {
+      time: formatDistanceToNow(exp, { locale: dateLocale }),
+    });
+  }, [post?.expiresAt, t, dateLocale]);
 
   const goNext = useCallback(() => {
     if (index < posts.length - 1) onIndexChange(index + 1);
@@ -88,37 +104,53 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
 
   const likeMutation = useMutation({
     mutationFn: async () => {
+      if (!post?.id || disabled) return null;
       if (localLiked) {
-        await apiRequest("DELETE", `/api/posts/${post!.id}/like`);
+        await apiRequest("DELETE", `/api/posts/${post.id}/like`);
         return null;
       }
-      return apiRequestJson("POST", `/api/posts/${post!.id}/like`);
+      return apiRequestJson("POST", `/api/posts/${post.id}/like`);
     },
     onSuccess: () => {
-      setLocalLiked((v) => !v);
-      setLocalLikes((c) => (localLiked ? Math.max(0, c - 1) : c + 1));
+      setLocalLiked((wasLiked) => {
+        setLocalLikes((c) => (wasLiked ? Math.max(0, c - 1) : c + 1));
+        return !wasLiked;
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
+    },
+    onError: () => {
+      toast({ title: t("social.toasts.likeFailed"), variant: "destructive" });
     },
   });
 
   const commentMutation = useMutation({
-    mutationFn: (content: string) =>
-      apiRequestJson("POST", `/api/posts/${post!.id}/comments`, { content }),
+    mutationFn: (content: string) => {
+      if (!post?.id || disabled) throw new Error("disabled");
+      return apiRequestJson("POST", `/api/posts/${post.id}/comments`, { content });
+    },
     onSuccess: () => {
       setCommentText("");
       queryClient.invalidateQueries({ queryKey: [`/api/posts/${post!.id}/comments`] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
     },
+    onError: () => {
+      toast({ title: t("social.toasts.commentFailed"), variant: "destructive" });
+    },
   });
 
   const reactionMutation = useMutation({
-    mutationFn: (emoji: string) =>
-      apiRequestJson("POST", `/api/posts/${post!.id}/comments`, { content: emoji }),
+    mutationFn: (emoji: string) => {
+      if (!post?.id || disabled) throw new Error("disabled");
+      return apiRequestJson("POST", `/api/posts/${post.id}/comments`, { content: emoji });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/posts/${post!.id}/comments`] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+    },
+    onError: () => {
+      toast({ title: t("social.toasts.commentFailed"), variant: "destructive" });
     },
   });
 
@@ -163,6 +195,9 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
           </Avatar>
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{authorLabel}</p>
+            {disabled && (
+              <p className="text-[10px] text-ait-orange">{t("social.storyViewer.demo")}</p>
+            )}
             {expiresLabel && <p className="text-[10px] text-white/60">{expiresLabel}</p>}
           </div>
         </div>
@@ -171,7 +206,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
           size="icon"
           className="text-white shrink-0"
           onClick={onClose}
-          aria-label="Закрыть story"
+          aria-label={t("social.storyViewer.close")}
         >
           <X className="h-5 w-5" />
         </Button>
@@ -191,7 +226,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             variant="ghost"
             size="icon"
             className="absolute left-2 text-white z-10 hidden sm:flex"
-            aria-label="Предыдущая story"
+            aria-label={t("social.storyViewer.prev")}
             onClick={(e) => {
               e.stopPropagation();
               goPrev();
@@ -221,14 +256,14 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             />
           )
         ) : (
-          <p className="text-white/70 pointer-events-none">Нет медиа</p>
+          <p className="text-white/70 pointer-events-none">{t("social.storyViewer.noMedia")}</p>
         )}
         {index < posts.length - 1 && (
           <Button
             variant="ghost"
             size="icon"
             className="absolute right-2 text-white z-10 hidden sm:flex"
-            aria-label="Следующая story"
+            aria-label={t("social.storyViewer.next")}
             onClick={(e) => {
               e.stopPropagation();
               goNext();
@@ -249,10 +284,10 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             <button
               key={emoji}
               type="button"
-              className="text-2xl hover:scale-125 transition-transform active:scale-95"
-              disabled={reactionMutation.isPending}
+              className="text-2xl hover:scale-125 transition-transform active:scale-95 disabled:opacity-40"
+              disabled={reactionMutation.isPending || disabled}
               onClick={() => reactionMutation.mutate(emoji)}
-              title="Быстрая реакция"
+              title={t("social.storyViewer.quickReaction")}
             >
               {emoji}
             </button>
@@ -265,7 +300,8 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             size="sm"
             className={cn("text-white gap-1.5", localLiked && "text-red-400")}
             onClick={() => likeMutation.mutate()}
-            disabled={likeMutation.isPending}
+            disabled={likeMutation.isPending || disabled}
+            title={disabled ? t("social.storyViewer.demoMode") : undefined}
           >
             <Heart className={cn("h-5 w-5", localLiked && "fill-current")} />
             {localLikes > 0 && <span className="text-xs">{localLikes}</span>}
@@ -275,13 +311,14 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             size="sm"
             className="text-white gap-1.5"
             onClick={() => setCommentsOpen((o) => !o)}
+            disabled={disabled}
           >
             <MessageCircle className="h-5 w-5" />
             {commentsCount > 0 && <span className="text-xs">{commentsCount}</span>}
           </Button>
         </div>
 
-        {commentsOpen && (
+        {commentsOpen && !disabled && (
           <div
             className="rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 p-3 max-h-[40vh] overflow-y-auto space-y-3"
             onClick={(e) => e.stopPropagation()}
@@ -289,7 +326,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
             <PostComments postId={post.id} enabled />
             <div className="flex gap-2">
               <Input
-                placeholder="Ответить..."
+                placeholder={t("social.storyViewer.replyPlaceholder")}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
@@ -300,7 +337,7 @@ export default function StoryViewer({ posts, index, onClose, onIndexChange }: St
                 className="shrink-0 bg-ait-orange hover:bg-ait-orange/90"
                 disabled={!commentText.trim() || commentMutation.isPending}
                 onClick={handleSendComment}
-                aria-label="Отправить комментарий"
+                aria-label={t("social.storyViewer.sendComment")}
               >
                 {commentMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

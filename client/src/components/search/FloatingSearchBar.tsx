@@ -1,5 +1,6 @@
 import { useMemo, useState, type ComponentType } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Building2, MapPin, Sparkles, UtensilsCrossed } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -10,13 +11,13 @@ type SearchKind = "all" | "hotel" | "restaurant" | "attraction";
 
 const SEARCH_KINDS: Array<{
   value: SearchKind;
-  label: string;
+  labelKey: string;
   icon: ComponentType<{ className?: string }>;
 }> = [
-  { value: "all", label: "Все", icon: MapPin },
-  { value: "hotel", label: "Отели", icon: Building2 },
-  { value: "restaurant", label: "Еда", icon: UtensilsCrossed },
-  { value: "attraction", label: "Туры", icon: Sparkles },
+  { value: "all", labelKey: "search.floating.all", icon: MapPin },
+  { value: "hotel", labelKey: "search.floating.hotels", icon: Building2 },
+  { value: "restaurant", labelKey: "search.floating.food", icon: UtensilsCrossed },
+  { value: "attraction", labelKey: "search.floating.tours", icon: Sparkles },
 ];
 
 type FloatingSearchBarProps = {
@@ -30,16 +31,17 @@ export default function FloatingSearchBar({
   defaultQuery = "",
   defaultKind = "all",
 }: FloatingSearchBarProps) {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const [kind, setKind] = useState<SearchKind>(defaultKind);
   const [query, setQuery] = useState(defaultQuery);
 
   const placeholder = useMemo(() => {
-    if (kind === "hotel") return "Где остановимся? (отель, район, город)";
-    if (kind === "restaurant") return "Что попробуем? (кафе, кухня, город)";
-    if (kind === "attraction") return "Что посмотрим? (место, город, тип)";
-    return "Куда хотите поехать? (город, страна, место)";
-  }, [kind]);
+    if (kind === "hotel") return t("search.floating.hotelPlaceholder");
+    if (kind === "restaurant") return t("search.floating.restaurantPlaceholder");
+    if (kind === "attraction") return t("search.floating.attractionPlaceholder");
+    return t("search.floating.defaultPlaceholder");
+  }, [kind, t]);
 
   const onNavigate = (href: string) => {
     const withType =
@@ -68,7 +70,7 @@ export default function FloatingSearchBar({
             )}
           >
             <Icon className="h-4 w-4" />
-            {k.label}
+            {t(k.labelKey)}
           </button>
         );
       })}

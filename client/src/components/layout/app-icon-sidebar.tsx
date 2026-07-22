@@ -2,7 +2,9 @@ import { Link, useLocation } from "wouter";
 import { MapPin, Sparkles } from "lucide-react";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitSurface from "@/components/ait-ui/AitSurface";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavLabels } from "@/hooks/useNavLabels";
 import { useUrlSearch } from "@/hooks/useUrlSearch";
 import { isCommunityHubRoute, isNavActive, matchNavHref } from "@/lib/nav-groups";
@@ -30,26 +32,27 @@ function NavItem({
 }) {
   const Icon = item.icon ?? MapPin;
   return (
-    <Link href={item.href}>
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
       <span
         className={cn(
-          "relative flex h-11 w-full items-center gap-3 rounded-xl px-2.5 transition-all duration-250 ease-out",
+          "relative flex h-11 w-full items-center gap-3 rounded-xl px-2.5 transition-colors duration-200",
           active
-            ? "text-white bg-gradient-to-r from-ait-purple/25 to-ait-orange/10 shadow-ait-glow-purple/40 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.25)]"
-            : "text-slate-300 hover:bg-white/8 hover:text-white",
-          !labelsVisible &&
-            "group-hover/sidebar:hover:bg-white/8 group-hover/sidebar:hover:text-white",
-          active &&
-            "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-7 before:w-1 before:rounded-full before:bg-gradient-to-b before:from-ait-purple before:to-ait-orange before:content-['']",
+            ? "bg-primary/10 text-primary before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-7 before:w-0.5 before:rounded-full before:bg-primary before:content-['']"
+            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          !labelsVisible && "group-hover/sidebar:hover:bg-muted/50 group-hover/sidebar:hover:text-foreground",
         )}
       >
         <span
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-250",
-            active ? "bg-ait-purple/30 text-white scale-105" : "bg-white/[0.07] text-slate-200",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-200",
+            active ? "text-primary" : "text-muted-foreground",
           )}
         >
-          <Icon className="h-[18px] w-[18px]" aria-hidden />
+          <Icon className="h-5 w-5" strokeWidth={1.5} aria-hidden />
         </span>
         <span
           className={cn(
@@ -93,7 +96,7 @@ function NavSection({
     <div className="flex flex-col gap-0.5 w-full">
       <p
         className={cn(
-          "px-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1 transition-all duration-200",
+          "px-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 transition-all duration-200",
           labelsVisible
             ? "opacity-100 max-h-8"
             : "opacity-0 max-h-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-h-8 group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-h-8",
@@ -131,6 +134,78 @@ type AppIconSidebarProps = {
   minimalChrome?: boolean;
 };
 
+function SidebarCollapsedAvatar() {
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  if (!user) return null;
+
+  const initials =
+    `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.trim() ||
+    user.username?.[0]?.toUpperCase() ||
+    "?";
+
+  return (
+    <Link
+      href="/profile"
+      aria-label={t("nav.profile")}
+      className="flex justify-center py-2 mb-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background group-hover/sidebar:hidden group-focus-within/sidebar:hidden"
+    >
+      <Avatar className="h-9 w-9 border border-border/50">
+        <AvatarImage src={user.profileImageUrl ?? undefined} alt="" />
+        <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+    </Link>
+  );
+}
+
+function SidebarUserPreview({ expanded }: { expanded: boolean }) {
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  if (!user) return null;
+
+  const displayName =
+    [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || t("nav.profile");
+  const initials =
+    `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.trim() ||
+    user.username?.[0]?.toUpperCase() ||
+    "?";
+
+  return (
+    <Link
+      href="/profile"
+      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      <span
+        className={cn(
+          "flex items-center gap-3 rounded-xl px-2.5 py-2 mb-2 transition-colors duration-200 hover:bg-muted/50",
+          expanded
+            ? "opacity-100"
+            : "opacity-0 max-h-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-h-16 group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-h-16",
+        )}
+      >
+        <Avatar className="h-9 w-9 border border-border/50 shrink-0">
+          <AvatarImage src={user.profileImageUrl ?? undefined} alt="" />
+          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm font-medium text-foreground transition-all duration-200",
+            expanded
+              ? "opacity-100 max-w-[180px]"
+              : "opacity-0 max-w-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-w-[180px] group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-w-[180px]",
+          )}
+        >
+          {displayName}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
   const [location] = useLocation();
   const search = useUrlSearch();
@@ -152,7 +227,7 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
           : "w-[72px] hover:w-[240px] focus-within:w-[240px] hover:shadow-[4px_0_32px_rgba(139,92,246,0.08)] focus-within:shadow-[4px_0_32px_rgba(139,92,246,0.08)]",
         minimalChrome ? "ait-chrome-minimal-sidebar" : "ait-chrome-solid-sidebar backdrop-blur-xl",
       )}
-      aria-label="Основная навигация"
+      aria-label={t("nav.ariaLabel", { defaultValue: "Main navigation" })}
     >
       <div className="flex-1 flex flex-col gap-0.5">
         {communityMode ? (
@@ -181,14 +256,23 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
         className={cn(
           "mt-auto px-2 pt-3 shrink-0 transition-all duration-250",
           communityMode
-            ? "opacity-100 max-h-48"
-            : "opacity-0 max-h-0 overflow-hidden group-hover/sidebar:opacity-100 group-hover/sidebar:max-h-48 group-focus-within/sidebar:opacity-100 group-focus-within/sidebar:max-h-48",
+            ? "opacity-100 max-h-64"
+            : "opacity-100 max-h-64 group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100",
         )}
       >
-        <AitSurface padding="sm" radius="lg" glow className="mx-0.5 border border-amber-500/20">
+        {!communityMode && <SidebarCollapsedAvatar />}
+        <div
+          className={cn(
+            communityMode
+              ? "block"
+              : "hidden group-hover/sidebar:block group-focus-within/sidebar:block",
+          )}
+        >
+          <SidebarUserPreview expanded={communityMode} />
+          <AitSurface padding="sm" radius="lg" glow className="mx-0.5 border border-amber-500/20">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-ait-orange shrink-0" />
-            <p className="text-xs font-bold text-white truncate">
+            <p className="text-xs font-bold text-foreground truncate">
               {t("nav.premiumTitle", { defaultValue: "AllInTravel Premium" })}
             </p>
           </div>
@@ -199,6 +283,7 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
             <Link href="/wallet">{t("nav.premiumSubscribe", { defaultValue: "Subscribe" })}</Link>
           </AitButton>
         </AitSurface>
+        </div>
       </div>
     </aside>
   );

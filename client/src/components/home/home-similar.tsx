@@ -4,7 +4,8 @@ import { Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import HomeSectionHeader from "@/components/home/home-section-header";
-import PlaceCard from "@/components/place-card";
+import PlaceCard from "@/components/places/PlaceCard";
+import PlaceCardSkeleton from "@/components/places/PlaceCardSkeleton";
 import type { Place } from "@shared/schema";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 
@@ -70,9 +71,9 @@ export default function HomeSimilar() {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-[340px] rounded-[20px] bg-muted animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <PlaceCardSkeleton key={i} />
           ))}
         </div>
       ) : (

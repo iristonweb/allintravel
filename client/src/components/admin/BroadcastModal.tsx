@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import MessageContent from "@/components/chat/MessageContent";
@@ -19,6 +20,7 @@ function contentHasVideo(content: string): boolean {
 }
 
 export default function BroadcastModal() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -52,10 +54,8 @@ export default function BroadcastModal() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="ait-glass-strong ait-gradient-border border-white/10 sm:max-w-md max-h-[80vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-2 shrink-0">
-          <DialogTitle>Сообщение от команды</DialogTitle>
-          <DialogDescription className="sr-only">
-            Объявление для всех пользователей
-          </DialogDescription>
+          <DialogTitle>{t("broadcastModal.title")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("broadcastModal.description")}</DialogDescription>
         </DialogHeader>
         <div className="px-5 py-3 overflow-y-auto flex-1 min-h-0 text-sm leading-relaxed text-foreground">
           <div className="flex flex-col gap-3">
@@ -68,7 +68,7 @@ export default function BroadcastModal() {
             onClick={() => dismissMutation.mutate("ack")}
             disabled={dismissMutation.isPending}
           >
-            Ясно
+            {t("broadcastModal.ok")}
           </Button>
           {hasVideo && (
             <Button
@@ -76,7 +76,7 @@ export default function BroadcastModal() {
               onClick={() => dismissMutation.mutate("skip_video")}
               disabled={dismissMutation.isPending}
             >
-              Не смотреть
+              {t("broadcastModal.dontShow")}
             </Button>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Building2, Globe, Loader2, MapPin } from "lucide-react";
 import SmartSearchField from "@/components/search/SmartSearchField";
@@ -18,16 +18,17 @@ import {
   type DestinationHrefMode,
   type DestinationPick,
 } from "@/lib/destination-search";
+import { useTranslation } from "react-i18next";
 
-const POPULAR = [
-  "Стамбул",
-  "Париж",
-  "Токио",
-  "Бали",
-  "Барселона",
-  "Дубай",
-  "Москва",
-  "Киото",
+const POPULAR_KEYS = [
+  "istanbul",
+  "paris",
+  "tokyo",
+  "bali",
+  "barcelona",
+  "dubai",
+  "moscow",
+  "kyoto",
 ] as const;
 
 function useDebounced(value: string, ms: number) {
@@ -61,7 +62,7 @@ export default function DestinationSearch({
   value,
   onChange,
   onNavigate,
-  placeholder = "Страна, город или место…",
+  placeholder,
   className,
   inputClassName,
   placeType,
@@ -74,6 +75,12 @@ export default function DestinationSearch({
   debounceMs = 280,
   minChars = 2,
 }: DestinationSearchProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("search.destinationPlaceholder");
+  const popular = useMemo(
+    () => POPULAR_KEYS.map((key) => t(`search.popular.${key}`)),
+    [t],
+  );
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,14 +125,14 @@ export default function DestinationSearch({
         if (ctrl.signal.aborted) return;
         setLocations([]);
         setPlaces([]);
-        setError("Не удалось выполнить поиск");
+        setError(t("search.searchFailed"));
       })
       .finally(() => {
         if (!ctrl.signal.aborted) setLoading(false);
       });
 
     return () => ctrl.abort();
-  }, [debouncedQ, shouldFetch, placeType]);
+  }, [debouncedQ, shouldFetch, placeType, t]);
 
   const go = (pick: DestinationPick) => {
     onNavigate(buildDestinationHref(pick, placeType, hrefMode));
@@ -188,8 +195,8 @@ export default function DestinationSearch({
       <Command shouldFilter={false}>
         <CommandList className="max-h-[min(360px,calc(100vh-8rem))] overflow-y-auto ait-scrollbar">
           {showPopular && !q && (
-            <CommandGroup heading="Популярные направления">
-              {POPULAR.map((d) => (
+            <CommandGroup heading={t("search.popularHeading")}>
+              {popular.map((d) => (
                 <CommandItem
                   key={d}
                   value={d}
@@ -209,14 +216,14 @@ export default function DestinationSearch({
           {loading && (
             <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Ищем города и места…
+              {t("search.searchingPlaces")}
             </div>
           )}
 
           {!loading && error && <div className="px-3 py-3 text-sm text-destructive">{error}</div>}
 
           {!loading && !error && shouldFetch && locations.length > 0 && (
-            <CommandGroup heading="Города и страны">
+            <CommandGroup heading={t("search.citiesCountries")}>
               {locations.map((item) => (
                 <CommandItem
                   key={
@@ -236,7 +243,7 @@ export default function DestinationSearch({
                   {locationIcon(item)}
                   <span className="flex-1 truncate">{item.label}</span>
                   <span className="text-[10px] uppercase text-muted-foreground">
-                    {item.kind === "country" ? "Страна" : "Город"}
+                    {item.kind === "country" ? t("search.country") : t("search.city")}
                   </span>
                 </CommandItem>
               ))}
@@ -244,7 +251,7 @@ export default function DestinationSearch({
           )}
 
           {!loading && !error && shouldFetch && places.length > 0 && (
-            <CommandGroup heading="Места в каталоге">
+            <CommandGroup heading={t("search.catalogPlaces")}>
               {places.map((p) => (
                 <CommandItem
                   key={p.id}
@@ -269,7 +276,7 @@ export default function DestinationSearch({
 
           {!loading && !error && shouldFetch && locations.length === 0 && places.length === 0 && (
             <CommandEmpty className="py-4 text-sm text-muted-foreground">
-              Ничего не найдено. Попробуйте другое название или латиницу.
+              {t("search.nothingFound")}
             </CommandEmpty>
           )}
         </CommandList>
@@ -283,7 +290,7 @@ export default function DestinationSearch({
         <div className="relative flex-1 min-w-0">
           <SmartSearchField
             value={value}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             embedded={embedded}
             onChange={(v) => {
               onChange(v);
@@ -314,7 +321,7 @@ export default function DestinationSearch({
             onClick={submitText}
             disabled={!q}
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Найти"}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("search.find")}
           </Button>
         )}
       </div>

@@ -1,7 +1,7 @@
 import PublicLayout from "@/components/public-layout";
 import PageMeta from "@/components/seo/PageMeta";
-import GlassCard from "@/components/brand/glass-card";
-import { Button } from "@/components/ui/button";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -10,6 +10,8 @@ import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import EmptyState from "@/components/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, CreditCard } from "lucide-react";
 
 export default function CreatorsPage() {
@@ -20,14 +22,14 @@ export default function CreatorsPage() {
   const [niche, setNiche] = useState("");
   const [message, setMessage] = useState("");
 
-  const { data } = useQuery<{ perks: { id: string; title: string; description: string }[] }>({
+  const { data, isLoading } = useQuery<{ perks: { id: string; title: string; description: string }[] }>({
     queryKey: ["/api/gtm/creators"],
   });
 
   const applyMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/gtm/creator-applications", { email, niche, message }),
-    onSuccess: () => toast({ title: t("common.save") }),
+    onSuccess: () => toast({ title: t("gtm.applicationSubmitted") }),
   });
 
   const stripeMutation = useMutation({
@@ -46,67 +48,78 @@ export default function CreatorsPage() {
       />
       <div className="max-w-4xl mx-auto px-4 py-12 space-y-10">
         <div className="text-center space-y-4">
-          <Sparkles className="h-10 w-10 mx-auto text-[#ff7a18]" />
+          <Sparkles className="h-10 w-10 mx-auto text-[#ff7a18]" aria-hidden />
           <h1 className="ait-section-title">{t("gtm.creatorsTitle")}</h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             {t("gtm.creatorsSubtitle")}
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          {(data?.perks ?? []).map((perk) => (
-            <GlassCard key={perk.id} className="p-5">
-              <h3 className="font-semibold text-white">{perk.title}</h3>
-              <p className="text-sm text-muted-foreground mt-2">{perk.description}</p>
-            </GlassCard>
-          ))}
+        <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
+          {isLoading ? (
+            [1, 2, 3].map((i) => (
+              <AitSurface key={i} padding="md" aria-busy="true">
+                <Skeleton className="h-5 w-2/3 mb-3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6 mt-2" />
+              </AitSurface>
+            ))
+          ) : (data?.perks ?? []).length === 0 ? (
+            <EmptyState variant="glass" icon={Sparkles} title={t("gtm.perksEmpty")} />
+          ) : (
+            (data?.perks ?? []).map((perk) => (
+              <AitSurface key={perk.id} padding="md">
+                <h3 className="font-semibold text-white">{perk.title}</h3>
+                <p className="text-sm text-muted-foreground mt-2">{perk.description}</p>
+              </AitSurface>
+            ))
+          )}
         </div>
 
         {user && (
-          <GlassCard className="p-6">
-            <Button
+          <AitSurface padding="md">
+            <AitButton
               type="button"
-              className="rounded-xl gap-2 w-full sm:w-auto"
+              className="gap-2 w-full sm:w-auto"
               disabled={stripeMutation.isPending}
               onClick={() => stripeMutation.mutate()}
             >
-              <CreditCard className="h-4 w-4" />
+              <CreditCard className="h-4 w-4" aria-hidden />
               {t("marketplace.connectStripe")}
-            </Button>
-          </GlassCard>
+            </AitButton>
+          </AitSurface>
         )}
 
-        <GlassCard className="p-6 space-y-4">
+        <AitSurface padding="md" className="space-y-4">
           <h2 className="font-semibold text-white">{t("gtm.applyCreator")}</h2>
           <Input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="email@example.com"
+            placeholder={t("gtm.emailPlaceholder")}
             className="rounded-xl"
           />
           <Input
             value={niche}
             onChange={(e) => setNiche(e.target.value)}
-            placeholder="Routes, guides, photography…"
+            placeholder={t("gtm.nichePlaceholder")}
             className="rounded-xl"
           />
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Tell us about your audience"
+            placeholder={t("gtm.messagePlaceholder")}
             className="rounded-xl min-h-[100px]"
           />
-          <Button
+          <AitButton
             type="button"
-            variant="premium"
             className="rounded-xl"
             disabled={applyMutation.isPending || !email}
             onClick={() => applyMutation.mutate()}
           >
             {t("gtm.applyCreator")}
-          </Button>
-        </GlassCard>
+          </AitButton>
+        </AitSurface>
       </div>
     </PublicLayout>
   );

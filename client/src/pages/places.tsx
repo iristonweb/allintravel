@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import PageShell from "@/components/layout/page-shell";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import CatalogPageLayout from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
-import PlaceCard from "@/components/place-card";
-import { Button } from "@/components/ui/button";
+import PlaceCard from "@/components/places/PlaceCard";
+import PlaceCardSkeleton from "@/components/places/PlaceCardSkeleton";
+import StatPill from "@/components/brand/stat-pill";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -139,88 +141,92 @@ export function Places() {
 
   const hasActiveFilters = activeSearch || typeFilter || minRating || priceRange;
 
+  const createPlaceDialog = isAuthenticated ? (
+    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <DialogTrigger asChild>
+        <AitButton variant="primary" className="gap-2">
+          <Plus className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+          {t("places.addPlace")}
+        </AitButton>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("places.newPlace")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Input
+            placeholder={t("places.form.name")}
+            value={newPlace.name}
+            onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+          />
+          <Textarea
+            placeholder={t("places.form.description")}
+            value={newPlace.description}
+            onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })}
+          />
+          <select
+            className="w-full rounded-md border px-3 py-2 text-sm bg-background"
+            value={newPlace.type}
+            onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}
+          >
+            {filters.placeType
+              .filter((opt) => opt.value)
+              .map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+          </select>
+          <Input
+            placeholder={t("places.form.address")}
+            value={newPlace.address}
+            onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              placeholder={t("places.form.latitude")}
+              value={newPlace.latitude}
+              onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })}
+            />
+            <Input
+              placeholder={t("places.form.longitude")}
+              value={newPlace.longitude}
+              onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })}
+            />
+          </div>
+          <MediaUploadField
+            label={t("places.form.photoLabel")}
+            accept="image/jpeg,image/png,image/webp,image/gif,.gif"
+            multiple={false}
+            maxFiles={1}
+            value={newPlace.imageUrl ? [newPlace.imageUrl] : []}
+            onChange={(urls) => setNewPlace({ ...newPlace, imageUrl: urls[0] ?? "" })}
+          />
+          <AitButton
+            className="w-full"
+            variant="primary"
+            disabled={!newPlace.name || createPlaceMutation.isPending}
+            onClick={() => createPlaceMutation.mutate()}
+          >
+            {t("places.form.save")}
+          </AitButton>
+        </div>
+      </DialogContent>
+    </Dialog>
+  ) : null;
+
   return (
     <AppLayout rightRail={<DiscoveryRightRail />}>
-      <PageShell
-        title={t("places.title")}
-        description={t("places.description")}
-        rightSlot={
-          isAuthenticated ? (
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button variant="premium">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("places.addPlace")}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t("places.newPlace")}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3">
-                  <Input
-                    placeholder={t("places.form.name")}
-                    value={newPlace.name}
-                    onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
-                  />
-                  <Textarea
-                    placeholder={t("places.form.description")}
-                    value={newPlace.description}
-                    onChange={(e) => setNewPlace({ ...newPlace, description: e.target.value })}
-                  />
-                  <select
-                    className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                    value={newPlace.type}
-                    onChange={(e) => setNewPlace({ ...newPlace, type: e.target.value })}
-                  >
-                    {filters.placeType
-                      .filter((opt) => opt.value)
-                      .map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                  </select>
-                  <Input
-                    placeholder={t("places.form.address")}
-                    value={newPlace.address}
-                    onChange={(e) => setNewPlace({ ...newPlace, address: e.target.value })}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder={t("places.form.latitude")}
-                      value={newPlace.latitude}
-                      onChange={(e) => setNewPlace({ ...newPlace, latitude: e.target.value })}
-                    />
-                    <Input
-                      placeholder={t("places.form.longitude")}
-                      value={newPlace.longitude}
-                      onChange={(e) => setNewPlace({ ...newPlace, longitude: e.target.value })}
-                    />
-                  </div>
-                  <MediaUploadField
-                    label={t("places.form.photoLabel")}
-                    accept="image/jpeg,image/png,image/webp,image/gif,.gif"
-                    multiple={false}
-                    maxFiles={1}
-                    value={newPlace.imageUrl ? [newPlace.imageUrl] : []}
-                    onChange={(urls) => setNewPlace({ ...newPlace, imageUrl: urls[0] ?? "" })}
-                  />
-                  <Button
-                    className="w-full"
-                    variant="premium"
-                    disabled={!newPlace.name || createPlaceMutation.isPending}
-                    onClick={() => createPlaceMutation.mutate()}
-                  >
-                    {t("places.form.save")}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          ) : null
+      <ReelsPageLayout
+        header={
+          <AitSectionHeader
+            title={t("places.title")}
+            description={t("places.description")}
+            actions={createPlaceDialog}
+          />
         }
-      >
-        <CatalogPageLayout
+        feed={
+          <CatalogPageLayout
           search={
             <>
               <DestinationSearch
@@ -276,49 +282,52 @@ export function Places() {
             />
           }
           stats={
-            <Card className="bg-primary/5 border-primary/20">
-              <CardContent className="p-4 flex items-center gap-3">
-                <MapPin className="h-8 w-8 text-primary" />
-                <div>
-                  <p className="font-semibold">
-                    {t("places.placesCount", { count: places.length })}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{t("places.statsInCatalog")}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <StatPill value={String(places.length)} label={t("places.statsInCatalog")} />
           }
         >
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div
+              className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6"
+              aria-busy="true"
+              aria-label={t("places.loading")}
+            >
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} className="h-80 animate-pulse bg-muted" />
+                <PlaceCardSkeleton key={i} />
               ))}
             </div>
           ) : isError ? (
             <EmptyState
+              variant="glass"
               icon={AlertCircle}
               title={t("places.loadError")}
               description={error instanceof Error ? error.message : t("social.errors.connection")}
               action={
-                <Button variant="outline" onClick={() => refetch()}>
+                <AitButton variant="glass" size="sm" onClick={() => refetch()}>
                   {t("common.retry")}
-                </Button>
+                </AitButton>
               }
             />
           ) : places.length === 0 ? (
             <EmptyState
+              variant="glass"
               icon={MapPin}
               title={t("places.notFound")}
               description={t("places.notFoundHint")}
               action={
-                <Button variant="outline" onClick={clearFilters}>
-                  {t("places.resetFilters")}
-                </Button>
+                hasActiveFilters ? (
+                  <AitButton variant="glass" size="sm" onClick={clearFilters}>
+                    {t("places.resetFilters")}
+                  </AitButton>
+                ) : isAuthenticated ? (
+                  <AitButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1" strokeWidth={1.5} aria-hidden />
+                    {t("places.addPlace")}
+                  </AitButton>
+                ) : undefined
               }
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
               {places.map((place) => (
                 <PlaceCard
                   key={place.id}
@@ -330,7 +339,8 @@ export function Places() {
             </div>
           )}
         </CatalogPageLayout>
-      </PageShell>
+        }
+      />
     </AppLayout>
   );
 }

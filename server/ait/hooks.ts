@@ -215,14 +215,6 @@ export function onPostCreated(...args: Parameters<typeof grantForPostCreated>): 
   voidAit(grantForPostCreated(...args));
 }
 
-export function onPostLiked(...args: Parameters<typeof grantForPostLiked>): void {
-  voidAit(grantForPostLiked(...args));
-}
-
-export function onPostCommented(...args: Parameters<typeof grantForPostCommented>): void {
-  voidAit(grantForPostCommented(...args));
-}
-
 export function onChatMessage(...args: Parameters<typeof grantForChatMessage>): void {
   voidAit(grantForChatMessage(...args));
 }

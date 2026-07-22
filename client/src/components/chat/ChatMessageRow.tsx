@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,6 +109,8 @@ export default function ChatMessageRow({
   onReply,
   grouped,
 }: ChatMessageRowProps) {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
   const [editOpen, setEditOpen] = useState(false);
   const [editText, setEditText] = useState(content);
   const editTextRef = useRef<HTMLTextAreaElement>(null);
@@ -125,7 +128,9 @@ export default function ChatMessageRow({
     },
   });
 
-  const timeStr = createdAt ? format(new Date(createdAt as string), "HH:mm", { locale: ru }) : "";
+  const timeStr = createdAt
+    ? format(new Date(createdAt as string), "HH:mm", { locale: dateLocale })
+    : "";
 
   const reactions: ReactionSummary[] = meta?.reactions ?? [];
   const myReaction = findMyReaction(reactions);
@@ -226,7 +231,7 @@ export default function ChatMessageRow({
               {isPinned && (
                 <span className="text-[10px] text-ait-orange font-medium px-1 mb-0.5 flex items-center gap-1">
                   <Pin className="h-3 w-3" />
-                  Закреплено
+                  {t("messages.pinned")}
                 </span>
               )}
               <div className="flex items-end gap-1">
@@ -242,7 +247,7 @@ export default function ChatMessageRow({
                           "h-7 w-7 shrink-0 rounded-full transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100",
                           isOwn ? "order-first" : "",
                         )}
-                        aria-label="Действия с сообщением"
+                        aria-label={t("messages.messageActions")}
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
@@ -251,25 +256,25 @@ export default function ChatMessageRow({
                       {onReply && (
                         <DropdownMenuItem onClick={onReply}>
                           <Reply className="h-4 w-4 mr-2" />
-                          Ответить
+                          {t("messages.reply")}
                         </DropdownMenuItem>
                       )}
                       {canPin && !isPinned && onPin && (
                         <DropdownMenuItem onClick={onPin}>
                           <Pin className="h-4 w-4 mr-2" />
-                          Закрепить
+                          {t("messages.pin")}
                         </DropdownMenuItem>
                       )}
                       {canPin && isPinned && onUnpin && (
                         <DropdownMenuItem onClick={onUnpin}>
                           <PinOff className="h-4 w-4 mr-2" />
-                          Открепить
+                          {t("messages.unpin")}
                         </DropdownMenuItem>
                       )}
                       {insightsUrl && (
                         <DropdownMenuItem onClick={() => setInsightsOpen(true)}>
                           <Eye className="h-4 w-4 mr-2" />
-                          Просмотры и реакции
+                          {t("messages.insights")}
                         </DropdownMenuItem>
                       )}
                       {canEdit && onEdit && (
@@ -280,7 +285,7 @@ export default function ChatMessageRow({
                           }}
                         >
                           <Pencil className="h-4 w-4 mr-2" />
-                          Редактировать
+                          {t("messages.edit")}
                         </DropdownMenuItem>
                       )}
                       {onReact && (
@@ -291,7 +296,7 @@ export default function ChatMessageRow({
                           <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
                               <Smile className="h-4 w-4 mr-2" />
-                              Реакция
+                              {t("messages.reaction")}
                             </DropdownMenuSubTrigger>
                             <DropdownMenuSubContent className="w-48">
                               {reactionPicker}
@@ -307,7 +312,7 @@ export default function ChatMessageRow({
                             onClick={onDelete}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Удалить
+                            {t("messages.delete")}
                           </DropdownMenuItem>
                         </>
                       )}
@@ -323,7 +328,7 @@ export default function ChatMessageRow({
             <>
               <ContextMenuItem onClick={onReply}>
                 <Reply className="h-4 w-4 mr-2" />
-                Ответить
+                {t("messages.reply")}
               </ContextMenuItem>
               <ContextMenuSeparator />
             </>
@@ -331,19 +336,19 @@ export default function ChatMessageRow({
           {canPin && !isPinned && onPin && (
             <ContextMenuItem onClick={onPin}>
               <Pin className="h-4 w-4 mr-2" />
-              Закрепить
+              {t("messages.pin")}
             </ContextMenuItem>
           )}
           {canPin && isPinned && onUnpin && (
             <ContextMenuItem onClick={onUnpin}>
               <PinOff className="h-4 w-4 mr-2" />
-              Открепить
+              {t("messages.unpin")}
             </ContextMenuItem>
           )}
           {insightsUrl && (
             <ContextMenuItem onClick={() => setInsightsOpen(true)}>
               <Eye className="h-4 w-4 mr-2" />
-              Просмотры и реакции
+              {t("messages.insights")}
             </ContextMenuItem>
           )}
           {canEdit && onEdit && (
@@ -356,20 +361,20 @@ export default function ChatMessageRow({
                 }}
               >
                 <Pencil className="h-4 w-4 mr-2" />
-                Редактировать
+                {t("messages.edit")}
               </ContextMenuItem>
             </>
           )}
           {canDelete && onDelete && (
             <ContextMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
               <Trash2 className="h-4 w-4 mr-2" />
-              Удалить
+              {t("messages.delete")}
             </ContextMenuItem>
           )}
           {onReact && (
             <>
               <ContextMenuSeparator />
-              <ContextMenuLabel>Реакция</ContextMenuLabel>
+              <ContextMenuLabel>{t("messages.reaction")}</ContextMenuLabel>
               {reactionPicker}
             </>
           )}
@@ -379,24 +384,26 @@ export default function ChatMessageRow({
       <Dialog open={insightsOpen} onOpenChange={setInsightsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Просмотры и реакции</DialogTitle>
+            <DialogTitle>{t("messages.insightsTitle")}</DialogTitle>
           </DialogHeader>
           {insightsLoading ? (
-            <p className="text-sm text-muted-foreground">Загрузка…</p>
+            <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
           ) : insights ? (
             <div className="space-y-4 text-sm">
               <div>
-                <p className="font-medium mb-1">Просмотрели ({insights.readCount})</p>
+                <p className="font-medium mb-1">
+                  {t("messages.viewedBy", { count: insights.readCount })}
+                </p>
                 {insights.readers.length === 0 ? (
-                  <p className="text-muted-foreground">Пока никто</p>
+                  <p className="text-muted-foreground">{t("messages.noViewersYet")}</p>
                 ) : (
                   <ul className="space-y-2">{insights.readers.map((u) => userRow(u))}</ul>
                 )}
               </div>
               <div>
-                <p className="font-medium mb-1">Реакции</p>
+                <p className="font-medium mb-1">{t("messages.reactions")}</p>
                 {insights.reactions.length === 0 ? (
-                  <p className="text-muted-foreground">Нет реакций</p>
+                  <p className="text-muted-foreground">{t("messages.noReactions")}</p>
                 ) : (
                   <ul className="space-y-3">
                     {insights.reactions.map((g) => (
@@ -416,7 +423,7 @@ export default function ChatMessageRow({
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Редактировать сообщение</DialogTitle>
+            <DialogTitle>{t("messages.editMessage")}</DialogTitle>
           </DialogHeader>
           <FormatToolbar value={editText} onChange={setEditText} inputRef={editTextRef} />
           <Textarea
@@ -428,10 +435,10 @@ export default function ChatMessageRow({
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Отмена
+              {t("common.cancel")}
             </Button>
             <Button variant="premium" onClick={submitEdit} disabled={!editText.trim()}>
-              Сохранить
+              {t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

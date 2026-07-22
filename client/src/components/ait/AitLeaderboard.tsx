@@ -4,6 +4,7 @@ import { Trophy } from "lucide-react";
 import AitSurface from "@/components/ait-ui/AitSurface";
 import CreatorAvatar from "@/components/ait/CreatorAvatar";
 import { apiRequest } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 
 type Entry = {
   userId: string;
@@ -15,6 +16,7 @@ type Entry = {
 };
 
 export default function AitLeaderboard({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation();
   const { data } = useQuery<{ entries: Entry[] }>({
     queryKey: ["/api/ait/leaderboard", { limit: compact ? 5 : 10 }],
     queryFn: async () => {
@@ -30,7 +32,7 @@ export default function AitLeaderboard({ compact = false }: { compact?: boolean 
     <AitSurface padding="md" radius="lg" glow className="border-ait-gold/20">
       <div className="flex items-center gap-2 mb-4">
         <Trophy className="h-5 w-5 text-ait-gold" />
-        <h3 className="font-semibold text-sm">Топ Creator AIT · неделя</h3>
+        <h3 className="font-semibold text-sm">{t("ait.leaderboard.title")}</h3>
       </div>
       <ul className="space-y-3">
         {data.entries.map((e) => (
@@ -59,7 +61,7 @@ export default function AitLeaderboard({ compact = false }: { compact?: boolean 
       </ul>
       {!compact && (
         <Link href="/wallet" className="text-xs text-ait-orange hover:underline mt-4 inline-block">
-          AIT Hub →
+          {t("ait.leaderboard.openHub")}
         </Link>
       )}
     </AitSurface>

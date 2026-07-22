@@ -8,6 +8,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const LANGUAGES = [
   { code: "en", label: "English" },
@@ -21,7 +23,19 @@ type LanguageSwitcherProps = {
 
 export default function LanguageSwitcher({ className, variant = "ghost" }: LanguageSwitcherProps) {
   const { i18n, t } = useTranslation();
+  const { isAuthenticated } = useAuth();
   const current = i18n.language?.startsWith("en") ? "en" : "ru";
+
+  async function selectLanguage(code: "en" | "ru") {
+    await i18n.changeLanguage(code);
+    if (!isAuthenticated) return;
+    try {
+      await apiRequest("PUT", "/api/users/me", { preferredLocale: code });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    } catch {
+      // Locale still applied locally; server persist can retry on next switch.
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -41,7 +55,7 @@ export default function LanguageSwitcher({ className, variant = "ghost" }: Langu
         {LANGUAGES.map(({ code, label }) => (
           <DropdownMenuItem
             key={code}
-            onClick={() => i18n.changeLanguage(code)}
+            onClick={() => void selectLanguage(code)}
             className={cn(current === code && "font-semibold text-[#a78bfa]")}
           >
             {label}

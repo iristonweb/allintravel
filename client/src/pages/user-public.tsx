@@ -1,24 +1,26 @@
 import { Link, useParams } from "wouter";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import GlassCard from "@/components/brand/glass-card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import ProfileHeroSkeleton from "@/components/profile/ProfileHeroSkeleton";
+import CreatorAvatar from "@/components/ait/CreatorAvatar";
+import UserTipButton from "@/components/ait/UserTipButton";
+import FollowButton from "@/components/social/FollowButton";
+import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
+import EmptyState from "@/components/empty-state";
+import PageMeta from "@/components/seo/PageMeta";
+import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import CreatorAvatar from "@/components/ait/CreatorAvatar";
-import UserTipButton from "@/components/ait/UserTipButton";
 import { useToast } from "@/hooks/use-toast";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import type { UserProfile } from "@shared/schema";
 import { MessageCircle, UserPlus, MapPin, Compass, AlertCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import FollowButton from "@/components/social/FollowButton";
-import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
-import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
-import EmptyState from "@/components/empty-state";
-import PageMeta from "@/components/seo/PageMeta";
+import { useTranslation } from "react-i18next";
 
 type PublicUserView = {
   id: string;
@@ -37,6 +39,7 @@ type PublicUserView = {
 export function UserPublicProfile() {
   const params = useParams<{ username: string }>();
   const username = params.username ?? "";
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user: me } = useAuth();
@@ -70,17 +73,19 @@ export function UserPublicProfile() {
   const sendRequestMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/friends/request/${publicUser!.id}`),
     onSuccess: () => {
-      toast({ title: "Запрос отправлен" });
+      toast({ title: t("userPublic.requestSent") });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/sent"] });
     },
-    onError: () => toast({ title: "Не удалось отправить запрос", variant: "destructive" }),
+    onError: () =>
+      toast({ title: t("userPublic.requestFailed"), variant: "destructive" }),
   });
 
   if (isLoading) {
     return (
       <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
-        <Skeleton className="h-32 w-full mb-4" />
-        <Skeleton className="h-20 w-full" />
+        <div aria-label={t("userPublic.loading")}>
+          <ProfileHeroSkeleton />
+        </div>
       </AppLayout>
     );
   }
@@ -89,17 +94,18 @@ export function UserPublicProfile() {
     return (
       <AppLayout contentClassName="py-16 max-w-lg mx-auto">
         <EmptyState
+          variant="glass"
           icon={AlertCircle}
-          title="Не удалось загрузить профиль"
+          title={t("userPublic.loadError")}
           description={error instanceof Error ? error.message : undefined}
           action={
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button variant="outline" onClick={() => refetch()}>
-                Повторить
-              </Button>
-              <Button asChild variant="ghost">
-                <Link href="/profile">В мой профиль</Link>
-              </Button>
+              <AitButton variant="glass" size="sm" onClick={() => refetch()}>
+                {t("common.retry")}
+              </AitButton>
+              <AitButton variant="ghost" size="sm" asChild>
+                <Link href="/profile">{t("userPublic.myProfile")}</Link>
+              </AitButton>
             </div>
           }
         />
@@ -109,12 +115,18 @@ export function UserPublicProfile() {
 
   if (!publicUser) {
     return (
-      <AppLayout contentClassName="py-16 text-center">
-        <h1 className="text-xl font-semibold mb-2">Профиль недоступен</h1>
-        <p className="text-muted-foreground mb-4">Пользователь не найден или аккаунт закрыт</p>
-        <Button asChild variant="outline">
-          <Link href="/profile">В мой профиль</Link>
-        </Button>
+      <AppLayout contentClassName="py-16">
+        <EmptyState
+          variant="glass"
+          title={t("userPublic.notFoundTitle")}
+          description={t("userPublic.notFoundHint")}
+          action={
+            <AitButton variant="glass" size="sm" asChild>
+              <Link href="/profile">{t("userPublic.myProfile")}</Link>
+            </AitButton>
+          }
+          className="max-w-md mx-auto"
+        />
       </AppLayout>
     );
   }
@@ -125,128 +137,155 @@ export function UserPublicProfile() {
     <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
       {passportShare && (
         <PageMeta
-          title={`${passportShare.displayName} — Travel Passport | All In Travel`}
-          description={`${passportShare.countriesCount} стран · ${passportShare.stamps?.length ?? 0} штампов. Паспорт путешественника на All In Travel.`}
+          title={t("userPublic.metaTitle", { name: passportShare.displayName })}
+          description={t("userPublic.metaDescription", {
+            countries: passportShare.countriesCount,
+            stamps: passportShare.stamps?.length ?? 0,
+          })}
           path={`/u/${username}`}
         />
       )}
-      <AppBreadcrumbs items={[{ label: "Профиль", href: "/profile" }, { label: displayLabel }]} />
-      <GlassCard className="p-6">
-        <div className="flex gap-4 items-start">
-          <CreatorAvatar
-            className="h-20 w-20"
-            src={publicUser.profileImageUrl}
-            fallback={getUserInitial(publicUser)}
-            creatorBadge={publicUser.creatorBadge}
-          />
-          <div>
-            <h1 className="text-xl font-bold">{getUserDisplayLabel(publicUser)}</h1>
-            {publicUser.creatorRank && (
-              <Badge variant="secondary" className="mt-1 text-ait-purple">
-                {publicUser.creatorRank.title}
-              </Badge>
-            )}
-            {getUserHandle(publicUser) && (
-              <p className="text-muted-foreground">{getUserHandle(publicUser)}</p>
-            )}
-            {publicUser.isOnline !== undefined && (
-              <p className="text-sm mt-1">
-                {publicUser.isOnline ? (
-                  <span className="text-green-600">В сети</span>
-                ) : publicUser.lastSeenAt ? (
-                  <span className="text-muted-foreground">Был(а) недавно</span>
-                ) : null}
-              </p>
-            )}
-          </div>
-        </div>
-        {profile?.bio && <p className="mt-4 text-muted-foreground">{profile.bio}</p>}
-        {profile?.location && (
-          <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4" />
-            {profile.location}
-          </p>
-        )}
-        {profile?.travelStyle && (
-          <p className="mt-2 flex items-center gap-1 text-sm">
-            <Compass className="h-4 w-4 text-ait-purple" />
-            <span className="text-muted-foreground">Стиль:</span> {profile.travelStyle}
-          </p>
-        )}
-        {profile?.website && (
-          <p className="mt-2 text-sm">
-            <a
-              href={
-                profile.website.startsWith("http") ? profile.website : `https://${profile.website}`
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-ait-purple hover:underline"
+      <ReelsPageLayout
+        header={
+          <div className="space-y-2">
+            <Link
+              href="/profile"
+              className="text-xs text-muted-foreground hover:text-ait-purple transition-colors"
             >
-              {profile.website}
-            </a>
-          </p>
-        )}
-        {(profile?.interests?.length ?? 0) > 0 && (
-          <div className="mt-4">
-            <p className="text-xs text-muted-foreground mb-2">Интересы</p>
-            <div className="flex flex-wrap gap-1">
-              {profile!.interests!.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-        {(profile?.languages?.length ?? 0) > 0 && (
-          <div className="mt-3">
-            <p className="text-xs text-muted-foreground mb-2">Языки</p>
-            <div className="flex flex-wrap gap-1">
-              {profile!.languages!.map((lang) => (
-                <Badge key={lang} variant="outline" className="text-xs">
-                  {lang}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-        {(profile?.favoriteDestinations?.length ?? 0) > 0 && (
-          <div className="mt-3">
-            <p className="text-xs text-muted-foreground mb-2">Любимые направления</p>
-            <div className="flex flex-wrap gap-1">
-              {profile!.favoriteDestinations!.map((dest) => (
-                <Badge key={dest} variant="outline" className="text-xs">
-                  {dest}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-        <div className="flex flex-wrap gap-2 mt-6">
-          <Button asChild size="sm">
-            <Link href={`/chat?with=${publicUser.id}&tab=personal`}>
-              <MessageCircle className="h-4 w-4 mr-1" />
-              Написать
+              ← {t("userPublic.breadcrumbProfile")}
             </Link>
-          </Button>
-          {!publicUser.isFriend && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => sendRequestMutation.mutate()}
-              disabled={sendRequestMutation.isPending}
-            >
-              <UserPlus className="h-4 w-4 mr-1" />В друзья
-            </Button>
-          )}
-          <FollowButton userId={publicUser.id} />
-          <UserTipButton userId={publicUser.id} currentUserId={me?.id} />
-        </div>
-      </GlassCard>
-      <div className="mt-6">
-        <TravelIdentityCard username={publicUser.username} userId={publicUser.id} compact />
-      </div>
+            <AitSectionHeader title={displayLabel} />
+          </div>
+        }
+        feed={
+          <>
+            <AitSurface>
+              <div className="flex gap-4 items-start">
+                <CreatorAvatar
+                  className="h-20 w-20 shrink-0"
+                  src={publicUser.profileImageUrl}
+                  fallback={getUserInitial(publicUser)}
+                  creatorBadge={publicUser.creatorBadge}
+                />
+                <div className="min-w-0">
+                  <h2 className="text-xl font-semibold">{displayLabel}</h2>
+                  {publicUser.creatorRank && (
+                    <Badge variant="secondary" className="mt-1 text-ait-purple">
+                      {publicUser.creatorRank.title}
+                    </Badge>
+                  )}
+                  {getUserHandle(publicUser) && (
+                    <p className="text-muted-foreground">{getUserHandle(publicUser)}</p>
+                  )}
+                  {publicUser.isOnline !== undefined && (
+                    <p className="text-sm mt-1">
+                      {publicUser.isOnline ? (
+                        <span className="text-emerald-400">{t("userPublic.online")}</span>
+                      ) : publicUser.lastSeenAt ? (
+                        <span className="text-muted-foreground">
+                          {t("userPublic.recentlyActive")}
+                        </span>
+                      ) : null}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {profile?.bio && <p className="mt-4 text-muted-foreground leading-relaxed">{profile.bio}</p>}
+              {profile?.location && (
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                  {profile.location}
+                </p>
+              )}
+              {profile?.travelStyle && (
+                <p className="mt-2 flex items-center gap-1.5 text-sm">
+                  <Compass className="h-4 w-4 text-ait-purple shrink-0" strokeWidth={1.5} />
+                  <span className="text-muted-foreground">{t("userPublic.travelStyle")}</span>{" "}
+                  {profile.travelStyle}
+                </p>
+              )}
+              {profile?.website && (
+                <p className="mt-2 text-sm">
+                  <a
+                    href={
+                      profile.website.startsWith("http")
+                        ? profile.website
+                        : `https://${profile.website}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-ait-purple hover:underline break-all"
+                  >
+                    {profile.website}
+                  </a>
+                </p>
+              )}
+              {(profile?.interests?.length ?? 0) > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-muted-foreground mb-2">{t("userPublic.interests")}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile!.interests!.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs rounded-full">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(profile?.languages?.length ?? 0) > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-muted-foreground mb-2">{t("userPublic.languages")}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile!.languages!.map((lang) => (
+                      <Badge key={lang} variant="outline" className="text-xs rounded-full">
+                        {lang}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(profile?.favoriteDestinations?.length ?? 0) > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {t("userPublic.favoriteDestinations")}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile!.favoriteDestinations!.map((dest) => (
+                      <Badge key={dest} variant="outline" className="text-xs rounded-full">
+                        {dest}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2 mt-6">
+                <AitButton variant="primary" size="sm" asChild>
+                  <Link href={`/chat?with=${publicUser.id}&tab=personal`}>
+                    <MessageCircle className="h-4 w-4 mr-1" strokeWidth={1.5} />
+                    {t("userPublic.message")}
+                  </Link>
+                </AitButton>
+                {!publicUser.isFriend && (
+                  <AitButton
+                    size="sm"
+                    variant="glass"
+                    onClick={() => sendRequestMutation.mutate()}
+                    disabled={sendRequestMutation.isPending}
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" strokeWidth={1.5} />
+                    {t("userPublic.addFriend")}
+                  </AitButton>
+                )}
+                <FollowButton userId={publicUser.id} />
+                <UserTipButton userId={publicUser.id} currentUserId={me?.id} />
+              </div>
+            </AitSurface>
+            <div className="mt-6">
+              <TravelIdentityCard username={publicUser.username} userId={publicUser.id} compact />
+            </div>
+          </>
+        }
+      />
     </AppLayout>
   );
 }

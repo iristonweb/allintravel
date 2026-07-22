@@ -13,8 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export default function GlobalMusicBar() {
+  const { t } = useTranslation();
   const {
     currentTrack,
     isPlaying,
@@ -84,9 +86,13 @@ export default function GlobalMusicBar() {
 
   if (!isPlayerVisible || !currentTrack) return null;
 
-  const trackIndex = queue.findIndex((t) => t.id === currentTrack.id);
+  const trackIndex = queue.findIndex((tr) => tr.id === currentTrack.id);
   const positionLabel =
-    queue.length > 1 ? `Трек ${trackIndex + 1} из ${queue.length}` : "Моя музыка";
+    queue.length > 1
+      ? t("musicPlayer.trackOf", { current: trackIndex + 1, total: queue.length })
+      : t("musicPlayer.myMusic");
+
+  const playLabel = isPlaying ? t("musicPlayer.pause") : t("musicPlayer.play");
 
   const glassClass =
     "ait-glass-strong bg-black/30 backdrop-blur-xl border border-white/10 shadow-ait-elevation-2";
@@ -126,7 +132,7 @@ export default function GlobalMusicBar() {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          aria-label="Переместить плеер"
+          aria-label={t("musicPlayer.movePlayer")}
         >
           <GripVertical className="h-3.5 w-3.5" />
         </button>
@@ -143,7 +149,7 @@ export default function GlobalMusicBar() {
               size="icon"
               className="h-7 w-7 shrink-0"
               onClick={togglePlay}
-              aria-label={isPlaying ? "Пауза" : "Воспроизведение"}
+              aria-label={playLabel}
             >
               {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             </Button>
@@ -153,7 +159,7 @@ export default function GlobalMusicBar() {
               size="icon"
               className="h-7 w-7 shrink-0"
               onClick={expandPlayer}
-              aria-label="Развернуть плеер"
+              aria-label={t("musicPlayer.expandPlayer")}
             >
               <ChevronUp className="h-3.5 w-3.5" />
             </Button>
@@ -163,7 +169,7 @@ export default function GlobalMusicBar() {
               size="icon"
               className="h-7 w-7 shrink-0"
               onClick={dismissPlayer}
-              aria-label="Закрыть плеер"
+              aria-label={t("musicPlayer.closePlayer")}
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -184,7 +190,7 @@ export default function GlobalMusicBar() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={prev}
-                aria-label="Предыдущий трек"
+                aria-label={t("musicPlayer.prevTrack")}
               >
                 <SkipBack className="h-4 w-4" />
               </Button>
@@ -194,7 +200,7 @@ export default function GlobalMusicBar() {
                 size="icon"
                 className="h-9 w-9"
                 onClick={togglePlay}
-                aria-label={isPlaying ? "Пауза" : "Воспроизведение"}
+                aria-label={playLabel}
               >
                 {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </Button>
@@ -204,7 +210,7 @@ export default function GlobalMusicBar() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={next}
-                aria-label="Следующий трек"
+                aria-label={t("musicPlayer.nextTrack")}
               >
                 <SkipForward className="h-4 w-4" />
               </Button>
@@ -214,7 +220,7 @@ export default function GlobalMusicBar() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={collapsePlayer}
-                aria-label="Свернуть плеер"
+                aria-label={t("musicPlayer.collapsePlayer")}
               >
                 <ChevronDown className="h-4 w-4" />
               </Button>
@@ -224,7 +230,7 @@ export default function GlobalMusicBar() {
                 size="icon"
                 className="h-8 w-8"
                 onClick={dismissPlayer}
-                aria-label="Закрыть плеер"
+                aria-label={t("musicPlayer.closePlayer")}
               >
                 <X className="h-4 w-4" />
               </Button>

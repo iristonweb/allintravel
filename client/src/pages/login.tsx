@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import AmbientBackground from "@/components/premium/AmbientBackground";
 import BrandLogo from "@/components/brand/brand-logo";
-import { SITE_DESCRIPTION_SHORT, SITE_TAGLINE } from "@/lib/site-meta";
+import { getSiteMeta, SITE_TAGLINE } from "@/lib/site-meta";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type AuthConfig = {
   googleOAuth: boolean;
@@ -30,6 +31,8 @@ async function fetchAuthConfig(): Promise<AuthConfig> {
 }
 
 export function Login() {
+  const { t, i18n } = useTranslation();
+  const siteMeta = getSiteMeta(i18n.language);
   const [, navigate] = useLocation();
   const search = typeof window !== "undefined" ? window.location.search : "";
   const params = new URLSearchParams(search);
@@ -140,7 +143,7 @@ export function Login() {
     <AmbientBackground className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md mb-4">
         <Link href="/" className="text-sm text-slate-400 hover:text-ait-purple transition-colors">
-          ← На главную
+          {t("login.backHome")}
         </Link>
       </div>
       <Card className="w-full max-w-md ait-glass-strong ait-surface-glow rounded-card-xl shadow-ait-elevation-2">
@@ -153,64 +156,39 @@ export function Login() {
               {SITE_TAGLINE}
             </p>
             <CardDescription className="text-base leading-relaxed">
-              {SITE_DESCRIPTION_SHORT}
+              {siteMeta.descriptionShort}
             </CardDescription>
-            <p className="text-sm text-muted-foreground">
-              Вход или регистрация по email — аккаунт создаётся при первом входе
-            </p>
+            <p className="text-sm text-muted-foreground">{t("login.subtitle")}</p>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {configWarning === "database" && !formError && (
-              <p className="text-sm text-destructive">
-                Сервер не видит DATABASE_URL. Добавьте Postgres URL (Supabase) в Vercel →
-                Environment Variables (Production) и redeploy.
-              </p>
+              <p className="text-sm text-destructive">{t("login.configDatabase")}</p>
             )}
             {configWarning === "session_secret" && !formError && (
-              <p className="text-sm text-destructive">
-                SESSION_SECRET не настроен на сервере (нужна строка ≥32 символов в Vercel).
-              </p>
+              <p className="text-sm text-destructive">{t("login.configSession")}</p>
             )}
             {formError === "invalid" && (
-              <p className="text-sm text-destructive">Неверный email или пароль.</p>
+              <p className="text-sm text-destructive">{t("login.invalid")}</p>
             )}
             {formError === "database" && (
-              <p className="text-sm text-destructive">
-                {errorDetail ??
-                  "База данных не подключена. В Vercel → Settings → Environment Variables добавьте DATABASE_URL (Supabase) и перезапустите деплой."}
-              </p>
+              <p className="text-sm text-destructive">{errorDetail ?? t("login.database")}</p>
             )}
             {formError === "session_secret" && (
-              <p className="text-sm text-destructive">
-                {errorDetail ??
-                  "SESSION_SECRET не задан или слишком короткий. Добавьте случайную строку ≥32 символов в Vercel и redeploy."}
-              </p>
+              <p className="text-sm text-destructive">{errorDetail ?? t("login.sessionSecret")}</p>
             )}
             {formError === "db_connect" && (
-              <p className="text-sm text-destructive">
-                {errorDetail ??
-                  "Не удалось подключиться к базе данных. Проверьте DATABASE_URL и Supabase."}
-              </p>
+              <p className="text-sm text-destructive">{errorDetail ?? t("login.dbConnect")}</p>
             )}
             {formError === "schema" && (
-              <p className="text-sm text-destructive">
-                {errorDetail ??
-                  "Схема БД не готова. Подключите production DATABASE_URL локально и выполните npm run db:migrate."}
-              </p>
+              <p className="text-sm text-destructive">{errorDetail ?? t("login.schema")}</p>
             )}
             {formError === "session" && (
-              <p className="text-sm text-destructive">
-                {errorDetail ??
-                  "Не удалось сохранить сессию. Убедитесь, что таблица sessions создана (npm run db:migrate)."}
-              </p>
+              <p className="text-sm text-destructive">{errorDetail ?? t("login.session")}</p>
             )}
             {formError === "server" && (
-              <p className="text-sm text-destructive">
-                {errorDetail ??
-                  "Ошибка сервера при входе. Попробуйте позже или обратитесь в поддержку."}
-              </p>
+              <p className="text-sm text-destructive">{errorDetail ?? t("login.server")}</p>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -218,7 +196,7 @@ export function Login() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="например@mail.ru"
+                placeholder={t("login.emailPlaceholder")}
                 required
                 autoComplete="email"
                 value={email}
@@ -227,12 +205,12 @@ export function Login() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="password">{t("login.passwordLabel")}</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Минимум 8 символов"
+                placeholder={t("login.passwordPlaceholder")}
                 autoComplete="current-password"
                 minLength={8}
                 required
@@ -240,19 +218,16 @@ export function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={submitting}
               />
-              <p className="text-xs text-muted-foreground">
-                При первом входе аккаунт создаётся автоматически — откроется личный кабинет со всеми
-                функциями.
-              </p>
+              <p className="text-xs text-muted-foreground">{t("login.passwordHint")}</p>
             </div>
             <Button type="submit" variant="premium" className="w-full" disabled={submitting}>
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Входим…
+                  {t("login.submitting")}
                 </>
               ) : (
-                "Войти / зарегистрироваться"
+                t("login.submit")
               )}
             </Button>
           </form>
@@ -263,7 +238,7 @@ export function Login() {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">или</span>
+                  <span className="bg-card px-2 text-muted-foreground">{t("login.orDivider")}</span>
                 </div>
               </div>
               <Button
@@ -277,18 +252,18 @@ export function Login() {
                   window.location.href = `/api/auth/google${q}`;
                 }}
               >
-                Войти через Google
+                {t("login.googleLogin")}
               </Button>
             </>
           )}
           <p className="text-center text-xs text-muted-foreground mt-4">
-            Уже есть аккаунт?{" "}
+            {t("login.hasAccount")}{" "}
             <button
               type="button"
               className="text-ait-purple hover:underline"
               onClick={() => navigate("/login")}
             >
-              Обновить страницу
+              {t("login.refreshPage")}
             </button>
           </p>
         </CardContent>

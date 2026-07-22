@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import SmartSearchField from "@/components/search/SmartSearchField";
 import { Command, CommandEmpty, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
@@ -31,13 +32,6 @@ type Props = Omit<React.ComponentProps<"input">, "value" | "onChange"> & {
   dropdownPortal?: boolean;
 };
 
-const KIND_LABELS: Record<string, string> = {
-  city: "Город",
-  country: "Страна",
-  address: "Адрес",
-  poi: "Заведение",
-};
-
 export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Props>(
   function LocationAutocompleteInput(
     {
@@ -54,6 +48,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
     }: Props,
     ref,
   ) {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [items, setItems] = useState<GeoAutocompleteItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -111,7 +106,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
           if (e instanceof Error && e.name === "AbortError") return;
           if (lastIssuedRef.current !== issuedAt) return;
           setItems([]);
-          setError("Не удалось загрузить подсказки");
+          setError(t("locationAutocomplete.loadFailed"));
         } finally {
           if (lastIssuedRef.current === issuedAt) {
             setLoading(false);
@@ -170,12 +165,16 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
         >
           <Command shouldFilter={false}>
             <CommandList className="max-h-64 overflow-y-auto ait-scrollbar">
-              {loading && <div className="px-3 py-2 text-sm text-muted-foreground">Загрузка…</div>}
+              {loading && (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  {t("locationAutocomplete.loading")}
+                </div>
+              )}
               {!loading && error && (
                 <div className="px-3 py-2 text-sm text-destructive">{error}</div>
               )}
               {!loading && !error && items.length === 0 && shouldQuery && (
-                <CommandEmpty className="py-4">Ничего не найдено</CommandEmpty>
+                <CommandEmpty className="py-4">{t("locationAutocomplete.nothingFound")}</CommandEmpty>
               )}
               {!loading &&
                 !error &&
@@ -200,7 +199,9 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
                       <span className="truncate">{item.label}</span>
                       <span className="text-xs text-muted-foreground truncate">
                         {[
-                          item.kind ? (KIND_LABELS[item.kind] ?? item.kind) : null,
+                          item.kind
+                            ? t(`locationAutocomplete.${item.kind}`, { defaultValue: item.kind })
+                            : null,
                           item.city,
                           item.country,
                         ]

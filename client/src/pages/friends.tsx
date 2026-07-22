@@ -4,9 +4,13 @@ import { TRAVEL_DIRECTIONS } from "@shared/travel-directions";
 import type { TravelDirectionId } from "@shared/travel-directions";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import PageShell from "@/components/layout/page-shell";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import EmptyState from "@/components/empty-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import FriendGridSkeleton from "@/components/friends/FriendGridSkeleton";
+import FriendRequestSkeleton from "@/components/friends/FriendRequestSkeleton";
 import { Button } from "@/components/ui/button";
 import SmartSearchField from "@/components/search/SmartSearchField";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -156,17 +160,23 @@ export function Friends() {
   return (
     <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
-        <PageShell
-          title={t("friends.title")}
-          description={t("friends.description")}
-          breadcrumbs={[
-            { label: t("friends.breadcrumbProfile"), href: "/profile" },
-            { label: t("friends.title") },
-          ]}
-        >
-          {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mt-6" />}
+        <ReelsPageLayout
+          header={
+            <div className="space-y-2">
+              <Link
+                href="/profile"
+                className="text-xs text-muted-foreground hover:text-ait-purple transition-colors"
+              >
+                ← {t("friends.breadcrumbProfile")}
+              </Link>
+              <AitSectionHeader title={t("friends.title")} description={t("friends.description")} />
+            </div>
+          }
+          feed={
+            <>
+              {primaryTripId && <TripRouteMatches tripId={primaryTripId} className="mb-6" />}
 
-          <Tabs defaultValue="friends" className="w-full mt-8">
+              <Tabs defaultValue="friends" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="friends">
                 <Users className="mr-2 h-4 w-4" />
@@ -208,73 +218,69 @@ export function Friends() {
               </div>
               {friendsError ? (
                 <EmptyState
+                  variant="glass"
                   icon={AlertCircle}
                   title={t("friends.loadError")}
                   description={t("friends.connectionError")}
                   action={
-                    <Button variant="outline" onClick={() => refetchFriends()}>
+                    <AitButton variant="glass" size="sm" onClick={() => refetchFriends()}>
                       {t("common.retry")}
-                    </Button>
+                    </AitButton>
                   }
                 />
               ) : friendsLoading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <Card key={i} className="h-32 animate-pulse bg-muted" />
-                  ))}
-                </div>
+                <FriendGridSkeleton />
               ) : friends.length === 0 ? (
-                <Card>
-                  <CardContent className="py-10 text-center">
-                    <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">{t("friends.emptyFriendsTitle")}</h3>
-                    <p className="text-muted-foreground">{t("friends.emptyFriendsHint")}</p>
-                  </CardContent>
-                </Card>
+                <EmptyState
+                  variant="glass"
+                  icon={Users}
+                  title={t("friends.emptyFriendsTitle")}
+                  description={t("friends.emptyFriendsHint")}
+                />
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {friends.map((friend) => (
-                    <div key={friend.id} className="flex flex-col gap-2">
+                    <AitSurface key={friend.id} padding="sm" className="flex flex-col gap-2">
                       <UserPreviewCell user={friend} />
                       <div className="flex gap-1 justify-center">
                         <Link href={`/chat?with=${friend.id}&tab=personal`}>
-                          <Button
+                          <AitButton
                             size="sm"
-                            variant="outline"
+                            variant="glass"
                             className="h-8 px-2"
                             title={t("friends.message")}
                             aria-label={t("friends.message")}
                           >
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
+                            <MessageCircle className="h-4 w-4" strokeWidth={1.5} />
+                          </AitButton>
                         </Link>
                         {friendProfileHref(friend) ? (
-                          <Button
+                          <AitButton
                             size="sm"
-                            variant="outline"
+                            variant="glass"
                             className="h-8 px-2"
                             asChild
                             title={t("friends.profile")}
                             aria-label={t("friends.profile")}
                           >
                             <Link href={friendProfileHref(friend)!}>
-                              <UserCheck className="h-4 w-4" />
+                              <UserCheck className="h-4 w-4" strokeWidth={1.5} />
                             </Link>
-                          </Button>
+                          </AitButton>
                         ) : null}
-                        <Button
+                        <AitButton
                           size="sm"
-                          variant="outline"
-                          className="h-8 px-2"
+                          variant="ghost"
+                          className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           title={t("friends.remove")}
                           aria-label={t("friends.removeFromFriends")}
                           onClick={() => removeFriendMutation.mutate(friend.id)}
                           disabled={removeFriendMutation.isPending}
                         >
-                          <UserX className="h-4 w-4" />
-                        </Button>
+                          <UserX className="h-4 w-4" strokeWidth={1.5} />
+                        </AitButton>
                       </div>
-                    </div>
+                    </AitSurface>
                   ))}
                 </div>
               )}
@@ -304,35 +310,34 @@ export function Friends() {
                   </Button>
                 ))}
               </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t("friends.searchUsersTitle")}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2">
-                    <SmartSearchField
-                      className="flex-1"
-                      placeholder={t("friends.searchPlaceholder")}
-                      value={searchQuery}
-                      onChange={setSearchQuery}
-                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    />
-                    <Button onClick={handleSearch} disabled={isSearching}>
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <AitSurface padding="sm">
+                <h3 className="font-semibold mb-3">{t("friends.searchUsersTitle")}</h3>
+                <div className="flex gap-2">
+                  <SmartSearchField
+                    className="flex-1"
+                    placeholder={t("friends.searchPlaceholder")}
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  />
+                  <AitButton onClick={handleSearch} disabled={isSearching} variant="primary" size="sm">
+                    <Search className="h-4 w-4" strokeWidth={1.5} />
+                  </AitButton>
+                </div>
+              </AitSurface>
+
+              {isSearching && <FriendGridSkeleton />}
 
               {activeSearch && searchResults.length === 0 && !isSearching && (
-                <Card>
-                  <CardContent className="py-8 text-center">
-                    <p className="text-muted-foreground">{t("friends.noUsersFound")}</p>
-                  </CardContent>
-                </Card>
+                <EmptyState
+                  variant="glass"
+                  icon={Search}
+                  title={t("friends.noUsersFound")}
+                  className="py-8"
+                />
               )}
 
-              {searchResults.length > 0 && (
+              {!isSearching && searchResults.length > 0 && (
                 <div className="space-y-3">
                   {searchResults
                     .filter((r) => r.id !== user?.id)
@@ -340,8 +345,7 @@ export function Friends() {
                       const alreadyFriend = friends.some((f) => f.id === result.id);
                       const requestSent = isSentRequest(result.id);
                       return (
-                        <Card key={result.id}>
-                          <CardContent className="p-4">
+                        <AitSurface key={result.id} padding="sm">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <Avatar>
@@ -383,20 +387,19 @@ export function Friends() {
                               ) : (
                                 <div className="flex gap-2">
                                   <FollowButton userId={result.id} />
-                                  <Button
+                                  <AitButton
                                     size="sm"
-                                    variant="premium"
+                                    variant="primary"
                                     onClick={() => sendRequestMutation.mutate(result.id)}
                                     disabled={sendRequestMutation.isPending}
                                   >
-                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    <UserPlus className="mr-2 h-4 w-4" strokeWidth={1.5} />
                                     {t("friends.addFriend")}
-                                  </Button>
+                                  </AitButton>
                                 </div>
                               )}
                             </div>
-                          </CardContent>
-                        </Card>
+                        </AitSurface>
                       );
                     })}
                 </div>
@@ -407,33 +410,28 @@ export function Friends() {
             <TabsContent value="received" className="space-y-4 mt-4">
               {receivedError ? (
                 <EmptyState
+                  variant="glass"
                   icon={AlertCircle}
                   title={t("friends.loadRequestsError")}
                   action={
-                    <Button variant="outline" onClick={() => refetchReceived()}>
+                    <AitButton variant="glass" size="sm" onClick={() => refetchReceived()}>
                       {t("common.retry")}
-                    </Button>
+                    </AitButton>
                   }
                 />
               ) : receivedLoading ? (
-                <div className="space-y-3">
-                  {[1, 2].map((i) => (
-                    <Card key={i} className="h-24 animate-pulse bg-muted" />
-                  ))}
-                </div>
+                <FriendRequestSkeleton />
               ) : receivedRequests.length === 0 ? (
-                <Card>
-                  <CardContent className="py-10 text-center">
-                    <UserPlus className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">{t("friends.noReceivedTitle")}</h3>
-                    <p className="text-muted-foreground">{t("friends.noReceivedHint")}</p>
-                  </CardContent>
-                </Card>
+                <EmptyState
+                  variant="glass"
+                  icon={UserPlus}
+                  title={t("friends.noReceivedTitle")}
+                  description={t("friends.noReceivedHint")}
+                />
               ) : (
                 <div className="space-y-3">
                   {receivedRequests.map((request) => (
-                    <Card key={request.id}>
-                      <CardContent className="p-4">
+                    <AitSurface key={request.id} padding="sm">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar>
@@ -459,8 +457,9 @@ export function Friends() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button
+                            <AitButton
                               size="sm"
+                              variant="primary"
                               onClick={() =>
                                 respondToRequestMutation.mutate({
                                   friendshipId: request.id,
@@ -468,14 +467,13 @@ export function Friends() {
                                 })
                               }
                               disabled={respondToRequestMutation.isPending}
-                              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
                             >
-                              <UserCheck className="mr-2 h-4 w-4" />
+                              <UserCheck className="mr-2 h-4 w-4" strokeWidth={1.5} />
                               {t("friends.accept")}
-                            </Button>
-                            <Button
+                            </AitButton>
+                            <AitButton
                               size="sm"
-                              variant="outline"
+                              variant="glass"
                               onClick={() =>
                                 respondToRequestMutation.mutate({
                                   friendshipId: request.id,
@@ -484,13 +482,12 @@ export function Friends() {
                               }
                               disabled={respondToRequestMutation.isPending}
                             >
-                              <UserX className="mr-2 h-4 w-4" />
+                              <UserX className="mr-2 h-4 w-4" strokeWidth={1.5} />
                               {t("friends.decline")}
-                            </Button>
+                            </AitButton>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                    </AitSurface>
                   ))}
                 </div>
               )}
@@ -500,32 +497,27 @@ export function Friends() {
             <TabsContent value="sent" className="space-y-4 mt-4">
               {sentError ? (
                 <EmptyState
+                  variant="glass"
                   icon={AlertCircle}
                   title={t("friends.loadRequestsError")}
                   action={
-                    <Button variant="outline" onClick={() => refetchSent()}>
+                    <AitButton variant="glass" size="sm" onClick={() => refetchSent()}>
                       {t("common.retry")}
-                    </Button>
+                    </AitButton>
                   }
                 />
               ) : sentLoading ? (
-                <div className="space-y-3">
-                  {[1, 2].map((i) => (
-                    <Card key={i} className="h-24 animate-pulse bg-muted" />
-                  ))}
-                </div>
+                <FriendRequestSkeleton />
               ) : sentRequests.length === 0 ? (
-                <Card>
-                  <CardContent className="py-10 text-center">
-                    <h3 className="text-lg font-semibold mb-2">{t("friends.noSentTitle")}</h3>
-                    <p className="text-muted-foreground">{t("friends.noSentHint")}</p>
-                  </CardContent>
-                </Card>
+                <EmptyState
+                  variant="glass"
+                  title={t("friends.noSentTitle")}
+                  description={t("friends.noSentHint")}
+                />
               ) : (
                 <div className="space-y-3">
                   {sentRequests.map((request) => (
-                    <Card key={request.id}>
-                      <CardContent className="p-4">
+                    <AitSurface key={request.id} padding="sm">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar>
@@ -549,14 +541,15 @@ export function Friends() {
                           </div>
                           <Badge variant="outline">{t("friends.awaitingResponse")}</Badge>
                         </div>
-                      </CardContent>
-                    </Card>
+                    </AitSurface>
                   ))}
                 </div>
               )}
             </TabsContent>
           </Tabs>
-        </PageShell>
+            </>
+          }
+        />
       </div>
     </AppLayout>
   );

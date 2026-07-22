@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PostTipButton from "@/components/ait/PostTipButton";
 import { Gift } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import AitButton from "@/components/ait-ui/AitButton";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequestJson } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AIT_TIP_PRESETS } from "@shared/ait";
+import { useTranslation } from "react-i18next";
 
 type UserTipButtonProps = {
   userId: string;
@@ -30,6 +31,7 @@ export default function UserTipButton({ userId, currentUserId, samplePostId }: U
 }
 
 function UserDirectTip({ userId }: { userId: string }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data } = useAitDashboard();
   const { toast } = useToast();
@@ -37,8 +39,8 @@ function UserDirectTip({ userId }: { userId: string }) {
 
   const tipMutation = useMutation({
     mutationFn: (amount: number) => apiRequestJson("POST", "/api/ait/tip", { userId, amount }),
-    onSuccess: () => {
-      toast({ title: "Чаевые отправлены" });
+    onSuccess: (_data, amount) => {
+      toast({ title: t("ait.tip.sent", { amount }) });
       qc.invalidateQueries({ queryKey: ["/api/ait"] });
       setOpen(false);
     },
@@ -48,29 +50,29 @@ function UserDirectTip({ userId }: { userId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1 rounded-xl border-ait-orange/30">
+        <AitButton variant="secondary" size="sm" className="gap-1 rounded-xl border-ait-orange/30">
           <Gift className="h-4 w-4 text-ait-orange" />
-          Чаевые
-        </Button>
+          {t("ait.tip.button")}
+        </AitButton>
       </DialogTrigger>
       <DialogContent className="ait-glass-strong border-white/10 sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Поддержать автора</DialogTitle>
+          <DialogTitle>{t("ait.tip.title")}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Баланс: <strong>{data?.spendBalance ?? 0} AIT</strong>
+          {t("ait.tip.balance", { amount: data?.spendBalance ?? 0 })}
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
           {AIT_TIP_PRESETS.map((n) => (
-            <Button
+            <AitButton
               key={n}
-              variant="outline"
+              variant="secondary"
               className="rounded-xl"
               disabled={tipMutation.isPending || (data?.spendBalance ?? 0) < n}
               onClick={() => tipMutation.mutate(n)}
             >
               {n} AIT
-            </Button>
+            </AitButton>
           ))}
         </div>
       </DialogContent>

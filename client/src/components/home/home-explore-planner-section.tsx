@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import InteractiveMap from "@/components/interactive-map";
 import DestinationCard from "@/components/brand/destination-card";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import HomeSectionHeader from "@/components/home/home-section-header";
 import TravelMap from "@/components/maps/TravelMap";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,89 @@ import type { Place, Trip, TripWaypointWithPlace } from "@shared/schema";
 import { homeDaysFromWaypoints, tripCalendarDayCount } from "@/lib/trip-days";
 import { totalRouteKm } from "@/lib/routeUtils";
 import { fetchBuiltRoute } from "@/lib/fetch-route";
-import { DEMO_PLANNER_DAYS, DEST_ICELAND_SRC, SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
+import { DEMO_PLANNER_DAYS, DEST_ICELAND_SRC, DEST_NORWAY_SRC, DEST_PERU_SRC, SHOWCASE_DESTINATIONS } from "@/lib/marketing-images";
 import { useTranslation } from "react-i18next";
 
-const showcaseDestinations = [...SHOWCASE_DESTINATIONS];
+type DemoRoutePoint = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  type: string;
+};
+
+function useDemoPlannerData() {
+  const { t } = useTranslation();
+  return useMemo(() => {
+    const dayStops = [
+      t("home.explorePlanner.demo.day1Stops", { returnObjects: true }) as string[],
+      t("home.explorePlanner.demo.day2Stops", { returnObjects: true }) as string[],
+      t("home.explorePlanner.demo.day3Stops", { returnObjects: true }) as string[],
+      t("home.explorePlanner.demo.day4Stops", { returnObjects: true }) as string[],
+    ];
+    const dayTitles = [
+      t("home.explorePlanner.demo.day1Title"),
+      t("home.explorePlanner.demo.day2Title"),
+      t("home.explorePlanner.demo.day3Title"),
+      t("home.explorePlanner.demo.day4Title"),
+    ];
+    const dayImages = [DEST_ICELAND_SRC, DEST_NORWAY_SRC, DEST_PERU_SRC, DEST_ICELAND_SRC];
+    const routeIdsByDay = [["1"], ["1", "2"], ["2", "3"], ["3", "4"]];
+
+    const days: PlannerDayView[] = DEMO_PLANNER_DAYS.map((d, i) => ({
+      day: d.day,
+      title: dayTitles[i] ?? d.title,
+      image: dayImages[i] ?? d.image,
+      stops: dayStops[i] ?? [],
+      routeIds: routeIdsByDay[i] ?? [],
+    }));
+
+    const route: DemoRoutePoint[] = [
+      {
+        id: "1",
+        name: t("home.explorePlanner.demo.reykjavik"),
+        latitude: 64.1466,
+        longitude: -21.9426,
+        type: "attraction",
+      },
+      {
+        id: "2",
+        name: t("home.explorePlanner.demo.geysir"),
+        latitude: 64.31,
+        longitude: -20.3,
+        type: "attraction",
+      },
+      {
+        id: "3",
+        name: t("home.explorePlanner.demo.seljalandsfoss"),
+        latitude: 63.6156,
+        longitude: -19.9886,
+        type: "attraction",
+      },
+      {
+        id: "4",
+        name: t("home.explorePlanner.demo.jokulsarlon"),
+        latitude: 64.0484,
+        longitude: -16.2304,
+        type: "attraction",
+      },
+    ];
+
+    return { days, route };
+  }, [t]);
+}
+
+function useShowcaseDestinations() {
+  const { t } = useTranslation();
+  return useMemo(
+    () =>
+      SHOWCASE_DESTINATIONS.map((d) => ({
+        ...d,
+        name: t(`home.explorePlanner.destinations.${d.id}`),
+      })),
+    [t],
+  );
+}
 
 type PlannerDayView = {
   day: number;
@@ -34,26 +113,6 @@ type PlannerDayView = {
     type?: string;
   }[];
 };
-
-const DEMO_DAYS: PlannerDayView[] = DEMO_PLANNER_DAYS.map((d) => ({
-  ...d,
-  stops:
-    d.day === 1
-      ? ["Хаттегримскиркья", "Солнечный путешественник"]
-      : d.day === 2
-        ? ["Гейсир", "Гулльфосс"]
-        : d.day === 3
-          ? ["Сельяландсфосс", "Скóгафосс"]
-          : ["Айсберги", "Алмазный пляж"],
-  routeIds: d.day === 1 ? ["1"] : d.day === 2 ? ["1", "2"] : d.day === 3 ? ["2", "3"] : ["3", "4"],
-}));
-
-const DEMO_ROUTE = [
-  { id: "1", name: "Рейкьявик", latitude: 64.1466, longitude: -21.9426, type: "attraction" },
-  { id: "2", name: "Гейсир", latitude: 64.31, longitude: -20.3, type: "attraction" },
-  { id: "3", name: "Сельяландсфосс", latitude: 63.6156, longitude: -19.9886, type: "attraction" },
-  { id: "4", name: "Йёкюльсаурлон", latitude: 64.0484, longitude: -16.2304, type: "attraction" },
-];
 
 type MapPlace = {
   id: string;
@@ -90,7 +149,7 @@ function DayList({
   const { t } = useTranslation();
 
   return (
-    <GlassCard strong className={cn("p-4 overflow-y-auto space-y-3 h-full min-h-0", className)}>
+    <AitSurface strong padding="none" className={cn("p-4 overflow-y-auto space-y-3 h-full min-h-0", className)}>
       <div className="flex items-center gap-2 text-sm font-semibold text-ait-purple mb-2 sticky top-0 bg-inherit pb-1">
         <Route className="h-4 w-4 shrink-0" />
         <span className="truncate">{tripTitle}</span>
@@ -127,7 +186,7 @@ function DayList({
           </div>
         </motion.button>
       ))}
-    </GlassCard>
+    </AitSurface>
   );
 }
 
@@ -139,7 +198,7 @@ function RouteMapPanel({
 }: {
   selectedDay: number;
   days: PlannerDayView[];
-  fallbackRoute: typeof DEMO_ROUTE;
+  fallbackRoute: DemoRoutePoint[];
   className?: string;
 }) {
   const day = days.find((d) => d.day === selectedDay) ?? days[0];
@@ -158,8 +217,9 @@ function RouteMapPanel({
   });
 
   return (
-    <GlassCard
+    <AitSurface
       strong
+      padding="none"
       className={cn(
         "p-0 overflow-hidden ait-gradient-border relative h-full min-h-[480px]",
         className,
@@ -172,7 +232,7 @@ function RouteMapPanel({
         height="100%"
         className="h-full min-h-[480px] rounded-[24px]"
       />
-    </GlassCard>
+    </AitSurface>
   );
 }
 
@@ -181,11 +241,13 @@ function ExploreMap({
   onNavigateMap,
   onPlaceClick,
   className,
+  showcaseDestinations,
 }: {
   mapPlaces: MapPlace[];
   onNavigateMap: () => void;
   onPlaceClick: (id: string) => void;
   className?: string;
+  showcaseDestinations: { id: string; name: string; imageUrl: string; placesCount: number; rating: number }[];
 }) {
   return (
     <div
@@ -278,6 +340,8 @@ export default function HomeExplorePlannerSection({
   waypoints = [],
 }: HomeExplorePlannerSectionProps) {
   const { t } = useTranslation();
+  const { days: demoDays, route: demoRoute } = useDemoPlannerData();
+  const showcaseDestinations = useShowcaseDestinations();
   const [, navigate] = useLocation();
   const [selectedDay, setSelectedDay] = useState(1);
   const [desktopWorkspace, setDesktopWorkspace] = useState<DesktopWorkspace>("world");
@@ -294,7 +358,7 @@ export default function HomeExplorePlannerSection({
           routeIds: d.routePlaces.map((p) => p.id),
           routePlaces: d.routePlaces,
         }))
-      : DEMO_DAYS;
+      : demoDays;
   const tripTitle =
     trip?.title ??
     (hasRealRoute ? t("home.explorePlanner.yourRoute") : t("home.explorePlanner.createTripTitle"));
@@ -322,14 +386,15 @@ export default function HomeExplorePlannerSection({
           <RouteMapPanel
             selectedDay={selectedDay}
             days={displayDays}
-            fallbackRoute={DEMO_ROUTE}
+            fallbackRoute={demoRoute}
             className="min-h-0"
           />
         </>
       ) : (
-        <GlassCard
+        <AitSurface
           strong
-          className="col-span-full p-8 flex flex-col items-center justify-center text-center min-h-[320px]"
+          padding="lg"
+          className="col-span-full flex flex-col items-center justify-center text-center min-h-[320px]"
         >
           <Route className="h-10 w-10 text-ait-purple mb-4" />
           <h3 className="text-lg font-semibold mb-2">{t("home.explorePlanner.emptyTitle")}</h3>
@@ -339,7 +404,7 @@ export default function HomeExplorePlannerSection({
           <Link href="/trips">
             <Button variant="premium">{t("home.explorePlanner.createTrip")}</Button>
           </Link>
-        </GlassCard>
+        </AitSurface>
       )}
     </div>
   );
@@ -381,6 +446,7 @@ export default function HomeExplorePlannerSection({
             onNavigateMap={() => navigate("/map")}
             onPlaceClick={(id) => navigate(`/place/${id}`)}
             className="min-h-[560px]"
+            showcaseDestinations={showcaseDestinations}
           />
         ) : (
           routeSplit
@@ -408,6 +474,7 @@ export default function HomeExplorePlannerSection({
               mapPlaces={mapPlaces}
               onNavigateMap={() => navigate("/map")}
               onPlaceClick={(id) => navigate(`/place/${id}`)}
+              showcaseDestinations={showcaseDestinations}
             />
           </TabsContent>
           <TabsContent value="route" className="mt-0">
@@ -416,7 +483,7 @@ export default function HomeExplorePlannerSection({
         </Tabs>
       </div>
 
-      <GlassCard strong className="px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+      <AitSurface strong padding="none" className="px-5 py-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap gap-6 text-sm">
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-ait-purple" />
@@ -447,7 +514,7 @@ export default function HomeExplorePlannerSection({
               : t("home.explorePlanner.createTrip")}
           </Link>
         </Button>
-      </GlassCard>
+      </AitSurface>
     </motion.section>
   );
 }

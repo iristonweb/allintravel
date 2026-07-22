@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Link } from "wouter";
@@ -82,12 +83,6 @@ function FitBounds({ places }: { places: MapPlace[] }) {
   return null;
 }
 
-const typeLabels: Record<string, string> = {
-  restaurant: "Ресторан",
-  hotel: "Отель",
-  attraction: "Достопримечательность",
-};
-
 export default function PlaceMap({
   places = [],
   center = [48.8566, 2.3522],
@@ -101,6 +96,8 @@ export default function PlaceMap({
   glowMarkers = false,
   routeGeometry,
 }: PlaceMapProps) {
+  const { t } = useTranslation();
+
   const validPlaces = useMemo(
     () =>
       places.filter((p) => {
@@ -174,7 +171,7 @@ export default function PlaceMap({
                   <p className="font-semibold text-sm">{place.name}</p>
                   {place.type && (
                     <Badge variant="secondary" className="text-xs">
-                      {typeLabels[place.type] || place.type}
+                      {t(`placeMap.types.${place.type}`, { defaultValue: place.type })}
                     </Badge>
                   )}
                   {rating > 0 && (
@@ -189,11 +186,11 @@ export default function PlaceMap({
                   {!String(place.id).startsWith("osm-") ? (
                     <Link href={`/place/${place.id}`}>
                       <Button size="sm" className="w-full mt-1 bg-primary hover:bg-primary/90">
-                        Подробнее
+                        {t("placeMap.details")}
                       </Button>
                     </Link>
                   ) : (
-                    <p className="text-[10px] text-muted-foreground">Источник: OpenStreetMap</p>
+                    <p className="text-[10px] text-muted-foreground">{t("placeMap.osmSource")}</p>
                   )}
                 </div>
               </Popup>

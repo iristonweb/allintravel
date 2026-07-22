@@ -93,11 +93,14 @@ export async function ensurePlatformSchema(): Promise<void> {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS launch_waitlist (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      email varchar NOT NULL UNIQUE,
-      locale varchar(5) DEFAULT 'en',
-      created_at timestamp DEFAULT now()
-    )
+    CREATE UNIQUE INDEX IF NOT EXISTS post_likes_user_post_unique ON post_likes (user_id, post_id)
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_locale varchar(5) DEFAULT 'ru'
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE ait_entitlements ADD COLUMN IF NOT EXISTS entity_id varchar(100)
   `);
 }

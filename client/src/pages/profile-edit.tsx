@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Link, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import GlassCard from "@/components/brand/glass-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import ProfileHeroSkeleton from "@/components/profile/ProfileHeroSkeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,7 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 import type {
   UserProfile,
   TravelPostWithAuthor,
@@ -43,8 +45,8 @@ import { validateUsername } from "@shared/username";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { uploadUserAvatar } from "@/lib/upload-media";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import { notifyUrlSearchChange } from "@/hooks/useUrlSearch";
+import { useTranslation } from "react-i18next";
 
 const PROFILE_TABS = ["posts", "trips", "reviews", "favorites"] as const;
 type ProfileTab = (typeof PROFILE_TABS)[number];
@@ -55,6 +57,8 @@ function profileTabFromSearch(search: string): ProfileTab {
 }
 
 export function ProfileEdit() {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
   const searchString = useSearch();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -81,11 +85,11 @@ export function ProfileEdit() {
     mutationFn: (file: File) => uploadUserAvatar(file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({ title: "Аватар обновлён" });
+      toast({ title: t("profileEdit.toast.avatarUpdated") });
     },
     onError: (err: Error) => {
       toast({
-        title: "Не удалось загрузить аватар",
+        title: t("profileEdit.toast.avatarFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -179,12 +183,12 @@ export function ProfileEdit() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Аккаунт обновлён" });
+      toast({ title: t("profileEdit.toast.accountUpdated") });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
     onError: (err: Error) => {
       toast({
-        title: "Не удалось сохранить",
+        title: t("profileEdit.toast.saveFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -195,33 +199,35 @@ export function ProfileEdit() {
     mutationFn: (data: typeof profileData) =>
       apiRequest(profile ? "PUT" : "POST", "/api/profile", data),
     onSuccess: () => {
-      toast({ title: "Профиль обновлён!" });
+      toast({ title: t("profileEdit.toast.profileUpdated") });
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: [`/api/profile/${user?.id}`] });
     },
     onError: () => {
-      toast({ title: "Ошибка при обновлении профиля", variant: "destructive" });
+      toast({ title: t("profileEdit.toast.profileUpdateFailed"), variant: "destructive" });
     },
   });
 
   const removeFavoriteMutation = useMutation({
     mutationFn: (placeId: string) => apiRequest("DELETE", `/api/favorites/${placeId}`),
     onSuccess: () => {
-      toast({ title: "Удалено из избранного" });
+      toast({ title: t("profileEdit.toast.favoriteRemoved") });
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
     },
     onError: () => {
-      toast({ title: "Не удалось удалить из избранного", variant: "destructive" });
+      toast({ title: t("profileEdit.toast.favoriteRemoveFailed"), variant: "destructive" });
     },
   });
 
   if (!isAuthenticated) {
     return (
       <AppLayout contentClassName="py-16">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Войдите в систему</h1>
-          <p className="text-muted-foreground">Чтобы просмотреть профиль, необходимо войти</p>
-        </div>
+        <EmptyState
+          variant="glass"
+          title={t("profileEdit.signInRequired")}
+          description={t("profileEdit.signInHint")}
+          className="max-w-md mx-auto"
+        />
       </AppLayout>
     );
   }
@@ -237,18 +243,8 @@ export function ProfileEdit() {
   if (profileLoading) {
     return (
       <AppLayout rightRail={<DiscoveryRightRail />}>
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Skeleton className="h-6 w-48" />
-          <GlassCard className="mb-8 p-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <Skeleton className="h-32 w-32 rounded-full shrink-0" />
-              <div className="flex-1 space-y-3">
-                <Skeleton className="h-8 w-64" />
-                <Skeleton className="h-4 w-full max-w-md" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            </div>
-          </GlassCard>
+        <div className="max-w-4xl mx-auto" aria-label={t("profileEdit.loading")}>
+          <ProfileHeroSkeleton />
         </div>
       </AppLayout>
     );
@@ -259,12 +255,13 @@ export function ProfileEdit() {
       <AppLayout rightRail={<DiscoveryRightRail />}>
         <div className="max-w-4xl mx-auto">
           <EmptyState
+            variant="glass"
             icon={AlertCircle}
-            title="Не удалось загрузить профиль"
+            title={t("profileEdit.loadError")}
             action={
-              <Button variant="outline" onClick={() => refetchProfile()}>
-                Повторить
-              </Button>
+              <AitButton variant="glass" size="sm" onClick={() => refetchProfile()}>
+                {t("common.retry")}
+              </AitButton>
             }
           />
         </div>
@@ -275,12 +272,21 @@ export function ProfileEdit() {
   return (
     <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
-        <AppBreadcrumbs
-          items={[{ label: "Профиль", href: "/profile" }, { label: "Редактирование" }]}
-        />
-
-        {/* Profile header card */}
-        <GlassCard className="mb-8 p-6">
+        <ReelsPageLayout
+          header={
+            <div className="space-y-2">
+              <Link
+                href="/profile"
+                className="text-xs text-muted-foreground hover:text-ait-purple transition-colors"
+              >
+                ← {t("profileEdit.breadcrumbProfile")}
+              </Link>
+              <AitSectionHeader title={t("profileEdit.breadcrumbEdit")} />
+            </div>
+          }
+          feed={
+            <>
+        <AitSurface className="mb-8">
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex flex-col items-center">
               <div className="relative">
@@ -290,14 +296,14 @@ export function ProfileEdit() {
                     {user ? getUserInitial(user) : "?"}
                   </AvatarFallback>
                 </Avatar>
-                <Button
+                <AitButton
                   size="icon"
-                  variant="outline"
+                  variant="glass"
                   className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
                   asChild
                 >
-                  <label className="cursor-pointer" aria-label="Загрузить аватар">
-                    <Camera className="h-4 w-4" />
+                  <label className="cursor-pointer" aria-label={t("profileEdit.uploadAvatar")}>
+                    <Camera className="h-4 w-4" strokeWidth={1.5} />
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif,.gif"
@@ -305,13 +311,12 @@ export function ProfileEdit() {
                       onChange={handleAvatarChange}
                     />
                   </label>
-                </Button>
+                </AitButton>
               </div>
               {user?.profileImageUrl?.startsWith("/uploads/") && (
                 <Alert className="mt-3 max-w-xs text-left">
                   <AlertDescription className="text-xs">
-                    Старый аватар мог быть утерян после деплоя. Загрузите фото заново — оно
-                    сохранится в постоянное хранилище.
+                    {t("profileEdit.legacyAvatarHint")}
                   </AlertDescription>
                 </Alert>
               )}
@@ -328,11 +333,11 @@ export function ProfileEdit() {
                       loading="lazy"
                     />
                     <h1 className="text-2xl font-bold">
-                      {user ? getUserDisplayLabel(user) : "Профиль"}
+                      {user ? getUserDisplayLabel(user) : t("profileEdit.profileFallback")}
                     </h1>
                     {(user as { isVerified?: boolean })?.isVerified && (
                       <Badge className="bg-green-500/15 text-green-500 border border-green-500/30">
-                        Проверен
+                        {t("profileEdit.verified")}
                       </Badge>
                     )}
                   </div>
@@ -352,10 +357,10 @@ export function ProfileEdit() {
                     </Badge>
                   )}
                 </div>
-                <Button variant="outline" onClick={() => setIsEditing(!isEditing)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Редактировать
-                </Button>
+                <AitButton variant="glass" size="sm" onClick={() => setIsEditing(!isEditing)}>
+                  <Edit className="mr-2 h-4 w-4" strokeWidth={1.5} />
+                  {t("profileEdit.edit")}
+                </AitButton>
               </div>
 
               {profile?.bio && (
@@ -365,43 +370,40 @@ export function ProfileEdit() {
               <div className="grid grid-cols-4 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-primary">{userPosts.length}</div>
-                  <div className="text-sm text-muted-foreground">Постов</div>
+                  <div className="text-sm text-muted-foreground">{t("profileEdit.statsPosts")}</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-primary">{userTrips.length}</div>
-                  <div className="text-sm text-muted-foreground">Поездок</div>
+                  <div className="text-sm text-muted-foreground">{t("profileEdit.statsTrips")}</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-primary">{favorites.length}</div>
-                  <div className="text-sm text-muted-foreground">Избранных</div>
+                  <div className="text-sm text-muted-foreground">{t("profileEdit.statsFavorites")}</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-primary">
                     {(friends as unknown[]).length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Друзей</div>
+                  <div className="text-sm text-muted-foreground">{t("profileEdit.statsFriends")}</div>
                 </div>
               </div>
             </div>
           </div>
-        </GlassCard>
+        </AitSurface>
 
         {!user?.username && (
           <Alert className="mb-6 border-ait-purple/30 bg-ait-purple/10">
-            <AlertDescription>
-              Укажите @ник в профиле — так друзья смогут найти вас и писать в чатах.
-            </AlertDescription>
+            <AlertDescription>{t("profileEdit.usernameHint")}</AlertDescription>
           </Alert>
         )}
 
-        {/* Edit profile form */}
         {isEditing && (
-          <GlassCard className="mb-8 p-6 space-y-4">
-            <h2 className="text-lg font-semibold">Редактировать профиль</h2>
+          <AitSurface className="mb-8 space-y-4">
+            <h2 className="text-lg font-semibold">{t("profileEdit.editTitle")}</h2>
             <div className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4 pb-4 border-b border-border/60">
                 <div>
-                  <Label htmlFor="username">@ник (для поиска друзей)</Label>
+                  <Label htmlFor="username">{t("profileEdit.usernameLabel")}</Label>
                   <div className="relative mt-1">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                       @
@@ -409,7 +411,7 @@ export function ProfileEdit() {
                     <Input
                       id="username"
                       className="pl-7"
-                      placeholder="alex_travels"
+                      placeholder={t("profileEdit.usernamePlaceholder")}
                       value={accountData.username}
                       onChange={(e) =>
                         setAccountData({
@@ -419,15 +421,13 @@ export function ProfileEdit() {
                       }
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Латиница, цифры и _, 3–30 символов
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("profileEdit.usernameRules")}</p>
                 </div>
                 <div>
-                  <Label htmlFor="displayName">Отображаемое имя</Label>
+                  <Label htmlFor="displayName">{t("profileEdit.displayNameLabel")}</Label>
                   <Input
                     id="displayName"
-                    placeholder="Как видят вас в чатах"
+                    placeholder={t("profileEdit.displayNamePlaceholder")}
                     value={accountData.displayName}
                     onChange={(e) =>
                       setAccountData({ ...accountData, displayName: e.target.value })
@@ -436,7 +436,7 @@ export function ProfileEdit() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="firstName">Имя</Label>
+                  <Label htmlFor="firstName">{t("profileEdit.firstName")}</Label>
                   <Input
                     id="firstName"
                     value={accountData.firstName}
@@ -445,7 +445,7 @@ export function ProfileEdit() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Фамилия</Label>
+                  <Label htmlFor="lastName">{t("profileEdit.lastName")}</Label>
                   <Input
                     id="lastName"
                     value={accountData.lastName}
@@ -454,66 +454,67 @@ export function ProfileEdit() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Button
+                  <AitButton
                     type="button"
-                    variant="secondary"
+                    variant="glass"
+                    size="sm"
                     onClick={() => updateAccountMutation.mutate(accountData)}
                     disabled={updateAccountMutation.isPending}
                   >
-                    Сохранить ник и имя
-                  </Button>
+                    {t("profileEdit.saveAccount")}
+                  </AitButton>
                 </div>
               </div>
               <div>
-                <Label htmlFor="bio">О себе</Label>
+                <Label htmlFor="bio">{t("profileEdit.bioLabel")}</Label>
                 <Textarea
                   id="bio"
-                  placeholder="Расскажите о себе и своих увлечениях..."
+                  placeholder={t("profileEdit.bioPlaceholder")}
                   value={profileData.bio}
                   onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                 />
               </div>
               <div>
-                <Label htmlFor="location">Местоположение</Label>
+                <Label htmlFor="location">{t("profileEdit.locationLabel")}</Label>
                 <LocationAutocompleteInput
                   id="location"
-                  placeholder="Москва, Россия"
+                  placeholder={t("profileEdit.locationPlaceholder")}
                   value={profileData.location}
                   onChange={(v) => setProfileData({ ...profileData, location: v })}
                 />
               </div>
               <div>
-                <Label htmlFor="travelStyle">Стиль путешествий</Label>
+                <Label htmlFor="travelStyle">{t("profileEdit.travelStyleLabel")}</Label>
                 <Input
                   id="travelStyle"
-                  placeholder="Бюджетные поездки, роскошный отдых, приключения..."
+                  placeholder={t("profileEdit.travelStylePlaceholder")}
                   value={profileData.travelStyle}
                   onChange={(e) => setProfileData({ ...profileData, travelStyle: e.target.value })}
                 />
               </div>
               <div className="flex gap-2">
-                <Button
+                <AitButton
                   onClick={() => updateProfileMutation.mutate(profileData)}
                   disabled={updateProfileMutation.isPending}
-                  variant="premium"
+                  variant="primary"
+                  size="sm"
                 >
-                  Сохранить
-                </Button>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Отмена
-                </Button>
+                  {t("profileEdit.save")}
+                </AitButton>
+                <AitButton variant="glass" size="sm" onClick={() => setIsEditing(false)}>
+                  {t("profileEdit.cancel")}
+                </AitButton>
               </div>
             </div>
-          </GlassCard>
+          </AitSurface>
         )}
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleProfileTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="posts">Посты</TabsTrigger>
-            <TabsTrigger value="trips">Поездки</TabsTrigger>
-            <TabsTrigger value="reviews">Отзывы</TabsTrigger>
-            <TabsTrigger value="favorites">Избранное</TabsTrigger>
+            <TabsTrigger value="posts">{t("profileEdit.tabs.posts")}</TabsTrigger>
+            <TabsTrigger value="trips">{t("profileEdit.tabs.trips")}</TabsTrigger>
+            <TabsTrigger value="reviews">{t("profileEdit.tabs.reviews")}</TabsTrigger>
+            <TabsTrigger value="favorites">{t("profileEdit.tabs.favorites")}</TabsTrigger>
           </TabsList>
 
           {/* Posts tab */}
@@ -525,47 +526,44 @@ export function ProfileEdit() {
                 ))}
               </div>
             ) : userPosts.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Globe className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Нет постов</h3>
-                  <p className="text-muted-foreground mb-4">Поделитесь своими путешествиями</p>
-                  <Link href="/social-feed">
-                    <Button variant="premium">Написать пост</Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <EmptyState
+                variant="glass"
+                icon={Globe}
+                title={t("profileEdit.empty.postsTitle")}
+                description={t("profileEdit.empty.postsHint")}
+                action={
+                  <AitButton variant="primary" size="sm" asChild>
+                    <Link href="/social-feed">{t("profileEdit.empty.postsCta")}</Link>
+                  </AitButton>
+                }
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {userPosts.map((post) => (
-                  <Card key={post.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{post.title}</CardTitle>
-                      {post.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{post.location}</span>
+                  <AitSurface key={post.id} padding="sm">
+                    <h3 className="text-lg font-semibold">{post.title}</h3>
+                    {post.location && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <MapPin className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+                        <span className="text-sm text-muted-foreground">{post.location}</span>
+                      </div>
+                    )}
+                    <p className="text-muted-foreground line-clamp-3 mb-3 mt-2">{post.content}</p>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Heart className="h-3.5 w-3.5" strokeWidth={1.5} /> {post.likesCount}
+                      </span>
+                      {post.tags && post.tags.length > 0 && (
+                        <div className="flex gap-1">
+                          {post.tags.slice(0, 2).map((tag, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              #{tag}
+                            </Badge>
+                          ))}
                         </div>
                       )}
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground line-clamp-3 mb-3">{post.content}</p>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3.5 w-3.5" /> {post.likesCount}
-                        </span>
-                        {post.tags && post.tags.length > 0 && (
-                          <div className="flex gap-1">
-                            {post.tags.slice(0, 2).map((tag, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                #{tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </AitSurface>
                 ))}
               </div>
             )}
@@ -580,58 +578,55 @@ export function ProfileEdit() {
                 ))}
               </div>
             ) : userTrips.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Нет поездок</h3>
-                  <p className="text-muted-foreground mb-4">Запланируйте первую поездку</p>
-                  <Link href="/trips">
-                    <Button variant="premium">Найти поездку</Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <EmptyState
+                variant="glass"
+                icon={Calendar}
+                title={t("profileEdit.empty.tripsTitle")}
+                description={t("profileEdit.empty.tripsHint")}
+                action={
+                  <AitButton variant="primary" size="sm" asChild>
+                    <Link href="/trips">{t("profileEdit.empty.tripsCta")}</Link>
+                  </AitButton>
+                }
+              />
             ) : (
               <div className="grid gap-4">
                 {userTrips.map((trip) => (
-                  <Card key={trip.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold">{trip.title}</h3>
-                          <div className="flex items-center gap-1 mt-1">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">
-                              {trip.destination}
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {format(new Date(trip.startDate as unknown as string), "d MMM yyyy", {
-                              locale: ru,
-                            })}
-                            {" – "}
-                            {format(new Date(trip.endDate as unknown as string), "d MMM yyyy", {
-                              locale: ru,
-                            })}
-                          </p>
+                  <AitSurface key={trip.id} padding="sm">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold">{trip.title}</h3>
+                        <div className="flex items-center gap-1 mt-1">
+                          <MapPin className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+                          <span className="text-sm text-muted-foreground">{trip.destination}</span>
                         </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Users className="h-4 w-4" />
-                            {trip.currentParticipants}/{trip.maxParticipants}
-                          </div>
-                          {trip.tags && trip.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2 justify-end">
-                              {trip.tags.slice(0, 2).map((tag, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {format(new Date(trip.startDate as unknown as string), "d MMM yyyy", {
+                            locale: dateLocale,
+                          })}
+                          {" – "}
+                          {format(new Date(trip.endDate as unknown as string), "d MMM yyyy", {
+                            locale: dateLocale,
+                          })}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Users className="h-4 w-4" strokeWidth={1.5} />
+                          {trip.currentParticipants}/{trip.maxParticipants}
+                        </div>
+                        {trip.tags && trip.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2 justify-end">
+                            {trip.tags.slice(0, 2).map((tag, i) => (
+                              <Badge key={i} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </AitSurface>
                 ))}
               </div>
             )}
@@ -646,21 +641,21 @@ export function ProfileEdit() {
                 ))}
               </div>
             ) : reviews.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Star className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Нет отзывов</h3>
-                  <p className="text-muted-foreground">Оставьте отзыв о посещённых местах</p>
-                </CardContent>
-              </Card>
+              <EmptyState
+                variant="glass"
+                icon={Star}
+                title={t("profileEdit.empty.reviewsTitle")}
+                description={t("profileEdit.empty.reviewsHint")}
+              />
             ) : (
               <div className="grid gap-4">
                 {reviews.map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-semibold">{review.place?.name || "Место"}</h3>
+                  <AitSurface key={review.id} padding="sm">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="font-semibold">
+                          {review.place?.name || t("profileEdit.placeFallback")}
+                        </h3>
                           {review.place?.address && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
@@ -680,14 +675,12 @@ export function ProfileEdit() {
                           {review.content}
                         </p>
                       )}
-                    </CardContent>
-                  </Card>
+                    </AitSurface>
                 ))}
               </div>
             )}
           </TabsContent>
 
-          {/* Favorites tab */}
           <TabsContent value="favorites" className="mt-6">
             {favLoading ? (
               <div className="space-y-4">
@@ -696,30 +689,28 @@ export function ProfileEdit() {
                 ))}
               </div>
             ) : favorites.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Нет избранных мест</h3>
-                  <p className="text-muted-foreground">
-                    Добавляйте места в избранное для быстрого доступа
-                  </p>
-                </CardContent>
-              </Card>
+              <EmptyState
+                variant="glass"
+                icon={Heart}
+                title={t("profileEdit.empty.favoritesTitle")}
+                description={t("profileEdit.empty.favoritesHint")}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {favorites.map((fav) => (
-                  <Card key={fav.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        {fav.place?.imageUrl && (
-                          <img
-                            src={fav.place.imageUrl}
-                            alt={fav.place.name}
-                            className="h-16 w-16 object-cover rounded-lg flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{fav.place?.name || "Место"}</h3>
+                  <AitSurface key={fav.id} padding="sm">
+                    <div className="flex items-start gap-3">
+                      {fav.place?.imageUrl && (
+                        <img
+                          src={fav.place.imageUrl}
+                          alt={fav.place.name}
+                          className="h-16 w-16 object-cover rounded-card-lg flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">
+                          {fav.place?.name || t("profileEdit.placeFallback")}
+                        </h3>
                           {fav.place?.address && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -735,23 +726,26 @@ export function ProfileEdit() {
                             </div>
                           )}
                         </div>
-                        <Button
+                        <AitButton
                           size="sm"
                           variant="ghost"
                           onClick={() => removeFavoriteMutation.mutate(fav.placeId)}
                           disabled={removeFavoriteMutation.isPending}
                           className="text-muted-foreground hover:text-red-500 flex-shrink-0"
+                          aria-label={t("places.card.favoriteRemove")}
                         >
-                          <Heart className="h-4 w-4 fill-current text-red-500" />
-                        </Button>
+                          <Heart className="h-4 w-4 fill-current text-red-500" strokeWidth={1.5} />
+                        </AitButton>
                       </div>
-                    </CardContent>
-                  </Card>
+                  </AitSurface>
                 ))}
               </div>
             )}
           </TabsContent>
         </Tabs>
+            </>
+          }
+        />
       </div>
     </AppLayout>
   );

@@ -11,6 +11,7 @@ import {
 import { useNavLabels } from "@/hooks/useNavLabels";
 import { isNavActive, navItemByHref } from "@/lib/nav-groups";
 import type { LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const extraIcons: Record<string, LucideIcon> = {
   "/wallet": Wallet,
@@ -22,12 +23,16 @@ const walletBadge = "AIT";
 
 export default function MobileBottomNav() {
   const [location] = useLocation();
+  const { t } = useTranslation();
   const { mobileMainNav, mobileEcosystemNav } = useNavLabels();
 
   const ecosystemActive = mobileEcosystemNav.some((item) => isNavActive(location, item.href));
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-3 pb-4 pt-2">
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-3 pb-4 pt-2"
+      aria-label={t("nav.ariaLabel", { defaultValue: "Main navigation" })}
+    >
       <div className="ait-glass-strong rounded-panel px-2 py-2.5 flex items-center justify-between border border-white/10 shadow-ait-elevation-2 max-w-lg mx-auto backdrop-blur-xl">
         {mobileMainNav.map((item) => {
           const navMeta = navItemByHref(item.href);
@@ -50,16 +55,21 @@ export default function MobileBottomNav() {
           }
 
           return (
-            <Link key={item.href} href={item.href} className="flex-1 min-w-0">
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className="flex-1 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-offset-2 rounded-2xl"
+            >
               <span
                 className={cn(
-                  "flex flex-col items-center gap-1 py-2 rounded-2xl transition-all duration-300",
+                  "relative flex flex-col items-center gap-1 py-2 rounded-2xl transition-colors duration-200",
                   active
-                    ? "text-white bg-gradient-to-t from-ait-purple/25 to-transparent shadow-ait-glow-purple/30"
-                    : "text-slate-500 hover:text-slate-300",
+                    ? "text-primary bg-primary/10 before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:h-0.5 before:w-8 before:rounded-full before:bg-primary before:content-['']"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                 )}
               >
-                <Icon className={cn("h-5 w-5 transition-colors", active && "text-ait-purple")} />
+                <Icon className="h-5 w-5" strokeWidth={1.5} />
                 <span className="text-[9px] font-medium truncate max-w-full px-0.5">
                   {item.label}
                 </span>
@@ -73,12 +83,14 @@ export default function MobileBottomNav() {
             <button
               type="button"
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-1.5 rounded-2xl min-w-0",
-                ecosystemActive ? "text-white" : "text-slate-500",
+                "relative flex flex-1 flex-col items-center gap-0.5 py-1.5 rounded-2xl min-w-0 transition-colors duration-200",
+                ecosystemActive
+                  ? "text-primary bg-primary/10 before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:h-0.5 before:w-8 before:rounded-full before:bg-primary before:content-['']"
+                  : "text-muted-foreground",
               )}
             >
-              <MoreHorizontal className={cn("h-5 w-5", ecosystemActive && "text-[#8b5cf6]")} />
-              <span className="text-[9px] font-medium">Ещё</span>
+              <MoreHorizontal className="h-5 w-5" strokeWidth={1.5} />
+              <span className="text-[9px] font-medium">{t("nav.more", { defaultValue: "More" })}</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -93,7 +105,7 @@ export default function MobileBottomNav() {
               return (
                 <DropdownMenuItem key={item.href} asChild>
                   <Link href={item.href} className="cursor-pointer gap-2 flex items-center">
-                    <Icon className="h-4 w-4 text-ait-purple" />
+                    <Icon className="h-4 w-4 text-ait-purple" strokeWidth={1.5} />
                     <span className="flex-1">{item.label}</span>
                     {badge && (
                       <span className="text-[10px] font-bold text-ait-orange">{badge}</span>

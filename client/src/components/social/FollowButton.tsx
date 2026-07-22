@@ -4,6 +4,7 @@ import { UserPlus, UserMinus } from "lucide-react";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 type FollowButtonProps = {
   userId: string;
@@ -11,6 +12,7 @@ type FollowButtonProps = {
 };
 
 export default function FollowButton({ userId, size = "sm" }: FollowButtonProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -25,7 +27,7 @@ export default function FollowButton({ userId, size = "sm" }: FollowButtonProps)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/follow/${userId}/check`] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      toast({ title: "Подписка оформлена" });
+      toast({ title: t("followButton.followed") });
     },
   });
 
@@ -34,7 +36,7 @@ export default function FollowButton({ userId, size = "sm" }: FollowButtonProps)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/follow/${userId}/check`] });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-      toast({ title: "Подписка отменена" });
+      toast({ title: t("followButton.unfollowed") });
     },
   });
 
@@ -53,12 +55,12 @@ export default function FollowButton({ userId, size = "sm" }: FollowButtonProps)
       {isFollowing ? (
         <>
           <UserMinus className="mr-1 h-4 w-4" />
-          Отписаться
+          {t("followButton.unfollow")}
         </>
       ) : (
         <>
           <UserPlus className="mr-1 h-4 w-4" />
-          Подписаться
+          {t("followButton.follow")}
         </>
       )}
     </Button>

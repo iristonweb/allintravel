@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import { Card, CardContent } from "@/components/ui/card";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SmartSearchField from "@/components/search/SmartSearchField";
@@ -15,9 +20,9 @@ import { uploadMediaFile } from "@/lib/upload-media";
 import { useToast } from "@/hooks/use-toast";
 import type { UserTrack } from "@shared/schema";
 import { useMusicPlayer, type PlayerTrack } from "@/contexts/MusicPlayerContext";
-import AppBreadcrumbs from "@/components/layout/app-breadcrumbs";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 type JamendoResult = {
   source: "jamendo";
@@ -57,24 +62,45 @@ function formatDuration(sec: number): string {
 }
 
 export function ProfileMusic() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return (
       <AppLayout contentClassName="py-16">
-        <p className="text-center text-muted-foreground">Войдите в систему</p>
+        <EmptyState variant="glass" title={t("profileMusic.signInRequired")} className="max-w-md mx-auto" />
       </AppLayout>
     );
   }
 
   return (
     <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />}>
-      <ProfileMusicContent />
+      <div className="max-w-3xl mx-auto">
+        <ReelsPageLayout
+          header={
+            <div className="space-y-2">
+              <Link
+                href="/profile"
+                className="text-xs text-muted-foreground hover:text-ait-purple transition-colors"
+              >
+                ← {t("profileMusic.breadcrumbProfile")}
+              </Link>
+              <AitSectionHeader
+                title={t("profileMusic.title")}
+                description={t("profileMusic.description")}
+              />
+            </div>
+          }
+          feed={<ProfileMusicContent />}
+        />
+      </div>
     </AppLayout>
   );
 }
 
 function ProfileMusicContent() {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { playTrack, setQueue } = useMusicPlayer();
@@ -110,9 +136,9 @@ function ProfileMusicContent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/music/tracks"] });
-      toast({ title: "Трек удалён" });
+      toast({ title: t("profileMusic.toast.deleted") });
     },
-    onError: () => toast({ title: "Не удалось удалить", variant: "destructive" }),
+    onError: () => toast({ title: t("profileMusic.toast.deleteFailed"), variant: "destructive" }),
   });
 
   const importMutation = useMutation({
@@ -123,13 +149,15 @@ function ProfileMusicContent() {
     onSuccess: (track) => {
       queryClient.invalidateQueries({ queryKey: ["/api/music/tracks"] });
       toast({
-        title: track.isPreview ? "Превью добавлено" : "Трек добавлен в библиотеку",
+        title: track.isPreview
+          ? t("profileMusic.toast.previewAdded")
+          : t("profileMusic.toast.trackAdded"),
       });
       playTrack(toPlayerTrack(track), [...tracks.map(toPlayerTrack), toPlayerTrack(track)]);
     },
     onError: (err) =>
       toast({
-        title: "Не удалось добавить",
+        title: t("profileMusic.toast.addFailed"),
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       }),
@@ -150,11 +178,11 @@ function ProfileMusicContent() {
       const track = (await res.json()) as UserTrack;
       queryClient.invalidateQueries({ queryKey: ["/api/music/tracks"] });
       setUploadTitle("");
-      toast({ title: "Трек загружен" });
+      toast({ title: t("profileMusic.toast.uploaded") });
       playTrack(toPlayerTrack(track), [...tracks.map(toPlayerTrack), toPlayerTrack(track)]);
     } catch (err) {
       toast({
-        title: "Не удалось загрузить",
+        title: t("profileMusic.toast.uploadFailed"),
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       });
@@ -179,33 +207,21 @@ function ProfileMusicContent() {
 
   return (
     <div className="space-y-section">
-      <AppBreadcrumbs items={[{ label: "Профиль", href: "/profile" }, { label: "Моя музыка" }]} />
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Music2 className="h-6 w-6 text-primary" />
-          Моя музыка
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Загружайте свои треки или ищите CC-музыку (Jamendo) и превью популярных треков (iTunes).
-        </p>
-      </div>
-
-      <Card className="border-border/60">
-        <CardContent className="p-4 space-y-3">
-          <Label htmlFor="music-search">Поиск по названию</Label>
+      <AitSurface padding="sm" className="space-y-3">
+          <Label htmlFor="music-search">{t("profileMusic.searchLabel")}</Label>
           <SmartSearchField
             id="music-search"
-            placeholder="Исполнитель или название…"
+            placeholder={t("profileMusic.searchPlaceholder")}
             value={searchInput}
             onChange={setSearchInput}
           />
           {searchQuery.length >= 2 && (
             <div className="space-y-4 pt-1">
-              {searchLoading && <p className="text-xs text-muted-foreground">Поиск…</p>}
+              {searchLoading && <p className="text-xs text-muted-foreground">{t("profileMusic.searching")}</p>}
               {jamendoResults.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Jamendo — полные CC-треки
+                    {t("profileMusic.jamendoSection")}
                   </p>
                   {jamendoResults.map((item) => (
                     <div
@@ -223,8 +239,8 @@ function ProfileMusicContent() {
                         type="button"
                         size="icon"
                         variant="ghost"
-                        title="Послушать"
-                        aria-label="Послушать"
+                        title={t("profileMusic.listen")}
+                        aria-label={t("profileMusic.listen")}
                         onClick={() =>
                           previewExternal(`${item.title} — ${item.artist}`, item.streamUrl)
                         }
@@ -240,7 +256,8 @@ function ProfileMusicContent() {
                           importMutation.mutate({ source: "jamendo", externalId: item.id })
                         }
                       >
-                        <Plus className="h-3.5 w-3.5 mr-1" />В библиотеку
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        {t("profileMusic.addToLibrary")}
                       </Button>
                     </div>
                   ))}
@@ -249,7 +266,7 @@ function ProfileMusicContent() {
               {itunesResults.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    iTunes — превью 30 сек
+                    {t("profileMusic.itunesSection")}
                   </p>
                   {itunesResults.map((item) => (
                     <div
@@ -267,8 +284,8 @@ function ProfileMusicContent() {
                         type="button"
                         size="icon"
                         variant="ghost"
-                        title="Превью"
-                        aria-label="Превью"
+                        title={t("profileMusic.preview")}
+                        aria-label={t("profileMusic.preview")}
                         onClick={() =>
                           previewExternal(`${item.title} — ${item.artist}`, item.previewUrl)
                         }
@@ -284,7 +301,7 @@ function ProfileMusicContent() {
                           importMutation.mutate({ source: "itunes", externalId: item.id })
                         }
                       >
-                        Сохранить превью
+                        {t("profileMusic.savePreview")}
                       </Button>
                       {item.trackViewUrl && (
                         <Button type="button" size="icon" variant="ghost" asChild>
@@ -292,7 +309,7 @@ function ProfileMusicContent() {
                             href={item.trackViewUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label="Открыть в Apple Music"
+                            aria-label={t("profileMusic.openAppleMusic")}
                           >
                             <ExternalLink className="h-4 w-4" />
                           </a>
@@ -303,20 +320,18 @@ function ProfileMusicContent() {
                 </div>
               )}
               {!searchLoading && jamendoResults.length === 0 && itunesResults.length === 0 && (
-                <p className="text-sm text-muted-foreground">Ничего не найдено</p>
+                <p className="text-sm text-muted-foreground">{t("profileMusic.noResults")}</p>
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+      </AitSurface>
 
-      <Card className="border-border/60">
-        <CardContent className="p-4 space-y-4">
+      <AitSurface padding="sm" className="space-y-4">
           <div>
-            <Label htmlFor="track-title">Название (необязательно)</Label>
+            <Label htmlFor="track-title">{t("profileMusic.trackTitleLabel")}</Label>
             <Input
               id="track-title"
-              placeholder="Будет взято из имени файла"
+              placeholder={t("profileMusic.trackTitlePlaceholder")}
               value={uploadTitle}
               onChange={(e) => setUploadTitle(e.target.value)}
               className="mt-1"
@@ -333,59 +348,59 @@ function ProfileMusicContent() {
               e.target.value = "";
             }}
           />
-          <Button
+          <AitButton
             type="button"
             className="w-full"
+            variant="primary"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Upload className="h-4 w-4 mr-2" />
-            {uploading ? "Загрузка…" : "Загрузить свой трек"}
-          </Button>
-        </CardContent>
-      </Card>
+            <Upload className="h-4 w-4 mr-2" strokeWidth={1.5} />
+            {uploading ? t("profileMusic.uploading") : t("profileMusic.uploadTrack")}
+          </AitButton>
+      </AitSurface>
 
       {tracks.length > 0 && (
-        <Button type="button" variant="outline" onClick={() => playAll()}>
-          <Play className="h-4 w-4 mr-2" />
-          Воспроизвести все
-        </Button>
+        <AitButton type="button" variant="glass" size="sm" onClick={() => playAll()}>
+          <Play className="h-4 w-4 mr-2" strokeWidth={1.5} />
+          {t("profileMusic.playAll")}
+        </AitButton>
       )}
 
       <div className="space-y-2">
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Загрузка…</p>
+          <p className="text-sm text-muted-foreground">{t("profileMusic.loading")}</p>
         ) : isError ? (
-          <Card className="border-destructive/40">
-            <CardContent className="p-6 text-center space-y-3">
-              <p className="text-sm text-destructive">Не удалось загрузить библиотеку</p>
-              <p className="text-xs text-muted-foreground">
-                {error instanceof Error ? error.message : "Ошибка сервера"}
-              </p>
-              <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-                Повторить
-              </Button>
-            </CardContent>
-          </Card>
+          <EmptyState
+            variant="glass"
+            title={t("profileMusic.loadError")}
+            description={error instanceof Error ? error.message : t("profileMusic.serverError")}
+            action={
+              <AitButton type="button" variant="glass" size="sm" onClick={() => void refetch()}>
+                {t("profileMusic.retry")}
+              </AitButton>
+            }
+          />
         ) : tracks.length === 0 ? (
-          <Card className="border-border/60">
-            <CardContent className="p-8 text-center text-muted-foreground text-sm">
-              Пока нет треков. Загрузите MP3 или найдите музыку выше.
-            </CardContent>
-          </Card>
+          <EmptyState
+            variant="glass"
+            icon={Music2}
+            title={t("profileMusic.emptyLibraryTitle")}
+            description={t("profileMusic.emptyLibrary")}
+          />
         ) : (
           tracks.map((track) => (
-            <Card key={track.id} className="border-border/60">
-              <CardContent className="p-3 flex items-center gap-3">
+            <AitSurface key={track.id} padding="sm">
+              <div className="flex items-center gap-3">
                 <Button
                   type="button"
                   size="icon"
                   variant="secondary"
                   className="shrink-0 h-10 w-10 rounded-xl"
                   onClick={() => playAll(track.id)}
-                  aria-label={`Воспроизвести ${track.title}`}
+                  aria-label={t("profileMusic.playTrack", { title: track.title })}
                 >
-                  <Play className="h-4 w-4" />
+                  <Play className="h-4 w-4" strokeWidth={1.5} />
                 </Button>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{track.title}</p>
@@ -394,11 +409,11 @@ function ProfileMusicContent() {
                     {track.createdAt &&
                       formatDistanceToNow(new Date(track.createdAt), {
                         addSuffix: true,
-                        locale: ru,
+                        locale: dateLocale,
                       })}
-                    {track.isPreview && " · превью 30 сек"}
+                    {track.isPreview && t("profileMusic.previewBadge")}
                     {track.fileSizeBytes
-                      ? ` · ${(track.fileSizeBytes / (1024 * 1024)).toFixed(1)} МБ`
+                      ? ` · ${(track.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB`
                       : ""}
                   </p>
                   {track.license && (
@@ -416,7 +431,7 @@ function ProfileMusicContent() {
                     size="icon"
                     variant="ghost"
                     asChild
-                    aria-label="Скачать трек"
+                    aria-label={t("profileMusic.downloadTrack")}
                   >
                     <a
                       href={`/api/music/tracks/${track.id}/download`}
@@ -437,11 +452,14 @@ function ProfileMusicContent() {
                             URL.revokeObjectURL(url);
                           })
                           .catch(() =>
-                            toast({ title: "Не удалось скачать", variant: "destructive" }),
+                            toast({
+                              title: t("profileMusic.toast.downloadFailed"),
+                              variant: "destructive",
+                            }),
                           );
                       }}
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="h-4 w-4" strokeWidth={1.5} />
                     </a>
                   </Button>
                 )}
@@ -451,12 +469,12 @@ function ProfileMusicContent() {
                   variant="ghost"
                   className="text-destructive hover:text-destructive"
                   onClick={() => deleteMutation.mutate(track.id)}
-                  aria-label={`Удалить ${track.title}`}
+                  aria-label={t("profileMusic.deleteTrack", { title: track.title })}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </AitSurface>
           ))
         )}
       </div>

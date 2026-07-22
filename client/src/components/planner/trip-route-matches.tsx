@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { Route } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type TripRouteMatchesProps = {
   tripId: string;
@@ -9,6 +10,7 @@ type TripRouteMatchesProps = {
 };
 
 export default function TripRouteMatches({ tripId, className }: TripRouteMatchesProps) {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery<{
     matches: { tripId: string; title: string; destination: string; overlapPercent: number }[];
   }>({
@@ -20,10 +22,10 @@ export default function TripRouteMatches({ tripId, className }: TripRouteMatches
   if (isLoading || matches.length === 0) return null;
 
   return (
-    <GlassCard className={className ?? "p-4 mb-6"}>
+    <AitSurface padding="none" className={className ?? "p-4 mb-6"}>
       <div className="flex items-center gap-2 mb-3">
-        <Route className="h-4 w-4 text-ait-purple" />
-        <h3 className="font-semibold text-sm">Похожие маршруты</h3>
+        <Route className="h-4 w-4 text-ait-purple" aria-hidden />
+        <h3 className="font-semibold text-sm">{t("tripRouteMatches.title")}</h3>
       </div>
       <ul className="space-y-2">
         {matches.slice(0, 5).map((m) => (
@@ -38,6 +40,6 @@ export default function TripRouteMatches({ tripId, className }: TripRouteMatches
           </li>
         ))}
       </ul>
-    </GlassCard>
+    </AitSurface>
   );
 }

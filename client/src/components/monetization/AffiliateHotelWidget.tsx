@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Hotel } from "lucide-react";
-import GlassCard from "@/components/brand/glass-card";
-import { Button } from "@/components/ui/button";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
 import { apiRequestJson } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 
 type AffiliateHotelWidgetProps = {
   placeName: string;
@@ -16,6 +17,7 @@ type AffiliateLinks = {
 };
 
 export default function AffiliateHotelWidget({ placeName, city }: AffiliateHotelWidgetProps) {
+  const { t } = useTranslation();
   const { data } = useQuery<AffiliateLinks>({
     queryKey: ["/api/affiliate/hotel-link", placeName, city ?? ""],
     queryFn: () => {
@@ -29,28 +31,28 @@ export default function AffiliateHotelWidget({ placeName, city }: AffiliateHotel
   if (!data) return null;
 
   return (
-    <GlassCard className="p-4 space-y-3">
+    <AitSurface padding="sm" className="space-y-3">
       <div className="flex items-center gap-2">
-        <Hotel className="h-4 w-4 text-primary" />
-        <h3 className="font-semibold text-sm">Цены и бронирование</h3>
+        <Hotel className="h-4 w-4 text-primary" aria-hidden />
+        <h3 className="font-semibold text-sm">{t("affiliateHotel.title")}</h3>
       </div>
       <p className="text-xs text-muted-foreground">
-        Сравните предложения партнёров для «{data.query}».
+        {t("affiliateHotel.compare", { query: data.query })}
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" className="rounded-xl gap-1.5" asChild>
+        <AitButton variant="secondary" size="sm" className="gap-1.5" asChild>
           <a href={data.ostrovok} target="_blank" rel="noopener noreferrer sponsored">
             Ostrovok
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
-        </Button>
-        <Button variant="outline" size="sm" className="rounded-xl gap-1.5" asChild>
+        </AitButton>
+        <AitButton variant="secondary" size="sm" className="gap-1.5" asChild>
           <a href={data.booking} target="_blank" rel="noopener noreferrer sponsored">
             Booking.com
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
-        </Button>
+        </AitButton>
       </div>
-    </GlassCard>
+    </AitSurface>
   );
 }

@@ -30,7 +30,8 @@ type ReelsVerticalFeedProps = {
   onSubmitComment: (postId: string) => void;
   commentPending: boolean;
   onLike: (postId: string, isLiked: boolean) => void;
-  likePending: boolean;
+  likePendingPostId?: string;
+  actionsDisabled?: boolean;
   onBookmark: (postId: string) => void;
 };
 
@@ -50,7 +51,8 @@ export default function ReelsVerticalFeed({
   onSubmitComment,
   commentPending,
   onLike,
-  likePending,
+  likePendingPostId,
+  actionsDisabled = false,
   onBookmark,
 }: ReelsVerticalFeedProps) {
   const { t } = useTranslation();
@@ -142,14 +144,17 @@ export default function ReelsVerticalFeed({
                 isActive={index === activeIndex}
                 muted={muted}
                 bookmarked={bookmarkedSet.has(post.id)}
-                likePending={likePending}
+                likePending={likePendingPostId === post.id}
                 commentPending={commentPending}
+                actionsDisabled={actionsDisabled}
                 commentsOpen={Boolean(expandedComments[post.id])}
                 commentText={commentInputs[post.id] || ""}
                 labels={labels}
-                onLike={() => onLike(post.id, post.isLiked ?? false)}
+                onLike={() => {
+                  if (!actionsDisabled) onLike(post.id, post.isLiked ?? false);
+                }}
                 onDoubleTapLike={() => {
-                  if (!post.isLiked) onLike(post.id, false);
+                  if (!actionsDisabled && !post.isLiked) onLike(post.id, false);
                 }}
                 onToggleMute={toggleMute}
                 onCommentToggle={() => onToggleComments(post.id)}
@@ -162,7 +167,9 @@ export default function ReelsVerticalFeed({
                     : "";
                   void shareUrl(shareLink, post.title || authorName, post.content?.slice(0, 120));
                 }}
-                onBookmark={() => onBookmark(post.id)}
+                onBookmark={() => {
+                  if (!actionsDisabled) onBookmark(post.id);
+                }}
               />
             ) : (
               <div className="h-full w-full bg-ait-deep rounded-card-xl" />

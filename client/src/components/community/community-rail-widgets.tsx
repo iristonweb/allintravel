@@ -6,7 +6,7 @@ import RightPanelWidgets, {
   type TrendingWidgetItem,
 } from "@/components/community/RightPanelWidgets";
 import type { TravelPostWithAuthor } from "@shared/schema";
-import { DEMO_FEATURED_GUIDE, DEMO_TRENDS, isSocialFeedDemoMode } from "@/lib/demo-reels-feed";
+import { getDemoFeaturedGuide, getDemoTrends, isSocialFeedDemoMode } from "@/lib/demo-reels-feed";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 
@@ -32,14 +32,13 @@ type CommunityRailWidgetsProps = {
 
 /** Data adapter: maps feed posts + API data into {@link RightPanelWidgets}. */
 export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) {
-  const { t } = useTranslation();
-  const demoMode = isSocialFeedDemoMode() || posts.some((p) => p.id.startsWith("demo-"));
+  const { t, i18n } = useTranslation();
+  const demoMode = isSocialFeedDemoMode();
 
   const trends = useMemo(() => {
-    if (demoMode) return DEMO_TRENDS;
-    const live = computeTrends(posts);
-    return live.length > 0 ? live : DEMO_TRENDS;
-  }, [posts, demoMode]);
+    if (demoMode) return getDemoTrends();
+    return computeTrends(posts);
+  }, [posts, demoMode, i18n.language]);
 
   const { data: publicPosts = [] } = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", { format: "public", limit: "1" }],
@@ -47,8 +46,12 @@ export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) 
   });
   const featuredPost = publicPosts[0];
 
-  const featured: FeaturedGuideWidgetData =
-    featuredPost && !demoMode
+  const featured: FeaturedGuideWidgetData | undefined = demoMode
+    ? {
+        ...getDemoFeaturedGuide(),
+        badgeLabel: t("social.featuredNow", { defaultValue: "Featured" }),
+      }
+    : featuredPost
       ? {
           title:
             featuredPost.title ??
@@ -58,10 +61,7 @@ export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) 
           badgeLabel: t("social.featuredNow", { defaultValue: "Featured" }),
           meta: featuredPost.location ?? undefined,
         }
-      : {
-          ...DEMO_FEATURED_GUIDE,
-          badgeLabel: t("social.featuredNow", { defaultValue: "Featured" }),
-        };
+      : undefined;
 
   return (
     <RightPanelWidgets

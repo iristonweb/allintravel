@@ -145,7 +145,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
             >
               <Link href="/admin">
                 <Shield className="h-3.5 w-3.5" />
-                Админ
+                {t("nav.admin")}
               </Link>
             </Button>
           )}
@@ -176,7 +176,7 @@ export default function AppTopNav({ minimalChrome }: AppTopNavProps) {
             className="md:hidden rounded-xl h-11 w-11"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-expanded={menuOpen}
-            aria-label={menuOpen ? "Закрыть меню" : "Открыть меню"}
+            aria-label={menuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>

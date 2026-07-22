@@ -8,6 +8,7 @@ import type {
 } from "@shared/notification-types";
 import { NOTIFICATION_FILTERS } from "@shared/notification-types";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import EmptyState from "@/components/empty-state";
@@ -15,6 +16,18 @@ import NotificationRow from "@/components/notifications/NotificationRow";
 import { groupNotificationsByDay } from "@/lib/notification-ui";
 import { markNotificationRead } from "@/lib/notification-actions";
 import { useTranslation } from "react-i18next";
+
+function NotificationRowSkeleton() {
+  return (
+    <div className="flex items-start gap-3 px-2 py-3" aria-hidden>
+      <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+      <div className="flex-1 space-y-2 pt-1">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    </div>
+  );
+}
 
 type NotificationListProps = {
   filter: NotificationFilter;
@@ -145,18 +158,20 @@ export default function NotificationList({
 
       <div className={cn("flex-1 overflow-y-auto min-h-0", listClassName)}>
         {isLoading && (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-ait-purple" />
+          <div className="space-y-1 px-1 py-2" aria-busy="true">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <NotificationRowSkeleton key={i} />
+            ))}
           </div>
         )}
 
         {isError && (
           <EmptyState
             icon={Bell}
-            title="Не удалось загрузить"
+            title={t("notifications.loadFailed")}
             action={
               <Button variant="outline" size="sm" onClick={() => refetch()}>
-                Повторить
+                {t("common.retry")}
               </Button>
             }
           />
@@ -165,8 +180,8 @@ export default function NotificationList({
         {!isLoading && !isError && allItems.length === 0 && (
           <EmptyState
             icon={Bell}
-            title="Пока пусто"
-            description="Здесь появятся лайки, комментарии и реакции — как в Instagram."
+            title={t("notifications.emptyTitle")}
+            description={t("notifications.emptyDescription")}
           />
         )}
 

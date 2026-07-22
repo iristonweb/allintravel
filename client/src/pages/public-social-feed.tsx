@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
 import FeedPostCard from "@/components/social/FeedPostCard";
+import FeedSkeleton from "@/components/social/FeedSkeleton";
 import PageMeta from "@/components/seo/PageMeta";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-
-const noop = () => {};
 
 /** Read-only public guides feed for guests */
 export function PublicSocialFeed() {
@@ -45,7 +44,7 @@ export function PublicSocialFeed() {
           </Button>
         </div>
         {isLoading ? (
-          <div className="h-48 animate-pulse bg-white/5 rounded-2xl" />
+          <FeedSkeleton count={2} />
         ) : (
           <div className="space-y-4">
             {posts.map((post) => (
@@ -58,12 +57,7 @@ export function PublicSocialFeed() {
                 formatDate={(d) => format(new Date(d), "d MMM")}
                 likePending={false}
                 commentPending={false}
-                onToggleComments={noop}
-                onCommentChange={noop}
-                onSubmitComment={noop}
-                onLike={noop}
-                onBookmark={noop}
-                onTagClick={noop}
+                readOnly
               />
             ))}
           </div>

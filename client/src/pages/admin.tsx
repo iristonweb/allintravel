@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { Button } from "@/components/ui/button";
 import SmartSearchField from "@/components/search/SmartSearchField";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,8 @@ import MessageComposer from "@/components/chat/MessageComposer";
 import EmptyState from "@/components/empty-state";
 import { Shield, Coins, Bell, Megaphone, AlertCircle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 type SearchUser = {
   id: string;
@@ -51,6 +52,8 @@ type UserAitDetail = {
 
 export default function AdminPage() {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -138,7 +141,7 @@ export default function AdminPage() {
         sendPush,
       }),
     onSuccess: () => {
-      toast({ title: "Баланс обновлён" });
+      toast({ title: t("admin.balanceUpdated") });
       setDelta("");
       refetchUser();
       qc.invalidateQueries({ queryKey: ["/api/admin/ait/transactions"] });
@@ -154,7 +157,7 @@ export default function AdminPage() {
         body: pushBody,
         url: "/wallet",
       }),
-    onSuccess: () => toast({ title: "Push отправлен" }),
+    onSuccess: () => toast({ title: t("admin.pushSent") }),
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
@@ -162,9 +165,9 @@ export default function AdminPage() {
     return (
       <AppLayout rightRail={<DiscoveryRightRail />}>
         <div className="py-20 text-center">
-          <p className="text-muted-foreground mb-4">Доступ только для администраторов</p>
+          <p className="text-muted-foreground mb-4">{t("admin.accessDenied")}</p>
           <Button asChild variant="outline">
-            <Link href="/">На главную</Link>
+            <Link href="/">{t("admin.backHome")}</Link>
           </Button>
         </div>
       </AppLayout>
@@ -178,12 +181,12 @@ export default function AdminPage() {
           <div>
             <h1 className="ait-section-title flex items-center gap-2">
               <Shield className="h-8 w-8 text-ait-orange" />
-              Админ-панель
+              {t("admin.title")}
             </h1>
-            <p className="text-muted-foreground mt-1">AIT, рассылки и push-уведомления</p>
+            <p className="text-muted-foreground mt-1">{t("admin.subtitle")}</p>
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
-            ← Назад
+            ← {t("admin.back")}
           </Button>
         </div>
 
@@ -195,11 +198,11 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="broadcast" className="gap-1">
               <Megaphone className="h-4 w-4" />
-              Рассылка
+              {t("admin.tabs.broadcast")}
             </TabsTrigger>
             <TabsTrigger value="push" className="gap-1">
               <Bell className="h-4 w-4" />
-              Push
+              {t("admin.tabs.push")}
             </TabsTrigger>
             <TabsTrigger value="fraud" className="gap-1">
               <Shield className="h-4 w-4" />
@@ -208,12 +211,12 @@ export default function AdminPage() {
           </TabsList>
 
           <TabsContent value="ait" className="space-y-4 mt-4">
-            <GlassCard className="p-4">
-              <Label className="text-xs text-muted-foreground">Поиск пользователя</Label>
+            <AitSurface padding="none" className="p-4">
+              <Label className="text-xs text-muted-foreground">{t("admin.searchUser")}</Label>
               <div className="flex gap-2 mt-2">
                 <SmartSearchField
                   className="flex-1"
-                  placeholder="Email, username, имя…"
+                  placeholder={t("admin.searchPlaceholder")}
                   value={searchQ}
                   onChange={setSearchQ}
                 />
@@ -221,15 +224,15 @@ export default function AdminPage() {
               {searchFetching && searchQ.trim().length >= 2 ? (
                 <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Поиск…
+                  {t("admin.searching")}
                 </div>
               ) : searchError && searchQ.trim().length >= 2 ? (
                 <EmptyState
                   icon={AlertCircle}
-                  title="Не удалось выполнить поиск"
+                  title={t("admin.searchFailed")}
                   action={
                     <Button variant="outline" size="sm" onClick={() => refetchSearch()}>
-                      Повторить
+                      {t("common.retry")}
                     </Button>
                   }
                   className="py-6"
@@ -256,25 +259,25 @@ export default function AdminPage() {
                   ))}
                 </ul>
               ) : null}
-            </GlassCard>
+            </AitSurface>
 
             {userDetailLoading && selectedId ? (
-              <GlassCard className="p-5 flex items-center justify-center gap-2 text-muted-foreground">
+              <AitSurface padding="none" className="p-5 flex items-center justify-center gap-2 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
-                Загрузка пользователя…
-              </GlassCard>
+                {t("admin.loadingUser")}
+              </AitSurface>
             ) : userDetailError && selectedId ? (
               <EmptyState
                 icon={AlertCircle}
-                title="Не удалось загрузить данные пользователя"
+                title={t("admin.userLoadFailed")}
                 action={
                   <Button variant="outline" size="sm" onClick={() => refetchUser()}>
-                    Повторить
+                    {t("common.retry")}
                   </Button>
                 }
               />
             ) : userDetail && selectedId ? (
-              <GlassCard className="p-5 space-y-4">
+              <AitSurface padding="none" className="p-5 space-y-4">
                 <div>
                   <p className="font-semibold">{userDetail.user.email}</p>
                   <p className="text-sm text-muted-foreground">
@@ -296,7 +299,7 @@ export default function AdminPage() {
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <Label>Кошелёк</Label>
+                    <Label>{t("admin.wallet")}</Label>
                     <select
                       className="mt-1 w-full ait-glass rounded-xl px-3 py-2 text-sm bg-transparent"
                       value={wallet}
@@ -307,29 +310,29 @@ export default function AdminPage() {
                     </select>
                   </div>
                   <div>
-                    <Label>Изменение (+ / −)</Label>
+                    <Label>{t("admin.adjustment")}</Label>
                     <Input
                       type="number"
                       className="mt-1 ait-glass rounded-xl"
                       value={delta}
                       onChange={(e) => setDelta(e.target.value)}
-                      placeholder="100 или -50"
+                      placeholder={t("admin.adjustmentPlaceholder")}
                     />
                   </div>
                 </div>
                 <div>
-                  <Label>Комментарий в леджере</Label>
+                  <Label>{t("admin.ledgerNote")}</Label>
                   <Input
                     className="mt-1 ait-glass rounded-xl"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="Причина корректировки"
+                    placeholder={t("admin.ledgerNotePlaceholder")}
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch checked={sendPush} onCheckedChange={setSendPush} id="admin-push-ait" />
                   <Label htmlFor="admin-push-ait" className="text-sm cursor-pointer">
-                    Push со звуком при начислении
+                    {t("admin.pushOnCredit")}
                   </Label>
                 </div>
                 <Button
@@ -338,11 +341,11 @@ export default function AdminPage() {
                   disabled={!delta || adjustMutation.isPending}
                   onClick={() => adjustMutation.mutate()}
                 >
-                  Применить корректировку
+                  {t("admin.applyAdjustment")}
                 </Button>
 
                 <div className="border-t border-white/10 pt-4 max-h-56 overflow-y-auto">
-                  <p className="text-xs font-bold uppercase text-muted-foreground mb-2">Леджер</p>
+                  <p className="text-xs font-bold uppercase text-muted-foreground mb-2">{t("admin.ledger")}</p>
                   {userDetail.ait.ledger.map((tx) => (
                     <div key={tx.id} className="flex justify-between text-xs py-1.5">
                       <span>{tx.title}</span>
@@ -353,23 +356,23 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
-              </GlassCard>
+              </AitSurface>
             ) : null}
 
-            <GlassCard className="p-4">
-              <p className="font-semibold mb-3">Последние транзакции AIT (все)</p>
+            <AitSurface padding="none" className="p-4">
+              <p className="font-semibold mb-3">{t("admin.recentTransactions")}</p>
               {globalTxLoading ? (
                 <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-sm">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Загрузка…
+                  {t("admin.loading")}
                 </div>
               ) : globalTxError ? (
                 <EmptyState
                   icon={AlertCircle}
-                  title="Не удалось загрузить транзакции"
+                  title={t("admin.transactionsFailed")}
                   action={
                     <Button variant="outline" size="sm" onClick={() => refetchGlobalTx()}>
-                      Повторить
+                      {t("common.retry")}
                     </Button>
                   }
                 />
@@ -387,37 +390,32 @@ export default function AdminPage() {
                           {tx.delta}
                         </span>
                         <p className="text-[10px] text-muted-foreground">
-                          {format(new Date(tx.createdAt), "d MMM HH:mm", { locale: ru })}
+                          {format(new Date(tx.createdAt), "d MMM HH:mm", { locale: dateLocale })}
                         </p>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </GlassCard>
+            </AitSurface>
           </TabsContent>
 
           <TabsContent value="broadcast" className="mt-4">
-            <GlassCard className="p-5 space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Объявление появится у всех в приложении и уйдёт push-уведомлением со звуком (если
-                включён push).
-              </p>
+            <AitSurface padding="none" className="p-5 space-y-4">
+              <p className="text-sm text-muted-foreground">{t("admin.broadcastHint")}</p>
               <AdminBroadcastDialog />
-            </GlassCard>
+            </AitSurface>
           </TabsContent>
 
           <TabsContent value="push" className="mt-4 space-y-4">
-            <GlassCard className="p-5 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Произвольный push выбранному пользователю. Сначала найдите его во вкладке AIT.
-              </p>
+            <AitSurface padding="none" className="p-5 space-y-3">
+              <p className="text-sm text-muted-foreground">{t("admin.pushHint")}</p>
               {!selectedId ? (
-                <p className="text-sm text-ait-orange">Выберите пользователя во вкладке AIT</p>
+                <p className="text-sm text-ait-orange">{t("admin.selectUserHint")}</p>
               ) : (
                 <>
                   <div>
-                    <Label>Заголовок</Label>
+                    <Label>{t("admin.pushTitleLabel")}</Label>
                     <Input
                       className="mt-1 ait-glass rounded-xl"
                       value={pushTitle}
@@ -425,13 +423,13 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <Label>Текст</Label>
+                    <Label>{t("admin.pushBodyLabel")}</Label>
                     <MessageComposer
                       value={pushBody}
                       onChange={setPushBody}
                       onSend={() => {}}
                       persistAfterMediaSend
-                      placeholder="Текст push…"
+                      placeholder={t("admin.pushBodyPlaceholder")}
                       className="w-full mt-1"
                     />
                   </div>
@@ -440,18 +438,18 @@ export default function AdminPage() {
                     disabled={!pushBody.trim() || pushMutation.isPending}
                     onClick={() => pushMutation.mutate()}
                   >
-                    Отправить push
+                    {t("admin.sendPush")}
                   </Button>
                 </>
               )}
-            </GlassCard>
+            </AitSurface>
           </TabsContent>
 
           <TabsContent value="fraud" className="mt-4 space-y-4">
-            <GlassCard className="p-5">
-              <h3 className="font-semibold mb-3">Active fraud flags</h3>
+            <AitSurface padding="none" className="p-5">
+              <h3 className="font-semibold mb-3">{t("admin.fraudTitle")}</h3>
               {(fraudData?.flags ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No active flags</p>
+                <p className="text-sm text-muted-foreground">{t("admin.fraudEmpty")}</p>
               ) : (
                 <ul className="space-y-2 text-sm">
                   {fraudData?.flags.map((f) => (
@@ -467,7 +465,7 @@ export default function AdminPage() {
                   ))}
                 </ul>
               )}
-            </GlassCard>
+            </AitSurface>
           </TabsContent>
         </Tabs>
       </div>

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -78,7 +78,7 @@ export default function TripCopilotPanel({ tripId, onApplied }: TripCopilotPanel
 
   return (
     <div className="space-y-4">
-      <GlassCard className="p-4 space-y-3">
+      <AitSurface padding="sm" className="space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="font-semibold">{t("ai.agentTitle")}</h3>
@@ -135,10 +135,10 @@ export default function TripCopilotPanel({ tripId, onApplied }: TripCopilotPanel
             </Button>
           </div>
         )}
-      </GlassCard>
+      </AitSurface>
 
       {(matchesData?.matches?.length ?? 0) > 0 && (
-        <GlassCard className="p-4 space-y-3">
+        <AitSurface padding="sm" className="space-y-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-[#ff7a18]" />
             <h3 className="font-semibold">{t("ai.companionMatch")}</h3>
@@ -171,7 +171,7 @@ export default function TripCopilotPanel({ tripId, onApplied }: TripCopilotPanel
               </li>
             ))}
           </ul>
-        </GlassCard>
+        </AitSurface>
       )}
     </div>
   );

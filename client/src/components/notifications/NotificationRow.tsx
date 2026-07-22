@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import type { AppNotification } from "@shared/notification-types";
 import { getUserDisplayLabel } from "@shared/user-display";
 import { aggregatedActionVerb, formatAggregatedActorLabel } from "@/lib/notification-actions";
@@ -124,8 +125,10 @@ function TypeBadge({
 }
 
 export default function NotificationRow({ item, onActivate, compact }: NotificationRowProps) {
+  const { i18n: i18nInstance } = useTranslation();
+  const dateLocale = i18nInstance.language?.startsWith("ru") ? ru : enUS;
   const actor = item.actor;
-  const actorLabel = actor ? getUserDisplayLabel(actor) : "Кто-то";
+  const actorLabel = actor ? getUserDisplayLabel(actor) : i18n.t("notifications.someone");
   const summary = notificationSummary(item, actorLabel);
 
   const inner = (
@@ -151,7 +154,10 @@ export default function NotificationRow({ item, onActivate, compact }: Notificat
         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.body}</p>
         {item.createdAt && (
           <p className="text-[10px] text-muted-foreground/80 mt-1.5">
-            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: ru })}
+            {formatDistanceToNow(new Date(item.createdAt), {
+              addSuffix: true,
+              locale: dateLocale,
+            })}
           </p>
         )}
       </div>

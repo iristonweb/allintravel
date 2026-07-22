@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bookmark,
@@ -17,9 +18,11 @@ import AitBadge from "@/components/ait-ui/AitBadge";
 import AitAvatarRing from "@/components/ait-ui/AitAvatarRing";
 import AitInput from "@/components/ait-ui/AitInput";
 import AitSurface from "@/components/ait-ui/AitSurface";
+import PostComments from "@/components/social/PostComments";
 import { useReelPlayer } from "@/hooks/useReelPlayer";
 import { heartBurstVariants, scaleTap, slideUpPanel } from "@/lib/ait-motion";
 import { cn } from "@/lib/utils";
+import { isDemoPostId } from "@/lib/demo-reels-feed";
 
 export type ReelCardViewModel = {
   id: string;
@@ -64,6 +67,7 @@ type ReelCardProps = {
   commentText?: string;
   likePending?: boolean;
   commentPending?: boolean;
+  actionsDisabled?: boolean;
   labels?: ReelCardLabels;
   onLike?: () => void;
   onCommentToggle?: () => void;
@@ -140,6 +144,7 @@ export default function ReelCard({
   commentText = "",
   likePending,
   commentPending,
+  actionsDisabled = false,
   labels: labelsProp,
   onLike,
   onCommentToggle,
@@ -151,7 +156,9 @@ export default function ReelCard({
   onDoubleTapLike,
   className,
 }: ReelCardProps) {
+  const { t } = useTranslation();
   const labels = { ...DEFAULT_LABELS, ...labelsProp };
+  const disabled = actionsDisabled || isDemoPostId(reel.id);
   const lastTapRef = useRef(0);
   const singleTapTimerRef = useRef<number | null>(null);
   const [heartBurst, setHeartBurst] = useState(false);
@@ -312,6 +319,11 @@ export default function ReelCard({
                 <span className="text-sm font-semibold text-white truncate">{reel.authorName}</span>
               )}
               {reel.isPro && <AitBadge tone="pro">PRO</AitBadge>}
+              {disabled && (
+                <AitBadge tone="default" className="text-[10px] px-1.5 py-0">
+                  {t("social.demoBadge")}
+                </AitBadge>
+              )}
             </div>
             {reel.location && (
               <p className="flex items-center gap-1 text-xs text-white/70 mt-0.5">
@@ -339,7 +351,7 @@ export default function ReelCard({
           <ReelActionButton
             label={labels.like}
             onClick={handleLikeClick}
-            disabled={likePending}
+            disabled={likePending || disabled}
             activeClassName={reel.isLiked ? "text-red-400" : undefined}
           >
             <Heart className={cn("h-5 w-5 sm:h-6 sm:w-6", reel.isLiked && "fill-current")} />
@@ -351,7 +363,11 @@ export default function ReelCard({
           </span>
         )}
 
-        <ReelActionButton label={labels.comments} onClick={onCommentToggle}>
+        <ReelActionButton
+          label={labels.comments}
+          onClick={onCommentToggle}
+          disabled={disabled}
+        >
           <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
         </ReelActionButton>
         {(reel.commentsCount ?? 0) > 0 && (
@@ -387,6 +403,7 @@ export default function ReelCard({
         <ReelActionButton
           label={labels.save}
           onClick={onBookmark}
+          disabled={disabled}
           activeClassName={bookmarked ? "text-ait-orange" : undefined}
         >
           <Bookmark className={cn("h-5 w-5 sm:h-6 sm:w-6", bookmarked && "fill-current")} />
@@ -396,29 +413,32 @@ export default function ReelCard({
       <AnimatePresence>
         {commentsOpen && (
           <motion.div
-            className="absolute inset-x-0 bottom-0 z-30 bg-black/80 backdrop-blur-sm p-3 sm:p-4 border-t border-white/10"
+            className="absolute inset-x-0 bottom-0 z-30 bg-black/80 backdrop-blur-sm p-3 sm:p-4 border-t border-white/10 max-h-[50vh] overflow-y-auto"
             variants={slideUpPanel}
             initial="hidden"
             animate="visible"
             exit="exit"
           >
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                onSubmitComment?.();
-              }}
-            >
-              <AitInput
-                value={commentText}
-                onChange={(e) => onCommentChange?.(e.target.value)}
-                placeholder={labels.commentPlaceholder}
-                className="flex-1 h-10 text-sm"
-              />
-              <AitButton type="submit" variant="primary" size="sm" disabled={commentPending}>
-                {labels.publish}
-              </AitButton>
-            </form>
+            <PostComments postId={reel.id} enabled={commentsOpen} />
+            {!disabled && (
+              <form
+                className="flex gap-2 mt-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  onSubmitComment?.();
+                }}
+              >
+                <AitInput
+                  value={commentText}
+                  onChange={(e) => onCommentChange?.(e.target.value)}
+                  placeholder={labels.commentPlaceholder}
+                  className="flex-1 h-10 text-sm"
+                />
+                <AitButton type="submit" variant="primary" size="sm" disabled={commentPending}>
+                  {labels.publish}
+                </AitButton>
+              </form>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

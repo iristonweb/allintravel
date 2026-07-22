@@ -1,4 +1,5 @@
 import { compactMessageLabel, parseChatMessage } from "@/lib/chat-message";
+import { useTranslation } from "react-i18next";
 import ReplyQuote from "@/components/chat/ReplyQuote";
 import { isSafeChatMediaUrl } from "@/lib/safe-media-url";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
@@ -24,6 +25,8 @@ export default function MessageContent({
   compact,
   isOwn = false,
 }: MessageContentProps) {
+  const { t } = useTranslation();
+
   if (compact) {
     const label = compactMessageLabel(content);
     if (label) return <span className={cn("break-words", className)}>{label}</span>;
@@ -55,7 +58,7 @@ export default function MessageContent({
         }
 
         const src = "url" in part ? safeUrl(part.url) : undefined;
-        if (!src) return <span key={i}>[медиа]</span>;
+        if (!src) return <span key={i}>{t("messages.media")}</span>;
 
         if (part.type === "gif") {
           return (
@@ -84,7 +87,7 @@ export default function MessageContent({
             <img
               key={i}
               src={src}
-              alt="Фото"
+              alt={t("messages.photo")}
               className="block max-w-[min(280px,78vw)] max-h-[240px] rounded-xl object-cover"
               loading="lazy"
             />

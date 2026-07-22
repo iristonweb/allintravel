@@ -3,7 +3,8 @@ import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import HomeSectionHeader from "@/components/home/home-section-header";
-import PlaceCard from "@/components/place-card";
+import PlaceCard from "@/components/places/PlaceCard";
+import PlaceCardSkeleton from "@/components/places/PlaceCardSkeleton";
 import type { Place } from "@shared/schema";
 import { getRecentTypePreference } from "@/lib/recentlyViewed";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
@@ -16,7 +17,7 @@ export default function HomePersonalized() {
   const recentlyViewedCount = recentlyViewed.length;
   const onboardingPrefs = loadOnboardingPrefs();
 
-  const { data: places = [] } = useQuery<Place[]>({
+  const { data: places = [], isLoading } = useQuery<Place[]>({
     queryKey: [
       "/api/places",
       {
@@ -49,11 +50,19 @@ export default function HomePersonalized() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {places.map((p) => (
-          <PlaceCard key={p.id} place={p} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <PlaceCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {places.map((p) => (
+            <PlaceCard key={p.id} place={p} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

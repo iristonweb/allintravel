@@ -8,12 +8,20 @@ const SKU_TO_THEME: Record<string, AitThemeId> = {
   theme_desert: "desert",
 };
 
+function isOwnedTheme(themeId: AitThemeId, skus: string[]): boolean {
+  if (themeId === "default") return true;
+  const owned = new Set(skus);
+  return Object.entries(SKU_TO_THEME).some(([sku, t]) => t === themeId && owned.has(sku));
+}
+
 export function themeIdFromEntitlements(skus: string[]): AitThemeId {
+  const stored = localStorage.getItem(THEME_KEY) as AitThemeId | null;
+  if (stored && isOwnedTheme(stored, skus)) return stored;
   for (const sku of skus) {
     const t = SKU_TO_THEME[sku];
     if (t) return t;
   }
-  return (localStorage.getItem(THEME_KEY) as AitThemeId) || "default";
+  return "default";
 }
 
 export function applyAitTheme(themeId: AitThemeId): void {

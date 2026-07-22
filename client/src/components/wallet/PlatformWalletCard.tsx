@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,31 +62,32 @@ export default function PlatformWalletCard({
 
   if (isLoading) {
     return (
-      <GlassCard strong className={cn("p-5", className)}>
+      <AitSurface strong className={cn(className)} padding="md" aria-busy="true">
         <Skeleton className="h-6 w-40 mb-4" />
         <Skeleton className="h-10 w-full mb-3" />
         <Skeleton className="h-16 w-full" />
-      </GlassCard>
+      </AitSurface>
     );
   }
 
   if (isError || !data) {
     return (
-      <GlassCard className={cn("p-5 text-center space-y-3", className)}>
+      <AitSurface className={cn("text-center space-y-3", className)} padding="md">
         <p className="text-sm text-muted-foreground">{t("wallet.platform.loadError")}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <AitButton variant="glass" size="sm" onClick={() => refetch()}>
           {t("common.retry")}
-        </Button>
-      </GlassCard>
+        </AitButton>
+      </AitSurface>
     );
   }
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(data.address)}`;
 
   return (
-    <GlassCard
+    <AitSurface
       strong
-      className={cn("relative overflow-hidden p-5 md:p-6", compact && "p-4", className)}
+      className={cn("relative overflow-hidden", compact && "p-4", className)}
+      padding={compact ? "sm" : "md"}
     >
       <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-ait-purple/20 blur-3xl" />
       <div className="absolute -left-6 bottom-0 h-28 w-28 rounded-full bg-ait-orange/15 blur-2xl" />
@@ -200,6 +202,6 @@ export default function PlatformWalletCard({
           </Button>
         </Link>
       )}
-    </GlassCard>
+    </AitSurface>
   );
 }

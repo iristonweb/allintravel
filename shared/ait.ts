@@ -197,6 +197,8 @@ export const AIT_DAILY_CAPS: Partial<Record<AitReasonCode, number>> = {
   streak_bonus: 1,
 };
 
+export type AitPurchasableType = "permanent" | "stackable" | "consumable" | "timed";
+
 export type AitCatalogItem = {
   sku: string;
   title: string;
@@ -204,6 +206,7 @@ export type AitCatalogItem = {
   cost: number;
   category: "theme" | "social" | "utility" | "creator";
   durationDays: number | null;
+  purchasable: AitPurchasableType;
   meta?: Record<string, string>;
 };
 
@@ -218,6 +221,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: 400,
     category: "theme",
     durationDays: null,
+    purchasable: "permanent",
     meta: { themeId: "aurora" },
   },
   {
@@ -227,6 +231,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: 450,
     category: "theme",
     durationDays: null,
+    purchasable: "permanent",
     meta: { themeId: "sakura" },
   },
   {
@@ -236,6 +241,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: 350,
     category: "theme",
     durationDays: null,
+    purchasable: "permanent",
     meta: { themeId: "desert" },
   },
   {
@@ -245,6 +251,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: AIT_BOOST_BASE_COST,
     category: "social",
     durationDays: 1,
+    purchasable: "timed",
   },
   {
     sku: "streak_freeze",
@@ -253,6 +260,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: AIT_STREAK_FREEZE_COST,
     category: "utility",
     durationDays: null,
+    purchasable: "consumable",
   },
   {
     sku: "extra_chat_room",
@@ -261,6 +269,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: 600,
     category: "social",
     durationDays: null,
+    purchasable: "stackable",
   },
   {
     sku: "creator_badge",
@@ -269,6 +278,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: 800,
     category: "creator",
     durationDays: 90,
+    purchasable: "timed",
   },
   {
     sku: "room_spotlight_48h",
@@ -277,6 +287,7 @@ export const AIT_CATALOG: AitCatalogItem[] = [
     cost: 300,
     category: "social",
     durationDays: 2,
+    purchasable: "timed",
   },
 ];
 

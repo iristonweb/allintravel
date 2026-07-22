@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button";
 import { Building2, Car, Shield, Utensils } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import AitButton from "@/components/ait-ui/AitButton";
 import DestinationSearch from "@/components/search/DestinationSearch";
 import { useTranslation } from "react-i18next";
 
@@ -64,8 +64,13 @@ export default function HomeQuickActions({
               }
               navigate(href!);
             }}
-            className="ait-glass rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-white/8 transition-colors"
+            className="ait-glass rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-white/8 transition-colors relative"
           >
+            {soon && (
+              <span className="absolute top-2 right-2 text-[10px] font-semibold uppercase tracking-wide rounded-full bg-ait-purple/20 text-ait-purple px-2 py-0.5">
+                {t("home.quickActions.soon")}
+              </span>
+            )}
             <Icon className="h-6 w-6 text-ait-purple" />
             <span className="text-xs text-center text-muted-foreground">{label}</span>
           </button>
@@ -83,11 +88,11 @@ export default function HomeQuickActions({
               inputClassName="ait-glass-strong"
             />
           </div>
-          <GlassCard className="p-4 flex items-center justify-center">
-            <Button variant="outline" className="w-full" onClick={() => navigate("/map")}>
+          <AitSurface padding="sm" className="flex items-center justify-center">
+            <AitButton variant="secondary" className="w-full" onClick={() => navigate("/map")}>
               {t("home.quickActions.openMap")}
-            </Button>
-          </GlassCard>
+            </AitButton>
+          </AitSurface>
         </div>
       )}
     </div>

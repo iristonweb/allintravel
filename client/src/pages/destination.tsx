@@ -4,16 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
 import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import PublicLayout from "@/components/public-layout";
-import PageShell from "@/components/layout/page-shell";
-import PlaceCard from "@/components/place-card";
-import GlassCard from "@/components/brand/glass-card";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import PlaceCard from "@/components/places/PlaceCard";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequestJson } from "@/lib/queryClient";
 import type { DestinationPageData } from "@shared/destinations";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { MapPin, Route } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function DestinationPage() {
   const { t } = useTranslation();
@@ -29,8 +31,8 @@ export function DestinationPage() {
   useDocumentMeta(
     data
       ? {
-          title: `${data.name} — гид путешественника | All In Travel`,
-          description: `Места, маршруты и события в ${data.name}`,
+          title: t("destinations.metaTitle", { name: data.name }),
+          description: t("destinations.metaDescription", { name: data.name }),
           url: `${window.location.origin}/destinations/${slug}`,
         }
       : null,
@@ -41,14 +43,16 @@ export function DestinationPage() {
     : { contentClassName: "py-8" as const };
 
   if (isLoading) {
+    const skeleton = (
+      <div className="space-y-4" aria-busy="true">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-48 w-full rounded-card-lg" />
+      </div>
+    );
     return isAuthenticated ? (
-      <AppLayout {...layoutProps}>
-        <div className="h-48 animate-pulse bg-muted rounded-card-lg" />
-      </AppLayout>
+      <AppLayout {...layoutProps}>{skeleton}</AppLayout>
     ) : (
-      <PublicLayout contentClassName="py-8">
-        <div className="h-48 animate-pulse bg-muted rounded-card-lg" />
-      </PublicLayout>
+      <PublicLayout contentClassName="py-8">{skeleton}</PublicLayout>
     );
   }
 
@@ -65,13 +69,26 @@ export function DestinationPage() {
   }
 
   const mainContent = (
-    <PageShell title={data.name} description={t("destinations.pageDescription")}>
+    <ReelsPageLayout
+      header={
+        <div className="space-y-2">
+          <Link
+            href="/destinations"
+            className="text-xs text-muted-foreground hover:text-ait-purple transition-colors"
+          >
+            ← {t("destinations.title")}
+          </Link>
+          <AitSectionHeader title={data.name} description={t("destinations.pageDescription")} />
+        </div>
+      }
+      feed={
+        <>
       {data.places.length > 0 && (
         <section className="mb-10">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <MapPin className="h-4 w-4" /> {t("destinations.topPlaces")}
+            <MapPin className="h-4 w-4" strokeWidth={1.5} /> {t("destinations.topPlaces")}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 min-[280px]:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
             {data.places.map((p) => (
               <PlaceCard key={p.id} place={p} />
             ))}
@@ -82,19 +99,19 @@ export function DestinationPage() {
       {data.trips.length > 0 && (
         <section className="mb-10">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Route className="h-4 w-4" /> {t("destinations.publicRoutes")}
+            <Route className="h-4 w-4" strokeWidth={1.5} /> {t("destinations.publicRoutes")}
           </h2>
           <div className="grid gap-3">
             {data.trips.map((trip) => (
-              <GlassCard key={trip.id} className="p-4 flex items-center justify-between">
+              <AitSurface key={trip.id} padding="sm" className="flex items-center justify-between gap-4">
                 <div>
                   <p className="font-medium">{trip.title}</p>
                   <p className="text-sm text-muted-foreground">{trip.destination}</p>
                 </div>
-                <Button variant="outline" size="sm" asChild>
+                <AitButton variant="glass" size="sm" asChild>
                   <Link href={`/trips/${trip.id}/public`}>{t("common.open")}</Link>
-                </Button>
-              </GlassCard>
+                </AitButton>
+              </AitSurface>
             ))}
           </div>
         </section>
@@ -105,17 +122,19 @@ export function DestinationPage() {
           <h2 className="text-lg font-semibold mb-4">{t("destinations.stories")}</h2>
           <div className="grid gap-3">
             {data.posts.map((post) => (
-              <GlassCard key={post.id} className="p-4">
+              <AitSurface key={post.id} padding="sm">
                 <Link href={`/post/${post.id}`} className="font-medium hover:text-primary">
                   {post.title || t("destinations.untitled")}
                 </Link>
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.content}</p>
-              </GlassCard>
+              </AitSurface>
             ))}
           </div>
         </section>
       )}
-    </PageShell>
+        </>
+      }
+    />
   );
 
   return isAuthenticated ? (

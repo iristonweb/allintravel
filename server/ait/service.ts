@@ -16,6 +16,7 @@ import {
   type ActivityRingId,
 } from "@shared/ait";
 import * as store from "./store";
+import { countOwnedChatRooms, getMaxOwnedChatRooms } from "./perks";
 
 export type AitGrantResult = {
   granted: boolean;
@@ -269,7 +270,7 @@ export async function tipPost(
 export async function spendCatalogItem(
   userId: string,
   sku: string,
-  opts?: { postId?: string },
+  opts?: { postId?: string; roomId?: string },
 ): Promise<{ ok: boolean; message?: string }> {
   const item = AIT_CATALOG.find((i) => i.sku === sku);
   if (!item) return { ok: false, message: "Товар не найден" };
@@ -287,21 +288,34 @@ export async function spendCatalogItem(
     return { ok: true };
   }
 
+  if (sku === "room_spotlight_48h" && !opts?.roomId) {
+    return { ok: false, message: "Выберите группу для Spotlight" };
+  }
+
   if (sku === "streak_freeze") {
     const monthKey = new Date().toISOString().slice(0, 7);
     const used = await store.getStreakFreezeUsage(userId, monthKey);
     if (used >= AIT_STREAK_FREEZE_MAX_PER_MONTH) {
       return { ok: false, message: "Лимит заморозок на месяц исчерпан" };
     }
-    const spent = await store.applyBalanceDelta(
+    const balance = await store.getOrCreateBalance(userId);
+    const today = store.todayUtc();
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    if (balance.lastActiveDate === today) {
+      return { ok: false, message: "Сегодня вы уже заходили — заморозка не нужна" };
+    }
+    if (balance.lastActiveDate === yesterdayStr) {
+      return { ok: false, message: "Стрик не прерван — заморозка не нужна" };
+    }
+    const spent = await store.debitDualWallet(
       userId,
-      "spend",
-      -item.cost,
+      item.cost,
       "streak_freeze",
       item.title,
       "sku",
       sku,
-      { skipEmissionCap: true },
     );
     if (!spent) return { ok: false, message: "Недостаточно AIT" };
     await store.applyStreakFreeze(userId);
@@ -310,23 +324,18 @@ export async function spendCatalogItem(
   }
 
   const entitlements = await store.getEntitlements(userId);
-  if (
-    item.durationDays == null &&
-    entitlements.some((e) => e.sku === sku) &&
-    sku !== "boost_post_24h"
-  ) {
+  if (item.purchasable === "permanent" && entitlements.some((e) => e.sku === sku)) {
     return { ok: false, message: "У вас уже есть этот предмет" };
   }
 
-  const spent = await store.applyBalanceDelta(
+  const entityId = sku === "room_spotlight_48h" ? (opts?.roomId ?? null) : null;
+  const spent = await store.debitDualWallet(
     userId,
-    "spend",
-    -item.cost,
+    item.cost,
     "spend_shop",
     item.title,
     "sku",
-    sku,
-    { skipEmissionCap: true },
+    entityId ?? sku,
   );
   if (!spent) return { ok: false, message: "Недостаточно AIT" };
 
@@ -334,7 +343,7 @@ export async function spendCatalogItem(
     item.durationDays != null
       ? new Date(Date.now() + item.durationDays * 24 * 60 * 60 * 1000)
       : null;
-  await store.addEntitlement(userId, sku, expiresAt);
+  await store.addEntitlement(userId, sku, expiresAt, entityId);
 
   return { ok: true };
 }
@@ -430,8 +439,14 @@ export async function getAitDashboard(userId: string) {
   const ledger = await store.getLedger(userId, 25);
   const { getTodaySupplyState } = await import("./supply");
   const supply = await getTodaySupplyState();
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const streakFreezeUsedThisMonth = await store.getStreakFreezeUsage(userId, monthKey);
 
   const allRingsFull = Object.values(rings).every((r) => r.percent >= 100);
+  const [ownedChatRooms, maxChatRooms] = await Promise.all([
+    countOwnedChatRooms(userId),
+    getMaxOwnedChatRooms(userId),
+  ]);
 
   return {
     spendBalance: balance.spendBalance,
@@ -443,6 +458,9 @@ export async function getAitDashboard(userId: string) {
     supplyToday: supply,
     rings,
     allRingsFull,
+    streakFreezeUsedThisMonth,
+    streakFreezeMaxPerMonth: AIT_STREAK_FREEZE_MAX_PER_MONTH,
+    chatRooms: { owned: ownedChatRooms, max: maxChatRooms },
     quests: WEEKLY_QUESTS.map((q) => ({
       ...q,
       progress: quests[q.id]?.progress ?? 0,
@@ -452,6 +470,7 @@ export async function getAitDashboard(userId: string) {
     entitlements: entitlements.map((e) => ({
       sku: e.sku,
       expiresAt: e.expiresAt?.toISOString() ?? null,
+      entityId: e.entityId,
     })),
     ledger: ledger.map((t) => ({
       id: t.id,

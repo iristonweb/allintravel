@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { filterPostsForFeedMode, type FeedMode } from "@/lib/feed-utils";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { PostFormat } from "@shared/post-formats";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import type { SocialContentFormat } from "@/hooks/useSocialFeedParams";
@@ -86,7 +88,7 @@ export function useStoryPosts(enabled: boolean) {
 
   const data = useMemo(() => {
     const api = query.data ?? [];
-    if (isSocialFeedDemoMode() || api.length === 0) return getDemoStoryPosts();
+    if (isSocialFeedDemoMode()) return getDemoStoryPosts();
     return api;
   }, [query.data]);
 
@@ -120,10 +122,33 @@ export function useBookmarks(enabled: boolean) {
 
 export function useSocialFeedMutations(bookmarkedSet: Set<string>) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { t } = useTranslation();
 
   const invalidatePosts = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     queryClient.invalidateQueries({ queryKey: ["/api/ait"] });
+  };
+
+  const patchPostInCaches = (
+    postId: string,
+    patch: (post: TravelPostWithAuthor) => TravelPostWithAuthor,
+  ) => {
+    const postQueries = queryClient.getQueriesData<TravelPostWithAuthor[]>({
+      queryKey: ["/api/posts"],
+    });
+    for (const [key, data] of postQueries) {
+      if (!data) continue;
+      queryClient.setQueryData(
+        key,
+        data.map((p) => (p.id === postId ? patch(p) : p)),
+      );
+    }
+    const singleKey = [`/api/posts/${postId}`];
+    const single = queryClient.getQueryData<TravelPostWithAuthor>(singleKey);
+    if (single) {
+      queryClient.setQueryData(singleKey, patch(single));
+    }
   };
 
   const createPostMutation = useMutation({
@@ -149,7 +174,40 @@ export function useSocialFeedMutations(bookmarkedSet: Set<string>) {
       }
       return apiRequestJson("POST", `/api/posts/${postId}/like`);
     },
-    onSuccess: invalidatePosts,
+    onMutate: async ({ postId, isLiked }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/posts"] });
+      const prevQueries = queryClient.getQueriesData<TravelPostWithAuthor[]>({
+        queryKey: ["/api/posts"],
+      });
+      const prevSingle = queryClient.getQueryData<TravelPostWithAuthor>([`/api/posts/${postId}`]);
+      patchPostInCaches(postId, (p) => ({
+        ...p,
+        isLiked: !isLiked,
+        likesCount: Math.max(0, (p.likesCount ?? 0) + (isLiked ? -1 : 1)),
+      }));
+      return { prevQueries, prevSingle, postId };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prevQueries) {
+        for (const [key, data] of ctx.prevQueries) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      if (ctx?.prevSingle !== undefined) {
+        queryClient.setQueryData([`/api/posts/${ctx.postId}`], ctx.prevSingle);
+      }
+      toast({ title: t("social.toasts.likeFailed"), variant: "destructive" });
+    },
+    onSuccess: (data, { postId, isLiked }) => {
+      if (!isLiked && data && (data as { created?: boolean }).created === false) {
+        patchPostInCaches(postId, (p) => ({
+          ...p,
+          isLiked: false,
+          likesCount: Math.max(0, (p.likesCount ?? 0) - 1),
+        }));
+      }
+    },
+    onSettled: invalidatePosts,
   });
 
   const commentMutation = useMutation({
@@ -158,6 +216,9 @@ export function useSocialFeedMutations(bookmarkedSet: Set<string>) {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/posts/${variables.postId}/comments`] });
       invalidatePosts();
+    },
+    onError: () => {
+      toast({ title: t("social.toasts.commentFailed"), variant: "destructive" });
     },
   });
 
@@ -171,6 +232,9 @@ export function useSocialFeedMutations(bookmarkedSet: Set<string>) {
       return { postId, saved: true };
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/bookmarks"] }),
+    onError: () => {
+      toast({ title: t("social.toasts.bookmarkFailed"), variant: "destructive" });
+    },
   });
 
   return {

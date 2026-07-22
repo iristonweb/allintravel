@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
 import type { TravelPostWithAuthor } from "@shared/schema";
 import { uploadMediaFile, isVideoFile, SERVER_UPLOAD_MAX_BYTES } from "@/lib/upload-media";
 import { formatApiErrorDescription, isApiError } from "@/lib/api-error";
@@ -35,6 +35,7 @@ import {
   getDemoStoryStripItems,
   getDemoStoryPosts,
   isSocialFeedDemoMode,
+  isDemoPostId,
 } from "@/lib/demo-reels-feed";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -107,7 +108,8 @@ const FORMAT_HEADER_KEYS: Record<
 export function SocialFeed() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("ru") ? ru : enUS;
   const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [newPost, setNewPost] = useState<SocialNewPostDraft>(EMPTY_DRAFT);
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -178,12 +180,13 @@ export function SocialFeed() {
   });
 
   const { data: storyPosts = [], isLoading: storiesLoading } = useStoryPosts(isAuthenticated);
-  const { reelsCount } = useReelsCount(isAuthenticated);
+  const { reelsCount, displayReelsCount } = useReelsCount(isAuthenticated);
   const { bookmarkedSet } = useBookmarks(isAuthenticated);
   const { createPostMutation, likePostMutation, commentMutation, toggleBookmarkMutation } =
     useSocialFeedMutations(bookmarkedSet);
 
   const handleSubmitComment = (postId: string) => {
+    if (demoMode || isDemoPostId(postId)) return;
     const content = (commentInputs[postId] ?? "").trim();
     if (!content) {
       toast({ title: t("social.toasts.commentEmpty"), variant: "destructive" });
@@ -391,11 +394,9 @@ export function SocialFeed() {
 
   const storyGroups = useMemo(() => groupStories(storyPosts), [storyPosts]);
   const storyStripItems = useMemo(() => {
-    if (demoMode || storyPosts.some((p) => p.id.startsWith("demo-story"))) {
-      return getDemoStoryStripItems();
-    }
+    if (demoMode) return getDemoStoryStripItems();
     return mapStoryGroupsToStripItems(storyGroups);
-  }, [storyGroups, storyPosts, demoMode]);
+  }, [storyGroups, demoMode]);
   const storyGroupsById = useMemo(() => storyGroupsByUserId(storyGroups), [storyGroups]);
   const userStoryFallback =
     `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.trim() || "?";
@@ -441,7 +442,11 @@ export function SocialFeed() {
         stats={
           isHubView ? (
             <div className="space-y-3">
-              <CommunityStatsRow reelsCount={reelsCount} useMarketingStats={reelsCount === 0} />
+              <CommunityStatsRow
+                reelsCount={reelsCount}
+                displayReelsCount={displayReelsCount}
+                useMarketingStats={demoMode}
+              />
               <AiContextChips surface="social" />
             </div>
           ) : undefined
@@ -472,8 +477,10 @@ export function SocialFeed() {
                       setStoryView({ posts: group.posts, index: 0 });
                       return;
                     }
-                    const demoPosts = getDemoStoryPosts().filter((p) => p.userId === item.id);
-                    if (demoPosts.length) setStoryView({ posts: demoPosts, index: 0 });
+                    if (demoMode) {
+                      const demoPosts = getDemoStoryPosts().filter((p) => p.userId === item.id);
+                      if (demoPosts.length) setStoryView({ posts: demoPosts, index: 0 });
+                    }
                   }}
                 />
               )}
@@ -538,12 +545,19 @@ export function SocialFeed() {
         }
         feed={
           <>
+            {demoMode && (
+              <div className="mb-4 rounded-xl border border-ait-purple/30 bg-ait-purple/10 px-4 py-3 text-sm text-center">
+                <span className="font-medium text-ait-purple">{t("social.demo.bannerLabel")}</span>
+                <span className="text-muted-foreground"> {t("social.demo.bannerHint")}</span>
+              </div>
+            )}
             {storyView && (
               <StoryViewer
                 posts={storyView.posts}
                 index={storyView.index}
                 onClose={() => setStoryView(null)}
                 onIndexChange={(index) => setStoryView((s) => (s ? { ...s, index } : null))}
+                actionsDisabled={demoMode}
               />
             )}
             <div className={contentFormat === "reels" ? "" : "space-y-8"}>
@@ -556,7 +570,9 @@ export function SocialFeed() {
                 error={error}
                 onRefetch={refetch}
                 onCreateClick={() => setIsCreating(true)}
-                formatDate={(date) => format(new Date(date), "d MMM yyyy, HH:mm", { locale: ru })}
+                formatDate={(date) =>
+                  format(new Date(date), "d MMM yyyy, HH:mm", { locale: dateLocale })
+                }
                 activeTag={activeTag}
                 onTagClick={(tag) => setActiveTag(activeTag === tag ? null : tag)}
                 user={user}
@@ -571,14 +587,21 @@ export function SocialFeed() {
                 }
                 onSubmitComment={handleSubmitComment}
                 commentPending={commentMutation.isPending}
-                onLike={(postId, isLiked) => likePostMutation.mutate({ postId, isLiked })}
-                likePending={likePostMutation.isPending}
-                onBookmark={(postId) =>
+                onLike={(postId, isLiked) => {
+                  if (demoMode || isDemoPostId(postId)) return;
+                  likePostMutation.mutate({ postId, isLiked });
+                }}
+                likePendingPostId={
+                  likePostMutation.isPending ? likePostMutation.variables?.postId : undefined
+                }
+                actionsDisabled={demoMode}
+                onBookmark={(postId) => {
+                  if (demoMode || isDemoPostId(postId)) return;
                   toggleBookmarkMutation.mutate(postId, {
                     onError: () =>
                       toast({ title: t("social.toasts.bookmarkFailed"), variant: "destructive" }),
-                  })
-                }
+                  });
+                }}
               />
             </div>
           </>

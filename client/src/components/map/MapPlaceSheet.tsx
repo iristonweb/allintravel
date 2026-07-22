@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { MapPinned, Plus, Star, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import AitButton from "@/components/ait-ui/AitButton";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import type { Trip } from "@shared/schema";
 
 export type MapSheetPlace = {
@@ -31,6 +32,7 @@ type MapPlaceSheetProps = {
 };
 
 export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -44,21 +46,21 @@ export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetPro
 
   const addMutation = useMutation({
     mutationFn: async (tripId: string) => {
-      if (!place) throw new Error("Место не выбрано");
+      if (!place) throw new Error(t("map.placeSheet.noPlace"));
       if (isCatalog) {
         const res = await apiRequest("POST", `/api/trips/${tripId}/waypoints`, {
           placeId: place.id,
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          throw new Error((body as { message?: string }).message ?? "Не удалось добавить");
+          throw new Error((body as { message?: string }).message ?? t("map.placeSheet.addFailed"));
         }
         return tripId;
       }
       const lat = Number(place.latitude);
       const lon = Number(place.longitude);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-        throw new Error("Нет координат для этой точки");
+        throw new Error(t("map.placeSheet.noCoords"));
       }
       const res = await apiRequest("POST", `/api/trips/${tripId}/waypoints/from-location`, {
         label: place.name,
@@ -67,15 +69,15 @@ export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetPro
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? "Не удалось добавить");
+        throw new Error((body as { message?: string }).message ?? t("map.placeSheet.addFailed"));
       }
       return tripId;
     },
-    onSuccess: (tripId) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/trips"] });
       toast({
-        title: "Добавлено в поездку",
-        description: `«${place?.name}» добавлено в маршрут.`,
+        title: t("map.placeSheet.addedTitle"),
+        description: t("map.placeSheet.addedDesc", { name: place?.name ?? "" }),
       });
       onClose();
     },
@@ -90,15 +92,9 @@ export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetPro
         <SheetHeader className="text-left">
           <SheetTitle className="flex items-start justify-between gap-2">
             <span>{place.name}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="shrink-0"
-              onClick={onClose}
-            >
+            <AitButton type="button" variant="ghost" size="icon" className="shrink-0" onClick={onClose}>
               <X className="h-4 w-4" />
-            </Button>
+            </AitButton>
           </SheetTitle>
           <SheetDescription className="flex flex-wrap items-center gap-2">
             {place.type && (
@@ -123,18 +119,18 @@ export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetPro
 
           <div className="flex flex-wrap gap-2">
             {isCatalog && (
-              <Button variant="outline" className="rounded-xl" asChild>
-                <Link href={`/place/${place.id}`}>Подробнее</Link>
-              </Button>
+              <AitButton variant="secondary" className="rounded-xl" asChild>
+                <Link href={`/place/${place.id}`}>{t("map.placeSheet.details")}</Link>
+              </AitButton>
             )}
             {isTripMarker && (
-              <Button variant="premium" className="rounded-xl" asChild>
-                <Link href="/trips">Мои поездки</Link>
-              </Button>
+              <AitButton variant="primary" className="rounded-xl" asChild>
+                <Link href="/trips">{t("map.placeSheet.myTrips")}</Link>
+              </AitButton>
             )}
             {!isTripMarker && (
-              <Button
-                variant="premium"
+              <AitButton
+                variant="primary"
                 className="rounded-xl gap-2"
                 disabled={addMutation.isPending}
                 onClick={() => {
@@ -144,32 +140,32 @@ export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetPro
                 }}
               >
                 <MapPinned className="h-4 w-4" />
-                {trips.length === 1 ? "В поездку" : "Выберите поездку"}
-              </Button>
+                {trips.length === 1 ? t("map.placeSheet.addToTrip") : t("map.placeSheet.pickTrip")}
+              </AitButton>
             )}
           </div>
 
           {!isTripMarker && trips.length !== 1 && (
             <div className="space-y-2">
               {isLoading ? (
-                <p className="text-sm text-muted-foreground">Загрузка поездок…</p>
+                <p className="text-sm text-muted-foreground">{t("map.placeSheet.loadingTrips")}</p>
               ) : trips.length === 0 ? (
                 <div className="text-center py-3 space-y-2">
-                  <p className="text-sm text-muted-foreground">У вас пока нет поездок.</p>
-                  <Button variant="premium" asChild className="rounded-xl">
+                  <p className="text-sm text-muted-foreground">{t("map.placeSheet.noTrips")}</p>
+                  <AitButton variant="primary" asChild className="rounded-xl">
                     <Link href="/trips">
                       <Plus className="h-4 w-4 mr-2" />
-                      Создать поездку
+                      {t("map.placeSheet.createTrip")}
                     </Link>
-                  </Button>
+                  </AitButton>
                 </div>
               ) : (
                 <ul className="space-y-2 max-h-48 overflow-y-auto">
                   {trips.map((trip) => (
                     <li key={trip.id}>
-                      <Button
+                      <AitButton
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         className="w-full justify-start h-auto py-3 rounded-xl"
                         disabled={addMutation.isPending}
                         onClick={() => addMutation.mutate(trip.id)}
@@ -178,7 +174,7 @@ export default function MapPlaceSheet({ place, open, onClose }: MapPlaceSheetPro
                           <div className="font-medium">{trip.title}</div>
                           <div className="text-xs text-muted-foreground">{trip.destination}</div>
                         </div>
-                      </Button>
+                      </AitButton>
                     </li>
                   ))}
                 </ul>

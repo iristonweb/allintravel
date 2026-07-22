@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import i18n from "@/i18n";
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -20,16 +21,14 @@ export default class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center p-6 bg-background text-foreground">
           <div className="max-w-md text-center space-y-4">
-            <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
-            <p className="text-sm text-muted-foreground">
-              Страница не смогла загрузиться. Попробуйте обновить или вернуться на главную.
-            </p>
+            <h1 className="text-xl font-semibold">{i18n.t("errorBoundary.title")}</h1>
+            <p className="text-sm text-muted-foreground">{i18n.t("errorBoundary.description")}</p>
             <div className="flex gap-2 justify-center flex-wrap">
               <Button type="button" onClick={() => window.location.reload()}>
-                Обновить
+                {i18n.t("errorBoundary.reload")}
               </Button>
               <Button type="button" variant="outline" onClick={() => (window.location.href = "/")}>
-                На главную
+                {i18n.t("errorBoundary.home")}
               </Button>
             </div>
           </div>

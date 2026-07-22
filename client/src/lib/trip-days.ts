@@ -1,6 +1,11 @@
 import { addDays, format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { enUS, ru } from "date-fns/locale";
+import i18n from "@/i18n";
 import type { Trip, TripWaypointWithPlace } from "@shared/schema";
+
+function dateLocale() {
+  return i18n.language?.startsWith("ru") ? ru : enUS;
+}
 
 export function tripCalendarDayCount(trip: Pick<Trip, "startDate" | "endDate">): number {
   if (!trip.startDate || !trip.endDate) return 1;
@@ -11,9 +16,14 @@ export function tripCalendarDayCount(trip: Pick<Trip, "startDate" | "endDate">):
 }
 
 export function dayLabel(trip: Pick<Trip, "startDate">, dayNumber: number): string {
-  if (!trip.startDate) return `День ${dayNumber}`;
+  if (!trip.startDate) {
+    return i18n.t("planner.day", { day: dayNumber });
+  }
   const date = addDays(new Date(trip.startDate), dayNumber - 1);
-  return `День ${dayNumber} · ${format(date, "d MMM", { locale: ru })}`;
+  return i18n.t("planner.dayWithDate", {
+    day: dayNumber,
+    date: format(date, "d MMM", { locale: dateLocale() }),
+  });
 }
 
 export function effectiveDayNumber(waypoint: TripWaypointWithPlace, fallbackIndex: number): number {

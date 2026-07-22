@@ -18,6 +18,7 @@ import {
 import { getUsersWithCreatorBadge } from "../../ait/perks";
 import { getActiveBoostCampaigns } from "../../ait/boost/campaigns";
 import { sortPostsWithBoostCampaigns } from "../../ait/boost/feed-sort";
+import { canViewPost } from "../../post-access";
 
 export function registerPostsRoutes(app: Express, storage: IStorage): void {
   app.post("/api/posts", isAuthenticated, async (req: Request, res: Response) => {
@@ -128,7 +129,7 @@ export function registerPostsRoutes(app: Express, storage: IStorage): void {
       }
       const currentUserId: string | null =
         (req as Request & { user?: { claims?: { sub: string } } }).user?.claims?.sub ?? null;
-      if (!post.isPublic && post.userId !== currentUserId) {
+      if (!canViewPost(post, currentUserId)) {
         return res.status(404).json({ message: "Post not found" });
       }
       const author = post.userId ? await storage.getUser(post.userId) : null;
@@ -209,9 +210,12 @@ export function registerPostsRoutes(app: Express, storage: IStorage): void {
       const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
       const postId = req.params.id;
       const post = await storage.getTravelPost(postId);
-      const like = await storage.likePost(userId, postId);
+      if (!canViewPost(post, userId)) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      const { like, created } = await storage.likePost(userId, postId);
       let aitGrant: AitGrantResult | null = null;
-      if (post?.userId) {
+      if (created && post?.userId) {
         const g = await grantForPostLiked(userId, post.userId, postId);
         aitGrant = g.authorGrant;
         const liker = await storage.getUser(userId);
@@ -221,7 +225,7 @@ export function registerPostsRoutes(app: Express, storage: IStorage): void {
           );
         }
       }
-      res.status(201).json({ ...like, aitGrant });
+      res.status(created ? 201 : 200).json({ ...like, created, aitGrant });
     } catch (error) {
       console.error("Error liking post:", error);
       res.status(500).json({ message: "Failed to like post" });
@@ -233,6 +237,9 @@ export function registerPostsRoutes(app: Express, storage: IStorage): void {
       const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
       const postId = req.params.id;
       const post = await storage.getTravelPost(postId);
+      if (!canViewPost(post, userId)) {
+        return res.status(404).json({ message: "Post not found" });
+      }
       await storage.unlikePost(userId, postId);
       if (post?.userId && post.content) {
         void syncPostLikeNotification(post.userId, postId, post.content).catch((err) =>
@@ -251,7 +258,7 @@ export function registerPostsRoutes(app: Express, storage: IStorage): void {
       const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
       const postId = req.params.id;
       const post = await storage.getTravelPost(postId);
-      if (!post) {
+      if (!canViewPost(post, userId)) {
         return res.status(404).json({ message: "Post not found" });
       }
       const commentData = insertPostCommentSchema.parse({ ...req.body, userId, postId });
@@ -283,8 +290,31 @@ export function registerPostsRoutes(app: Express, storage: IStorage): void {
 
   app.get("/api/posts/:id/comments", async (req: Request, res: Response) => {
     try {
-      const comments = await storage.getPostComments(req.params.id);
-      res.json(comments);
+      const postId = req.params.id;
+      const post = await storage.getTravelPost(postId);
+      const currentUserId: string | null =
+        (req as Request & { user?: { claims?: { sub: string } } }).user?.claims?.sub ?? null;
+      if (!canViewPost(post, currentUserId)) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+      const comments = await storage.getPostComments(postId);
+      const enriched = await Promise.all(
+        comments.map(async (comment) => {
+          const author = await storage.getUser(comment.userId);
+          return {
+            ...comment,
+            author: author
+              ? {
+                  id: author.id,
+                  firstName: author.firstName,
+                  lastName: author.lastName,
+                  profileImageUrl: author.profileImageUrl,
+                }
+              : null,
+          };
+        }),
+      );
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching comments:", error);
       res.status(500).json({ message: "Failed to fetch comments" });

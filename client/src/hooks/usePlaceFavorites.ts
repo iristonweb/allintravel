@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +10,7 @@ export function usePlaceFavorites() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const { data: favorites = [] } = useQuery<UserFavoriteWithPlace[]>({
     queryKey: ["/api/favorites"],
@@ -28,11 +30,13 @@ export function usePlaceFavorites() {
     onSuccess: (_, { isFavorite }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
       toast({
-        title: isFavorite ? "Удалено из избранного" : "Добавлено в избранное",
+        title: isFavorite
+          ? t("placeDetail.toast.favoriteRemoved")
+          : t("placeDetail.toast.favoriteAdded"),
       });
     },
     onError: () => {
-      toast({ title: "Не удалось обновить избранное", variant: "destructive" });
+      toast({ title: t("placeDetail.toast.favoriteFailed"), variant: "destructive" });
     },
   });
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import TravelMap from "@/components/maps/TravelMap";
-import GlassCard from "@/components/brand/glass-card";
+import AitSurface from "@/components/ait-ui/AitSurface";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AddStopSearch from "@/components/planner/add-stop-search";
@@ -48,12 +48,7 @@ import type { Trip } from "@shared/schema";
 import type { TripWaypointWithPlace } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import type { RouteMode } from "@/lib/fetch-route";
-
-const ROUTE_MODES: { id: RouteMode; label: string; icon: typeof Car }[] = [
-  { id: "driving", label: "Авто", icon: Car },
-  { id: "walking", label: "Пешком", icon: Footprints },
-  { id: "transit", label: "Транспорт", icon: Bus },
-];
+import { useTranslation } from "react-i18next";
 
 type TripPlannerLayoutProps = {
   trip: Trip;
@@ -72,8 +67,19 @@ export default function TripPlannerLayout({
   addOpen,
   setAddOpen,
 }: TripPlannerLayoutProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const routeModes = useMemo(
+    () =>
+      [
+        { id: "driving" as RouteMode, label: t("planner.routeModes.driving"), icon: Car },
+        { id: "walking" as RouteMode, label: t("planner.routeModes.walking"), icon: Footprints },
+        { id: "transit" as RouteMode, label: t("planner.routeModes.transit"), icon: Bus },
+      ] as const,
+    [t],
+  );
   const [budgetMax, setBudgetMax] = useState("");
   const [notes, setNotes] = useState("");
   const [tab, setTab] = useState("route");
@@ -197,7 +203,7 @@ export default function TripPlannerLayout({
     onSuccess: () => {
       invalidateRouteQueries();
       setAddOpen(false);
-      toast({ title: "Остановка добавлена" });
+      toast({ title: t("planner.toast.stopAdded") });
     },
   });
 
@@ -214,10 +220,10 @@ export default function TripPlannerLayout({
     onSuccess: () => {
       invalidateRouteQueries();
       setAddOpen(false);
-      toast({ title: "Остановка добавлена" });
+      toast({ title: t("planner.toast.stopAdded") });
     },
     onError: () => {
-      toast({ title: "Не удалось добавить остановку", variant: "destructive" });
+      toast({ title: t("planner.toast.stopFailed"), variant: "destructive" });
     },
   });
 
@@ -257,10 +263,10 @@ export default function TripPlannerLayout({
     },
     onSuccess: () => {
       invalidateRouteQueries();
-      toast({ title: "Порядок остановок обновлён" });
+      toast({ title: t("planner.toast.orderUpdated") });
     },
     onError: () => {
-      toast({ title: "Не удалось обновить порядок", variant: "destructive" });
+      toast({ title: t("planner.toast.orderFailed"), variant: "destructive" });
     },
   });
 
@@ -271,10 +277,10 @@ export default function TripPlannerLayout({
     },
     onSuccess: () => {
       invalidateRouteQueries();
-      toast({ title: "Остановки распределены по дням" });
+      toast({ title: t("planner.toast.distributed") });
     },
     onError: () => {
-      toast({ title: "Не удалось распределить", variant: "destructive" });
+      toast({ title: t("planner.toast.distributeFailed"), variant: "destructive" });
     },
   });
 
@@ -295,12 +301,12 @@ export default function TripPlannerLayout({
     },
     onSuccess: () => {
       toast({
-        title: "Журнал опубликован",
-        description: "Запись появилась в ленте сообщества",
+        title: t("planner.toast.journalPublished"),
+        description: t("planner.toast.journalHint"),
       });
     },
     onError: () => {
-      toast({ title: "Не удалось опубликовать", variant: "destructive" });
+      toast({ title: t("planner.toast.publishFailed"), variant: "destructive" });
     },
   });
 
@@ -329,7 +335,7 @@ export default function TripPlannerLayout({
     )
       .then(() => {
         invalidateRouteQueries();
-        toast({ title: "Остановки распределены по дням" });
+        toast({ title: t("planner.toast.distributed") });
       })
       .catch(() => {
         distributeMutation.mutate();
@@ -392,7 +398,7 @@ export default function TripPlannerLayout({
             }}
           >
             <MapPin className="h-4 w-4" />
-            Check-in
+            {t("planner.checkIn")}
           </Button>
           <Button
             type="button"
@@ -402,7 +408,7 @@ export default function TripPlannerLayout({
             disabled={waypoints.filter((w) => w.place).length < 2}
           >
             <Film className="h-4 w-4" />
-            Trip Cinema
+            {t("planner.tripCinema")}
           </Button>
         </div>
       </div>
@@ -431,12 +437,12 @@ export default function TripPlannerLayout({
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="ait-glass mb-4 flex-wrap h-auto">
-          <TabsTrigger value="route">Маршрут</TabsTrigger>
-          <TabsTrigger value="budget">Бюджет</TabsTrigger>
-          <TabsTrigger value="notes">Заметки</TabsTrigger>
-          <TabsTrigger value="group">Группа</TabsTrigger>
-          <TabsTrigger value="matches">Совпадения</TabsTrigger>
-          <TabsTrigger value="export">Экспорт</TabsTrigger>
+          <TabsTrigger value="route">{t("planner.tabs.route")}</TabsTrigger>
+          <TabsTrigger value="budget">{t("planner.tabs.budget")}</TabsTrigger>
+          <TabsTrigger value="notes">{t("planner.tabs.notes")}</TabsTrigger>
+          <TabsTrigger value="group">{t("planner.tabs.group")}</TabsTrigger>
+          <TabsTrigger value="matches">{t("planner.tabs.matches")}</TabsTrigger>
+          <TabsTrigger value="export">{t("planner.tabs.export")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="route" className="mt-0">
@@ -463,12 +469,12 @@ export default function TripPlannerLayout({
               disabled={waypoints.length === 0 || distributeMutation.isPending}
             >
               <Calendar className="h-4 w-4 mr-1" />
-              Разложить по датам
+              {t("planner.distributeDays")}
             </Button>
           </div>
 
           <div className="flex flex-wrap gap-2 mb-3">
-            {ROUTE_MODES.map(({ id, label, icon: Icon }) => (
+            {routeModes.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -487,7 +493,7 @@ export default function TripPlannerLayout({
           </div>
 
           <div className="grid lg:grid-cols-[320px_1fr] gap-4 min-h-[480px]">
-            <GlassCard className="p-4 overflow-y-auto max-h-[70vh] lg:max-h-[calc(100vh-12rem)]">
+            <AitSurface padding="none" className="p-4 overflow-y-auto max-h-[70vh] lg:max-h-[calc(100vh-12rem)]">
               <div className="flex items-center justify-between mb-4">
                 <span className="font-semibold flex items-center gap-2">
                   <Route className="h-4 w-4 text-ait-purple" />
@@ -508,7 +514,7 @@ export default function TripPlannerLayout({
                     }}
                   >
                     <DialogHeader>
-                      <DialogTitle>Добавить остановку</DialogTitle>
+                      <DialogTitle>{t("planner.addStop")}</DialogTitle>
                     </DialogHeader>
                     <AddStopSearch
                       key={addOpen ? "open" : "closed"}
@@ -524,7 +530,7 @@ export default function TripPlannerLayout({
               {waypointsLoading ? (
                 <div className="h-32 animate-pulse bg-white/5 rounded" />
               ) : waypoints.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Добавьте остановки в маршрут</p>
+                <p className="text-sm text-muted-foreground">{t("planner.addStopsHint")}</p>
               ) : (
                 <div className="space-y-4">
                   {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => {
@@ -546,7 +552,7 @@ export default function TripPlannerLayout({
                         </div>
                         {dayStops.length === 0 ? (
                           <p className="text-xs text-muted-foreground px-1">
-                            Перетащите остановку сюда
+                            {t("planner.dragStopHint")}
                           </p>
                         ) : (
                           <ul className="space-y-2">
@@ -582,7 +588,7 @@ export default function TripPlannerLayout({
                                   variant="ghost"
                                   size="icon"
                                   className="shrink-0"
-                                  aria-label="Удалить точку маршрута"
+                                  aria-label={t("planner.removeStop")}
                                   onClick={() => removeWaypointMutation.mutate(w.id)}
                                 >
                                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -605,7 +611,7 @@ export default function TripPlannerLayout({
                   disabled={publishJournalMutation.isPending || waypoints.length === 0}
                 >
                   <BookOpen className="h-4 w-4 mr-1" />
-                  Опубликовать день в журнал
+                  {t("planner.publishDay")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -613,12 +619,12 @@ export default function TripPlannerLayout({
                   onClick={() => publishJournalMutation.mutate(null)}
                   disabled={publishJournalMutation.isPending || waypoints.length === 0}
                 >
-                  Опубликовать всю поездку
+                  {t("planner.publishTrip")}
                 </Button>
               </div>
-            </GlassCard>
+            </AitSurface>
 
-            <GlassCard strong className="p-0 overflow-hidden min-h-[420px] ait-gradient-border">
+            <AitSurface padding="none" strong className="p-0 overflow-hidden min-h-[420px] ait-gradient-border">
               {routePlaces.length > 0 ? (
                 <TravelMap
                   places={routePlaces}
@@ -629,16 +635,16 @@ export default function TripPlannerLayout({
                 />
               ) : (
                 <div className="flex items-center justify-center h-full min-h-[400px] text-muted-foreground">
-                  Карта маршрута появится после добавления мест
+                  {t("planner.mapPlaceholder")}
                 </div>
               )}
-            </GlassCard>
+            </AitSurface>
           </div>
         </TabsContent>
 
         <TabsContent value="budget">
-          <GlassCard className="p-6 max-w-md space-y-4">
-            <label className="text-sm text-muted-foreground">Бюджет поездки (USD)</label>
+          <AitSurface padding="none" className="p-6 max-w-md space-y-4">
+            <label className="text-sm text-muted-foreground">{t("planner.budgetLabel")}</label>
             <Input
               type="number"
               value={budgetMax}
@@ -651,15 +657,15 @@ export default function TripPlannerLayout({
               onClick={persistPlannerFields}
               disabled={saveTripMutation.isPending}
             >
-              Сохранить
+              {t("planner.save")}
             </Button>
-          </GlassCard>
+          </AitSurface>
         </TabsContent>
 
         <TabsContent value="notes">
-          <GlassCard className="p-6 space-y-4">
+          <AitSurface padding="none" className="p-6 space-y-4">
             <Textarea
-              placeholder="Заметки к поездке..."
+              placeholder={t("planner.notesPlaceholder")}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               onBlur={persistPlannerFields}
@@ -670,38 +676,30 @@ export default function TripPlannerLayout({
               onClick={persistPlannerFields}
               disabled={saveTripMutation.isPending}
             >
-              Сохранить заметки
+              {t("planner.saveNotes")}
             </Button>
-          </GlassCard>
+          </AitSurface>
         </TabsContent>
 
         <TabsContent value="group">
-          <GlassCard className="p-6 max-w-lg space-y-4">
+          <AitSurface padding="none" className="p-6 max-w-lg space-y-4">
             <div className="flex items-center gap-2 text-ait-purple">
               <Users className="h-5 w-5" />
-              <h3 className="font-semibold">Чат группы</h3>
+              <h3 className="font-semibold">{t("planner.groupChat")}</h3>
             </div>
-            <p className="text-sm text-muted-foreground">
-              При создании поездки автоматически открывается приватный чат группы. Участников можно
-              было пригласить через @ник; новые попутчики из каталога тоже попадают в чат при
-              присоединении.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("planner.groupHint")}</p>
             <Link href={chatHref}>
-              <Button variant="premium">Открыть чат поездки</Button>
+              <Button variant="premium">{t("planner.openTripChat")}</Button>
             </Link>
-          </GlassCard>
+          </AitSurface>
         </TabsContent>
 
         <TabsContent value="matches">
-          <GlassCard className="p-6 space-y-3">
-            <h3 className="font-semibold">Похожие маршруты</h3>
-            <p className="text-sm text-muted-foreground">
-              Поездки с пересечением остановок (в радиусе ~35 км) — потенциальные попутчики.
-            </p>
+          <AitSurface padding="none" className="p-6 space-y-3">
+            <h3 className="font-semibold">{t("planner.similarRoutes")}</h3>
+            <p className="text-sm text-muted-foreground">{t("planner.matchesHint")}</p>
             {(routeMatchesData?.matches ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Добавьте минимум 2 остановки для поиска совпадений.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("planner.matchesEmpty")}</p>
             ) : (
               <ul className="space-y-2">
                 {routeMatchesData!.matches.map((m) => (
@@ -722,43 +720,44 @@ export default function TripPlannerLayout({
                 ))}
               </ul>
             )}
-          </GlassCard>
+          </AitSurface>
         </TabsContent>
 
         <TabsContent value="export">
-          <GlassCard className="p-6">
-            <p className="text-sm text-muted-foreground mb-4">
-              Скачайте маршрут в JSON для офлайн-использования.
-            </p>
+          <AitSurface padding="none" className="p-6">
+            <p className="text-sm text-muted-foreground mb-4">{t("planner.exportHint")}</p>
             <Button variant="premium" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
-              Экспорт маршрута
+              {t("planner.exportRoute")}
             </Button>
-          </GlassCard>
+          </AitSurface>
         </TabsContent>
       </Tabs>
 
       <div className="sticky bottom-20 md:bottom-4 z-30 ait-glass-strong rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap gap-4 text-sm">
           <span>
-            <strong>{totalDays}</strong> дней
+            <strong>{totalDays}</strong> {t("planner.statsDays", { count: totalDays })}
           </span>
           <span>
-            <strong>{allRoutePlacesCount}</strong> локаций
+            <strong>{allRoutePlacesCount}</strong>{" "}
+            {t("planner.statsLocations", { count: allRoutePlacesCount })}
           </span>
           <span>
-            <strong>{km || "—"}</strong> км
+            <strong>{km || "—"}</strong> {t("planner.statsKm", { km: km || "—" })}
             {yandexRoute
-              ? ` (${ROUTE_MODES.find((m) => m.id === routeMode)?.label ?? "маршрут"})`
+              ? ` (${routeModes.find((m) => m.id === routeMode)?.label ?? t("planner.tabs.route")})`
               : ""}
           </span>
           {yandexRoute?.durationMin != null && (
             <span>
-              <strong>{yandexRoute.durationMin}</strong> мин в пути
+              <strong>{yandexRoute.durationMin}</strong>{" "}
+              {t("planner.statsMinutes", { min: yandexRoute.durationMin })}
             </span>
           )}
           <span>
-            <strong>${budgetMax || "—"}</strong> бюджет
+            <strong>${budgetMax || "—"}</strong>{" "}
+            {t("planner.statsBudget", { budget: budgetMax || "—" })}
           </span>
         </div>
         <Button
@@ -766,7 +765,7 @@ export default function TripPlannerLayout({
           onClick={handleOptimize}
           disabled={allRoutePlacesCount < 2 || reorderMutation.isPending}
         >
-          {reorderMutation.isPending ? "Оптимизация…" : "Оптимизировать порядок"}
+          {reorderMutation.isPending ? t("planner.optimizing") : t("planner.optimize")}
         </Button>
       </div>
     </div>

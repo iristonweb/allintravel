@@ -10,6 +10,7 @@ import MessageStatusTicks from "@/components/chat/MessageStatusTicks";
 import VoiceMessagePlayer from "@/components/chat/VoiceMessagePlayer";
 import { QUICK_REACTION_EMOJIS } from "@/lib/message-reactions";
 import type { MessageDeliveryStatus, ReactionSummary } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 const MENTION_LINK_RE = /@([a-zA-Z0-9_]{3,30})/g;
 
@@ -63,11 +64,12 @@ function safeUrl(url: string): string | undefined {
 }
 
 function MediaPart({ part, isOwn }: { part: ParsedChatMessage; isOwn: boolean }) {
+  const { t } = useTranslation();
   if (part.type === "text") return null;
 
   if (part.type === "gif" || part.type === "sticker") {
     const src = safeUrl(part.url);
-    if (!src) return <span className="text-xs text-muted-foreground">[медиа]</span>;
+    if (!src) return <span className="text-xs text-muted-foreground">{t("messages.media")}</span>;
     return (
       <img
         src={src}
@@ -86,11 +88,11 @@ function MediaPart({ part, isOwn }: { part: ParsedChatMessage; isOwn: boolean })
 
   if (part.type === "image") {
     const src = safeUrl(part.url);
-    if (!src) return <span className="text-xs text-muted-foreground">[фото]</span>;
+    if (!src) return <span className="text-xs text-muted-foreground">{t("messages.photo")}</span>;
     return (
       <img
         src={src}
-        alt="Фото"
+        alt={t("messages.photo")}
         className="block max-w-[min(320px,85vw)] max-h-[360px] rounded-2xl object-cover"
         loading="lazy"
       />
@@ -99,7 +101,7 @@ function MediaPart({ part, isOwn }: { part: ParsedChatMessage; isOwn: boolean })
 
   if (part.type === "video") {
     const src = safeUrl(part.url);
-    if (!src) return <span className="text-xs text-muted-foreground">[видео]</span>;
+    if (!src) return <span className="text-xs text-muted-foreground">{t("messages.video")}</span>;
     return (
       <video
         src={src}
@@ -112,7 +114,7 @@ function MediaPart({ part, isOwn }: { part: ParsedChatMessage; isOwn: boolean })
 
   if (part.type === "audio") {
     const src = safeUrl(part.url);
-    if (!src) return <span className="text-xs text-muted-foreground">[аудио]</span>;
+    if (!src) return <span className="text-xs text-muted-foreground">{t("messages.audio")}</span>;
     return (
       <VoiceMessagePlayer
         src={src}
@@ -129,7 +131,7 @@ function MediaPart({ part, isOwn }: { part: ParsedChatMessage; isOwn: boolean })
 
   if (part.type === "voice") {
     const src = safeUrl(part.url);
-    if (!src) return <span className="text-xs text-muted-foreground">[голосовое]</span>;
+    if (!src) return <span className="text-xs text-muted-foreground">{t("messages.voice")}</span>;
     return (
       <VoiceMessagePlayer
         src={src}
@@ -155,6 +157,7 @@ export default function ChatMessageBubble({
   onDoubleClickReact,
   onReactionDetails,
 }: ChatMessageBubbleProps) {
+  const { t } = useTranslation();
   const parts = parseChatMessage(content);
   const replyPart = parts.find(
     (p): p is { type: "reply"; username: string; preview: string } => p.type === "reply",
@@ -230,7 +233,7 @@ export default function ChatMessageBubble({
               disabled={reacting}
               className="text-base leading-none p-0.5 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
               onClick={() => onReact(emoji)}
-              aria-label={`Реакция ${emoji}`}
+              aria-label={`${t("messages.reaction")} ${emoji}`}
             >
               {emoji}
             </button>
@@ -240,7 +243,7 @@ export default function ChatMessageBubble({
 
       <div className={cn("flex items-center gap-1.5 px-1", isOwn && "flex-row-reverse")}>
         {timestamp}
-        {edited && <span className="text-[10px] text-muted-foreground italic">изменено</span>}
+        {edited && <span className="text-[10px] text-muted-foreground italic">{t("messages.edited")}</span>}
         {isOwn && deliveryStatus && <MessageStatusTicks status={deliveryStatus} />}
       </div>
     </div>

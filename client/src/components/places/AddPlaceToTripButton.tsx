@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { MapPinned, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ type AddPlaceToTripButtonProps = {
 };
 
 export default function AddPlaceToTripButton({ placeId, placeName }: AddPlaceToTripButtonProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -35,15 +37,15 @@ export default function AddPlaceToTripButton({ placeId, placeName }: AddPlaceToT
       const res = await apiRequest("POST", `/api/trips/${tripId}/waypoints`, { placeId });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error((body as { message?: string }).message ?? "Не удалось добавить");
+        throw new Error((body as { message?: string }).message ?? t("map.placeSheet.addFailed"));
       }
       return tripId;
     },
     onSuccess: (tripId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/trips", tripId, "waypoints"] });
       toast({
-        title: "Добавлено в поездку",
-        description: `«${placeName}» добавлено в маршрут.`,
+        title: t("map.placeSheet.addedTitle"),
+        description: t("map.placeSheet.addedDesc", { name: placeName }),
       });
       setOpen(false);
     },
@@ -56,23 +58,26 @@ export default function AddPlaceToTripButton({ placeId, placeName }: AddPlaceToT
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="premium" className="gap-2 rounded-2xl">
-          <MapPinned className="h-4 w-4" />В поездку
+          <MapPinned className="h-4 w-4" />
+          {t("map.placeSheet.addToTrip")}
         </Button>
       </DialogTrigger>
       <DialogContent className="ait-glass border-white/10 max-w-md">
         <DialogHeader>
-          <DialogTitle>Добавить в поездку</DialogTitle>
-          <DialogDescription>Выберите поездку, куда добавить «{placeName}».</DialogDescription>
+          <DialogTitle>{t("map.placeSheet.addToTrip")}</DialogTitle>
+          <DialogDescription>
+            {t("map.placeSheet.pickTrip")} «{placeName}».
+          </DialogDescription>
         </DialogHeader>
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Загрузка поездок…</p>
+          <p className="text-sm text-muted-foreground">{t("map.placeSheet.loadingTrips")}</p>
         ) : trips.length === 0 ? (
           <div className="space-y-3 text-center py-4">
-            <p className="text-sm text-muted-foreground">У вас пока нет поездок.</p>
+            <p className="text-sm text-muted-foreground">{t("map.placeSheet.noTrips")}</p>
             <Button variant="premium" asChild>
               <Link href="/trips">
                 <Plus className="h-4 w-4 mr-2" />
-                Создать поездку
+                {t("map.placeSheet.createTrip")}
               </Link>
             </Button>
           </div>

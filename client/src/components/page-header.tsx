@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppBreadcrumbs, { type AppBreadcrumbItem } from "@/components/layout/app-breadcrumbs";
@@ -22,6 +23,8 @@ export default function PageHeader({
   backHref,
   breadcrumbs,
 }: PageHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <div
       className={cn("flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3", className)}
@@ -33,7 +36,7 @@ export default function PageHeader({
           <Button variant="ghost" size="sm" className="mb-2 -ml-2" asChild>
             <Link href={backHref}>
               <ChevronLeft className="h-4 w-4 mr-1" />
-              Назад
+              {t("common.back")}
             </Link>
           </Button>
         ) : null}

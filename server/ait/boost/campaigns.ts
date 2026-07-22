@@ -47,6 +47,38 @@ export async function canLaunchBoost(userId: string): Promise<{ ok: boolean; mes
   return { ok: true };
 }
 
+export async function getBoostQuote(
+  userId: string,
+  postId: string,
+): Promise<{
+  ok: boolean;
+  message?: string;
+  cost?: number;
+  baseCost?: number;
+  qualityScore?: number;
+  verifiedExperience?: boolean;
+}> {
+  const post = await storage.getTravelPost(postId);
+  if (!post) return { ok: false, message: "Пост не найден" };
+  if (post.userId !== userId) return { ok: false, message: "Можно бустить только свои посты" };
+
+  const qsBreakdown = await computeQualityScore(postId, userId);
+  if (!isBoostAllowed(qsBreakdown.score)) {
+    return { ok: false, message: "Quality Score слишком низкий для буста" };
+  }
+
+  const proof = await checkProofOfExperience(userId, post.location?.split(",").pop()?.trim());
+  const cost = computeBoostCost(AIT_BOOST_BASE_COST, qsBreakdown.score, proof.discountMultiplier);
+
+  return {
+    ok: true,
+    cost,
+    baseCost: AIT_BOOST_BASE_COST,
+    qualityScore: qsBreakdown.score,
+    verifiedExperience: proof.verified,
+  };
+}
+
 export async function launchBoostCampaign(
   userId: string,
   postId: string,
@@ -63,40 +95,15 @@ export async function launchBoostCampaign(
   const proof = await checkProofOfExperience(userId, post.location?.split(",").pop()?.trim());
   const cost = computeBoostCost(AIT_BOOST_BASE_COST, qsBreakdown.score, proof.discountMultiplier);
 
-  const balance = await store.getOrCreateBalance(userId);
-  if (balance.creatorBalance + balance.spendBalance < cost) {
-    return { ok: false, message: "Недостаточно AIT" };
-  }
-
-  let remaining = cost;
-  if (balance.creatorBalance > 0) {
-    const fromCreator = Math.min(balance.creatorBalance, remaining);
-    const creatorSpent = await store.applyBalanceDelta(
-      userId,
-      "creator",
-      -fromCreator,
-      "spend_shop",
-      "Boost поста (Creator)",
-      "post",
-      postId,
-      { skipEmissionCap: true },
-    );
-    if (!creatorSpent) return { ok: false, message: "Недостаточно AIT" };
-    remaining -= fromCreator;
-  }
-  if (remaining > 0) {
-    const spent = await store.applyBalanceDelta(
-      userId,
-      "spend",
-      -remaining,
-      "spend_shop",
-      "Boost поста 24ч",
-      "post",
-      postId,
-      { skipEmissionCap: true },
-    );
-    if (!spent) return { ok: false, message: "Недостаточно AIT" };
-  }
+  const debited = await store.debitDualWallet(
+    userId,
+    cost,
+    "spend_shop",
+    "Boost поста 24ч",
+    "post",
+    postId,
+  );
+  if (!debited) return { ok: false, message: "Недостаточно AIT" };
 
   const burnAmt = calculateBurnAmount(cost, AIT_BURN_RATES.boost);
   if (burnAmt > 0) {

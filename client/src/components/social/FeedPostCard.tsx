@@ -18,6 +18,7 @@ import { shareUrl } from "@/lib/share";
 import { isVideoUrl } from "@/lib/upload-media";
 import { resolveMediaUrl } from "@/lib/resolve-media-url";
 import { COMMUNITY_TRAVEL_SRC } from "@/lib/marketing-images";
+import { isDemoPostId } from "@/lib/demo-reels-feed";
 import { cn } from "@/lib/utils";
 import { Bookmark, Heart, MapPin, MessageCircle, Send, Share2 } from "lucide-react";
 import type { TravelPostWithAuthor, User } from "@shared/schema";
@@ -31,12 +32,14 @@ type FeedPostCardProps = {
   formatDate: (date: string | Date) => string;
   likePending: boolean;
   commentPending: boolean;
-  onToggleComments: () => void;
-  onCommentChange: (value: string) => void;
-  onSubmitComment: () => void;
-  onLike: () => void;
-  onBookmark: () => void;
-  onTagClick: (tag: string) => void;
+  onToggleComments?: () => void;
+  onCommentChange?: (value: string) => void;
+  onSubmitComment?: () => void;
+  onLike?: () => void;
+  onBookmark?: () => void;
+  onTagClick?: (tag: string) => void;
+  readOnly?: boolean;
+  isDemo?: boolean;
 };
 
 export default function FeedPostCard({
@@ -54,8 +57,11 @@ export default function FeedPostCard({
   onLike,
   onBookmark,
   onTagClick,
+  readOnly = false,
+  isDemo = false,
 }: FeedPostCardProps) {
   const { t } = useTranslation();
+  const actionsDisabled = readOnly || isDemo || isDemoPostId(post.id);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const authorName = post.author
     ? `${post.author.firstName || ""} ${post.author.lastName || ""}`.trim() || t("social.traveler")
@@ -93,6 +99,11 @@ export default function FeedPostCard({
               ) : (post as { isBoosted?: boolean }).isBoosted ? (
                 <AitBadge tone="accent">Boost</AitBadge>
               ) : null}
+              {actionsDisabled && (
+                <Badge variant="outline" className="text-xs">
+                  {t("social.demoBadge")}
+                </Badge>
+              )}
             </div>
             {post.location && (
               <div className="flex items-center gap-1.5 mt-1">
@@ -169,8 +180,11 @@ export default function FeedPostCard({
               <Badge
                 key={i}
                 variant="secondary"
-                className="cursor-pointer rounded-full px-3 hover:bg-ait-purple/20 transition-colors"
-                onClick={() => onTagClick(tag)}
+                className={cn(
+                  "cursor-pointer rounded-full px-3 hover:bg-ait-purple/20 transition-colors",
+                  !onTagClick && "cursor-default hover:bg-transparent",
+                )}
+                onClick={() => onTagClick?.(tag)}
               >
                 #{tag}
               </Badge>
@@ -181,62 +195,84 @@ export default function FeedPostCard({
         <Separator className="bg-white/10" />
 
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLike}
-              disabled={likePending}
-              className={cn(
-                "rounded-xl h-10 px-3 transition-all duration-300",
-                post.isLiked
-                  ? "text-red-500 bg-red-500/10"
-                  : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10",
+          {readOnly ? (
+            <p className="text-xs text-muted-foreground">
+              {t("social.publicGuidesHint", {
+                defaultValue: "Read-only preview — sign in to interact",
+              })}
+            </p>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLike}
+                disabled={likePending || actionsDisabled}
+                title={actionsDisabled ? t("social.demoMode") : undefined}
+                className={cn(
+                  "rounded-xl h-10 px-3 transition-all duration-300",
+                  post.isLiked
+                    ? "text-red-500 bg-red-500/10"
+                    : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10",
+                )}
+              >
+                <Heart className={`mr-1.5 h-4 w-4 ${post.isLiked ? "fill-current" : ""}`} />
+                {post.likesCount > 0 ? post.likesCount : t("social.feed.like")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleComments}
+                disabled={actionsDisabled}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <MessageCircle className="mr-1.5 h-4 w-4" />
+                {post.commentsCount > 0 ? post.commentsCount : t("social.feed.comments")}
+              </Button>
+              {!actionsDisabled && post.author?.id && (
+                <PostTipButton
+                  postId={post.id}
+                  authorId={post.author.id}
+                  currentUserId={user?.id}
+                />
               )}
-            >
-              <Heart className={`mr-1.5 h-4 w-4 ${post.isLiked ? "fill-current" : ""}`} />
-              {post.likesCount > 0 ? post.likesCount : t("social.feed.like")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggleComments}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <MessageCircle className="mr-1.5 h-4 w-4" />
-              {post.commentsCount > 0 ? post.commentsCount : t("social.feed.comments")}
-            </Button>
-            {post.author?.id && (
-              <PostTipButton postId={post.id} authorId={post.author.id} currentUserId={user?.id} />
-            )}
-            <BoostPostButton
-              postId={post.id}
-              authorId={post.author?.id ?? ""}
-              currentUserId={user?.id}
-              isBoosted={(post as { isBoosted?: boolean }).isBoosted}
-            />
-          </div>
+              {!actionsDisabled && (
+                <BoostPostButton
+                  postId={post.id}
+                  authorId={post.author?.id ?? ""}
+                  currentUserId={user?.id}
+                  isBoosted={(post as { isBoosted?: boolean }).isBoosted}
+                />
+              )}
+            </div>
+          )}
           <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => shareUrl(window.location.href, post.title, post.content.slice(0, 100))}
+              onClick={() => {
+                const shareLink = `${window.location.origin}/post/${post.id}`;
+                void shareUrl(shareLink, post.title, post.content.slice(0, 100));
+              }}
               className="text-muted-foreground"
             >
               <Share2 className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBookmark}
-              className={bookmarked ? "text-ait-purple" : "text-muted-foreground"}
-            >
-              <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-current" : ""}`} />
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBookmark}
+                disabled={actionsDisabled}
+                className={bookmarked ? "text-ait-purple" : "text-muted-foreground"}
+              >
+                <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-current" : ""}`} />
+              </Button>
+            )}
           </div>
         </div>
 
-        {expanded && (
+        {expanded && !readOnly && !actionsDisabled && (
           <div className="border-t pt-3 space-y-3">
             <PostComments postId={post.id} enabled={expanded} />
             <div className="flex gap-2">
@@ -247,7 +283,7 @@ export default function FeedPostCard({
               <div className="flex-1 flex flex-col gap-1 min-w-0">
                 <FormatToolbar
                   value={commentText}
-                  onChange={onCommentChange}
+                  onChange={(v) => onCommentChange?.(v)}
                   inputRef={commentInputRef}
                   compact
                 />
@@ -256,11 +292,11 @@ export default function FeedPostCard({
                     ref={commentInputRef}
                     placeholder={t("social.feed.commentPlaceholder")}
                     value={commentText}
-                    onChange={(e) => onCommentChange(e.target.value)}
+                    onChange={(e) => onCommentChange?.(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        onSubmitComment();
+                        onSubmitComment?.();
                       }
                     }}
                   />
@@ -268,7 +304,7 @@ export default function FeedPostCard({
                     size="sm"
                     variant="premium"
                     disabled={!commentText.trim() || commentPending}
-                    onClick={onSubmitComment}
+                    onClick={() => onSubmitComment?.()}
                     className="shrink-0"
                   >
                     <Send className="h-4 w-4" />

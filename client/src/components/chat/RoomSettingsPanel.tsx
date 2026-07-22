@@ -318,7 +318,9 @@ export default function RoomSettingsPanel({
                 <button
                   key={preset.id}
                   type="button"
-                  title={preset.label}
+                  title={t(`chat.roomSettings.backgrounds.${preset.id}`, {
+                    defaultValue: t("chat.roomSettings.backgroundDefault"),
+                  })}
                   onClick={() => setChatBackground(preset.id)}
                   className={cn(
                     "aspect-square rounded-xl border-2 transition-all",
@@ -331,8 +333,11 @@ export default function RoomSettingsPanel({
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground mt-1.5">
-              {CHAT_BACKGROUND_PRESETS.find((p) => p.id === chatBackground)?.label ??
-                t("chat.roomSettings.backgroundDefault")}
+              {chatBackground
+                ? t(`chat.roomSettings.backgrounds.${chatBackground}`, {
+                    defaultValue: t("chat.roomSettings.backgroundDefault"),
+                  })
+                : t("chat.roomSettings.backgroundDefault")}
             </p>
           </div>
           <Button

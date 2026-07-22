@@ -3,9 +3,13 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/app-layout";
 import PublicLayout from "@/components/public-layout";
-import GlassCard from "@/components/brand/glass-card";
+import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
+import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
+import AitButton from "@/components/ait-ui/AitButton";
+import AitSurface from "@/components/ait-ui/AitSurface";
+import EmptyState from "@/components/empty-state";
 import TravelMap from "@/components/maps/TravelMap";
-import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useDocumentMeta } from "@/hooks/useDocumentMeta";
 import { apiRequestJson } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -35,8 +39,11 @@ function TripPublicContent({ guest }: { guest: boolean }) {
   useDocumentMeta(
     data
       ? {
-          title: `${data.trip.title} — маршрут | All In Travel`,
-          description: `${data.stopCount} остановок · ${data.trip.destination}`,
+          title: t("tripPublic.metaTitle", { title: data.trip.title }),
+          description: t("tripPublic.metaDescription", {
+            stops: data.stopCount,
+            destination: data.trip.destination,
+          }),
           image: data.trip.imageUrl ?? `${window.location.origin}/brand/logo-ait.png`,
           url: `${window.location.origin}/trips/${id}/public`,
         }
@@ -46,26 +53,30 @@ function TripPublicContent({ guest }: { guest: boolean }) {
   const copyMutation = useMutation({
     mutationFn: () => apiRequestJson<Trip>("POST", `/api/trips/${id}/copy`),
     onSuccess: (trip) => {
-      toast({ title: "Маршрут скопирован" });
+      toast({ title: t("tripPublic.copied") });
       window.location.href = `/trips/${trip.id}`;
     },
-    onError: () => toast({ title: "Войдите, чтобы скопировать маршрут", variant: "destructive" }),
+    onError: () =>
+      toast({ title: t("tripPublic.copyRequiresSignIn"), variant: "destructive" }),
   });
 
   const Layout = guest ? PublicLayout : AppLayout;
 
   if (isLoading) {
     return (
-      <Layout>
-        <div className="h-64 animate-pulse bg-muted rounded-2xl" />
+      <Layout contentClassName="py-8">
+        <div className="space-y-4" aria-busy="true" aria-label={t("tripPublic.loading")}>
+          <Skeleton className="h-64 w-full rounded-card-xl" />
+          <Skeleton className="h-32 w-full rounded-card-lg" />
+        </div>
       </Layout>
     );
   }
 
   if (!data) {
     return (
-      <Layout>
-        <p className="text-muted-foreground">Маршрут не найден или скрыт.</p>
+      <Layout contentClassName="py-8">
+        <EmptyState variant="glass" title={t("tripPublic.notFoundTitle")} description={t("tripPublic.notFound")} className="max-w-md mx-auto" />
       </Layout>
     );
   }
@@ -82,57 +93,62 @@ function TripPublicContent({ guest }: { guest: boolean }) {
 
   return (
     <Layout contentClassName="py-8">
-      <GlassCard className="p-6 space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold">{data.trip.title}</h1>
-          <p className="text-muted-foreground">{data.trip.destination}</p>
-          <p className="text-sm text-muted-foreground mt-1">{data.stopCount} остановок</p>
-        </div>
-
-        {mapPlaces.length > 0 && (
-          <TravelMap places={mapPlaces} height="18rem" className="rounded-xl overflow-hidden" />
-        )}
-
-        <ol className="space-y-2">
-          {data.waypoints.map((w, i) => (
-            <li key={w.id} className="flex gap-2 text-sm">
-              <span className="text-muted-foreground w-6">{i + 1}.</span>
-              <span>
-                <MapPin className="inline h-3 w-3 mr-1 text-primary" />
-                {w.place?.name ?? "Остановка"}
-              </span>
-            </li>
-          ))}
-        </ol>
-
-        <div className="flex flex-wrap gap-2 pt-2 items-center">
-          <TripMarketplaceActions
-            tripId={data.trip.id}
-            isOwner={user?.id === data.trip.userId}
-            isPublic
-            priceCents={data.trip.priceCents}
-            isForSale={data.trip.isForSale}
+      <ReelsPageLayout
+        header={
+          <AitSectionHeader
+            title={data.trip.title}
+            description={`${data.trip.destination} · ${t("tripPublic.stops", { count: data.stopCount })}`}
           />
-          {isAuthenticated ? (
-            <Button
-              variant="outline"
-              className="gap-2"
-              disabled={copyMutation.isPending}
-              onClick={() => copyMutation.mutate()}
-            >
-              <Copy className="h-4 w-4" />
-              {t("marketplace.fork")}
-            </Button>
-          ) : (
-            <Button variant="premium" className="gap-2" asChild>
-              <Link href={`/login?redirect=${encodeURIComponent(`/trips/${id}/public`)}`}>
-                <LogIn className="h-4 w-4" />
-                Войти и скопировать
-              </Link>
-            </Button>
-          )}
-        </div>
-      </GlassCard>
+        }
+        feed={
+          <AitSurface className="space-y-4">
+            {mapPlaces.length > 0 && (
+              <TravelMap places={mapPlaces} height="18rem" className="rounded-card-xl overflow-hidden" />
+            )}
+
+            <ol className="space-y-2">
+              {data.waypoints.map((w, i) => (
+                <li key={w.id} className="flex gap-2 text-sm">
+                  <span className="text-muted-foreground w-6 tabular-nums">{i + 1}.</span>
+                  <span>
+                    <MapPin className="inline h-3 w-3 mr-1 text-primary" strokeWidth={1.5} />
+                    {w.place?.name ?? t("tripPublic.stopFallback")}
+                  </span>
+                </li>
+              ))}
+            </ol>
+
+            <div className="flex flex-wrap gap-2 pt-2 items-center">
+              <TripMarketplaceActions
+                tripId={data.trip.id}
+                isOwner={user?.id === data.trip.userId}
+                isPublic
+                priceCents={data.trip.priceCents}
+                isForSale={data.trip.isForSale}
+              />
+              {isAuthenticated ? (
+                <AitButton
+                  variant="glass"
+                  size="sm"
+                  className="gap-2"
+                  disabled={copyMutation.isPending}
+                  onClick={() => copyMutation.mutate()}
+                >
+                  <Copy className="h-4 w-4" strokeWidth={1.5} />
+                  {t("marketplace.fork")}
+                </AitButton>
+              ) : (
+                <AitButton variant="primary" size="sm" className="gap-2" asChild>
+                  <Link href={`/login?redirect=${encodeURIComponent(`/trips/${id}/public`)}`}>
+                    <LogIn className="h-4 w-4" strokeWidth={1.5} />
+                    {t("tripPublic.signInToCopy")}
+                  </Link>
+                </AitButton>
+              )}
+            </div>
+          </AitSurface>
+        }
+      />
     </Layout>
   );
 }
