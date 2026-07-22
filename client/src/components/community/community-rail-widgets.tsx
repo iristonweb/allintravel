@@ -32,13 +32,11 @@ type CommunityRailWidgetsProps = {
 
 /** Data adapter: maps feed posts + API data into {@link RightPanelWidgets}. */
 export function CommunityRailWidgets({ posts = [] }: CommunityRailWidgetsProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const demoMode = isSocialFeedDemoMode();
 
-  const trends = useMemo(() => {
-    if (demoMode) return getDemoTrends();
-    return computeTrends(posts);
-  }, [posts, demoMode, i18n.language]);
+  const liveTrends = useMemo(() => computeTrends(posts), [posts]);
+  const trends = demoMode ? getDemoTrends() : liveTrends;
 
   const { data: publicPosts = [] } = useQuery<TravelPostWithAuthor[]>({
     queryKey: ["/api/posts", { format: "public", limit: "1" }],

@@ -29,7 +29,7 @@ export default function TravelIdentityCard({
 }: TravelIdentityCardProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isSelf = Boolean(username) ? username === user?.username : true;
+  const isSelf = username ? username === user?.username : true;
   const { data: ait, isLoading: aitLoading, isError: aitError } = useAitDashboard(isSelf);
 
   const travelScore = ait

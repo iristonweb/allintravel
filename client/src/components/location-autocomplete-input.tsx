@@ -117,7 +117,7 @@ export const LocationAutocompleteInput = React.forwardRef<HTMLInputElement, Prop
       return () => {
         window.clearTimeout(timer);
       };
-    }, [shouldQuery, queryUrl, debounceMs]);
+    }, [shouldQuery, queryUrl, debounceMs, t]);
 
     useLayoutEffect(() => {
       if (!dropdownPortal || !open || !anchorRef.current) {

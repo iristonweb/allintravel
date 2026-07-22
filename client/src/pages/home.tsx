@@ -43,7 +43,6 @@ export function Home() {
 
   const {
     data: places = [],
-    isLoading: placesLoading,
     isError: placesError,
     refetch: refetchPlaces,
   } = useQuery<Place[]>({

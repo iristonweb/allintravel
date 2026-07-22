@@ -36,7 +36,6 @@ export default function EventCard({
   const now = new Date();
   const isPastEvent = startDate < now;
   const isUpcoming = startDate > now;
-  const isOngoing = !isPastEvent && !isUpcoming;
 
   const formatDate = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;

@@ -10,7 +10,6 @@ import {
   MapPin,
   Route,
   User,
-  Users,
 } from "lucide-react";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitSurface from "@/components/ait-ui/AitSurface";

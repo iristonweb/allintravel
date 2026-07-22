@@ -97,7 +97,7 @@ export default function PlaceDetails() {
         window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
       }, 500);
     }
-  }, [placeError, toast]);
+  }, [placeError, toast, t]);
 
   const createReviewMutation = useMutation({
     mutationFn: async (reviewData: { rating: number; content: string }) => {
