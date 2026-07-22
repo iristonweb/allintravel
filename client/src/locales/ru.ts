@@ -24,6 +24,11 @@ export const ru = {
     back: "Назад",
     reload: "Обновить",
   },
+  avatarPreview: {
+    title: "Фото профиля",
+    open: "Открыть фото профиля",
+    close: "Закрыть",
+  },
   search: {
     placeholder: "Поиск мест, маршрутов, статей, пользователей…",
     destinationPlaceholder: "Страна, город или место…",

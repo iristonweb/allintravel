@@ -82,6 +82,7 @@ export default function FeedPostCard({
             fallback={post.author?.firstName?.[0] || "?"}
             creatorBadge={(post as { creatorBadge?: boolean }).creatorBadge}
             className="h-12 w-12"
+            label={authorName}
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

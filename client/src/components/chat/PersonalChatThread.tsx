@@ -295,6 +295,7 @@ export default function PersonalChatThread({ peerUserId, onBack }: PersonalChatT
             fallback={getUserInitial(peer)}
             isOnline={peer.isOnline}
             className="h-14 w-14 shrink-0"
+            label={getUserDisplayLabel(peer)}
           />
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold truncate leading-tight">{getUserDisplayLabel(peer)}</h2>

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarPreviewTrigger } from "@/components/ait/AvatarPreview";
 import { Textarea } from "@/components/ui/textarea";
 import FormatToolbar from "@/components/rich-text/FormatToolbar";
 import ChatMessageBubble from "@/components/chat/ChatMessageBubble";
@@ -48,7 +49,7 @@ import {
   toggleReactionEmoji,
 } from "@/lib/message-reactions";
 import { getUserDisplayLabel, getUserInitial } from "@shared/user-display";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { resolveAvatarSrc } from "@/lib/resolve-media-url";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -138,7 +139,7 @@ export default function ChatMessageRow({
   const userRow = (u: User) => (
     <li key={u.id} className="flex items-center gap-2">
       <Avatar className="h-8 w-8 shrink-0">
-        <AvatarImage src={resolveMediaUrl(u.profileImageUrl)} />
+        <AvatarImage src={resolveAvatarSrc(u.profileImageUrl)} />
         <AvatarFallback className="text-xs bg-primary/20">{getUserInitial(u)}</AvatarFallback>
       </Avatar>
       <span>{getUserDisplayLabel(u)}</span>
@@ -220,12 +221,17 @@ export default function ChatMessageRow({
               (grouped ? (
                 <div className="h-11 w-11 shrink-0" aria-hidden />
               ) : (
-                <Avatar className="h-11 w-11 shrink-0">
-                  <AvatarImage src={resolveMediaUrl(senderAvatarUrl)} />
-                  <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
-                    {senderInitial}
-                  </AvatarFallback>
-                </Avatar>
+                <AvatarPreviewTrigger
+                  src={resolveAvatarSrc(senderAvatarUrl)}
+                  className="h-11 w-11 shrink-0 rounded-full"
+                >
+                  <Avatar className="h-full w-full">
+                    <AvatarImage src={resolveAvatarSrc(senderAvatarUrl)} />
+                    <AvatarFallback className="text-xs font-bold bg-gradient-to-br from-ait-purple to-ait-orange text-white">
+                      {senderInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                </AvatarPreviewTrigger>
               ))}
             <div className={cn("flex flex-col max-w-[82%] min-w-0", isOwn && "items-end")}>
               {isPinned && (

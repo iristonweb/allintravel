@@ -42,7 +42,8 @@ import type {
 import LocationAutocompleteInput from "@/components/location-autocomplete-input";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import { validateUsername } from "@shared/username";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { resolveAvatarSrc } from "@/lib/resolve-media-url";
+import { AvatarPreviewTrigger } from "@/components/ait/AvatarPreview";
 import { uploadUserAvatar } from "@/lib/upload-media";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { notifyUrlSearchChange } from "@/hooks/useUrlSearch";
@@ -269,6 +270,8 @@ export function ProfileEdit() {
     );
   }
 
+  const avatarSrc = resolveAvatarSrc(user?.profileImageUrl);
+
   return (
     <AppLayout rightRail={<DiscoveryRightRail />}>
       <div className="max-w-4xl mx-auto">
@@ -290,18 +293,22 @@ export function ProfileEdit() {
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="flex flex-col items-center">
                     <div className="relative">
-                      <div className="rounded-full p-[3px] bg-gradient-to-tr from-ait-purple via-ait-violet to-ait-orange shadow-[0_0_28px_rgba(139,92,246,0.3)]">
+                      <AvatarPreviewTrigger
+                        src={avatarSrc}
+                        label={user ? getUserDisplayLabel(user) : undefined}
+                        className="rounded-full p-[3px] bg-gradient-to-tr from-ait-purple via-ait-violet to-ait-orange shadow-[0_0_28px_rgba(139,92,246,0.3)]"
+                      >
                         <Avatar className="h-32 w-32 border-[3px] border-background">
-                          <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} alt="" />
+                          <AvatarImage src={avatarSrc} alt="" />
                           <AvatarFallback className="bg-gradient-to-br from-ait-purple to-ait-orange text-3xl text-white">
                             {user ? getUserInitial(user) : "?"}
                           </AvatarFallback>
                         </Avatar>
-                      </div>
+                      </AvatarPreviewTrigger>
                       <AitButton
                         size="icon"
                         variant="glass"
-                        className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
+                        className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full z-10"
                         asChild
                       >
                         <label

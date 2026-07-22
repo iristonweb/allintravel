@@ -24,6 +24,11 @@ export const en = {
     back: "Back",
     reload: "Reload",
   },
+  avatarPreview: {
+    title: "Profile photo",
+    open: "View profile photo",
+    close: "Close",
+  },
   search: {
     placeholder: "Search places, routes, articles, people…",
     destinationPlaceholder: "Country, city or place…",

@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { resolveAvatarSrc } from "@/lib/resolve-media-url";
 import { getUserInitial } from "@shared/user-display";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, Settings, Shield, User, Wallet } from "lucide-react";
@@ -50,7 +50,7 @@ export default function AvatarHubMenu({ user, hasUnreadBadge }: AvatarHubMenuPro
           )}
         >
           <Avatar className="h-9 w-9 border-2 border-white/20 shadow-ait-glow-purple/30">
-            <AvatarImage src={resolveMediaUrl(user?.profileImageUrl)} />
+            <AvatarImage src={resolveAvatarSrc(user?.profileImageUrl)} />
             <AvatarFallback className="bg-gradient-to-br from-ait-purple to-ait-orange text-xs text-white">
               {label}
             </AvatarFallback>

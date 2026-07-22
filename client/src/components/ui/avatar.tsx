@@ -26,11 +26,9 @@ const AvatarImage = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Image
     ref={ref}
-    className={cn(
-      // Instagram / Telegram: fill the circle, crop excess — never stretch
-      "absolute inset-0 h-full w-full object-cover object-center",
-      className,
-    )}
+    // Keep in normal flow (no absolute) so Radix load/fallback works and
+    // existing profile photos keep rendering after updates.
+    className={cn("h-full w-full object-cover object-center", className)}
     {...props}
   />
 ));

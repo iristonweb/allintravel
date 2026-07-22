@@ -2,8 +2,9 @@ import { Link } from "wouter";
 import AitButton from "@/components/ait-ui/AitButton";
 import AitSurface from "@/components/ait-ui/AitSurface";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarPreviewTrigger } from "@/components/ait/AvatarPreview";
 import UserPreviewCell from "@/components/social/UserPreviewCell";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { resolveAvatarSrc } from "@/lib/resolve-media-url";
 import { getUserDisplayLabel, getUserHandle, getUserInitial } from "@shared/user-display";
 import type { User } from "@shared/schema";
 import { Edit, LogOut, Music, Settings, Wallet } from "lucide-react";
@@ -17,18 +18,24 @@ type ProfileHeroCardProps = {
 
 export default function ProfileHeroCard({ user, friends, onLogout }: ProfileHeroCardProps) {
   const { t } = useTranslation();
+  const avatarSrc = resolveAvatarSrc(user.profileImageUrl);
+  const displayLabel = getUserDisplayLabel(user);
 
   return (
     <AitSurface className="mb-6">
       <div className="flex flex-col sm:flex-row gap-6 items-start">
-        <div className="relative shrink-0 rounded-full p-[3px] bg-gradient-to-tr from-ait-purple via-ait-violet to-ait-orange shadow-[0_0_24px_rgba(139,92,246,0.35)]">
+        <AvatarPreviewTrigger
+          src={avatarSrc}
+          label={displayLabel}
+          className="relative shrink-0 rounded-full p-[3px] bg-gradient-to-tr from-ait-purple via-ait-violet to-ait-orange shadow-[0_0_24px_rgba(139,92,246,0.35)]"
+        >
           <Avatar className="h-24 w-24 border-[3px] border-background">
-            <AvatarImage src={resolveMediaUrl(user.profileImageUrl)} alt="" />
+            <AvatarImage src={avatarSrc} alt="" />
             <AvatarFallback className="bg-gradient-to-br from-ait-purple to-ait-orange text-2xl text-white">
               {getUserInitial(user)}
             </AvatarFallback>
           </Avatar>
-        </div>
+        </AvatarPreviewTrigger>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <h2 className="text-2xl font-semibold tracking-tight">{getUserDisplayLabel(user)}</h2>

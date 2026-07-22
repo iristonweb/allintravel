@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { resolveAvatarSrc } from "@/lib/resolve-media-url";
+import { AvatarPreviewTrigger } from "@/components/ait/AvatarPreview";
 import { Hash } from "lucide-react";
 
 type RoomAvatarProps = {
@@ -7,6 +8,7 @@ type RoomAvatarProps = {
   avatarUrl?: string | null;
   className?: string;
   fallbackClassName?: string;
+  previewable?: boolean;
 };
 
 export default function RoomAvatar({
@@ -14,17 +16,28 @@ export default function RoomAvatar({
   avatarUrl,
   className = "h-11 w-11",
   fallbackClassName,
+  previewable = true,
 }: RoomAvatarProps) {
-  const resolved = avatarUrl ? resolveMediaUrl(avatarUrl) : undefined;
+  const resolved = resolveAvatarSrc(avatarUrl);
   const initial = (title.trim().slice(0, 1) || "?").toUpperCase();
 
   if (resolved) {
-    return (
+    const img = (
       <img
         src={resolved}
         alt=""
         className={cn("aspect-square rounded-full object-cover object-center shrink-0", className)}
       />
+    );
+    if (!previewable) return img;
+    return (
+      <AvatarPreviewTrigger src={resolved} label={title} className={cn("rounded-full", className)}>
+        <img
+          src={resolved}
+          alt=""
+          className="h-full w-full rounded-full object-cover object-center"
+        />
+      </AvatarPreviewTrigger>
     );
   }
 

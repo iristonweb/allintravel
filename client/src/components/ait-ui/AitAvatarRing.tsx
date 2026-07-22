@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarPreviewTrigger } from "@/components/ait/AvatarPreview";
 import { cn } from "@/lib/utils";
-import { resolveMediaUrl } from "@/lib/resolve-media-url";
+import { resolveAvatarSrc } from "@/lib/resolve-media-url";
 
 type AitAvatarRingProps = {
   src?: string | null;
@@ -9,6 +10,9 @@ type AitAvatarRingProps = {
   shape?: "circle" | "story";
   active?: boolean;
   className?: string;
+  label?: string | null;
+  /** Full-size preview on click. Default true for circle; false for story chips. */
+  previewable?: boolean;
 };
 
 const circleSizeMap = {
@@ -32,11 +36,15 @@ export default function AitAvatarRing({
   shape = "circle",
   active = true,
   className,
+  label,
+  previewable,
 }: AitAvatarRingProps) {
   const isStory = shape === "story";
   const dimensions = isStory ? storySizeMap[size] : circleSizeMap[size];
+  const imageSrc = resolveAvatarSrc(src);
+  const canPreview = (previewable ?? !isStory) && Boolean(imageSrc);
 
-  return (
+  const ring = (
     <div
       className={cn(
         "shrink-0",
@@ -55,7 +63,7 @@ export default function AitAvatarRing({
         )}
       >
         <AvatarImage
-          src={resolveMediaUrl(src) ?? undefined}
+          src={imageSrc}
           alt=""
           className={isStory ? "rounded-[22px] object-[center_20%]" : undefined}
         />
@@ -69,5 +77,15 @@ export default function AitAvatarRing({
         </AvatarFallback>
       </Avatar>
     </div>
+  );
+
+  if (!canPreview || !imageSrc) {
+    return ring;
+  }
+
+  return (
+    <AvatarPreviewTrigger src={imageSrc} label={label} className="rounded-full">
+      {ring}
+    </AvatarPreviewTrigger>
   );
 }

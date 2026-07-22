@@ -165,6 +165,7 @@ export function UserPublicProfile() {
                   src={publicUser.profileImageUrl}
                   fallback={getUserInitial(publicUser)}
                   creatorBadge={publicUser.creatorBadge}
+                  label={displayLabel}
                 />
                 <div className="min-w-0">
                   <h2 className="text-xl font-semibold">{displayLabel}</h2>
