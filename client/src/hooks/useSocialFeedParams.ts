@@ -31,6 +31,13 @@ export function contentFormatFromSearch(search: string): SocialContentFormat {
   return format;
 }
 
+export type SetContentFormatOptions = {
+  /** Clear create=1 when leaving stories/reels create flow */
+  clearCreate?: boolean;
+  /** Force mode=all (delete mode param) */
+  resetMode?: boolean;
+};
+
 /**
  * Social feed URL params — single source of truth is the query string via wouter `useSearch`.
  * Sidebar Links (`?format=reels`) and in-page tabs both update the URL; this hook re-renders.
@@ -77,11 +84,13 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
   );
 
   const setContentFormat = useCallback(
-    (format: SocialContentFormat) => {
+    (format: SocialContentFormat, opts?: SetContentFormatOptions) => {
       replaceParams((p) => {
         if (format === "feed") p.delete("format");
         else p.set("format", format);
         if (format !== "feed") p.delete("sort");
+        if (opts?.resetMode) p.delete("mode");
+        if (opts?.clearCreate) p.delete("create");
       });
     },
     [replaceParams],
@@ -116,5 +125,6 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
     setIsCreating,
     feedSort,
     setFeedSort,
+    replaceParams,
   };
 }

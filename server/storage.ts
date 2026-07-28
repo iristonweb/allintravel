@@ -1712,7 +1712,7 @@ export class MemStorage implements IStorage {
           ).length,
           myRole:
             Array.from(this.memChatMembers.values()).find(
-              (m) => m.roomId === room.id && m.userId === userId,
+              (m) => m.roomId === room.id && m.userId === userId && m.status === "active",
             )?.role ?? null,
           unreadCount,
           lastMessagePreview: lastMessage?.content ?? null,

@@ -417,7 +417,7 @@ export async function notifyNewMessage(
   });
 }
 
-/** Web Push + in-app for group room messages (skip sender). */
+/** Web Push + in-app for group room messages (skip sender; cap fan-out). */
 export async function notifyGroupChatMessage(
   memberUserIds: string[],
   sender: User,
@@ -427,18 +427,25 @@ export async function notifyGroupChatMessage(
 ): Promise<void> {
   const body = preview.length > 120 ? `${preview.slice(0, 117)}…` : preview;
   const name = getUserDisplayLabel(sender);
-  const targets = memberUserIds.filter((id) => id && id !== sender.id);
+  const MAX_GROUP_PUSH = 40;
+  const targets = memberUserIds.filter((id) => id && id !== sender.id).slice(0, MAX_GROUP_PUSH);
+  if (targets.length === 0) return;
+
   await Promise.all(
     targets.map(async (userId) => {
-      await notifyUser({
-        userId,
-        type: "message",
-        title: roomTitle,
-        body: `${name}: ${body}`,
-        link: `/chat?room=${encodeURIComponent(roomSlug)}`,
-        actorId: sender.id,
-        entityId: roomSlug,
-      });
+      try {
+        await notifyUser({
+          userId,
+          type: "message",
+          title: roomTitle,
+          body: `${name}: ${body}`,
+          link: `/chat?room=${encodeURIComponent(roomSlug)}`,
+          actorId: sender.id,
+          entityId: roomSlug,
+        });
+      } catch (err) {
+        console.error("[notifyGroupChatMessage] user failed:", userId, err);
+      }
     }),
   );
 }

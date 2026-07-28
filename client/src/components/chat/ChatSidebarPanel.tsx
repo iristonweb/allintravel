@@ -144,7 +144,10 @@ export default function ChatSidebarPanel({
           dropdownOpen={
             chatTab !== "personal" &&
             (searchFocused || discoverSearch.length >= 2 || urlDiscoverQ.length >= 2) &&
-            (discoverSearch.length >= 2 || discoverRooms.length > 0 || discoverLoading)
+            (searchFocused ||
+              discoverSearch.length >= 2 ||
+              discoverRooms.length > 0 ||
+              discoverLoading)
           }
           dropdown={
             <div onMouseDown={(e) => e.preventDefault()}>
@@ -152,6 +155,9 @@ export default function ChatSidebarPanel({
                 rooms={discoverRooms}
                 loading={discoverLoading}
                 empty={!discoverLoading && discoverRooms.length === 0}
+                emptyKey={
+                  discoverSearch.length >= 2 ? "chat.discover.empty" : "chat.discover.emptyBrowse"
+                }
                 onJoin={(room) => joinRoomMutation.mutate(room.id)}
                 joinPending={joinRoomMutation.isPending}
               />

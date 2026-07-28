@@ -43,6 +43,7 @@ const resources = {
         discover: {
           header: "Найти публичные группы",
           empty: "Похожих групп не найдено. Попробуйте другое название.",
+          emptyBrowse: "Пока нет публичных групп для просмотра.",
           memberCount: "{{count}} участн.",
           join: "Вступить",
         },
@@ -292,6 +293,7 @@ const resources = {
         discover: {
           header: "Find public groups",
           empty: "No matching groups found. Try another name.",
+          emptyBrowse: "No public groups to browse yet.",
           memberCount: "{{count}} members",
           join: "Join",
         },

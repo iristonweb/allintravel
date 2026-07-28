@@ -20,11 +20,15 @@ export function PremiumPage() {
   const locale = i18n.language?.startsWith("ru") ? "ru-RU" : "en-US";
   const totalBalance = (ait?.spendBalance ?? 0) + (ait?.creatorBalance ?? 0);
   const isPremium = Boolean(user?.isPremium);
+  const lifetimeOwned = Boolean(
+    user?.premiumUntil && new Date(user.premiumUntil).getFullYear() >= 9999,
+  );
 
   const purchase = useMutation({
     mutationFn: (planId: PremiumPlanId) =>
       apiRequestJson<{ ok: boolean; isPremium?: boolean }>("POST", "/api/premium/purchase", {
         planId,
+        idempotencyKey: `ui-${planId}-${Date.now()}`,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
@@ -55,9 +59,13 @@ export function PremiumPage() {
               {t("premium.alreadyActive", { defaultValue: "Premium is active on your account" })}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {t("premium.extendHint", {
-                defaultValue: "You can still extend with a monthly or yearly plan",
-              })}
+              {lifetimeOwned
+                ? t("premium.lifetimeOwnedHint", {
+                    defaultValue: "Lifetime Premium — no further purchase needed",
+                  })
+                : t("premium.extendHint", {
+                    defaultValue: "You can still extend with a monthly or yearly plan",
+                  })}
             </p>
           </AitSurface>
         )}
@@ -72,11 +80,6 @@ export function PremiumPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           {PREMIUM_PLANS.map((plan) => {
             const canAfford = totalBalance >= plan.costAit;
-            const lifetimeOwned =
-              plan.id === "lifetime" &&
-              isPremium &&
-              user?.premiumUntil &&
-              new Date(user.premiumUntil).getFullYear() >= 9999;
             return (
               <AitSurface
                 key={plan.id}

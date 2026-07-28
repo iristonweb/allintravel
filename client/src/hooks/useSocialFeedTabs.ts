@@ -59,20 +59,15 @@ export function useSocialFeedTabs({
 
   const setContentFormat = useCallback(
     (format: SocialContentFormat) => {
-      setContentFormatParam(format);
-      if (
+      const resetMode =
         format === "reels" &&
         feedMode !== "all" &&
-        !new URLSearchParams(window.location.search).get("mode")
-      ) {
-        setFeedModeParam("all");
-      }
-      if (format !== "reels" && isCreating && format !== "stories") {
-        setIsCreating(false);
-      }
+        !new URLSearchParams(window.location.search).get("mode");
+      const clearCreate = format !== "reels" && isCreating && format !== "stories";
+      setContentFormatParam(format, { resetMode, clearCreate });
       onFormatChange?.(format);
     },
-    [setContentFormatParam, feedMode, setFeedModeParam, isCreating, setIsCreating, onFormatChange],
+    [setContentFormatParam, feedMode, isCreating, onFormatChange],
   );
 
   const setFeedMode = useCallback(

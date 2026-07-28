@@ -159,4 +159,44 @@ describe("debitDualWallet", () => {
     expect(a).toBe(true);
     expect(b).toBe(true);
   });
+
+  it("compensates via creditDualWalletCompensation", async () => {
+    const userId = `dual-refund-${Date.now()}`;
+    await seedBalance(userId, 100, 0);
+    await store.debitDualWallet(userId, 50, "spend_shop", "buy", "sku", "x", {
+      purchaseId: "buy-1",
+    });
+    let balance = await store.getOrCreateBalance(userId);
+    expect(balance.spendBalance).toBe(50);
+    await store.creditDualWalletCompensation(userId, 50, "refund", "sku", "x", "buy-1");
+    balance = await store.getOrCreateBalance(userId);
+    expect(balance.spendBalance).toBe(100);
+  });
+
+  it("rolls back creator debit when spend leg fails", async () => {
+    const userId = `dual-rollback-${Date.now()}`;
+    await seedBalance(userId, 80, 40);
+    const ledger = await import("./ledger");
+    const original = ledger.applyBalanceDeltaLedger.bind(ledger);
+    let spendCalls = 0;
+    const wrap = vi.spyOn(ledger, "applyBalanceDeltaLedger").mockImplementation(async (...args) => {
+      const [, wallet, delta] = args;
+      if (wallet === "spend" && typeof delta === "number" && delta < 0) {
+        spendCalls += 1;
+        return null;
+      }
+      return original(...args);
+    });
+
+    const before = await store.getOrCreateBalance(userId);
+    const ok = await store.debitDualWallet(userId, 100, "spend_shop", "split", "sku", "x", {
+      purchaseId: "rollback-1",
+    });
+    expect(ok).toBe(false);
+    expect(spendCalls).toBe(1);
+    const after = await store.getOrCreateBalance(userId);
+    expect(after.creatorBalance).toBe(before.creatorBalance);
+    expect(after.spendBalance).toBe(before.spendBalance);
+    wrap.mockRestore();
+  });
 });

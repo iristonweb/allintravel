@@ -69,12 +69,12 @@ npm run geo:import
 
 В `.env` (см. `.env.example`):
 
-| Переменная | Где | Назначение |
-|------------|-----|------------|
-| `VITE_YANDEX_MAPS_API_KEY` | клиент (Vite) | JavaScript API карт — `/map`, планировщик |
-| `YANDEX_GEOSUGGEST_API_KEY` | сервер | [Геосаджест](https://yandex.com/maps-api/docs/suggest-api/index.html) — подсказки при вводе |
-| `YANDEX_GEOCODER_API_KEY` | сервер | [HTTP Геокодер](https://yandex.com/maps-api/docs/geocoder-api/index.html) — координаты города |
-| `YANDEX_ROUTER_API_KEY` | сервер | [Маршрутизация](https://yandex.com/maps-api/docs/router-api/index.html) — км и линия маршрута в поездках |
+| Переменная                  | Где           | Назначение                                                                                               |
+| --------------------------- | ------------- | -------------------------------------------------------------------------------------------------------- |
+| `VITE_YANDEX_MAPS_API_KEY`  | клиент (Vite) | JavaScript API карт — `/map`, планировщик                                                                |
+| `YANDEX_GEOSUGGEST_API_KEY` | сервер        | [Геосаджест](https://yandex.com/maps-api/docs/suggest-api/index.html) — подсказки при вводе              |
+| `YANDEX_GEOCODER_API_KEY`   | сервер        | [HTTP Геокодер](https://yandex.com/maps-api/docs/geocoder-api/index.html) — координаты города            |
+| `YANDEX_ROUTER_API_KEY`     | сервер        | [Маршрутизация](https://yandex.com/maps-api/docs/router-api/index.html) — км и линия маршрута в поездках |
 
 Приоритет карты: **Яндекс** → Mapbox → Leaflet.  
 Приоритет подсказок: локальная БД → **Геосаджест + Геокодер** → Nominatim.  
@@ -100,24 +100,24 @@ npm run geo:import
 
 ### Переменные для Vercel (Production)
 
-| Переменная | Обязательно | Значение |
-|------------|-------------|----------|
-| `DATABASE_URL` | да | Supabase transaction pooler (`…pooler.supabase.com:6543/postgres?sslmode=require`) |
-| `SESSION_SECRET` | да | Случайная длинная строка (hex 64 символа) |
-| `APP_URL` | да для Google | `https://www.allintravel.online` |
-| `GOOGLE_CLIENT_ID` | нет | Google Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | нет | Google Cloud Console |
-| `VAPID_PUBLIC_KEY` | **да для пушей на телефон** | `npx web-push generate-vapid-keys` |
-| `VAPID_PRIVATE_KEY` | **да для пушей на телефон** | то же |
-| `VAPID_SUBJECT` | рекомендуется | `mailto:you@example.com` |
-| `VITE_YANDEX_MAPS_API_KEY` | нет | JavaScript API Яндекс.Карт |
-| `YANDEX_GEOSUGGEST_API_KEY` | нет | Геосаджест (подсказки) |
-| `YANDEX_GEOCODER_API_KEY` | нет | HTTP Геокодер |
-| `YANDEX_ROUTER_API_KEY` | нет | Маршрутизация (поездки) |
-| `ADMIN_EMAILS` | да (prod) | Доп. email админов через запятую. `iristonweb@gmail.com` всегда админ + Premium (founder bootstrap). |
-| `BLOB_READ_WRITE_TOKEN` | да (Vercel) | Vercel Blob — постоянные загрузки (аватар, медиа). **Без Blob публикация в ленте на production не работает.** |
-| `BLOB_STORE_ID` | нет (Vercel) | OIDC-доступ к Blob store |
-| `BLOB_ACCESS` | нет | `public` или `private` для Blob store |
+| Переменная                  | Обязательно                 | Значение                                                                                                      |
+| --------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`              | да                          | Supabase transaction pooler (`…pooler.supabase.com:6543/postgres?sslmode=require`)                            |
+| `SESSION_SECRET`            | да                          | Случайная длинная строка (hex 64 символа)                                                                     |
+| `APP_URL`                   | да для Google               | `https://www.allintravel.online`                                                                              |
+| `GOOGLE_CLIENT_ID`          | нет                         | Google Cloud Console                                                                                          |
+| `GOOGLE_CLIENT_SECRET`      | нет                         | Google Cloud Console                                                                                          |
+| `VAPID_PUBLIC_KEY`          | **да для пушей на телефон** | `npx web-push generate-vapid-keys`                                                                            |
+| `VAPID_PRIVATE_KEY`         | **да для пушей на телефон** | то же                                                                                                         |
+| `VAPID_SUBJECT`             | рекомендуется               | `mailto:you@example.com`                                                                                      |
+| `VITE_YANDEX_MAPS_API_KEY`  | нет                         | JavaScript API Яндекс.Карт                                                                                    |
+| `YANDEX_GEOSUGGEST_API_KEY` | нет                         | Геосаджест (подсказки)                                                                                        |
+| `YANDEX_GEOCODER_API_KEY`   | нет                         | HTTP Геокодер                                                                                                 |
+| `YANDEX_ROUTER_API_KEY`     | нет                         | Маршрутизация (поездки)                                                                                       |
+| `ADMIN_EMAILS`              | да (prod)                   | Доп. email админов через запятую. `iristonweb@gmail.com` всегда админ + Premium (founder bootstrap).          |
+| `BLOB_READ_WRITE_TOKEN`     | да (Vercel)                 | Vercel Blob — постоянные загрузки (аватар, медиа). **Без Blob публикация в ленте на production не работает.** |
+| `BLOB_STORE_ID`             | нет (Vercel)                | OIDC-доступ к Blob store                                                                                      |
+| `BLOB_ACCESS`               | нет                         | `public` или `private` для Blob store                                                                         |
 
 `NODE_ENV` и `VERCEL` Vercel выставляет сам. **Не коммитьте** `.env` в репозиторий.
 
@@ -143,10 +143,10 @@ npm run geo:import
 
 **Нет.** Один репозиторий и один проект Vercel — правильная схема:
 
-| Что | Как |
-|-----|-----|
-| Сайт (React) | `dist/public` — CDN |
-| API (`/api/*`) | `api/index.ts` → Express |
+| Что                 | Как                       |
+| ------------------- | ------------------------- |
+| Сайт (React)        | `dist/public` — CDN       |
+| API (`/api/*`)      | `api/index.ts` → Express  |
 | Загрузки `/uploads` | Тот же serverless handler |
 
 Второй проект имеет смысл только если вы **намеренно** выносите API на отдельный домен (тогда в Vercel задайте `VITE_API_ORIGIN=https://api.example.com` и настройте CORS/cookies). Для `www.allintravel.online` это не требуется.
@@ -164,6 +164,7 @@ npm run geo:import
 1. В production не применены миграции — локально выполните:
    ```bash
    npm run db:migrate
+   # includes 0010_user_premium → users.premium_until (required for /premium + isPremium)
    ```
    с production `DATABASE_URL` в `.env`.
 2. На Vercel нет `DATABASE_URL` или `SESSION_SECRET` — добавьте в Environment Variables и redeploy.
@@ -173,16 +174,16 @@ npm run geo:import
 
 ### Что работает после входа (нужен `DATABASE_URL`)
 
-| Функция | Статус на Vercel |
-|---------|------------------|
-| Главная, места, поездки, события, лента, друзья, ЛС | ✅ Postgres |
-| Карта | ✅ при `VITE_YANDEX_MAPS_API_KEY` (или Mapbox / Leaflet) |
-| Подсказки городов | ✅ при `YANDEX_GEOSUGGEST_API_KEY` / `YANDEX_GEOCODER_API_KEY` или БД после `geo:import` |
-| Маршрут по дорогам | ✅ при `YANDEX_ROUTER_API_KEY` (вкладка маршрута поездки) |
-| Чат групп | ✅ HTTP-режим |
-| Google OAuth | ✅ при `GOOGLE_*` + `APP_URL` |
-| Аватар `/api/users/avatar` | ✅ Vercel Blob при `BLOB_*`; локально — `/uploads/` |
-| Web Push | ✅ подписки в PostgreSQL при `DATABASE_URL`; in-memory только без БД |
+| Функция                                             | Статус на Vercel                                                                         |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Главная, места, поездки, события, лента, друзья, ЛС | ✅ Postgres                                                                              |
+| Карта                                               | ✅ при `VITE_YANDEX_MAPS_API_KEY` (или Mapbox / Leaflet)                                 |
+| Подсказки городов                                   | ✅ при `YANDEX_GEOSUGGEST_API_KEY` / `YANDEX_GEOCODER_API_KEY` или БД после `geo:import` |
+| Маршрут по дорогам                                  | ✅ при `YANDEX_ROUTER_API_KEY` (вкладка маршрута поездки)                                |
+| Чат групп                                           | ✅ HTTP-режим                                                                            |
+| Google OAuth                                        | ✅ при `GOOGLE_*` + `APP_URL`                                                            |
+| Аватар `/api/users/avatar`                          | ✅ Vercel Blob при `BLOB_*`; локально — `/uploads/`                                      |
+| Web Push                                            | ✅ подписки в PostgreSQL при `DATABASE_URL`; in-memory только без БД                     |
 
 ## Стек
 

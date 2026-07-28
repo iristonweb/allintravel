@@ -8,6 +8,12 @@ import { getPremiumPlan, type PremiumPlanId } from "@shared/premium";
 import type { IStorage } from "./storage";
 import type { User } from "@shared/schema";
 
+function isLifetimePremium(premiumUntil: Date | string | null | undefined): boolean {
+  if (!premiumUntil) return false;
+  const until = premiumUntil instanceof Date ? premiumUntil : new Date(premiumUntil);
+  return !Number.isNaN(until.getTime()) && until.getUTCFullYear() >= 9999;
+}
+
 async function grantPremiumPerks(userId: string): Promise<void> {
   try {
     const { getEntitlements, addEntitlement } = await import("./ait/store");
@@ -42,23 +48,25 @@ export async function grantPlatformPremium(storage: IStorage, user: User): Promi
   return next;
 }
 
-/** Purchase Premium with AIT (dual-wallet debit). */
+/** Purchase Premium with AIT (dual-wallet debit). Refunds AIT if grant fails. */
 export async function purchasePremiumWithAit(
   storage: IStorage,
   user: User,
   planId: PremiumPlanId,
+  opts?: { idempotencyKey?: string },
 ): Promise<{ ok: boolean; message?: string; user?: User }> {
   const plan = getPremiumPlan(planId);
   if (!plan) return { ok: false, message: "Unknown plan" };
 
-  if (planId === "lifetime" && isPremiumActive(user.premiumUntil)) {
-    const until = user.premiumUntil ? new Date(user.premiumUntil) : null;
-    if (until && until.getFullYear() >= 9999) {
-      return { ok: false, message: "Lifetime Premium already active" };
-    }
+  if (isLifetimePremium(user.premiumUntil)) {
+    return { ok: false, message: "Lifetime Premium already active" };
   }
 
-  const { debitDualWallet } = await import("./ait/store");
+  const purchaseId =
+    opts?.idempotencyKey?.trim() ||
+    `prem-${planId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const { debitDualWallet, creditDualWalletCompensation } = await import("./ait/store");
   const spent = await debitDualWallet(
     user.id,
     plan.costAit,
@@ -66,23 +74,37 @@ export async function purchasePremiumWithAit(
     `Premium: ${plan.titleDefault}`,
     "premium",
     plan.id,
+    { purchaseId },
   );
   if (!spent) return { ok: false, message: "Недостаточно AIT" };
 
-  const until = resolvePremiumUntil(planId, user.premiumUntil);
-  const next = await storage.setUserPremium(user.id, until);
-  await grantPremiumPerks(user.id);
-  return { ok: true, user: next };
+  try {
+    const until = resolvePremiumUntil(planId, user.premiumUntil);
+    const next = await storage.setUserPremium(user.id, until);
+    await grantPremiumPerks(user.id);
+    return { ok: true, user: next };
+  } catch (err) {
+    console.error("[premium] grant failed, refunding AIT:", err);
+    await creditDualWalletCompensation(
+      user.id,
+      plan.costAit,
+      `Premium refund: ${plan.titleDefault}`,
+      "premium",
+      plan.id,
+      purchaseId,
+    );
+    return { ok: false, message: "Purchase failed — AIT refunded" };
+  }
 }
 
-/** Promote admin + founder premium when email is on allowlist. */
+/** Promote admin for allowlist; free lifetime Premium only for founder. */
 export async function ensureAdminAndPremium(storage: IStorage, user: User): Promise<User> {
   const { resolveIsAdmin } = await import("./admin");
   let next = user;
   if (resolveIsAdmin(user.email) && !user.isAdmin) {
     next = await storage.setUserAdmin(user.id, true);
   }
-  if (isFounderEmail(next.email) || resolveIsAdmin(next.email)) {
+  if (isFounderEmail(next.email)) {
     next = await grantPlatformPremium(storage, next);
   }
   return next;

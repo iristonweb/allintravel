@@ -420,7 +420,7 @@ export async function incrementDailyCap(userId: string, reason: AitReasonCode): 
   return getDailyCapCount(userId, reason);
 }
 
-/** Debit Spend + Creator wallets (Creator first, then Spend). */
+/** Debit Spend + Creator wallets (Creator first, then Spend). Compensates creator if spend leg fails. */
 export async function debitDualWallet(
   userId: string,
   cost: number,
@@ -440,8 +440,9 @@ export async function debitDualWallet(
   const baseKey = `${userId}:${reason}:${entityId ?? "none"}:${purchaseId}`;
 
   let remaining = cost;
+  let fromCreator = 0;
   if (balance.creatorBalance > 0) {
-    const fromCreator = Math.min(balance.creatorBalance, remaining);
+    fromCreator = Math.min(balance.creatorBalance, remaining);
     const creatorSpent = await applyBalanceDelta(
       userId,
       "creator",
@@ -466,9 +467,44 @@ export async function debitDualWallet(
       entityId,
       { skipEmissionCap: true, idempotencyKey: `${baseKey}:spend` },
     );
-    if (!spent) return false;
+    if (!spent) {
+      if (fromCreator > 0) {
+        await applyBalanceDelta(
+          userId,
+          "creator",
+          fromCreator,
+          "admin_adjust",
+          `${title} (rollback)`,
+          entityType,
+          entityId,
+          {
+            skipEmissionCap: true,
+            skipFraud: true,
+            idempotencyKey: `${baseKey}:rollback`,
+          },
+        );
+      }
+      return false;
+    }
   }
   return true;
+}
+
+/** Credit both wallets after a failed side-effect (e.g. premium grant). */
+export async function creditDualWalletCompensation(
+  userId: string,
+  amount: number,
+  title: string,
+  entityType: string | null,
+  entityId: string | null,
+  purchaseId: string,
+): Promise<void> {
+  if (amount <= 0) return;
+  await applyBalanceDelta(userId, "spend", amount, "admin_adjust", title, entityType, entityId, {
+    skipEmissionCap: true,
+    skipFraud: true,
+    idempotencyKey: `${userId}:admin_adjust:${entityId ?? "none"}:${purchaseId}:refund`,
+  });
 }
 
 /** Public API — routes through ledger (supply, fraud, idempotency). */

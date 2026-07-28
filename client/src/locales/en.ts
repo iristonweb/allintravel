@@ -566,6 +566,8 @@ export const en = {
       "VAPID keys are not configured on the server. Add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to .env.",
     pushEnabled: "Notifications are enabled on this device.",
     pushDisabled: "Allow notifications to receive them even when the tab is closed.",
+    pushPhoneHint:
+      "For notifications on a phone: allow permission here. On iPhone, first Add to Home Screen, then open the installed app and enable push.",
     pushSubscribe: "Enable push",
     pushRefresh: "Refresh subscription",
     pushTest: "Test notification",
@@ -1740,6 +1742,12 @@ export const en = {
   walletHeader: {
     ariaLabel: "AIT crypto wallet",
     title: "AIT Hub — platform wallet",
+  },
+  push: {
+    promptTitle: "Enable phone notifications?",
+    promptBody:
+      "Get alerts for messages and friend requests even when the tab is closed. On iPhone, add this site to Home Screen first.",
+    promptAction: "Enable",
   },
   ui: {
     sidebarToggle: "Collapse or expand sidebar",

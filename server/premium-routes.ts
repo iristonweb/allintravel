@@ -25,11 +25,18 @@ export function registerPremiumRoutes(app: Express): void {
   app.post("/api/premium/purchase", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub as string;
-      const body = z.object({ planId: z.enum(["month", "year", "lifetime"]) }).parse(req.body);
+      const body = z
+        .object({
+          planId: z.enum(["month", "year", "lifetime"]),
+          idempotencyKey: z.string().min(8).max(80).optional(),
+        })
+        .parse(req.body);
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      const result = await purchasePremiumWithAit(storage, user, body.planId);
+      const result = await purchasePremiumWithAit(storage, user, body.planId, {
+        idempotencyKey: body.idempotencyKey,
+      });
       if (!result.ok) {
         return res.status(400).json({ message: result.message ?? "Purchase failed" });
       }
