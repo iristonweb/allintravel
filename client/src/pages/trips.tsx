@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import CatalogPageLayout, { CatalogSearchInput } from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
@@ -624,7 +623,7 @@ export function Trips() {
         </DialogContent>
       </Dialog>
 
-      <AppLayout rightRail={<DiscoveryRightRail />}>
+      <AppLayout>
         <ReelsPageLayout
           header={
             <AitSectionHeader

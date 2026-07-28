@@ -8,7 +8,6 @@ import { motion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import EmptyState from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import MapLayersPanel, { type MapLayerState } from "@/components/map/MapLayersPanel";
@@ -243,13 +242,7 @@ export function MapPage() {
   };
 
   return (
-    <AppLayout
-      fullWidth
-      layout="full-bleed"
-      immersive
-      contentClassName="p-0"
-      rightRail={isAuthenticated ? <DiscoveryRightRail /> : undefined}
-    >
+    <AppLayout fullWidth layout="full-bleed" immersive contentClassName="p-0">
       <div className="relative h-[calc(100vh-var(--ait-header-h))] min-h-[600px]">
         <div className="absolute top-[calc(var(--ait-header-h)+5rem)] left-3 right-3 md:left-[calc(72px+1rem)] md:right-8 z-50 pointer-events-none flex flex-col items-center gap-2">
           {isAuthenticated && (

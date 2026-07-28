@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitSurface from "@/components/ait-ui/AitSurface";
@@ -23,7 +22,7 @@ export function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationFilter>(initialFilter);
 
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />}>
+    <AppLayout>
       <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6">
         <ReelsPageLayout
           header={

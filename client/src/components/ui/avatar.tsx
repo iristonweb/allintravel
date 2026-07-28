@@ -28,7 +28,8 @@ const AvatarImage = React.forwardRef<
     ref={ref}
     // Keep in normal flow (no absolute) so Radix load/fallback works and
     // existing profile photos keep rendering after updates.
-    className={cn("h-full w-full object-cover object-center", className)}
+    // Bias toward upper third so portrait heads are not cropped by circular frames.
+    className={cn("h-full w-full object-cover object-[center_20%]", className)}
     {...props}
   />
 ));

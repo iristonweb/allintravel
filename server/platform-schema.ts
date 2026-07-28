@@ -111,6 +111,10 @@ export async function ensurePlatformSchema(): Promise<void> {
     await db.execute(sql`
       ALTER TABLE ait_entitlements ADD COLUMN IF NOT EXISTS entity_id varchar(100)
     `);
+
+    await db.execute(sql`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS premium_until timestamptz
+    `);
   };
 
   await Promise.race([

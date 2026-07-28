@@ -221,7 +221,8 @@ export function Chat() {
       if (!res.ok) throw new Error("Failed to discover rooms");
       return res.json() as Promise<DiscoverRoom[]>;
     },
-    enabled: isAuthenticated && chatTab !== "personal" && discoverSearch.length >= 2,
+    // Browse public rooms with empty query; search when 2+ chars.
+    enabled: isAuthenticated && chatTab !== "personal",
     staleTime: 30_000,
   });
 

@@ -96,12 +96,8 @@ export async function setupGoogleAuth(app: Express): Promise<void> {
           profileImageUrl: (claims?.picture as string) ?? null,
         });
       } else {
-        if (!user.isAdmin) {
-          const { resolveIsAdmin } = await import("./admin");
-          if (resolveIsAdmin(email)) {
-            user = await storage.setUserAdmin(user.id, true);
-          }
-        }
+        const { ensureAdminAndPremium } = await import("./premium");
+        user = await ensureAdminAndPremium(storage, user);
         const googlePicture = (claims?.picture as string | undefined)?.trim();
         const deadLocalAvatar =
           !user.profileImageUrl?.trim() || user.profileImageUrl.startsWith("/uploads/");

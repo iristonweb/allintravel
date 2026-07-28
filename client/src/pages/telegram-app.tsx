@@ -18,15 +18,16 @@ export default function TelegramAppPage() {
 
   return (
     <PublicLayout>
-      <div className="max-w-md mx-auto px-4 py-10 space-y-6">
-        <AitSurface padding="md" className="text-center space-y-3">
-          <h1 className="text-xl font-bold">{t("telegramApp.title")}</h1>
-          <p className="text-sm text-muted-foreground">
+      <div className="mx-auto max-w-md space-y-8 px-4 py-12">
+        <div className="space-y-3 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-ait-orange">Telegram</p>
+          <h1 className="ait-section-title text-2xl">{t("telegramApp.title")}</h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {inTelegram ? t("telegramApp.inTelegram") : t("telegramApp.openFromBot")}
           </p>
-        </AitSurface>
+        </div>
 
-        <div className="grid gap-3">
+        <AitSurface padding="md" className="grid gap-3">
           <AitButton className="w-full gap-2" asChild>
             <Link href="/map">
               <Map className="h-4 w-4" aria-hidden />
@@ -39,13 +40,13 @@ export default function TelegramAppPage() {
               {t("telegramApp.myTrips")}
             </Link>
           </AitButton>
-          <AitButton variant="secondary" className="w-full gap-2" asChild>
-            <Link href="/places">
+          <AitButton variant="glass" className="w-full gap-2" asChild>
+            <Link href="/social-feed">
               <Share2 className="h-4 w-4" aria-hidden />
-              {t("nav.places")}
+              {t("nav.feed")}
             </Link>
           </AitButton>
-        </div>
+        </AitSurface>
       </div>
     </PublicLayout>
   );

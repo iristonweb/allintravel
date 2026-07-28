@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -78,7 +77,7 @@ export function ProfileMusic() {
   }
 
   return (
-    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />}>
+    <AppLayout contentClassName="py-6">
       <div className="max-w-3xl mx-auto">
         <ReelsPageLayout
           header={

@@ -28,6 +28,7 @@ import MapPage from "@/pages/map";
 import { BlogRedirect, BlogPostRedirect } from "@/pages/blog-redirect";
 import PostDetailPage from "@/pages/post-detail";
 import { Wallet } from "@/pages/wallet";
+import PremiumPage from "@/pages/premium";
 import { Privacy } from "@/pages/privacy";
 import NotFound from "@/pages/not-found";
 import AmbientBackground from "@/components/premium/AmbientBackground";
@@ -143,6 +144,7 @@ function Router() {
           {isAuthenticated && <Route path="/chat/join/:token" component={Chat} />}
           {isAuthenticated && <Route path="/passport" component={PassportPage} />}
           {isAuthenticated && <Route path="/wallet" component={Wallet} />}
+          {isAuthenticated && <Route path="/premium" component={PremiumPage} />}
           {isAuthenticated && <Route path="/admin" component={AdminPage} />}
           {isAuthenticated && <Route path="/privacy" component={Privacy} />}
           {isAuthenticated && <Route component={NotFound} />}

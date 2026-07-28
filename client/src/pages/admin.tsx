@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import AitSurface from "@/components/ait-ui/AitSurface";
 import { Button } from "@/components/ui/button";
 import SmartSearchField from "@/components/search/SmartSearchField";
@@ -16,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import AdminBroadcastDialog from "@/components/admin/AdminBroadcastDialog";
 import MessageComposer from "@/components/chat/MessageComposer";
 import EmptyState from "@/components/empty-state";
-import { Shield, Coins, Bell, Megaphone, AlertCircle, Loader2 } from "lucide-react";
+import { Shield, Coins, Bell, Megaphone, AlertCircle, Loader2, Flag } from "lucide-react";
 import { format } from "date-fns";
 import { enUS, ru } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
@@ -39,6 +38,7 @@ type UserAitDetail = {
     lifetimeSpendEarned: number;
     lifetimeCreatorEarned: number;
     creatorRank: { title: string };
+    entitlements: { sku: string; expiresAt: string | null; entityId: string | null }[];
     ledger: {
       id: string;
       wallet: string;
@@ -123,12 +123,44 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
 
-  const { data: fraudData } = useQuery<{
+  const { data: fraudData, refetch: refetchFraud } = useQuery<{
     flags: { userId: string; level: number; reason: string | null }[];
   }>({
     queryKey: ["/api/admin/ait/fraud"],
     queryFn: () => apiRequestJson("GET", "/api/admin/ait/fraud"),
     enabled: isAdmin,
+  });
+
+  const { data: flagsData, refetch: refetchFlags } = useQuery<{
+    flags: { key: string; enabled: boolean }[];
+  }>({
+    queryKey: ["/api/admin/flags"],
+    queryFn: () => apiRequestJson("GET", "/api/admin/flags"),
+    enabled: isAdmin,
+  });
+
+  const flagMutation = useMutation({
+    mutationFn: ({ key, enabled }: { key: string; enabled: boolean }) =>
+      apiRequestJson("PUT", `/api/admin/flags/${key}`, { enabled }),
+    onSuccess: () => {
+      toast({ title: t("admin.flagUpdated", { defaultValue: "Flag updated" }) });
+      refetchFlags();
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  const clearFraudMutation = useMutation({
+    mutationFn: (userId: string) =>
+      apiRequestJson("POST", "/api/admin/ait/fraud", {
+        userId,
+        level: 0,
+        reason: "cleared by admin",
+      }),
+    onSuccess: () => {
+      toast({ title: t("admin.fraudCleared", { defaultValue: "Fraud flag cleared" }) });
+      refetchFraud();
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
   const adjustMutation = useMutation({
@@ -163,7 +195,7 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <AppLayout rightRail={<DiscoveryRightRail />}>
+      <AppLayout>
         <div className="py-20 text-center">
           <p className="text-muted-foreground mb-4">{t("admin.accessDenied")}</p>
           <Button asChild variant="outline">
@@ -175,15 +207,16 @@ export default function AdminPage() {
   }
 
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />}>
-      <div className="max-w-4xl mx-auto space-y-6">
+    <AppLayout>
+      <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="ait-section-title flex items-center gap-2">
-              <Shield className="h-8 w-8 text-ait-orange" />
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-ait-orange">Ops</p>
+            <h1 className="ait-section-title mt-1 flex items-center gap-2">
+              <Shield className="h-7 w-7 text-ait-orange" />
               {t("admin.title")}
             </h1>
-            <p className="text-muted-foreground mt-1">{t("admin.subtitle")}</p>
+            <p className="mt-1 text-muted-foreground">{t("admin.subtitle")}</p>
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
             ← {t("admin.back")}
@@ -207,6 +240,10 @@ export default function AdminPage() {
             <TabsTrigger value="fraud" className="gap-1">
               <Shield className="h-4 w-4" />
               Fraud
+            </TabsTrigger>
+            <TabsTrigger value="flags" className="gap-1">
+              <Flag className="h-4 w-4" />
+              Flags
             </TabsTrigger>
           </TabsList>
 
@@ -299,6 +336,24 @@ export default function AdminPage() {
                     </p>
                   </div>
                 </div>
+
+                {(userDetail.ait.entitlements?.length ?? 0) > 0 && (
+                  <div className="ait-glass rounded-xl p-3">
+                    <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
+                      Entitlements
+                    </p>
+                    <ul className="flex flex-wrap gap-2">
+                      {userDetail.ait.entitlements.map((e) => (
+                        <li
+                          key={`${e.sku}-${e.entityId ?? "x"}`}
+                          className="rounded-full bg-ait-purple/20 px-2.5 py-1 text-[11px] font-medium text-ait-orange"
+                        >
+                          {e.sku}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
@@ -460,12 +515,56 @@ export default function AdminPage() {
                   {fraudData?.flags.map((f) => (
                     <li
                       key={f.userId}
-                      className="flex justify-between gap-2 border-b border-white/5 pb-2"
+                      className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2"
                     >
                       <span className="font-mono text-xs">{f.userId}</span>
-                      <span>
-                        L{f.level} · {f.reason ?? "—"}
+                      <span className="flex items-center gap-2">
+                        <span>
+                          L{f.level} · {f.reason ?? "—"}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          disabled={clearFraudMutation.isPending}
+                          onClick={() => clearFraudMutation.mutate(f.userId)}
+                        >
+                          Clear
+                        </Button>
                       </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AitSurface>
+          </TabsContent>
+
+          <TabsContent value="flags" className="mt-4 space-y-4">
+            <AitSurface padding="none" className="p-5 space-y-3">
+              <h3 className="font-semibold">
+                {t("admin.flagsTitle", { defaultValue: "Feature flags" })}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t("admin.flagsHint", {
+                  defaultValue:
+                    "Toggle platform foundation gates. Fail-closed defaults stay off until enabled.",
+                })}
+              </p>
+              {(flagsData?.flags ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">No flags loaded.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {flagsData?.flags.map((f) => (
+                    <li
+                      key={f.key}
+                      className="flex items-center justify-between gap-3 rounded-xl ait-glass px-3 py-2"
+                    >
+                      <span className="font-mono text-xs">{f.key}</span>
+                      <Switch
+                        checked={f.enabled}
+                        disabled={flagMutation.isPending}
+                        onCheckedChange={(enabled) => flagMutation.mutate({ key: f.key, enabled })}
+                      />
                     </li>
                   ))}
                 </ul>

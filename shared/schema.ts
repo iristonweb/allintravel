@@ -78,6 +78,7 @@ export const users = pgTable("users", {
   passwordHash: varchar("password_hash"),
   isVerified: boolean("is_verified").default(false),
   isAdmin: boolean("is_admin").default(false),
+  premiumUntil: timestamp("premium_until", { withTimezone: true }),
   preferredLocale: varchar("preferred_locale", { length: 5 }).default("ru"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

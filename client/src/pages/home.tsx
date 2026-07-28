@@ -9,6 +9,8 @@ import HomeMobileShowcase from "@/components/home/home-mobile-showcase";
 import HomePersonalized from "@/components/home/home-personalized";
 import HomeSimilar from "@/components/home/home-similar";
 import CommunityStatsRow from "@/components/community/CommunityStatsRow";
+import GlobalSearchPanel from "@/components/search/GlobalSearchPanel";
+import NextAdventureCard from "@/components/home/next-adventure-card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, apiRequestJson } from "@/lib/queryClient";
@@ -152,16 +154,22 @@ export function Home() {
   return (
     <AppLayout immersive contentClassName="p-0">
       <OnboardingWizard open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
-      <CinematicHero trips={trips} showAnchorPills />
+      <CinematicHero trips={trips} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-section">
-        <TravelJourneyStrip activeStep="inspire" className="hidden md:block" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-section">
         <motion.section
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="md:hidden"
+          className="space-y-6"
         >
+          <GlobalSearchPanel />
+          <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
+            <TravelJourneyStrip activeStep="inspire" className="hidden md:block" />
+            <div className="hidden lg:block">
+              <NextAdventureCard trip={trips[0] ?? null} premium />
+            </div>
+          </div>
           <CommunityStatsRow />
         </motion.section>
 
@@ -169,16 +177,14 @@ export function Home() {
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="space-y-4 max-w-xl"
+          className="space-y-4 max-w-xl md:hidden"
         >
-          <h2 className="text-3xl font-bold md:hidden">
+          <h2 className="text-3xl font-bold">
             {user?.firstName
               ? t("home.greetingNamed", { name: user.firstName })
               : t("home.greeting")}
           </h2>
-          <div className="md:hidden">
-            <HomeQuickActions hideSearch />
-          </div>
+          <HomeQuickActions hideSearch />
         </motion.section>
 
         {dataError ? (

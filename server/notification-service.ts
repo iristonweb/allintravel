@@ -417,6 +417,32 @@ export async function notifyNewMessage(
   });
 }
 
+/** Web Push + in-app for group room messages (skip sender). */
+export async function notifyGroupChatMessage(
+  memberUserIds: string[],
+  sender: User,
+  roomSlug: string,
+  roomTitle: string,
+  preview: string,
+): Promise<void> {
+  const body = preview.length > 120 ? `${preview.slice(0, 117)}…` : preview;
+  const name = getUserDisplayLabel(sender);
+  const targets = memberUserIds.filter((id) => id && id !== sender.id);
+  await Promise.all(
+    targets.map(async (userId) => {
+      await notifyUser({
+        userId,
+        type: "message",
+        title: roomTitle,
+        body: `${name}: ${body}`,
+        link: `/chat?room=${encodeURIComponent(roomSlug)}`,
+        actorId: sender.id,
+        entityId: roomSlug,
+      });
+    }),
+  );
+}
+
 export async function notifyTripJoin(
   ownerId: string,
   joiner: User,

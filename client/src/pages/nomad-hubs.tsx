@@ -43,10 +43,15 @@ export default function NomadHubsPage() {
         description={t("gtm.nomadHubsSubtitle")}
         path="/nomad-hubs"
       />
-      <div className="max-w-6xl mx-auto px-4 py-12 space-y-10">
-        <div className="text-center max-w-2xl mx-auto space-y-4">
+      <div className="mx-auto max-w-6xl space-y-10 px-4 py-12">
+        <div className="mx-auto max-w-2xl space-y-3 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-ait-orange">
+            All In Travel
+          </p>
           <h1 className="ait-section-title">{t("gtm.nomadHubsTitle")}</h1>
-          <p className="text-muted-foreground text-lg">{t("gtm.nomadHubsSubtitle")}</p>
+          <p className="text-lg leading-relaxed text-muted-foreground">
+            {t("gtm.nomadHubsSubtitle")}
+          </p>
         </div>
         {isLoading ? (
           <div
@@ -72,7 +77,7 @@ export default function NomadHubsPage() {
                       {hub.country}
                     </p>
                   </div>
-                  <span className="text-2xl font-bold text-[#a78bfa]">{hub.nomadScore}</span>
+                  <span className="text-2xl font-bold text-ait-purple">{hub.nomadScore}</span>
                 </div>
                 <p className="text-sm text-slate-300">{hub.tagline}</p>
                 <ul className="text-xs text-muted-foreground space-y-1 flex-1">

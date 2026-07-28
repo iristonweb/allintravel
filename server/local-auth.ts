@@ -4,14 +4,13 @@ import type { Express, Request } from "express";
 import { storage } from "./storage";
 import { isDatabaseConfigured } from "./db";
 import { hashPassword, isPasswordLongEnough, verifyPassword } from "./password";
-import { resolveIsAdmin } from "./admin";
 import { toSessionUser, type SessionUser } from "./auth-session";
 import { authLoginLimiter } from "./rate-limit";
 import { clientAuthErrorCode, publicAuthErrorMessage } from "./auth-readiness";
+import { ensureAdminAndPremium } from "./premium";
 
 async function syncAdminRole(user: NonNullable<Awaited<ReturnType<typeof storage.getUser>>>) {
-  if (!resolveIsAdmin(user.email) || user.isAdmin) return user;
-  return storage.setUserAdmin(user.id, true);
+  return ensureAdminAndPremium(storage, user);
 }
 
 let schemaReady: Promise<void> | null = null;

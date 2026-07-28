@@ -1116,7 +1116,7 @@ export async function discoverChatRoomsDb(
   limit = 15,
 ): Promise<(ChatRoom & { memberCount: number; matchScore: number })[]> {
   const q = query.trim();
-  if (q.length < 2) return [];
+  const capped = Math.min(Math.max(limit, 1), 30);
 
   const [allPublic, myMemberships] = await Promise.all([
     db.select().from(chatRooms).where(eq(chatRooms.visibility, "public")),
@@ -1129,7 +1129,20 @@ export async function discoverChatRoomsDb(
 
   const scored: (ChatRoom & { memberCount: number; matchScore: number })[] = [];
   for (const room of allPublic) {
-    if (memberIds.has(room.id) || room.isLegacy) continue;
+    if (memberIds.has(room.id)) continue;
+    // Browse mode (empty query): show non-legacy public rooms by popularity.
+    // Search mode: score matches; legacy hubs already appear in main list.
+    if (!q) {
+      if (room.isLegacy) continue;
+      const [{ value: memberCount }] = await db
+        .select({ value: count() })
+        .from(chatRoomMembers)
+        .where(and(eq(chatRoomMembers.roomId, room.id), eq(chatRoomMembers.status, "active")));
+      scored.push({ ...room, memberCount: Number(memberCount), matchScore: Number(memberCount) });
+      continue;
+    }
+    if (q.length < 2) continue;
+    if (room.isLegacy) continue;
     const score = scoreChatRoomMatch(q, room);
     if (score <= 0) continue;
     const [{ value: memberCount }] = await db
@@ -1140,7 +1153,7 @@ export async function discoverChatRoomsDb(
   }
 
   scored.sort((a, b) => b.matchScore - a.matchScore || b.memberCount - a.memberCount);
-  return scored.slice(0, Math.min(Math.max(limit, 1), 30));
+  return scored.slice(0, capped);
 }
 
 export async function createChatRoomDb(

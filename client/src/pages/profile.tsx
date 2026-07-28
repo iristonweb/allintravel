@@ -3,8 +3,6 @@ import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
 import AitDailyPulse from "@/components/ait/AitDailyPulse";
 import PlatformWalletCard from "@/components/wallet/PlatformWalletCard";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
 import ProfileHeroCard from "@/components/profile/ProfileHeroCard";
@@ -71,43 +69,46 @@ export function Profile() {
   };
 
   return (
-    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />}>
-      <div className="max-w-4xl mx-auto">
-        <ReelsPageLayout
-          header={<AitSectionHeader title={t("nav.profile")} description={t("profile.hubHint")} />}
-          feed={
-            friendsLoading ? (
-              <div aria-label={t("profile.loading")}>
-                <ProfileHeroSkeleton />
-              </div>
-            ) : friendsError ? (
-              <EmptyState
-                variant="glass"
-                icon={AlertCircle}
-                title={t("profile.loadError")}
-                action={
-                  <AitButton variant="glass" size="sm" onClick={() => refetchFriends()}>
-                    {t("common.retry")}
-                  </AitButton>
-                }
-              />
-            ) : (
-              <div className="space-y-section">
-                <ProfileHeroCard user={user} friends={friends} onLogout={() => void logout()} />
-                <TravelIdentityCard compact />
-                <AitDailyPulse />
-                <PlatformWalletCard compact />
-                <ProfileHubGrid links={linksWithMap} walletBalance={walletProfile?.spendBalance} />
-                <ProfileUsernameSearch
-                  value={nickSearch}
-                  onChange={setNickSearch}
-                  onSearch={handleNickSearch}
-                  results={searchResults}
-                />
-              </div>
-            )
-          }
-        />
+    <AppLayout contentClassName="py-6">
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <AitSectionHeader title={t("nav.profile")} description={t("profile.hubHint")} />
+          {user.isPremium && (
+            <span className="mb-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
+              Premium
+            </span>
+          )}
+        </div>
+        {friendsLoading ? (
+          <div aria-label={t("profile.loading")}>
+            <ProfileHeroSkeleton />
+          </div>
+        ) : friendsError ? (
+          <EmptyState
+            variant="glass"
+            icon={AlertCircle}
+            title={t("profile.loadError")}
+            action={
+              <AitButton variant="glass" size="sm" onClick={() => refetchFriends()}>
+                {t("common.retry")}
+              </AitButton>
+            }
+          />
+        ) : (
+          <div className="space-y-5">
+            <ProfileHeroCard user={user} friends={friends} onLogout={() => void logout()} />
+            <TravelIdentityCard compact />
+            <AitDailyPulse />
+            <PlatformWalletCard compact />
+            <ProfileHubGrid links={linksWithMap} walletBalance={walletProfile?.spendBalance} />
+            <ProfileUsernameSearch
+              value={nickSearch}
+              onChange={setNickSearch}
+              onSearch={handleNickSearch}
+              results={searchResults}
+            />
+          </div>
+        )}
       </div>
     </AppLayout>
   );

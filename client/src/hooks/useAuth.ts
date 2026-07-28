@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 import i18n from "@/i18n";
 
-async function fetchAuthUser(): Promise<User | null> {
+export type AuthUser = User & { isPremium?: boolean; premiumUntil?: Date | string | null };
+
+async function fetchAuthUser(): Promise<AuthUser | null> {
   try {
     const res = await fetch("/api/auth/user", { credentials: "include" });
     if (!res.ok) return null;
-    return (await res.json()) as User;
+    return (await res.json()) as AuthUser;
   } catch {
     return null;
   }
@@ -21,7 +23,7 @@ function normalizeLocale(raw?: string | null): "en" | "ru" | null {
 }
 
 export function useAuth() {
-  const { data: user, isPending } = useQuery<User | null>({
+  const { data: user, isPending } = useQuery<AuthUser | null>({
     queryKey: ["/api/auth/user"],
     queryFn: fetchAuthUser,
     retry: false,

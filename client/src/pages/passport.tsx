@@ -1,6 +1,4 @@
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
-import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import TravelIdentityCard from "@/components/identity/TravelIdentityCard";
 import EconomyContextBar from "@/components/ait/EconomyContextBar";
 import AiContextChips from "@/components/ai/AiContextChips";
@@ -37,44 +35,38 @@ export function PassportPage() {
   };
 
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />}>
+    <AppLayout>
       <PageMeta title={t("passport.title")} description={t("passport.subtitle")} path="/passport" />
-      <ReelsPageLayout
-        header={
-          <AitSectionHeader
-            title={t("passport.title")}
-            description={t("passport.subtitle")}
-            actions={
-              <AitButton
-                variant="glass"
-                className="gap-2"
-                onClick={handleShare}
-                disabled={!user?.username}
-                aria-label={t("passport.shareCard")}
-              >
-                <Share2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                {t("passport.shareCard")}
-              </AitButton>
-            }
-          />
-        }
-        stats={
-          <div className="space-y-3">
-            <EconomyContextBar surface="passport" />
-            <AiContextChips surface="passport" />
+      <div className="mx-auto max-w-3xl space-y-6">
+        <AitSectionHeader
+          title={t("passport.title")}
+          description={t("passport.subtitle")}
+          actions={
+            <AitButton
+              variant="glass"
+              className="gap-2"
+              onClick={handleShare}
+              disabled={!user?.username}
+              aria-label={t("passport.shareCard")}
+            >
+              <Share2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+              {t("passport.shareCard")}
+            </AitButton>
+          }
+        />
+        <div className="space-y-3">
+          <EconomyContextBar surface="passport" />
+          <AiContextChips surface="passport" />
+        </div>
+        {pageLoading ? (
+          <PassportPageSkeleton />
+        ) : (
+          <div className="space-y-5">
+            <TravelIdentityCard embedded />
+            <FogOfWarMap />
           </div>
-        }
-        feed={
-          pageLoading ? (
-            <PassportPageSkeleton />
-          ) : (
-            <div className="space-y-section">
-              <TravelIdentityCard embedded />
-              <FogOfWarMap />
-            </div>
-          )
-        }
-      />
+        )}
+      </div>
     </AppLayout>
   );
 }

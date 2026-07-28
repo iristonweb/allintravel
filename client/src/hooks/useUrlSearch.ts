@@ -1,25 +1,15 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useSearch } from "wouter";
 
-/** Keeps `window.location.search` in sync (including `history.replaceState` via `ait:location`). */
+/**
+ * Current `window` search including leading `?` (or `""`).
+ * Driven by wouter's history patch — updates on Link pushState / replaceState.
+ */
 export function useUrlSearch(): string {
-  const [location] = useLocation();
-  const [search, setSearch] = useState(() => window.location.search);
-
-  useEffect(() => {
-    const sync = () => setSearch(window.location.search);
-    sync();
-    window.addEventListener("popstate", sync);
-    window.addEventListener("ait:location", sync);
-    return () => {
-      window.removeEventListener("popstate", sync);
-      window.removeEventListener("ait:location", sync);
-    };
-  }, [location]);
-
-  return search;
+  const search = useSearch();
+  return search ? `?${search}` : "";
 }
 
+/** @deprecated Prefer relying on wouter `useSearch`; kept for legacy callers. */
 export function notifyUrlSearchChange(): void {
   window.dispatchEvent(new CustomEvent("ait:location"));
 }

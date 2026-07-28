@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { enUS, ru } from "date-fns/locale";
 import { MapPin, AlertCircle, Heart, MessageCircle, Send } from "lucide-react";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -74,7 +73,7 @@ export function PostDetailPage() {
   };
 
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
+    <AppLayout columnMaxWidth="feed">
       {post && (
         <PageMeta
           title={post.title}

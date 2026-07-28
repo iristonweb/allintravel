@@ -1,6 +1,5 @@
 import { Link, useParams } from "wouter";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -81,7 +80,7 @@ export function UserPublicProfile() {
 
   if (isLoading) {
     return (
-      <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
+      <AppLayout contentClassName="py-6" columnMaxWidth="feed">
         <div aria-label={t("userPublic.loading")}>
           <ProfileHeroSkeleton />
         </div>
@@ -133,7 +132,7 @@ export function UserPublicProfile() {
   const displayLabel = getUserDisplayLabel(publicUser);
 
   return (
-    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
+    <AppLayout contentClassName="py-6" columnMaxWidth="feed">
       {passportShare && (
         <PageMeta
           title={t("userPublic.metaTitle", { name: passportShare.displayName })}

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useId } from "react";
 import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import CatalogPageLayout, { CatalogSearchInput } from "@/components/layout/catalog-page-layout";
 import EmptyState from "@/components/empty-state";
@@ -276,7 +275,7 @@ export function Events() {
   );
 
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />}>
+    <AppLayout>
       <ReelsPageLayout
         header={
           <AitSectionHeader

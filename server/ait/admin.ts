@@ -16,7 +16,11 @@ export async function adminGetUserAit(userId: string) {
     lifetimeCreatorEarned: balance.lifetimeCreatorEarned,
     streakDays: balance.streakDays,
     creatorRank: rank,
-    entitlements,
+    entitlements: entitlements.map((e) => ({
+      sku: e.sku,
+      expiresAt: e.expiresAt ? e.expiresAt.toISOString() : null,
+      entityId: e.entityId,
+    })),
     ledger: ledger.map((t) => ({
       id: t.id,
       wallet: t.wallet,

@@ -1,12 +1,11 @@
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import AitSurface from "@/components/ait-ui/AitSurface";
 import { useTranslation } from "react-i18next";
 
 export function Privacy() {
   const { t } = useTranslation();
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />}>
+    <AppLayout>
       <div className="mx-auto max-w-2xl space-y-6 p-4 pb-12">
         <h1 className="text-2xl font-semibold">{t("privacy.title")}</h1>
 

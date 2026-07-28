@@ -107,19 +107,21 @@ npm run geo:import
 | `APP_URL` | да для Google | `https://www.allintravel.online` |
 | `GOOGLE_CLIENT_ID` | нет | Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | нет | Google Cloud Console |
-| `VAPID_PUBLIC_KEY` | нет | `npx web-push generate-vapid-keys` |
-| `VAPID_PRIVATE_KEY` | нет | то же |
-| `VAPID_SUBJECT` | нет | `mailto:you@example.com` |
+| `VAPID_PUBLIC_KEY` | **да для пушей на телефон** | `npx web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | **да для пушей на телефон** | то же |
+| `VAPID_SUBJECT` | рекомендуется | `mailto:you@example.com` |
 | `VITE_YANDEX_MAPS_API_KEY` | нет | JavaScript API Яндекс.Карт |
 | `YANDEX_GEOSUGGEST_API_KEY` | нет | Геосаджест (подсказки) |
 | `YANDEX_GEOCODER_API_KEY` | нет | HTTP Геокодер |
 | `YANDEX_ROUTER_API_KEY` | нет | Маршрутизация (поездки) |
-| `ADMIN_EMAILS` | да (prod) | Список email админов через запятую, напр. `iristonweb@gmail.com` — доступ к `/admin` |
+| `ADMIN_EMAILS` | да (prod) | Доп. email админов через запятую. `iristonweb@gmail.com` всегда админ + Premium (founder bootstrap). |
 | `BLOB_READ_WRITE_TOKEN` | да (Vercel) | Vercel Blob — постоянные загрузки (аватар, медиа). **Без Blob публикация в ленте на production не работает.** |
 | `BLOB_STORE_ID` | нет (Vercel) | OIDC-доступ к Blob store |
 | `BLOB_ACCESS` | нет | `public` или `private` для Blob store |
 
 `NODE_ENV` и `VERCEL` Vercel выставляет сам. **Не коммитьте** `.env` в репозиторий.
+
+**Пуш на телефон (Web Push):** без VAPID ключей `sendPushToUser` ничего не отправляет. Android: Chrome → Разрешить уведомления (лучше «На экран Домой»). iOS 16.4+: Share → Add to Home Screen → открыть иконку PWA → включить пуш в Настройках профиля. Подписка привязана к устройству.
 
 ### Rate limiting
 

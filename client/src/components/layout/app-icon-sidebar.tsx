@@ -213,8 +213,10 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
   const search = useUrlSearch();
   const { navGroups, communitySidebarItems } = useNavLabels();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const communityMode = isCommunityHubRoute(location);
   const labelsVisible = communityMode;
+  const isPremium = Boolean(user?.isPremium);
 
   const communityActiveFn = (href: string) => matchNavHref(location, search, href);
 
@@ -271,19 +273,44 @@ export default function AppIconSidebar({ minimalChrome }: AppIconSidebarProps) {
           )}
         >
           <SidebarUserPreview expanded={communityMode} />
-          <AitSurface padding="sm" radius="lg" glow className="mx-0.5 border border-amber-500/20">
+          <AitSurface
+            padding="sm"
+            radius="lg"
+            glow
+            className={cn(
+              "mx-0.5 border",
+              isPremium ? "border-emerald-500/30" : "border-amber-500/20",
+            )}
+          >
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-4 w-4 text-ait-orange shrink-0" />
+              <Sparkles
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isPremium ? "text-emerald-400" : "text-ait-orange",
+                )}
+              />
               <p className="text-xs font-bold text-foreground truncate">
                 {t("nav.premiumTitle", { defaultValue: "AllInTravel Premium" })}
               </p>
             </div>
             <p className="text-[10px] text-muted-foreground mb-3 leading-snug">
-              {t("nav.premiumHint")}
+              {isPremium
+                ? t("nav.premiumActiveHint", {
+                    defaultValue: "Premium active — AI tools & rewards unlocked",
+                  })
+                : t("nav.premiumHint")}
             </p>
-            <AitButton variant="primary" size="sm" className="w-full h-8 text-xs" asChild>
-              <Link href="/wallet">{t("nav.premiumSubscribe", { defaultValue: "Subscribe" })}</Link>
-            </AitButton>
+            {isPremium ? (
+              <div className="flex h-8 w-full items-center justify-center rounded-lg bg-emerald-500/15 text-xs font-semibold text-emerald-300">
+                {t("nav.premiumActive", { defaultValue: "Active" })}
+              </div>
+            ) : (
+              <AitButton variant="primary" size="sm" className="w-full h-8 text-xs" asChild>
+                <Link href="/premium">
+                  {t("nav.premiumSubscribe", { defaultValue: "Subscribe" })}
+                </Link>
+              </AitButton>
+            )}
           </AitSurface>
         </div>
       </div>

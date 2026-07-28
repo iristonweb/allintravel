@@ -492,11 +492,11 @@ export function SocialFeed() {
           )
         }
         tabs={
-          <div className="lg:hidden">
+          <div className="sticky top-[calc(var(--ait-header-h,4.5rem)+0.25rem)] z-20 -mx-1 rounded-2xl border border-white/5 bg-ait-deep/80 px-1 py-1 backdrop-blur-md supports-[backdrop-filter]:bg-ait-deep/70">
             <SocialFormatTabs
               value={contentFormat}
               onChange={setContentFormat}
-              className="overflow-x-auto scrollbar-hide"
+              className="mb-0 mt-0 overflow-x-auto scrollbar-hide"
             />
           </div>
         }

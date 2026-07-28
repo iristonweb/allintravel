@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -126,7 +125,7 @@ export function ProfileSettings() {
   }
 
   return (
-    <AppLayout contentClassName="py-6" rightRail={<DiscoveryRightRail />} columnMaxWidth="feed">
+    <AppLayout contentClassName="py-6" columnMaxWidth="feed">
       <ReelsPageLayout
         header={
           <div className="space-y-2">
@@ -250,6 +249,12 @@ export function ProfileSettings() {
                           ? t("profileSettings.pushEnabled")
                           : t("profileSettings.pushDisabled")}
                       </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {t("profileSettings.pushPhoneHint", {
+                          defaultValue:
+                            "For notifications on a phone: allow permission here. On iPhone, first Add to Home Screen, then open the installed app and enable push.",
+                        })}
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         <AitButton
                           type="button"
@@ -266,6 +271,7 @@ export function ProfileSettings() {
                           variant="glass"
                           size="sm"
                           onClick={() => testPush().catch(() => {})}
+                          disabled={!subscribed}
                         >
                           {t("profileSettings.pushTest")}
                         </AitButton>

@@ -39,9 +39,10 @@ export function buildIdempotencyKey(
   userId: string,
   reason: AitReasonCode,
   entityId: string | null | undefined,
+  wallet?: AitWallet,
 ): string | null {
   if (!entityId) return null;
-  return `${userId}:${reason}:${entityId}`;
+  return wallet ? `${userId}:${reason}:${entityId}:${wallet}` : `${userId}:${reason}:${entityId}`;
 }
 
 export type LedgerApplyOpts = {
@@ -79,12 +80,20 @@ export async function applyBalanceDeltaLedger(
 
   const db = getDb();
   if (!db) {
+    if (!opts?.skipIdempotency) {
+      const idemKey =
+        opts?.idempotencyKey ?? buildIdempotencyKey(userId, reason, entityId ?? undefined, wallet);
+      if (idemKey) {
+        const fresh = await checkIdempotency(userId, idemKey, reason);
+        if (!fresh) return null;
+      }
+    }
     return store.applyBalanceDeltaRaw(userId, wallet, delta, reason, title, entityType, entityId);
   }
 
   if (!opts?.skipIdempotency) {
     const idemKey =
-      opts?.idempotencyKey ?? buildIdempotencyKey(userId, reason, entityId ?? undefined);
+      opts?.idempotencyKey ?? buildIdempotencyKey(userId, reason, entityId ?? undefined, wallet);
     if (idemKey) {
       const fresh = await checkIdempotency(userId, idemKey, reason);
       if (!fresh) return null;
@@ -175,7 +184,8 @@ export async function applyBalanceDeltaLedger(
           delta,
           reason,
           title,
-          idempotencyKey: opts?.idempotencyKey ?? buildIdempotencyKey(userId, reason, entityId),
+          idempotencyKey:
+            opts?.idempotencyKey ?? buildIdempotencyKey(userId, reason, entityId, wallet),
         });
       }
 

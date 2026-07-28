@@ -143,8 +143,8 @@ export default function ChatSidebarPanel({
           size="sm"
           dropdownOpen={
             chatTab !== "personal" &&
-            discoverSearch.length >= 2 &&
-            (searchFocused || urlDiscoverQ.length >= 2)
+            (searchFocused || discoverSearch.length >= 2 || urlDiscoverQ.length >= 2) &&
+            (discoverSearch.length >= 2 || discoverRooms.length > 0 || discoverLoading)
           }
           dropdown={
             <div onMouseDown={(e) => e.preventDefault()}>

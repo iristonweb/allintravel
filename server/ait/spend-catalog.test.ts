@@ -115,4 +115,48 @@ describe("debitDualWallet", () => {
     expect(balance.creatorBalance).toBe(0);
     expect(balance.spendBalance).toBe(30);
   });
+
+  it("succeeds when purchase splits across creator and spend with unique keys", async () => {
+    const userId = `dual-split-${Date.now()}`;
+    await seedBalance(userId, 80, 40);
+    // Cost 100: 40 creator + 60 spend — previously collided on one idempotency key
+    const ok = await store.debitDualWallet(
+      userId,
+      100,
+      "spend_shop",
+      "split buy",
+      "sku",
+      "theme_aurora",
+      { purchaseId: "purchase-split-1" },
+    );
+    expect(ok).toBe(true);
+    const balance = await store.getOrCreateBalance(userId);
+    expect(balance.creatorBalance).toBe(0);
+    expect(balance.spendBalance).toBe(20);
+  });
+
+  it("allows two stackable purchases with different purchaseIds", async () => {
+    const userId = `dual-stack-${Date.now()}`;
+    await seedBalance(userId, 2000, 0);
+    const a = await store.debitDualWallet(
+      userId,
+      100,
+      "spend_shop",
+      "room",
+      "sku",
+      "extra_chat_room",
+      { purchaseId: "p1" },
+    );
+    const b = await store.debitDualWallet(
+      userId,
+      100,
+      "spend_shop",
+      "room",
+      "sku",
+      "extra_chat_room",
+      { purchaseId: "p2" },
+    );
+    expect(a).toBe(true);
+    expect(b).toBe(true);
+  });
 });

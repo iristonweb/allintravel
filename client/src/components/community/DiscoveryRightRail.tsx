@@ -6,7 +6,10 @@ import SocialTeaser from "@/components/social/SocialTeaser";
 import AitLeaderboard from "@/components/ait/AitLeaderboard";
 import { useTranslation } from "react-i18next";
 
-/** Shared right rail for catalog / discovery pages */
+/**
+ * Right rail for place/destination catalog pages only.
+ * Do not use on admin, settings, wallet, passport, trips, notifications, or other task-focused surfaces.
+ */
 export default function DiscoveryRightRail() {
   const { t } = useTranslation();
   const { data: places = [] } = useQuery<{ id: string; name: string; country?: string }[]>({

@@ -180,3 +180,12 @@ export async function setFraudFlag(
       created_at = now()
   `);
 }
+
+export async function clearFraudFlag(userId: string): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    memFraudFlags.delete(userId);
+    return;
+  }
+  await db.execute(sql`DELETE FROM ait_fraud_flags WHERE user_id = ${userId}`);
+}

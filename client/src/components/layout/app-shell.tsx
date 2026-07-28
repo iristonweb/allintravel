@@ -7,6 +7,9 @@ import { usePresenceHeartbeat } from "@/hooks/usePresence";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { useEngagementReminders } from "@/hooks/useEngagementReminders";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
+import { useTranslation } from "react-i18next";
 import AppShellPlayerPadding from "@/components/layout/app-shell-player-padding";
 import BroadcastModal from "@/components/admin/BroadcastModal";
 import ThreeColumnLayout, {
@@ -51,6 +54,8 @@ export default function AppShell({
   useRealtimeNotifications();
   useEngagementReminders();
   const { supported: pushSupported, vapidReady, subscribe: subscribePush } = usePushNotifications();
+  const { toast } = useToast();
+  const { t } = useTranslation();
 
   const minimalChrome = chrome === "minimal";
   const effectiveImmersive =
@@ -59,10 +64,39 @@ export default function AppShell({
 
   useEffect(() => {
     if (!isAuthenticated || !pushSupported || !vapidReady) return;
+    if (typeof Notification === "undefined") return;
     if (Notification.permission === "granted") {
       subscribePush().catch(() => undefined);
+      return;
     }
-  }, [isAuthenticated, pushSupported, vapidReady, subscribePush]);
+    if (Notification.permission !== "default") return;
+    const key = "ait-push-prompt-shown";
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* private mode */
+    }
+    const timer = window.setTimeout(() => {
+      toast({
+        title: t("push.promptTitle", { defaultValue: "Enable phone notifications?" }),
+        description: t("push.promptBody", {
+          defaultValue: "Get DMs and group messages on your lock screen.",
+        }),
+        action: (
+          <ToastAction
+            altText={t("push.promptAction", { defaultValue: "Enable" })}
+            onClick={() => {
+              void subscribePush();
+            }}
+          >
+            {t("push.promptAction", { defaultValue: "Enable" })}
+          </ToastAction>
+        ),
+      });
+    }, 2500);
+    return () => window.clearTimeout(timer);
+  }, [isAuthenticated, pushSupported, vapidReady, subscribePush, toast, t]);
 
   const mainContent = rightRail ? (
     <ThreeColumnLayout

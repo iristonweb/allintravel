@@ -241,13 +241,24 @@ export class PgStorage implements IStorage {
     return updated;
   }
 
+  async setUserPremium(userId: string, premiumUntil: Date | null): Promise<User> {
+    const [updated] = await this.db
+      .update(users)
+      .set({ premiumUntil, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
+  }
+
   async ensureAdminUsers(): Promise<void> {
     const { getAdminEmails } = await import("./admin");
+    const { ensureAdminAndPremium } = await import("./premium");
     for (const email of Array.from(getAdminEmails())) {
       const user = await this.getUserByEmail(email);
-      if (user && !user.isAdmin) {
-        await this.setUserAdmin(user.id, true);
-        console.log(`[admin] Granted admin to ${email}`);
+      if (user) {
+        await ensureAdminAndPremium(this, user);
+        console.log(`[admin] Ensured admin/premium for ${email}`);
       }
     }
   }

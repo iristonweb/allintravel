@@ -4,14 +4,14 @@ import {
   type FeedMode,
   type FeedSort,
 } from "@/lib/feed-utils";
-import { notifyUrlSearchChange } from "@/hooks/useUrlSearch";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
 
 export type SocialContentFormat = "feed" | "stories" | "reels" | "journals" | "public";
 
 const FORMATS: SocialContentFormat[] = ["feed", "stories", "reels", "journals", "public"];
 
-function formatFromQuery(param: string | null): SocialContentFormat {
+export function formatFromQuery(param: string | null | undefined): SocialContentFormat {
   if (param && FORMATS.includes(param as SocialContentFormat)) {
     return param as SocialContentFormat;
   }
@@ -22,77 +22,55 @@ function defaultFeedMode(_format: SocialContentFormat): FeedMode {
   return "all";
 }
 
-function contentFormatFromUrl(search?: string): SocialContentFormat {
-  const params = new URLSearchParams(search ?? window.location.search);
+/** Parse format from a search string (`a=1` or `?a=1`). */
+export function contentFormatFromSearch(search: string): SocialContentFormat {
+  const raw = search.startsWith("?") ? search.slice(1) : search;
+  const params = new URLSearchParams(raw);
   const format = formatFromQuery(params.get("format"));
   if (params.get("create") === "1" && format === "feed") return "stories";
   return format;
 }
 
+/**
+ * Social feed URL params — single source of truth is the query string via wouter `useSearch`.
+ * Sidebar Links (`?format=reels`) and in-page tabs both update the URL; this hook re-renders.
+ */
 export function useSocialFeedParams(isAuthenticated: boolean) {
-  const [feedMode, setFeedModeState] = useState<FeedMode>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get("mode");
-    if (mode) return feedModeFromQuery(mode);
-    return defaultFeedMode(contentFormatFromUrl());
-  });
+  const [pathname, navigate] = useLocation();
+  const search = useSearch();
 
-  const [contentFormat, setContentFormatState] = useState<SocialContentFormat>(() =>
-    contentFormatFromUrl(),
+  const params = useMemo(() => new URLSearchParams(search), [search]);
+
+  const contentFormat = useMemo(() => contentFormatFromSearch(search), [search]);
+
+  const feedMode = useMemo(() => {
+    if (!params.get("mode") && isAuthenticated) return defaultFeedMode(contentFormat);
+    return feedModeFromQuery(params.get("mode"));
+  }, [params, isAuthenticated, contentFormat]);
+
+  const isCreating = params.get("create") === "1";
+
+  const feedSort = useMemo(() => feedSortFromQuery(params.get("sort")), [params]);
+
+  const replaceParams = useCallback(
+    (mutate: (next: URLSearchParams) => void) => {
+      const next = new URLSearchParams(search);
+      mutate(next);
+      const qs = next.toString();
+      const path =
+        pathname === "/social-feed" || pathname.startsWith("/social-feed")
+          ? pathname
+          : "/social-feed";
+      navigate(`${path}${qs ? `?${qs}` : ""}`, { replace: true });
+    },
+    [search, pathname, navigate],
   );
-
-  const [isCreating, setIsCreatingState] = useState(
-    () => new URLSearchParams(window.location.search).get("create") === "1",
-  );
-
-  const [feedSort, setFeedSortState] = useState<FeedSort>(() =>
-    feedSortFromQuery(new URLSearchParams(window.location.search).get("sort")),
-  );
-
-  const replaceParams = useCallback((mutate: (params: URLSearchParams) => void) => {
-    const url = new URL(window.location.href);
-    mutate(url.searchParams);
-    const search = url.searchParams.toString();
-    window.history.replaceState({}, "", url.pathname + (search ? `?${search}` : ""));
-    notifyUrlSearchChange();
-  }, []);
-
-  useEffect(() => {
-    const syncFromUrl = () => {
-      const params = new URLSearchParams(window.location.search);
-      const format = contentFormatFromUrl();
-      setContentFormatState(format);
-
-      if (!params.get("mode") && isAuthenticated) {
-        setFeedModeState(defaultFeedMode(format));
-      } else {
-        setFeedModeState(feedModeFromQuery(params.get("mode")));
-      }
-
-      if (params.get("create") === "1") {
-        setIsCreatingState(true);
-      } else {
-        setIsCreatingState(false);
-      }
-
-      setFeedSortState(feedSortFromQuery(params.get("sort")));
-    };
-
-    syncFromUrl();
-    window.addEventListener("popstate", syncFromUrl);
-    window.addEventListener("ait:location", syncFromUrl);
-    return () => {
-      window.removeEventListener("popstate", syncFromUrl);
-      window.removeEventListener("ait:location", syncFromUrl);
-    };
-  }, [isAuthenticated]);
 
   const setFeedMode = useCallback(
     (mode: FeedMode) => {
-      setFeedModeState(mode);
-      replaceParams((params) => {
-        if (mode === "all") params.delete("mode");
-        else params.set("mode", mode);
+      replaceParams((p) => {
+        if (mode === "all") p.delete("mode");
+        else p.set("mode", mode);
       });
     },
     [replaceParams],
@@ -100,11 +78,10 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
 
   const setContentFormat = useCallback(
     (format: SocialContentFormat) => {
-      setContentFormatState(format);
-      replaceParams((params) => {
-        if (format === "feed") params.delete("format");
-        else params.set("format", format);
-        if (format !== "feed") params.delete("sort");
+      replaceParams((p) => {
+        if (format === "feed") p.delete("format");
+        else p.set("format", format);
+        if (format !== "feed") p.delete("sort");
       });
     },
     [replaceParams],
@@ -112,10 +89,9 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
 
   const setIsCreating = useCallback(
     (creating: boolean) => {
-      setIsCreatingState(creating);
-      replaceParams((params) => {
-        if (creating) params.set("create", "1");
-        else params.delete("create");
+      replaceParams((p) => {
+        if (creating) p.set("create", "1");
+        else p.delete("create");
       });
     },
     [replaceParams],
@@ -123,10 +99,9 @@ export function useSocialFeedParams(isAuthenticated: boolean) {
 
   const setFeedSort = useCallback(
     (sort: FeedSort) => {
-      setFeedSortState(sort);
-      replaceParams((params) => {
-        if (sort === "popular") params.delete("sort");
-        else params.set("sort", sort);
+      replaceParams((p) => {
+        if (sort === "popular") p.delete("sort");
+        else p.set("sort", sort);
       });
     },
     [replaceParams],

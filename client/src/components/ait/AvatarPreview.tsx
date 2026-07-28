@@ -56,7 +56,7 @@ export function AvatarPreviewDialog({
                 <img
                   src={resolved}
                   alt={alt || title}
-                  className="block h-[min(72vw,340px)] w-[min(72vw,340px)] object-cover object-center select-none"
+                  className="block h-[min(72vw,340px)] w-[min(72vw,340px)] object-cover object-[center_20%] select-none"
                   draggable={false}
                 />
               </div>

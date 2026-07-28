@@ -26,7 +26,10 @@ export default function RoomAvatar({
       <img
         src={resolved}
         alt=""
-        className={cn("aspect-square rounded-full object-cover object-center shrink-0", className)}
+        className={cn(
+          "aspect-square shrink-0 rounded-full object-cover object-[center_20%]",
+          className,
+        )}
       />
     );
     if (!previewable) return img;
@@ -35,7 +38,7 @@ export default function RoomAvatar({
         <img
           src={resolved}
           alt=""
-          className="h-full w-full rounded-full object-cover object-center"
+          className="h-full w-full rounded-full object-cover object-[center_20%]"
         />
       </AvatarPreviewTrigger>
     );

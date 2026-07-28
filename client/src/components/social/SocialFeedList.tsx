@@ -102,11 +102,22 @@ export default function SocialFeedList({
     }
 
     return (
-      <div className="py-8 px-4 text-center space-y-2">
-        <p className="text-sm text-muted-foreground">
-          {t("social.stories.tabHint", { defaultValue: "Tap a story above to watch" })}
-        </p>
-        <p className="text-xs text-muted-foreground/80">{t("social.storiesHint")}</p>
+      <div className="space-y-6 py-2">
+        <div className="rounded-2xl border border-ait-purple/20 bg-ait-purple/5 px-4 py-6 text-center space-y-2">
+          <p className="text-base font-semibold text-foreground">
+            {t("social.stories.tabHint", { defaultValue: "Tap a story above to watch" })}
+          </p>
+          <p className="text-sm text-muted-foreground">{t("social.storiesHint")}</p>
+          <p className="text-xs text-muted-foreground/80">
+            {t("social.stories.activeCount", {
+              defaultValue: "{{count}} active stories",
+              count: posts.length,
+            })}
+          </p>
+          <AitButton variant="primary" className="mt-2" onClick={onCreateClick}>
+            {t("social.create")}
+          </AitButton>
+        </div>
       </div>
     );
   }

@@ -48,11 +48,14 @@ export default function CreatorsPage() {
         description={t("gtm.creatorsSubtitle")}
         path="/creators"
       />
-      <div className="max-w-4xl mx-auto px-4 py-12 space-y-10">
-        <div className="text-center space-y-4">
-          <Sparkles className="h-10 w-10 mx-auto text-[#ff7a18]" aria-hidden />
+      <div className="mx-auto max-w-4xl space-y-10 px-4 py-12">
+        <div className="mx-auto max-w-xl space-y-3 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-ait-orange">
+            All In Travel
+          </p>
+          <Sparkles className="mx-auto h-8 w-8 text-ait-orange" aria-hidden />
           <h1 className="ait-section-title">{t("gtm.creatorsTitle")}</h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="text-lg leading-relaxed text-muted-foreground">
             {t("gtm.creatorsSubtitle")}
           </p>
         </div>

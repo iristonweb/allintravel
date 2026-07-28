@@ -36,15 +36,18 @@ export default function LaunchPage() {
   return (
     <PublicLayout>
       <PageMeta title={t("gtm.launchTitle")} description={t("gtm.launchSubtitle")} path="/launch" />
-      <div className="max-w-2xl mx-auto px-4 py-16 space-y-10 text-center">
-        <Rocket className="h-12 w-12 mx-auto text-[#a78bfa]" aria-hidden />
+      <div className="mx-auto max-w-2xl space-y-10 px-4 py-16 text-center">
         <div className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-ait-orange">
+            All In Travel
+          </p>
+          <Rocket className="mx-auto h-10 w-10 text-ait-purple" aria-hidden />
           <h1 className="ait-section-title">{t("gtm.launchTitle")}</h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-lg leading-relaxed text-muted-foreground">
             {data?.tagline ?? t("gtm.launchSubtitle")}
           </p>
           {data?.launchDate && (
-            <p className="text-sm text-[#ff7a18] font-medium">Product Hunt · {data.launchDate}</p>
+            <p className="text-sm font-medium text-ait-orange">Product Hunt · {data.launchDate}</p>
           )}
         </div>
 

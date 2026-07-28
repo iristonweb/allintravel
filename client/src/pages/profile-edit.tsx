@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useSearch } from "wouter";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -243,7 +242,7 @@ export function ProfileEdit() {
 
   if (profileLoading) {
     return (
-      <AppLayout rightRail={<DiscoveryRightRail />}>
+      <AppLayout>
         <div className="max-w-4xl mx-auto" aria-label={t("profileEdit.loading")}>
           <ProfileHeroSkeleton />
         </div>
@@ -253,7 +252,7 @@ export function ProfileEdit() {
 
   if (profileError) {
     return (
-      <AppLayout rightRail={<DiscoveryRightRail />}>
+      <AppLayout>
         <div className="max-w-4xl mx-auto">
           <EmptyState
             variant="glass"
@@ -273,7 +272,7 @@ export function ProfileEdit() {
   const avatarSrc = resolveAvatarSrc(user?.profileImageUrl);
 
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />}>
+    <AppLayout>
       <div className="max-w-4xl mx-auto">
         <ReelsPageLayout
           header={

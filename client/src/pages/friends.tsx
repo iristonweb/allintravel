@@ -3,7 +3,6 @@ import { Link, useSearch } from "wouter";
 import { TRAVEL_DIRECTIONS } from "@shared/travel-directions";
 import type { TravelDirectionId } from "@shared/travel-directions";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import ReelsPageLayout from "@/components/feed/ReelsPageLayout";
 import AitSectionHeader from "@/components/ait-ui/AitSectionHeader";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -158,7 +157,7 @@ export function Friends() {
   }
 
   return (
-    <AppLayout rightRail={<DiscoveryRightRail />}>
+    <AppLayout>
       <div className="max-w-4xl mx-auto">
         <ReelsPageLayout
           header={

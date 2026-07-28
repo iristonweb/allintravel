@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { canViewPost } from "./post-access";
 import { setupAuth, isAuthenticated, isAdmin, getSession, type SessionUser } from "./auth";
-import { resolveIsAdmin } from "./admin";
 import { authConfigPayload } from "./auth-readiness";
 import { isGoogleAuthEnabled } from "./google-auth";
 import passport from "passport";
@@ -48,6 +47,7 @@ import {
   notifyFriendRequest,
   notifyFriendAccepted,
   notifyNewMessage,
+  notifyGroupChatMessage,
   notifyTripJoin,
   notifyEventRegistration,
   notifyGroupJoin,
@@ -113,6 +113,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
   registerAitRoutes(app);
   registerWalletRoutes(app);
+  const { registerPremiumRoutes } = await import("./premium-routes");
+  registerPremiumRoutes(app);
   await registerPlatformModules(app, storage);
   const { registerPaymentWebhookRoutes } = await import("./payments/webhooks/routes");
   registerPaymentWebhookRoutes(app);
@@ -216,9 +218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      if (resolveIsAdmin(user.email) && !user.isAdmin) {
-        user = await storage.setUserAdmin(userId, true);
-      }
+      const { ensureAdminAndPremium } = await import("./premium");
+      user = await ensureAdminAndPremium(storage, user);
       res.json(toSelfUser(user));
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -1831,8 +1832,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresInDays: z.number().int().min(1).max(365).nullable().optional(),
         })
         .parse(req.body);
-      const { setFraudFlag } = await import("./ait/fraud");
+      const { setFraudFlag, clearFraudFlag } = await import("./ait/fraud");
       if (body.level === 0) {
+        await clearFraudFlag(body.userId);
         res.json({ ok: true, cleared: true });
         return;
       }
@@ -1938,14 +1940,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       await storage.ensureLegacyChatRooms();
-      const rooms = await storage.listChatRoomsForUser(userId);
+      let rooms = await storage.listChatRoomsForUser(userId);
+
+      // Auto-join public legacy hubs so "Mine" and unread work, and list never looks empty after seed.
+      const legacyToJoin = rooms.filter(
+        (r) => r.isLegacy && r.visibility === "public" && !r.myRole,
+      );
+      if (legacyToJoin.length > 0) {
+        await Promise.all(
+          legacyToJoin.map((r) => storage.joinChatRoom(r.id, userId, "member").catch(() => null)),
+        );
+        rooms = await storage.listChatRoomsForUser(userId);
+      }
+
+      if (rooms.length === 0) {
+        console.warn("[chat] rooms list empty after ensureLegacyChatRooms for", userId);
+      }
+
       const { getRoomsWithSpotlight, sortRoomsWithSpotlight } = await import("./ait/perks");
       const roomIds = rooms.map((r) => r.id);
       const spotlight = await getRoomsWithSpotlight(roomIds);
       res.json(sortRoomsWithSpotlight(rooms, spotlight));
     } catch (error) {
       console.error("Error listing chat rooms:", error);
-      res.status(500).json({ message: "Failed to list rooms" });
+      res.status(500).json({
+        message: "Failed to list rooms",
+        detail: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -1955,9 +1976,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const q = String(req.query.q ?? "").trim();
       const limitRaw = parseInt(String(req.query.limit ?? "15"), 10);
       const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 30) : 15;
-      if (q.length < 2) {
-        return res.json([]);
-      }
       const rooms = await storage.discoverChatRooms(userId, q, limit);
       const { getRoomsWithSpotlight, sortRoomsWithSpotlight } = await import("./ait/perks");
       const roomIds = rooms.map((r) => r.id);
@@ -2673,6 +2691,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const savedMessage = await storage.createChatMessage(messageData);
       const aitGrant = await grantForChatMessage(userId, content, room);
       const sender = await storage.getUser(userId);
+      if (sender && access.room) {
+        const members = await storage.getChatRoomMembers(access.room.id);
+        const memberIds = members.filter((m) => m.status === "active").map((m) => m.userId);
+        void notifyGroupChatMessage(
+          memberIds,
+          sender,
+          access.room.slug,
+          access.room.title,
+          content,
+        ).catch((err) => console.error("group chat push:", err));
+      }
       res.status(201).json({
         ...savedMessage,
         aitGrant: aitGrant ?? null,
@@ -3425,6 +3454,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const savedMessage = await storage.createChatMessage(messageData);
             if (userId) await storage.touchPresence(userId, true);
             const sender = await storage.getUser(savedMessage.userId);
+
+            if (sender && access.room) {
+              const members = await storage.getChatRoomMembers(access.room.id);
+              const memberIds = members.filter((m) => m.status === "active").map((m) => m.userId);
+              void notifyGroupChatMessage(
+                memberIds,
+                sender,
+                access.room.slug,
+                access.room.title,
+                content,
+              ).catch((err) => console.error("group chat push:", err));
+            }
 
             wss.clients.forEach((client) => {
               if (client.readyState === WebSocket.OPEN) {

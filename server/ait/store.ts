@@ -428,10 +428,16 @@ export async function debitDualWallet(
   title: string,
   entityType: string | null,
   entityId: string | null,
+  opts?: { purchaseId?: string },
 ): Promise<boolean> {
   if (cost <= 0) return true;
   const balance = await getOrCreateBalance(userId);
   if (balance.creatorBalance + balance.spendBalance < cost) return false;
+
+  // Unique purchase id so dual-wallet legs and stackable SKUs do not collide on idempotency.
+  const purchaseId =
+    opts?.purchaseId ?? `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+  const baseKey = `${userId}:${reason}:${entityId ?? "none"}:${purchaseId}`;
 
   let remaining = cost;
   if (balance.creatorBalance > 0) {
@@ -444,7 +450,7 @@ export async function debitDualWallet(
       `${title} (Creator)`,
       entityType,
       entityId,
-      { skipEmissionCap: true },
+      { skipEmissionCap: true, idempotencyKey: `${baseKey}:creator` },
     );
     if (!creatorSpent) return false;
     remaining -= fromCreator;
@@ -458,7 +464,7 @@ export async function debitDualWallet(
       title,
       entityType,
       entityId,
-      { skipEmissionCap: true },
+      { skipEmissionCap: true, idempotencyKey: `${baseKey}:spend` },
     );
     if (!spent) return false;
   }

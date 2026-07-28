@@ -14,6 +14,18 @@
   --ait-gold: #ffb347;
   --ait-cyan: #22d3ee;
   --ait-pink: #ec4899;
+  --ait-ocean: #0ea5e9;
+  --ait-sunset: #f97316;
+  --ait-sand: #f5e6c8;
+  --ait-palm: #34d399;
+  --ait-glow-cyan: 0 0 28px rgba(34, 211, 238, 0.35);
+  --ait-glow-cyan-strong: 0 0 48px rgba(34, 211, 238, 0.55);
+  --ait-glow-sunset: 0 0 32px rgba(255, 122, 24, 0.4);
+  --ait-overlay-gradient: linear-gradient(
+    180deg,
+    rgba(5, 8, 22, 0.2) 0%,
+    rgba(5, 8, 22, 0.75) 100%
+  );
 
   --ait-primary: var(--ait-purple);
   --ait-accent: var(--ait-orange);

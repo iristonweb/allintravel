@@ -1,7 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/components/app-layout";
-import DiscoveryRightRail from "@/components/community/DiscoveryRightRail";
 import TripPlannerLayout from "@/components/planner/trip-planner-layout";
 import TripPlannerSkeleton from "@/components/planner/TripPlannerSkeleton";
 import AitButton from "@/components/ait-ui/AitButton";
@@ -50,7 +49,7 @@ export function TripDetail() {
 
   if (tripLoading) {
     return (
-      <AppLayout contentClassName="pb-28" rightRail={<DiscoveryRightRail />}>
+      <AppLayout contentClassName="pb-28">
         <TripPlannerSkeleton />
       </AppLayout>
     );
@@ -93,7 +92,7 @@ export function TripDetail() {
   }
 
   return (
-    <AppLayout contentClassName="pb-28" rightRail={<DiscoveryRightRail />}>
+    <AppLayout contentClassName="pb-28">
       <AppBreadcrumbs
         items={[{ label: t("tripDetail.tripsBreadcrumb"), href: "/trips" }, { label: trip.title }]}
       />

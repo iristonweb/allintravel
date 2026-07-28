@@ -68,6 +68,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   setUserPassword(userId: string, passwordHash: string): Promise<User>;
   setUserAdmin(userId: string, isAdmin: boolean): Promise<User>;
+  setUserPremium(userId: string, premiumUntil: Date | null): Promise<User>;
   ensureAdminUsers?(): Promise<void>;
   ensureUsernames?(): Promise<void>;
   ensureSchema?(): Promise<void>;
@@ -823,6 +824,7 @@ export class MemStorage implements IStorage {
     const user: User = {
       ...existing,
       ...userData,
+      premiumUntil: userData.premiumUntil ?? existing?.premiumUntil ?? null,
       isAdmin: resolveIsAdmin(userData.email ?? undefined) || userData.isAdmin === true,
       createdAt: existing?.createdAt ?? new Date(),
       updatedAt: new Date(),
@@ -839,12 +841,21 @@ export class MemStorage implements IStorage {
     return user;
   }
 
+  async setUserPremium(userId: string, premiumUntil: Date | null): Promise<User> {
+    const existing = this.users.get(userId);
+    if (!existing) throw new Error("User not found");
+    const user: User = { ...existing, premiumUntil, updatedAt: new Date() };
+    this.users.set(userId, user);
+    return user;
+  }
+
   async ensureAdminUsers(): Promise<void> {
     const { getAdminEmails } = await import("./admin");
+    const { ensureAdminAndPremium } = await import("./premium");
     for (const email of Array.from(getAdminEmails())) {
       const user = await this.getUserByEmail(email);
-      if (user && !user.isAdmin) {
-        await this.setUserAdmin(user.id, true);
+      if (user) {
+        await ensureAdminAndPremium(this, user);
       }
     }
   }
@@ -1717,16 +1728,25 @@ export class MemStorage implements IStorage {
         .filter((m) => m.userId === userId && m.status === "active")
         .map((m) => m.roomId),
     );
-    const scored = Array.from(this.memChatRooms.values())
-      .filter((r) => r.visibility === "public" && !r.isLegacy && !memberIds.has(r.id))
-      .map((room) => ({
-        ...room,
-        memberCount: Array.from(this.memChatMembers.values()).filter(
+    const q = query.trim();
+    const candidates = Array.from(this.memChatRooms.values()).filter(
+      (r) => r.visibility === "public" && !r.isLegacy && !memberIds.has(r.id),
+    );
+    const scored = candidates
+      .map((room) => {
+        const memberCount = Array.from(this.memChatMembers.values()).filter(
           (m) => m.roomId === room.id && m.status === "active",
-        ).length,
-        matchScore: scoreChatRoomMatch(query, room),
-      }))
-      .filter((r) => r.matchScore > 0)
+        ).length;
+        if (!q) {
+          return { ...room, memberCount, matchScore: memberCount };
+        }
+        return {
+          ...room,
+          memberCount,
+          matchScore: scoreChatRoomMatch(q, room),
+        };
+      })
+      .filter((r) => (!q ? true : r.matchScore > 0))
       .sort((a, b) => b.matchScore - a.matchScore || b.memberCount - a.memberCount);
     return scored.slice(0, limit);
   }

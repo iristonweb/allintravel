@@ -50,15 +50,15 @@ export default function ReelsPageLayout({
   className,
 }: ReelsPageLayoutProps) {
   return (
-    <div className={cn("space-y-section", className)}>
+    <div className={cn("space-y-4 md:space-y-5", className)}>
       {header && <AnimatedSlot delay={0}>{header}</AnimatedSlot>}
-      {filters && <AnimatedSlot delay={0.04}>{filters}</AnimatedSlot>}
-      {stats && <AnimatedSlot delay={0.08}>{stats}</AnimatedSlot>}
+      {tabs && <AnimatedSlot delay={0.04}>{tabs}</AnimatedSlot>}
+      {filters && <AnimatedSlot delay={0.06}>{filters}</AnimatedSlot>}
+      {toolbar && <AnimatedSlot delay={0.08}>{toolbar}</AnimatedSlot>}
+      {stats && <AnimatedSlot delay={0.1}>{stats}</AnimatedSlot>}
       {stories && <AnimatedSlot delay={0.12}>{stories}</AnimatedSlot>}
-      {tabs && <AnimatedSlot delay={0.16}>{tabs}</AnimatedSlot>}
-      {toolbar && <AnimatedSlot delay={0.2}>{toolbar}</AnimatedSlot>}
-      {composer && <AnimatedSlot delay={0.22}>{composer}</AnimatedSlot>}
-      <AnimatedSlot delay={0.26} className="min-h-0">
+      {composer && <AnimatedSlot delay={0.14}>{composer}</AnimatedSlot>}
+      <AnimatedSlot delay={0.16} className="min-h-0">
         {feed}
       </AnimatedSlot>
     </div>
@@ -79,13 +79,14 @@ export function ReelsSnapFeed({ children, className, onScroll, containerRef }: R
       ref={containerRef}
       onScroll={onScroll}
       className={cn(
-        "h-[calc(100dvh-var(--ait-header-h,4.5rem)-11rem)]",
-        "sm:h-[calc(100dvh-var(--ait-header-h,4.5rem)-14rem)]",
-        "lg:h-[calc(100dvh-var(--ait-header-h,4.5rem)-18rem)]",
-        "min-h-[min(72dvh,520px)]",
+        "h-[calc(100dvh-var(--ait-header-h,4.5rem)-9.5rem)]",
+        "sm:h-[calc(100dvh-var(--ait-header-h,4.5rem)-11rem)]",
+        "lg:h-[calc(100dvh-var(--ait-header-h,4.5rem)-13rem)]",
+        "min-h-[min(68dvh,480px)]",
+        "max-h-[900px]",
         "overflow-y-auto snap-y snap-mandatory scrollbar-hide overscroll-y-contain",
         "[-webkit-overflow-scrolling:touch]",
-        "rounded-card-xl bg-ait-deep/40",
+        "rounded-card-xl bg-ait-deep/50 ring-1 ring-white/5",
         className,
       )}
     >

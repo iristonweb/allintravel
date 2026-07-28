@@ -1,5 +1,6 @@
 import type { User } from "@shared/schema";
 import { usernameBaseFromEmail, USERNAME_MAX } from "@shared/username";
+import { isPremiumActive } from "./admin";
 
 export type PublicUser = Pick<
   User,
@@ -17,11 +18,14 @@ export function toPublicUser(user: User): PublicUser {
   };
 }
 
-/** Current user session / profile — no password hash */
-export function toSelfUser(user: User): Omit<User, "passwordHash"> {
+/** Current user session / profile — no password hash; includes computed isPremium. */
+export function toSelfUser(user: User): Omit<User, "passwordHash"> & { isPremium: boolean } {
   const { passwordHash, ...rest } = user;
   void passwordHash;
-  return rest;
+  return {
+    ...rest,
+    isPremium: isPremiumActive(user.premiumUntil),
+  };
 }
 
 export interface UsernameStorage {
