@@ -52,7 +52,16 @@ export async function resolveChatRoomAccess(
   }
   if (isAdmin) canPost = true;
 
-  return { allowed: true, room, canPost, isMember };
+  const result: ChatAccessResult = { allowed: true, room, canPost, isMember };
+  // Policy layer mirror (fail-closed default elsewhere); behavior unchanged.
+  const { authorize } = await import("./policy");
+  await import("./policy/chat-policies");
+  await authorize({ userId }, "chat.room.read", {
+    type: "chat_room",
+    id: room.id,
+    meta: { access: result },
+  });
+  return result;
 }
 
 export async function ensureMemberForPost(

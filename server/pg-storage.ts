@@ -68,6 +68,8 @@ export class PgStorage implements IStorage {
   }
 
   async ensureSchema(): Promise<void> {
+    const { isEnabled } = await import("./flags");
+    if (!(await isEnabled("runtime_ddl"))) return;
     await this.db.execute(sql`
       CREATE TABLE IF NOT EXISTS users (
         id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,

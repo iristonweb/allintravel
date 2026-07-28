@@ -153,6 +153,10 @@ export const trips = pgTable("trips", {
   forkedFromTripId: uuid("forked_from_trip_id"),
   priceCents: integer("price_cents"),
   isForSale: boolean("is_for_sale").default(false),
+  marketplaceSnapshot: jsonb("marketplace_snapshot").$type<Record<string, unknown>>(),
+  attributionUserId: varchar("attribution_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1307,6 +1311,112 @@ export const aitReferrals = pgTable("ait_referrals", {
   rewarded: boolean("rewarded").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+/** Platform feature flags (Wave 0). */
+export const featureFlags = pgTable("feature_flags", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+/** Transactional outbox (Wave 0). */
+export const outboxMessages = pgTable(
+  "outbox_messages",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    type: varchar("type", { length: 80 }).notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    idempotencyKey: varchar("idempotency_key", { length: 200 }),
+  },
+  (t) => [index("outbox_messages_pending_idx").on(t.availableAt)],
+);
+
+/** Immutable audit log (Wave 0). */
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    actorUserId: varchar("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    action: varchar("action", { length: 80 }).notNull(),
+    resourceType: varchar("resource_type", { length: 80 }).notNull(),
+    resourceId: varchar("resource_id", { length: 120 }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("audit_log_created_idx").on(t.createdAt)],
+);
+
+/** AIT double-entry chart of accounts (Wave 1). */
+export const aitLedgerAccounts = pgTable("ait_ledger_accounts", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 120 }).notNull(),
+  kind: varchar("kind", { length: 20 }).notNull(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const aitJournalEntries = pgTable("ait_journal_entries", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  txId: varchar("tx_id", { length: 64 }).notNull(),
+  reasonCode: varchar("reason_code", { length: 40 }).notNull(),
+  title: varchar("title", { length: 120 }).notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 200 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const aitJournalLines = pgTable(
+  "ait_journal_lines",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    entryId: varchar("entry_id", { length: 64 })
+      .notNull()
+      .references(() => aitJournalEntries.id, { onDelete: "cascade" }),
+    accountId: varchar("account_id", { length: 64 })
+      .notNull()
+      .references(() => aitLedgerAccounts.id),
+    debit: integer("debit").notNull().default(0),
+    credit: integer("credit").notNull().default(0),
+  },
+  (t) => [index("ait_journal_lines_entry_idx").on(t.entryId)],
+);
+
+/** Payment webhook idempotency store (Wave 2). */
+export const paymentWebhookEvents = pgTable(
+  "payment_webhook_events",
+  {
+    id: varchar("id", { length: 128 }).primaryKey(),
+    provider: varchar("provider", { length: 32 }).notNull(),
+    eventType: varchar("event_type", { length: 80 }).notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("payment_webhook_events_provider_idx").on(t.provider, t.createdAt)],
+);
+
+/** AI tool proposals awaiting human approval (Wave 3). */
+export const aiProposals = pgTable(
+  "ai_proposals",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tripId: uuid("trip_id").references(() => trips.id, { onDelete: "cascade" }),
+    toolName: varchar("tool_name", { length: 80 }).notNull(),
+    proposal: jsonb("proposal").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [index("ai_proposals_user_idx").on(t.userId, t.createdAt)],
+);
 
 // Types
 export type UpsertUser = typeof users.$inferInsert;

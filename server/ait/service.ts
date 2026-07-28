@@ -79,6 +79,21 @@ function ringForReason(reason: AitReasonCode): ActivityRingId | null {
   return null;
 }
 
+async function dispatchAitGrantNotify(userId: string, grant: AitGrantResult): Promise<void> {
+  const { isEnabled } = await import("../flags");
+  if (await isEnabled("outbox_dispatch")) {
+    const { enqueueOutbox } = await import("../outbox");
+    await enqueueOutbox(
+      "ait.grant_push",
+      { userId, grant },
+      { idempotencyKey: `ait-push:${userId}:${grant.reason}:${grant.amount}:${Date.now()}` },
+    );
+    return;
+  }
+  const { maybePushAitGrant } = await import("./push-notify");
+  void maybePushAitGrant(userId, grant);
+}
+
 export async function tryGrantSpend(
   userId: string,
   reason: AitReasonCode,
@@ -118,8 +133,7 @@ export async function tryGrantSpend(
   if (ring) await store.incrementRing(userId, ring);
 
   const grant = { granted: true, amount, wallet: "spend" as const, title, reason };
-  const { maybePushAitGrant } = await import("./push-notify");
-  void maybePushAitGrant(userId, grant);
+  await dispatchAitGrantNotify(userId, grant);
   return grant;
 }
 
@@ -159,8 +173,7 @@ export async function tryGrantCreator(
   }
 
   const grant = { granted: true, amount, wallet: "creator" as const, title, reason };
-  const { maybePushAitGrant } = await import("./push-notify");
-  void maybePushAitGrant(userId, grant);
+  await dispatchAitGrantNotify(userId, grant);
   return grant;
 }
 

@@ -114,6 +114,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAitRoutes(app);
   registerWalletRoutes(app);
   await registerPlatformModules(app, storage);
+  const { registerPaymentWebhookRoutes } = await import("./payments/webhooks/routes");
+  registerPaymentWebhookRoutes(app);
+  const { registerTelegramRoutes } = await import("./telegram/routes");
+  registerTelegramRoutes(app);
 
   // Geo autocomplete & destination search — see server/modules/geo/routes.ts
 

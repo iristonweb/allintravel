@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { ensurePlatformSchema } from "../../platform-schema";
+import { canListTripForSale, canPurchaseTrip } from "../../policy/marketplace-policies";
+import "../../policy/marketplace-policies";
 import type { IStorage } from "../../storage";
 import type { Trip } from "@shared/schema";
 
@@ -18,10 +20,20 @@ export async function forkTripWithAttribution(
   const copy = await copyTripForUser(storage, sourceTripId, userId);
   const db = getDb();
   if (db) {
+    const snapshot = {
+      sourceTripId,
+      sourceTitle: source.title,
+      sourceDestination: source.destination,
+      sourceUserId: source.userId,
+      forkedAt: new Date().toISOString(),
+      license: "allintravel-route-fork-v1",
+    };
     await db.execute(sql`
       UPDATE trips
       SET forked_from_trip_id = ${sourceTripId},
-          title = ${source.title + " (fork)"}
+          title = ${source.title + " (fork)"},
+          attribution_user_id = ${source.userId},
+          marketplace_snapshot = ${JSON.stringify(snapshot)}::jsonb
       WHERE id = ${copy.id}
     `);
   }
@@ -30,7 +42,11 @@ export async function forkTripWithAttribution(
     const { grantForTripForked } = await import("../../ait/hooks");
     void grantForTripForked(source.userId, userId, sourceTripId);
   }
-  return { ...refreshed, forkedFromTripId: sourceTripId } as Trip;
+  return {
+    ...refreshed,
+    forkedFromTripId: sourceTripId,
+    attributionUserId: source.userId,
+  } as Trip;
 }
 
 export async function setTripMarketplace(
@@ -43,6 +59,7 @@ export async function setTripMarketplace(
   await ensurePlatformSchema();
   const trip = await storage.getTrip(tripId);
   if (!trip || trip.userId !== userId) throw new Error("Forbidden");
+  if (!canListTripForSale(userId, trip.userId)) throw new Error("Forbidden");
 
   const db = getDb();
   if (db) {
@@ -150,6 +167,9 @@ export async function purchaseTripRoute(
   await ensurePlatformSchema();
   const trip = await storage.getTrip(tripId);
   if (!trip || !trip.isForSale || !trip.priceCents) throw new Error("Not for sale");
+  if (!canPurchaseTrip(buyerId, trip.userId, Boolean(trip.isForSale))) {
+    throw new Error("Forbidden");
+  }
 
   const forked = await forkTripWithAttribution(storage, tripId, buyerId);
   const secret = process.env.STRIPE_SECRET_KEY?.trim();
@@ -169,7 +189,10 @@ export async function purchaseTripRoute(
     "line_items[0][price_data][product_data][name]": trip.title,
     "line_items[0][quantity]": "1",
     "payment_intent_data[application_fee_amount]": String(Math.floor(trip.priceCents * 0.15)),
-    "payment_intent_data[transfer_data[destination]": sellerStripe.stripeAccountId,
+    "payment_intent_data[transfer_data][destination]": sellerStripe.stripeAccountId,
+    "metadata[tripId]": tripId,
+    "metadata[buyerId]": buyerId,
+    "metadata[forkedTripId]": forked.id,
   });
 
   const sessionRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {

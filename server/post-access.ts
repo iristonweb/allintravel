@@ -1,11 +1,11 @@
 import type { TravelPost } from "@shared/schema";
+import "./policy/post-policies";
+import { canViewPostViaPolicy } from "./policy/post-policies";
 
 /** Whether the viewer may read or interact with this post. */
 export function canViewPost(
   post: TravelPost | null | undefined,
   viewerId: string | null,
 ): post is TravelPost {
-  if (!post) return false;
-  if (post.isPublic) return true;
-  return viewerId !== null && post.userId === viewerId;
+  return canViewPostViaPolicy(post, viewerId);
 }

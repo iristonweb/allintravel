@@ -11,6 +11,8 @@ const memInvites = new Map<
 >();
 
 export async function ensureTripFeatureSchema(): Promise<void> {
+  const { isEnabled } = await import("./flags");
+  if (!(await isEnabled("runtime_ddl"))) return;
   const db = getDb();
   if (!db) return;
   await db.execute(sql`ALTER TABLE trips ADD COLUMN IF NOT EXISTS is_public boolean DEFAULT false`);

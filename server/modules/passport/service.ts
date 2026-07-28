@@ -19,6 +19,9 @@ export type PassportPayload = {
   tripsCount: number;
   stamps: PassportStamp[];
   achievements: string[];
+  /** Evidence-based: stamps derived from trips count as verified travel identity. */
+  verifiedTravel: boolean;
+  privacy: { stampsVisible: boolean };
 };
 
 const memStamps = new Map<string, PassportStamp[]>();
@@ -125,5 +128,7 @@ export async function getPassportForUser(
     tripsCount: tripIds.size,
     stamps,
     achievements: achievementIds(countries.size, cities.size, tripIds.size),
+    verifiedTravel: stamps.some((s) => s.source === "trip" && Boolean(s.tripId)),
+    privacy: { stampsVisible: true },
   };
 }

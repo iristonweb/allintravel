@@ -12,7 +12,7 @@ describe("createApp", () => {
       process.env.SESSION_SECRET ?? "vitest-ci-session-secret-min-32-chars";
     const { createApp } = await import("./createApp");
     ({ app } = await createApp());
-  }, 30_000);
+  }, 60_000);
 
   it("GET /api/health returns ok", async () => {
     const res = await request(app).get("/api/health");

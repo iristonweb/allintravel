@@ -153,6 +153,29 @@ export function registerAiRoutes(app: Express): void {
       history.push({ role: "assistant", content: plan.summary });
       await saveSessionMessages(sessionId, userId, trip.id, history);
 
+      const { isEnabled } = await import("../../flags");
+      if (await isEnabled("ai_tool_proposals")) {
+        const { createProposal } = await import("../../ai/tools/proposals");
+        const proposal = await createProposal({
+          userId,
+          tripId: trip.id,
+          toolName: "suggest_stops",
+          proposal: {
+            tool: "suggest_stops",
+            destination: trip.destination,
+            summary: plan.summary,
+            suggestions: plan.suggestions,
+          },
+        });
+        return res.json({
+          sessionId,
+          ...plan,
+          messages: history,
+          proposalId: proposal.id,
+          requiresApproval: true,
+        });
+      }
+
       res.json({ sessionId, ...plan, messages: history });
     } catch (error) {
       console.error("copilot/chat:", error);
@@ -234,6 +257,23 @@ export function registerAiRoutes(app: Express): void {
     } catch (error) {
       console.error("POST /api/ai/context", error);
       res.status(500).json({ message: "AI context failed" });
+    }
+  });
+
+  app.post("/api/ai/proposals/:id/decide", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as Request & { user: { claims: { sub: string } } }).user.claims.sub;
+      const decision = String(req.body?.decision ?? "");
+      if (decision !== "approved" && decision !== "rejected") {
+        return res.status(400).json({ message: "decision must be approved or rejected" });
+      }
+      const { decideProposal } = await import("../../ai/tools/proposals");
+      const result = await decideProposal(req.params.id, userId, decision, storage);
+      res.json(result);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed";
+      const status = msg === "Forbidden" ? 403 : msg === "Proposal not found" ? 404 : 400;
+      res.status(status).json({ message: msg });
     }
   });
 }

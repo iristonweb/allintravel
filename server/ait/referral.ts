@@ -44,6 +44,8 @@ export type ReferralInfo = {
 };
 
 export async function ensureReferralSchema(): Promise<void> {
+  const { isEnabled } = await import("../flags");
+  if (!(await isEnabled("runtime_ddl"))) return;
   const db = getDb();
   if (!db) return;
   await db.execute(sql`

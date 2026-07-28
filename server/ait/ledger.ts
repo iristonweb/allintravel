@@ -165,6 +165,20 @@ export async function applyBalanceDeltaLedger(
         VALUES (${txId}, ${userId}, ${wallet}, ${delta}, ${reason}, ${title}, ${entityType}, ${entityId})
       `);
 
+      const { isEnabled } = await import("../flags");
+      if (await isEnabled("ait_double_entry")) {
+        const { writeDoubleEntryJournal } = await import("./double-entry");
+        await writeDoubleEntryJournal(tx, {
+          txId,
+          userId,
+          wallet,
+          delta,
+          reason,
+          title,
+          idempotencyKey: opts?.idempotencyKey ?? buildIdempotencyKey(userId, reason, entityId),
+        });
+      }
+
       const updated = await tx.execute(sql`
         SELECT user_id, spend_balance, creator_balance, lifetime_spend_earned,
                lifetime_creator_earned, streak_days, last_active_date::text, profile_bonus_claimed

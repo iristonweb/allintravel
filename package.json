@@ -26,6 +26,7 @@
     "db:baseline": "tsx scripts/db-baseline.ts",
     "db:backfill-usernames": "tsx server/scripts/backfill-usernames.ts",
     "db:check": "tsx server/scripts/check-db-health.ts",
+    "check:runtime-ddl": "tsx scripts/check-runtime-ddl.ts",
     "db:seed": "tsx server/scripts/seed-app.ts",
     "db:seed-catalog": "tsx server/scripts/import-places-catalog.ts",
     "db:reset-geo": "tsx server/scripts/reset-geo-schema.ts",

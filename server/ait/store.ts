@@ -96,6 +96,9 @@ function genTxId(): string {
 }
 
 export async function ensureAitSchema(): Promise<void> {
+  const { isEnabled } = await import("../flags");
+  if (!(await isEnabled("runtime_ddl"))) return;
+
   const db = getDb();
   if (!db) return;
   await db.execute(sql`

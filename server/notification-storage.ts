@@ -9,6 +9,8 @@ import { notifications, pushSubscriptions } from "@shared/schema";
 import type { Db } from "./pg-storage-types";
 
 export async function ensureNotificationSchema(db: Db): Promise<void> {
+  const { isEnabled } = await import("./flags");
+  if (!(await isEnabled("runtime_ddl"))) return;
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS notifications (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

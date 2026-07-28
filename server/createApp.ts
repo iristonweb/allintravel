@@ -6,11 +6,22 @@ import { registerRoutes } from "./routes";
 import { initAppStorage } from "./storage";
 import { setupUploadRoutes } from "./upload";
 import { setupPushRoutes } from "./push";
-import { isProductionEnv, redactForLog } from "./security";
+import { isProductionEnv } from "./security";
+import { loadConfig, getConfig } from "./config";
+import { setupObservability } from "./observability/middleware";
+import { bootstrapFlags } from "./flags";
+import { registerFlagRoutes } from "./flags/routes";
+import { registerAitOutboxHandlers } from "./outbox/handlers";
+import { startOutboxDispatcher, drainOutbox } from "./outbox";
+import { log } from "./observability/logger";
+import "./policy/post-policies";
+import "./policy/chat-policies";
+import "./policy/marketplace-policies";
 
 const INIT_TIMEOUT_MS = 12_000;
 
 export async function createApp(): Promise<{ app: Express; server: Server }> {
+  loadConfig();
   const app = express();
   app.use(
     helmet({
@@ -29,14 +40,22 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
         : false,
     }),
   );
-  app.use(express.json());
+  app.use(
+    express.json({
+      verify: (req, _res, buf) => {
+        (req as Request & { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
   app.use(express.urlencoded({ extended: false }));
+
+  setupObservability(app);
 
   // Health check before heavy init (must respond even if DB is slow)
   app.get("/api/health", async (_req, res) => {
     let database = false;
 
-    if (process.env.DATABASE_URL) {
+    if (getConfig().databaseUrl) {
       try {
         const { getDb } = await import("./db");
         const db = getDb();
@@ -56,45 +75,35 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
     res.json({ ok: true, database });
   });
 
-  app.use((req, res, next) => {
-    const start = Date.now();
-    const path = req.path;
-    let capturedJsonResponse: Record<string, unknown> | undefined;
-
-    const originalResJson = res.json;
-    res.json = function (bodyJson, ...args) {
-      capturedJsonResponse = bodyJson as Record<string, unknown>;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
-
-    res.on("finish", () => {
-      const duration = Date.now() - start;
-      if (path.startsWith("/api")) {
-        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(redactForLog(capturedJsonResponse))}`;
-        }
-        if (logLine.length > 80) {
-          logLine = logLine.slice(0, 79) + "…";
-        }
-        console.log(logLine);
-      }
-    });
-
-    next();
-  });
+  await bootstrapFlags();
+  registerAitOutboxHandlers();
+  startOutboxDispatcher();
 
   let server: Server;
   try {
     server = await registerRoutes(app);
   } catch (error) {
-    console.error("[createApp] registerRoutes failed:", error);
+    log.error("createApp.registerRoutes_failed", { err: String(error) });
     server = createServer(app);
   }
+
+  registerFlagRoutes(app);
 
   // After setupAuth (inside registerRoutes) so isAuthenticated works on upload/push.
   setupUploadRoutes(app);
   setupPushRoutes(app);
+
+  app.post("/api/internal/outbox/drain", async (req, res) => {
+    const secret = process.env.OUTBOX_DRAIN_SECRET?.trim();
+    if (secret && req.headers["x-outbox-secret"] !== secret) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!secret && isProductionEnv()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const result = await drainOutbox();
+    res.json(result);
+  });
 
   app.use("/api", (_req, res) => {
     res.status(404).json({ message: "Not Found" });
@@ -102,7 +111,7 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
 
   const runStorageInit = () => {
     initAppStorage().catch((error) => {
-      console.error("[createApp] initAppStorage failed (continuing):", error);
+      log.error("createApp.initAppStorage_failed", { err: String(error) });
     });
   };
 
@@ -117,7 +126,7 @@ export async function createApp(): Promise<{ app: Express; server: Server }> {
         ),
       ]);
     } catch (error) {
-      console.error("[createApp] initAppStorage failed (continuing):", error);
+      log.error("createApp.initAppStorage_failed", { err: String(error) });
     }
   }
 
